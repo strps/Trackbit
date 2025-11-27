@@ -6,5 +6,11 @@
   },
   "python.formatting.provider": "black",
   "workbench.editor.showTabs": true,
-  "zenMode.hideLineNumbers": false
+  "zenMode.hideLineNumbers": false,
+  "[jsonc]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features"
+  }
 }
