@@ -5,7 +5,7 @@
     "editor.defaultFormatter": "ms-python.python"
   },
   "python.formatting.provider": "black",
-  "workbench.editor.showTabs": true,
+  "workbench.editor.showTabs": "multiple",
   "zenMode.hideLineNumbers": false,
   "[jsonc]": {
     "editor.defaultFormatter": "vscode.json-language-features"
