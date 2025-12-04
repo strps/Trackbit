@@ -1,0 +1,223 @@
+import { GradientField } from "@/pages/habits-configuration/GradientField";
+import { IconSelector } from "./IconField";
+import { Button } from "@/components/ui/button";
+import { CheckCircle, Layout, List, Save, XCircle } from "lucide-react";
+import { z } from "zod";
+import { BigButton } from "@/components/BigButton";
+import { useForm, Controller } from "react-hook-form";
+import { Field, RangeField, TextField, TextFieldInput } from "@/components/Field";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+interface HabitConfigProps {
+    isEditing: boolean;
+    activeHabitId: number | null;
+    cancelEdit: () => void;
+    saveHabit: () => void;
+    formData: Trackbit.Habit;
+    setFormData: React.Dispatch<React.SetStateAction<Trackbit.Habit>>;
+    selectedHabit?: Trackbit.Habit;
+}
+
+const TRACKING_TYPES = [
+    {
+        id: 'simple',
+        label: 'Simple Completion',
+        description: 'Track daily checks or counts (e.g., Read 30 mins).',
+        icon: CheckCircle
+    },
+    {
+        id: 'complex',
+        label: 'Structured Session',
+        description: 'Log sets, reps, weights, time, or distance (e.g., Gym).',
+        icon: List
+    },
+    {
+        id: 'negative',
+        label: 'Negative Habit',
+        description: 'Track bad habits to reduce or avoid (e.g., Smoking, Junk Food).',
+        icon: XCircle
+    }
+];
+
+const formSchema = z.object({
+    name: z
+        .string()
+        .min(3, "Name should be at least 3 characters long")
+        .max(50, "Name should not exceed 50 characters long"),
+    description: z.string().optional(),
+    type: z.enum(["simple", "complex", "negative"]),
+    icon: z.string().optional(),
+    colorStops: z.array(
+        z.object({
+            position: z.number().min(0).max(1),
+            color: z.array(z.number().min(0).max(255)).length(3)
+        })
+    ),
+    dailyGoal: z.number().min(0).max(100),
+    weeklyGoal: z.number().min(1).max(7),
+});
+
+export const HabitConfigForm = ({
+    isEditing,
+    activeHabitId,
+    cancelEdit,
+    formData,
+    selectedHabit
+}: HabitConfigProps) => {
+
+    console.log(selectedHabit)
+
+
+    const form = useForm<z.infer<typeof formSchema>>({
+        resolver: zodResolver(formSchema),
+        defaultValues: selectedHabit ? {
+            name: selectedHabit.name,
+            description: selectedHabit.description,
+            type: selectedHabit.type,
+            icon: selectedHabit.icon,
+            colorStops: selectedHabit.colorStops,
+            dailyGoal: selectedHabit.dailyGoal,
+            weeklyGoal: selectedHabit.weeklyGoal,
+        } : undefined
+    });
+
+    const onSubmit = (data: z.infer<typeof formSchema>) => {
+        console.log(data);
+        // saveHabit(values); // you decide how to handle this later
+    };
+
+    return (
+        <form onSubmit={form.handleSubmit(onSubmit)} className="lg:col-span-7 relative">
+            <div //TODO: remove this div, use just the form element for layout and styling
+                className={`
+                    rounded-2xl shadow-xl border 
+                    overflow-hidden sticky top-8 transition-all duration-300
+                    ${isEditing ? 'opacity-100 translate-y-0' : 'opacity-50 grayscale pointer-events-none translate-y-4'}
+                `}
+            >
+                {/* Header */}
+                <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800">
+                    <div>
+                        <h2 className="text-xl font-bold">
+                            {activeHabitId ? 'Edit Habit' : 'New Habit'}
+                        </h2>
+                        <p className="text-sm text-slate-500">Define how you want to track this routine.</p>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button onClick={cancelEdit}>Cancel</Button>
+                        <Button type="submit" className="flex items-center gap-2">
+                            <Save className="w-4 h-4" /> Save
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Form */}
+                <div className="p-6 space-y-8">
+
+                    {/* Name + Weekly Goal */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                        <TextField
+                            name="name"
+                            label="Habit Name"
+                            placeholder="e.g., Drink Water"
+                            form={form}
+                        />
+
+                        <RangeField
+                            name="weeklyGoal"
+                            label="Weekly Goal (Days)"
+                            form={form}
+                            min={1}
+                            max={7}
+                        />
+
+                    </div>
+
+                    {/* Tracking Method */}
+                    <div className="space-y-3">
+
+                        <Field
+                            name="type"
+                            label="Tracking Method"
+                            form={form}
+                            fieldInput={({ field }) => (
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {TRACKING_TYPES.map((type) => {
+                                        const Icon = type.icon;
+                                        return (
+                                            <BigButton
+                                                key={type.id}
+                                                isSelected={field.value === type.id}
+                                                onClick={() => field.onChange(type.id)}
+                                            >
+                                                <div className="p-2 rounded-lg">
+                                                    <Icon className="w-5 h-5" />
+                                                </div>
+                                                <div>
+                                                    <div className="font-bold">{type.label}</div>
+                                                    <div className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                                                        {type.description}
+                                                    </div>
+                                                </div>
+                                            </BigButton>
+                                        );
+                                    })}
+                                </div>
+
+                            )}
+                        />
+                    </div>
+
+                    <div className="h-px bg-slate-100 dark:bg-slate-700" />
+
+                    {/* Appearance Section */}
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+
+                        {/* Icon */}
+                        <Field
+                            form={form}
+                            name="icon"
+                            fieldInput={({ field }) => (
+                                <div className="space-y-3">
+                                    <label className="block text-sm font-bold">Icon</label>
+                                    <IconSelector
+                                        selected={field.value}
+                                        onChange={field.onChange}
+                                    />
+                                </div>
+                            )}
+                        />
+
+                        {/* Color */}
+                        <Field
+                            label="Color Theme"
+                            form={form}
+                            name="colorStops"
+                            fieldInput={({ field }) => (
+                                <div className="space-y-3">
+                                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-700 border">
+                                        <GradientField
+                                            value={field.value}
+                                            onChange={field.onChange}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        />
+
+                    </div>
+
+                </div>
+            </div>
+
+            {!isEditing && (
+                <div className="absolute flex flex-col items-center justify-center border-2 border-dashed rounded-2xl inset-0 bottom-0 bg-muted/75">
+                    <Layout className="w-16 h-16 mb-4 opacity-20" />
+                    <p className="text-lg font-medium">Select a habit to edit</p>
+                </div>
+            )}
+        </form>
+    );
+};
