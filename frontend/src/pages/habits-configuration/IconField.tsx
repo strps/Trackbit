@@ -37,6 +37,7 @@ export const IconSelector = ({ selected, onChange }: IconSelectorProps) => (
             <Button
                 key={id}
                 onClick={() => onChange(id)}
+                type="button"
                 size="icon-sm"
                 className={`${selected === id
                     ? 'bg-slate-900 text-white shadow-md scale-110'

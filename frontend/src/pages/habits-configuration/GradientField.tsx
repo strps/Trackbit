@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Check } from 'lucide-react';
 import { gradientToCSS, mapValueToColor, mapValueToCSSrgb } from '../../lib/colorUtils';
 import { GradientPicker } from './GradientPicker';
+import { BigButton } from '@/components/BigButton';
 
 
 type Preset = {
@@ -100,16 +101,12 @@ export const GradientField = ({ value, onChange }: GradientPickerProps) => {
 
                 return (
                     (key != "custom") ?
-                        <button
+                        <BigButton
                             key={key}
                             type="button"
                             onClick={(e) => handleOnclick(e, key, preset)}
-                            className={`
-                            relative flex flex-col gap-2 items-center p-4 rounded-lg border-2 transition-all
-                            ${isActive
-                                    ? 'ring-2 ring-ring   dark:bg-blue-900/20'
-                                    : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800'}
-                        `}
+                            isSelected={isActive}
+                            className='flex flex-col justify-center items-center'
                         >
                             {/* Gradient Preview Bar */}
                             <div
@@ -119,31 +116,31 @@ export const GradientField = ({ value, onChange }: GradientPickerProps) => {
                                     backgroundColor: mapValueToCSSrgb(0, 0, 1, preset.stops),
                                     width: 20,
                                     height: 20,
-                                    borderRadius: '50%',
+                                    borderRadius: '25%',
                                 }} />
                                 <div style={{
                                     backgroundColor: mapValueToCSSrgb(0.25, 0, 1, preset.stops),
                                     width: 20,
                                     height: 20,
-                                    borderRadius: '50%',
+                                    borderRadius: '25%',
                                 }} />
                                 <div style={{
                                     backgroundColor: mapValueToCSSrgb(0.50, 0, 1, preset.stops),
                                     width: 20,
                                     height: 20,
-                                    borderRadius: '50%',
+                                    borderRadius: '25%',
                                 }} />
                                 <div style={{
                                     backgroundColor: mapValueToCSSrgb(0.75, 0, 1, preset.stops),
                                     width: 20,
                                     height: 20,
-                                    borderRadius: '50%',
+                                    borderRadius: '25%',
                                 }} />
                                 <div style={{
                                     backgroundColor: mapValueToCSSrgb(1, 0, 1, preset.stops),
                                     width: 20,
                                     height: 20,
-                                    borderRadius: '50%',
+                                    borderRadius: '25%',
                                 }} />
 
                             </div>
@@ -154,12 +151,8 @@ export const GradientField = ({ value, onChange }: GradientPickerProps) => {
                                 </span>
                             </div>
 
-                            {isActive && (
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2 p-1 bg-blue-500 rounded-full text-white shadow-sm">
-                                    <Check className="w-3 h-3" />
-                                </div>
-                            )}
-                        </button>
+
+                        </BigButton>
                         :
                         <GradientPicker key={key} isActive={isActive} onChange={isActive ? onChange : undefined} onClick={() => setActiveKey(key)} />
 

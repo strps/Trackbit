@@ -97,15 +97,6 @@ export function mapValueToColorOrdered(
 }
 
 
-
-
-
-
-
-
-
-
-
 /**
  * Linearly interpolates between two RGB colors.
  * 

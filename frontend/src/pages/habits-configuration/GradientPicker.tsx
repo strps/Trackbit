@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Trash2, Plus } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { CollapsibleSection } from "../../components/Collapsible";
+import { bigButtonSelectedClassName } from "@/components/BigButton";
 
 interface GradientPickerProps {
     value?: Trackbit.ColorStop[];
@@ -156,10 +157,10 @@ export function GradientPicker({ value, onChange, isActive, onClick }: GradientP
             setSelected(null);
         }
     };
-
+    //TODO: add alpha to picker as optional and to habit db table
     return (
         <CollapsibleSection
-            className={`col-span-2 ${isActive && "ring-2 ring-ring"}`}
+            className={`col-span-2 ${isActive && bigButtonSelectedClassName}`}
             isOpen={isActive}
             headerContent={
                 <div
@@ -173,31 +174,31 @@ export function GradientPicker({ value, onChange, isActive, onClick }: GradientP
                             backgroundColor: `rgb(${mapValueToColorOrdered(0, 0, 1, stops).join(", ")})`,
                             width: 20,
                             height: 20,
-                            borderRadius: '50%',
+                            borderRadius: '25%',
                         }} />
                         <div style={{
                             backgroundColor: `rgb(${mapValueToColorOrdered(0.25, 0, 1, stops).join(", ")})`,
                             width: 20,
                             height: 20,
-                            borderRadius: '50%',
+                            borderRadius: '25%',
                         }} />
                         <div style={{
                             backgroundColor: `rgb(${mapValueToColorOrdered(0.50, 0, 1, stops).join(", ")})`,
                             width: 20,
                             height: 20,
-                            borderRadius: '50%',
+                            borderRadius: '25%',
                         }} />
                         <div style={{
                             backgroundColor: `rgb(${mapValueToColorOrdered(0.75, 0, 1, stops).join(", ")})`,
                             width: 20,
                             height: 20,
-                            borderRadius: '50%',
+                            borderRadius: '25%',
                         }} />
                         <div style={{
                             backgroundColor: `rgb(${mapValueToColorOrdered(1, 0, 1, stops).join(", ")})`,
                             width: 20,
                             height: 20,
-                            borderRadius: '50%',
+                            borderRadius: '25%',
                         }} />
 
                     </div>

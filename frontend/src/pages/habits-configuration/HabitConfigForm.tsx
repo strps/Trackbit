@@ -1,4 +1,4 @@
-import { GradientField } from "@/pages/habits-configuration/GradientField";
+import { GRADIENT_PRESETS, GradientField } from "@/pages/habits-configuration/GradientField";
 import { IconSelector } from "./IconField";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Layout, List, Save, XCircle } from "lucide-react";
@@ -7,15 +7,13 @@ import { BigButton } from "@/components/BigButton";
 import { useForm, Controller } from "react-hook-form";
 import { Field, RangeField, TextField, TextFieldInput } from "@/components/Field";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
+import { id } from "zod/v4/locales";
+import { useHabits } from "@/hooks/use-habits";
 
 interface HabitConfigProps {
     isEditing: boolean;
-    activeHabitId: number | null;
-    cancelEdit: () => void;
-    saveHabit: () => void;
-    formData: Trackbit.Habit;
-    setFormData: React.Dispatch<React.SetStateAction<Trackbit.Habit>>;
-    selectedHabit?: Trackbit.Habit;
+    habit?: Trackbit.Habit | null;
 }
 
 const TRACKING_TYPES = [
@@ -40,10 +38,13 @@ const TRACKING_TYPES = [
 ];
 
 const formSchema = z.object({
+    id: z.number().optional(),
     name: z
         .string()
         .min(3, "Name should be at least 3 characters long")
         .max(50, "Name should not exceed 50 characters long"),
+
+
     description: z.string().optional(),
     type: z.enum(["simple", "complex", "negative"]),
     icon: z.string().optional(),
@@ -57,32 +58,64 @@ const formSchema = z.object({
     weeklyGoal: z.number().min(1).max(7),
 });
 
+const defaultValues = {
+    name: "",
+    description: "",
+    type: "simple",
+    colorStops: GRADIENT_PRESETS.emerald.stops,
+    icon: "star",
+    dailyGoal: 5,
+    weeklyGoal: 7,
+}
+
 export const HabitConfigForm = ({
     isEditing,
-    activeHabitId,
-    cancelEdit,
-    formData,
-    selectedHabit
+    habit
 }: HabitConfigProps) => {
 
-    console.log(selectedHabit)
 
 
     const form = useForm<z.infer<typeof formSchema>>({
+        mode: "onSubmit",
+        reValidateMode: "onSubmit",
         resolver: zodResolver(formSchema),
-        defaultValues: selectedHabit ? {
-            name: selectedHabit.name,
-            description: selectedHabit.description,
-            type: selectedHabit.type,
-            icon: selectedHabit.icon,
-            colorStops: selectedHabit.colorStops,
-            dailyGoal: selectedHabit.dailyGoal,
-            weeklyGoal: selectedHabit.weeklyGoal,
-        } : undefined
+        defaultValues: {
+            name: "",
+            description: "",
+            type: "simple",
+            colorStops: GRADIENT_PRESETS.emerald.stops,
+            icon: "star",
+            dailyGoal: 5,
+            weeklyGoal: 7,
+        },
     });
 
+    useEffect(() => {
+        resetForm()
+    }, [habit, /*form*/]);
+
+
+    const resetForm = () => {
+        form.reset(
+            habit
+                ? habit
+                : defaultValues
+        );
+    };
+
+
+    const { habits, isLoading, createHabit, updateHabit, deleteHabit } = useHabits();
+    /**
+     * Ppdate or create new habit
+     * @param data 
+     */
     const onSubmit = (data: z.infer<typeof formSchema>) => {
         console.log(data);
+        if (!data.id)
+            createHabit(data);
+        else
+            updateHabit(data);
+
         // saveHabit(values); // you decide how to handle this later
     };
 
@@ -96,15 +129,15 @@ export const HabitConfigForm = ({
                 `}
             >
                 {/* Header */}
-                <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800">
+                <div className="p-6 border-b border-border flex justify-between items-center">
                     <div>
                         <h2 className="text-xl font-bold">
-                            {activeHabitId ? 'Edit Habit' : 'New Habit'}
+                            {habit ? 'Edit Habit' : 'New Habit'}
                         </h2>
                         <p className="text-sm text-slate-500">Define how you want to track this routine.</p>
                     </div>
                     <div className="flex gap-2">
-                        <Button onClick={cancelEdit}>Cancel</Button>
+                        <Button type="button" onClick={resetForm}>Cancel</Button>
                         <Button type="submit" className="flex items-center gap-2">
                             <Save className="w-4 h-4" /> Save
                         </Button>
@@ -115,14 +148,16 @@ export const HabitConfigForm = ({
                 <div className="p-6 space-y-8">
 
                     {/* Name + Weekly Goal */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                        <TextField
-                            name="name"
-                            label="Habit Name"
-                            placeholder="e.g., Drink Water"
-                            form={form}
-                        />
+                    <TextField
+                        name="name"
+                        label="Habit Name"
+                        placeholder="e.g., Drink Water"
+                        className="text-4xl! h-14"
+                        form={form}
+                        autocomplete="off"
+                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                         <RangeField
                             name="weeklyGoal"
@@ -130,6 +165,14 @@ export const HabitConfigForm = ({
                             form={form}
                             min={1}
                             max={7}
+                        />
+
+                        <RangeField
+                            name="dailyGoal"
+                            label="Daily Goal (Times)"
+                            form={form}
+                            min={0}
+                            max={100}
                         />
 
                     </div>

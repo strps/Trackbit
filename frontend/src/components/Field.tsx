@@ -1,8 +1,9 @@
 import { Controller, ControllerFieldState, ControllerRenderProps, FieldValues, UseFormReturn, UseFormStateReturn } from "react-hook-form";
 import { Field as SField, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field"
+import { Input } from "./ui/input";
+import { Slider } from "./ui/slider";
 
 interface InputProps {
-
     id: string;
     "aria-valid": boolean;
     placeholder?: string;
@@ -10,7 +11,7 @@ interface InputProps {
     field: ControllerRenderProps<FieldValues, string>;
     fieldState: ControllerFieldState;
     formState: UseFormStateReturn<any>
-
+    className?: string;
 }
 
 interface FieldProps {
@@ -21,9 +22,10 @@ interface FieldProps {
     placeholder?: string;
     description?: string;
     orientation?: "horizontal" | "vertical" | "responsive" | null;
+    className?: string;
 }
 
-export const Field = ({ name, label, form, placeholder, fieldInput: FieldInput, description, orientation }: FieldProps) => {
+export const Field = ({ name, label, form, placeholder, fieldInput: FieldInput, description, orientation, className }: FieldProps) => {
 
     return (
 
@@ -43,6 +45,7 @@ export const Field = ({ name, label, form, placeholder, fieldInput: FieldInput, 
                         field={field}
                         fieldState={fieldState}
                         formState={formState}
+                        className={className}
                     />
                     {description && <FieldDescription>
                         {description}
@@ -55,6 +58,7 @@ export const Field = ({ name, label, form, placeholder, fieldInput: FieldInput, 
 
     )
 }
+
 
 
 export const TextField = ({ ...props }: Omit<FieldProps, "fieldInput">) => <Field fieldInput={TextFieldInput} {...props} />
@@ -75,17 +79,14 @@ export const TextFieldInput = ({
     placeholder,
     "aria-valid": ariaValid,
     field,
+    className,
 }: InputProps) => {
     return (
-        <input
+        <Input
             id={id}
             placeholder={placeholder}
             aria-invalid={!ariaValid}
-            className="
-        w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600
-        bg-slate-50 dark:bg-slate-700 focus:ring-2 focus:ring-blue-500
-        outline-none transition-all font-medium
-      "
+            className={className}
             {...field}
         />
     );
@@ -100,16 +101,12 @@ export const NumberFieldInput = ({
     "aria-valid": ariaValid,
 }: InputProps) => {
     return (
-        <input
+        <Input
             id={id}
             type="number"
             placeholder={placeholder}
             aria-invalid={!ariaValid}
-            className="
-        w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600
-        bg-slate-50 dark:bg-slate-700 focus:ring-2 focus:ring-blue-500
-        outline-none transition-all font-medium
-      "
+
             {...field}
         />
     );
@@ -133,14 +130,12 @@ export const RangeFieldInput = ({
     const { onChange, value, ...fieldProps } = field
     return (
         <div className="flex items-center gap-4">
-            <input
+            <Slider
                 id={id}
-                type="range"
-
                 min={min}
                 max={max}
                 step={step}
-                onChange={(e) => onChange(Number(e.target.value))}
+                onValueChange={(value) => onChange(value)}
                 aria-invalid={!ariaValid}
                 className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-slate-900 dark:accent-white"
                 {...fieldProps}

@@ -10,36 +10,19 @@ const HabitConfig = () => {
     const { habits, isLoading, createHabit, updateHabit, deleteHabit } = useHabits();
 
     const [isEditing, setIsEditing] = useState(false);
-    const [activeHabitId, setActiveHabitId] = useState(null); // ID of habit being edited, or null for new
-
-    const defaultForm = {
-        name: '',
-        description: '',
-        type: 'simple',
-        colorStops: [
-            { position: 0, color: [241, 245, 249] },
-            { position: 1, color: [16, 185, 129] },
-        ],
-        icon: 'star',
-        weeklyGoal: 5,
-        dailyGoal: 5
-    };
-
-    const [formData, setFormData] = useState(defaultForm);
+    const [activeHabitId, setActiveHabitId] = useState<number | null | undefined>(undefined); // ID of habit being edited, or null for new
 
     const startNewHabit = () => {
-        setFormData(defaultForm);
         setActiveHabitId(null);
         setIsEditing(true);
     };
 
-    const editHabit = (habit) => {
-        setFormData({ ...defaultForm, ...habit });
+    const editHabit = (habit: Trackbit.Habit) => {
         setActiveHabitId(habit.id);
         setIsEditing(true);
     };
 
-    const handleDelete = (id, e) => {
+    const handleDelete = (id: number, e: React.MouseEvent<HTMLButtonElement>) => {
         e.stopPropagation();
         if (window.confirm('Delete habit?')) {
             deleteHabit(Number(id));
@@ -50,29 +33,7 @@ const HabitConfig = () => {
     const cancelEdit = () => {
         setIsEditing(false);
         setActiveHabitId(null);
-        setFormData(defaultForm);
     };
-
-    const saveHabit = () => {
-        if (!formData.name.trim()) return;
-
-        if (activeHabitId) {
-            // Update existing
-            updateHabit({
-                id: Number(activeHabitId), // Ensure ID types match (string vs number)
-                ...formData
-            });
-        } else {
-            // Create new
-            createHabit(formData);
-        }
-        cancelEdit();
-    };
-
-
-
-    // Helper to render the actual Lucide icon component dynamically
-
 
     if (isLoading) {
         return <div className="min-h-screen flex items-center justify-center">Loading Habits...</div>;
@@ -106,9 +67,7 @@ const HabitConfig = () => {
                 {/* Right Column: Configuration Form */}
                 <HabitConfigForm
                     isEditing={isEditing}
-                    formData={formData}
-                    setFormData={setFormData}
-                    selectedHabit={habits.find(e => e.id === activeHabitId)}
+                    habit={habits.find(e => e.id === activeHabitId)}
                 />
             </div>
         </div>
