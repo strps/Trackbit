@@ -207,6 +207,7 @@ const ExerciseCard = ({ exerciseId, originalIndices, allSets, onUpdateSet, onRem
     const exercise = exercises.find((e: any) => e.id === exerciseId);
 
     const handleSetChange = (index: number, field: keyof WorkoutSet, value: any) => {
+        onUpdateSet(index, field, value);
     }
 
     return (
