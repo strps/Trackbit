@@ -3,9 +3,9 @@
   "files": [],
   "compilerOptions": {
     "jsx": "react-jsx",
-    "allowImportingTsExtensions": true,
-    "declaration": true,
-    "emitDeclarationOnly": true,
+    // "allowImportingTsExtensions": true,
+    // "declaration": true,
+    // "emitDeclarationOnly": true,
     "target": "ES2020",
     "lib": [
       "ES2020",

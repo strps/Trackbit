@@ -1,3 +1,5 @@
+import { InsertHabit } from "backend/src/db/entitiesTypes";
+
 declare namespace Trackbit {
     // Define the core types used across the entire application (Frontend & Backend)
 
@@ -23,18 +25,7 @@ declare namespace Trackbit {
 
     export type HabitType = 'simple' | 'complex' | 'negative'; //TODO, change anme from negative to reduce
 
-    export interface Habit {
-        id: number;
-        userId: string;
-        name: string;
-        description?: string;
-        type: HabitType;
-        dailyGoal: number; // Weekly goal/limit
-        weeklyGoal: number; // Weekly goal/limit
-        colorStops: ColorStop[];
-        icon: HabitIcon;
-        createdAt: string;
-    }
+    export interface Habit extends InsertHabit { }
 
     export interface WorkoutSet {
         exerciseId: number;

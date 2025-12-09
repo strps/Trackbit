@@ -5,13 +5,14 @@
 
 import { Activity, CalendarDays, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatDate } from "./utils";
-import { mapValueToColor } from "../../lib/colorUtils";
+import { mapValueToColor, mapValueToCSSrgb } from "../../lib/colorUtils";
+import { use } from "react";
+import { useTrackerStore } from "./store";
+import { useHabitLogs } from "@/hooks/use-habit-logs";
 
 interface HeatmapProps {
     weeks: Date[][];
-    selectedDay: string;
-    setSelectedDay: (day: string) => void;
-    activeHabit: Trackbit.Habit;
+
     logsMap: Record<string, number>;
     todayStr: string;
     weekStart?: 'monday' | 'sunday'; // New prop
@@ -19,13 +20,20 @@ interface HeatmapProps {
 
 export const Heatmap = ({
     weeks,
-    selectedDay,
-    setSelectedDay,
-    activeHabit,
-    logsMap,
     todayStr,
     weekStart = 'monday' // Default to monday
 }: HeatmapProps) => {
+
+    const { habitsWithLogs } = useHabitLogs();
+
+    const setSelectedDay = useTrackerStore(state => state.setSelectedDay);
+    const selectedDay = useTrackerStore(state => state.selectedDay);
+    const activeHabitId = useTrackerStore(state => state.selectedHabitId);
+
+    const activeHabit = habitsWithLogs[activeHabitId]
+
+    const logsMap = activeHabit?.dayLogs || {};
+
 
     // 1. Color Logic
     const dailyTarget = activeHabit?.dailyGoal || 1;
@@ -35,9 +43,7 @@ export const Heatmap = ({
     ];
 
     const getColorForValue = (val: number) => {
-        if (val === 0) return 'rgb(241, 245, 249)'; // Slate-100
-        const [r, g, b] = mapValueToColor(val, 0, dailyTarget, palette);
-        return `rgb(${r}, ${g}, ${b})`;
+        return mapValueToCSSrgb(val, 0, dailyTarget, palette);
     };
 
     // 2. Navigation Logic
@@ -151,7 +157,7 @@ export const Heatmap = ({
                 <div className="flex gap-2 min-w-max">
 
                     {/* Y-Axis Labels (Weekdays) */}
-                    <div className="flex flex-col justify-end gap-[5px] pt-6 pb-[2px] pr-2 text-[10px] font-bold text-muted-foreground leading-[12px]">
+                    <div className="flex flex-col justify-end gap-[5px] pt-6 pb-0.5 pr-2 text-[10px] font-bold text-muted-foreground leading-[12px]">
                         {getDayLabels().map((label, i) => (
                             <span key={i} className="h-3">{label}</span>
                         ))}
@@ -178,7 +184,7 @@ export const Heatmap = ({
                                 <div key={idx} className="flex flex-col gap-1">
                                     {week.map((date) => {
                                         const dStr = formatDate(date);
-                                        const val = logsMap[dStr] || 0;
+                                        const val = logsMap[dStr]?.rating || 0;
                                         const isSelected = selectedDay === dStr;
                                         const isToday = dStr === todayStr;
                                         const isFuture = dStr > todayStr;

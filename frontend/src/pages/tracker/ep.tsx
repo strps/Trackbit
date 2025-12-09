@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useExercises } from "@/hooks/use-exercises";
-import { ChevronDown, Dumbbell, MoreVertical, Plus, Trash2, X, Search, GripVertical, Hash, Scale, Info } from "lucide-react";
+import { ChevronDown, Dumbbell, MoreVertical, Plus, Trash2, X, Search, GripVertical, Hash, Scale, Info, PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SetInputField } from "./SetInputField";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -8,6 +8,10 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
+import { useTrackerStore } from "./store";
+import { useHabitLogs } from "@/hooks/use-habit-logs";
+import { Card } from "@/components/ui/card";
+import { DropdownMenu, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 // --- Types ---
 interface WorkoutSet {
@@ -18,118 +22,56 @@ interface WorkoutSet {
     weightUnit: string;
 }
 
-interface ExerciseSessionPanelProps {
-    dateStr: string;
-    habitId: number;
-    logs: any[];
-    onSaveLog: (data: any) => void;
-    onClose: () => void;
-}
 
-export const ExerciseSessionPanel = ({ dateStr, habitId, logs, onSaveLog, onClose }: ExerciseSessionPanelProps) => {
-    // 1. Data Initialization
-    // We treat the daily log as the "Session" container
-    const logEntry = logs.find((l: any) => l.habitId === habitId && l.date === dateStr);
-    const initialSets: WorkoutSet[] = useMemo(() => logEntry?.sets || [], [logEntry]);
+export const ExerciseSessionPanel = () => {
+    const { habitsWithLogs } = useHabitLogs()
 
-    // Local state is the "Source of Truth" for the UI while editing
-    const [sets, setSets] = useState<WorkoutSet[]>(initialSets);
-    const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+    const selectedHabitId = useTrackerStore(state => state.selectedHabitId);
+    const selectedDate = useTrackerStore(state => state.selectedDay);
 
-    // Ref to prevent saving on initial mount
-    const isMounted = useRef(false);
+    const dayLog = habitsWithLogs[selectedHabitId!].dayLogs[selectedDate]
+    const exerciseSessions = dayLog?.exerciseSessions
+    const exerciseLogs = exerciseSessions?.exerciseLogs
 
-    // 2. The Auto-Save Batcher
-    useEffect(() => {
-        if (!isMounted.current) {
-            isMounted.current = true;
-            return;
-        }
+    console.log(!dayLog)
 
-        setStatus('saving');
-        const timer = setTimeout(() => {
-            // This is the BATCH update. We send the entire state of the session.
-            onSaveLog({
-                id: logEntry?.id, // If ID exists, it updates. If null, it creates.
-                habitId,
-                date: dateStr,
-                sets: sets
-            });
-            setStatus('saved');
+    const handleAddSession = () => {
 
-            // Reset status to idle after a moment for visual feedback
-            setTimeout(() => setStatus('idle'), 2000);
-        }, 1000); // Wait 1s after last change before sending
-
-        return () => clearTimeout(timer);
-    }, [sets, habitId, dateStr, onSaveLog, logEntry?.id]);
-
-    // 3. Actions (Optimistic Updates)
-    const handleAddExercise = (exerciseId: number) => {
-        const newSet: WorkoutSet = {
-            exerciseId,
-            setNumber: 1,
-            reps: 0,
-            weight: 0,
-            weightUnit: 'kg'
-        };
-        // Append to list
-        setSets(prev => [...prev, newSet]);
-    };
-
-    const handleUpdateSet = (index: number, field: keyof WorkoutSet, value: any) => {
-        setSets(prev => {
-            const next = [...prev];
-            next[index] = { ...next[index], [field]: value };
-            return next;
-        });
-    };
-
-    const handleRemoveSet = (index: number) => {
-        setSets(prev => prev.filter((_, i) => i !== index));
-    };
-
-    const handleAddSetToExercise = (exerciseId: number) => {
-        setSets(prev => {
-            // Find sets for this exercise to copy previous values
-            const existing = prev.filter(s => s.exerciseId === exerciseId);
-            const last = existing[existing.length - 1];
-
-            const newSet: WorkoutSet = {
-                exerciseId,
-                setNumber: existing.length + 1,
-                reps: last ? last.reps : 0,    // Smart Copy
-                weight: last ? last.weight : 0, // Smart Copy
-                weightUnit: 'kg'
-            };
-            return [...prev, newSet];
-        });
-    };
-
-    // 4. Grouping Logic
-    // Groups flat list of sets into Exercise Cards. 
-    // We preserve insertion order (first logged exercise stays at top).
-    const groupedExercises = useMemo(() => {
-        const groups: { exerciseId: number, originalIndices: number[] }[] = [];
-
-        sets.forEach((set, index) => {
-            const lastGroup = groups[groups.length - 1];
-            // If current set matches last group's exercise, add to it.
-            // This groups sequential sets but keeps distinct blocks if you do:
-            // Squat -> Bench -> Squat (e.g. supersets)
-            if (lastGroup && lastGroup.exerciseId === set.exerciseId) {
-                lastGroup.originalIndices.push(index);
-            } else {
-                groups.push({ exerciseId: set.exerciseId, originalIndices: [index] });
-            }
-        });
-        return groups;
-    }, [sets]);
+    }
 
     return (
-        <div className="flex flex-col h-full bg-slate-50/50 dark:bg-slate-900/50">
-            {/* Header */}
-            <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+        <div className="flex flex-col h-full">
+
+            <div className="flex flex-col p-3">
+                {(!dayLog || exerciseSessions?.length === 0) ?
+                    <div
+                        onClick={handleAddSession}
+                        className="bg-card text-muted-foreground flex flex-col gap-6 rounded-xl border-4 border-dashed p-6 shadow-lg justify-center items-center cursor-pointer"
+                    >
+                        <div className="flex flex-col items-center justify-center gap-3">
+                            <p>No Session for Today</p>
+                            <PlusCircle size={"3em"} />
+                            <p>Press here to start a new session</p>
+                        </div>
+                    </div>
+                    :
+                    <SessionCard />
+                }
+            </div>
+        </div>
+    );
+};
+
+
+
+
+const SessionCard = () => {
+
+
+    return (
+        <div className="bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-lg">
+
+            <div className="flex justify-between items-center pb-4 px-4 border-b border-border ">
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600">
                         <Dumbbell className="w-5 h-5" />
@@ -138,65 +80,41 @@ export const ExerciseSessionPanel = ({ dateStr, habitId, logs, onSaveLog, onClos
                         <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">Workout Session</h3>
                         <div className="flex items-center gap-2 h-4">
                             <span className="text-xs text-slate-500">
-                                {sets.length} Sets Total
+                                {/* {sets.length} Sets Total */}
                             </span>
-                            {/* Status Indicator */}
-                            {status === 'saving' && (
-                                <span className="text-[10px] text-blue-500 animate-pulse font-bold flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" /> Saving...
-                                </span>
-                            )}
-                            {status === 'saved' && (
-                                <span className="text-[10px] text-emerald-500 font-bold transition-opacity duration-500">
-                                    Saved
-                                </span>
-                            )}
                         </div>
                     </div>
                 </div>
-                <Button variant="ghost" size="icon" onClick={onClose}>
-                    <X className="w-5 h-5 text-slate-400" />
-                </Button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                            <MoreVertical className="w-5 h-5 text-muted-foreground" />
+                        </Button>
+                    </DropdownMenuTrigger>
+
+                </DropdownMenu>
             </div>
 
-            {/* Scrollable List Area */}
+
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {sets.length === 0 ? (
-                    <div className="text-center py-12 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900/50">
-                        <div className="w-12 h-12 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm">
-                            <Plus className="w-6 h-6 text-slate-300" />
-                        </div>
-                        <h4 className="font-medium text-slate-900 dark:text-slate-200">Empty Session</h4>
-                        <p className="text-xs text-slate-500 mt-1">Add your first exercise to start tracking.</p>
+
+                <div className="text-center py-12 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900/50">
+                    <div className="w-12 h-12 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm">
+                        <Plus className="w-6 h-6 text-slate-300" />
                     </div>
-                ) : (
-                    groupedExercises.map((group, groupIdx) => (
-                        <ExerciseCard
-                            key={`${group.exerciseId}-${groupIdx}`} // Unique key for superset support
-                            exerciseId={group.exerciseId}
-                            originalIndices={group.originalIndices}
-                            allSets={sets}
-                            onUpdateSet={handleUpdateSet}
-                            onRemoveSet={handleRemoveSet}
-                            onAddSet={() => handleAddSetToExercise(group.exerciseId)}
-                        />
-                    ))
-                )}
+                    <h4 className="font-medium text-slate-900 dark:text-slate-200">Empty Session</h4>
+                    <p className="text-xs text-slate-500 mt-1">Add your first exercise to start tracking.</p>
+                </div>
 
-                {/* Spacer to ensure last card isn't covered by sticky footer */}
-                <div className="h-16" />
+
             </div>
 
-            {/* Sticky Footer */}
-            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 sticky bottom-0 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-                <AddExercisePicker onSelect={handleAddExercise} />
-            </div>
+            <AddExercisePicker onSelect={() => console.log('add exercise')} />
+
+
         </div>
-    );
-};
-
-
-
+    )
+}
 
 
 
@@ -300,14 +218,12 @@ const ExerciseCard = ({ exerciseId, originalIndices, allSets, onUpdateSet, onRem
 
 
 
-
-
-
-
 const AddExercisePicker = ({ onSelect }: { onSelect: (id: number) => void }) => {
     const { exercises } = useExercises(); //TODO: add reomended exercises. An ordered list of execises depending of workout program, selected muscular zones, or favorites/most done. for now we use the lis of exerciese as it is
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
+    const [selected, setSelected] = useState()
+
 
     const filtered = useMemo(() =>
         exercises.filter((e: any) => e.name.toLowerCase().includes(search.toLowerCase())),
@@ -374,3 +290,64 @@ const AddExercisePicker = ({ onSelect }: { onSelect: (id: number) => void }) => 
         </div>
     );
 };
+
+
+
+
+
+
+// {/* Header */}
+// <div className="flex justify-between items-center p-4 border-b border-border ">
+//     <div className="flex items-center gap-3">
+//         <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600">
+//             <Dumbbell className="w-5 h-5" />
+//         </div>
+//         <div>
+//             <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">Workout Session</h3>
+//             <div className="flex items-center gap-2 h-4">
+//                 <span className="text-xs text-slate-500">
+//                     {sets.length} Sets Total
+//                 </span>
+//                 {/* Status Indicator */}
+//                 {status === 'saving' && (
+//                     <span className="text-[10px] text-blue-500 animate-pulse font-bold flex items-center gap-1">
+//                         <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" /> Saving...
+//                     </span>
+//                 )}
+//                 {status === 'saved' && (
+//                     <span className="text-[10px] text-emerald-500 font-bold transition-opacity duration-500">
+//                         Saved
+//                     </span>
+//                 )}
+//             </div>
+//         </div>
+//     </div>
+// </div>
+
+// {/* Scrollable List Area */}
+// <div className="flex-1 overflow-y-auto p-4 space-y-4">
+//     {sets.length === 0 ? (
+//         <div className="text-center py-12 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900/50">
+//             <div className="w-12 h-12 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm">
+//                 <Plus className="w-6 h-6 text-slate-300" />
+//             </div>
+//             <h4 className="font-medium text-slate-900 dark:text-slate-200">Empty Session</h4>
+//             <p className="text-xs text-slate-500 mt-1">Add your first exercise to start tracking.</p>
+//         </div>
+//     ) : (
+//         groupedExercises.map((group, groupIdx) => (
+//             <ExerciseCard
+//                 key={`${group.exerciseId}-${groupIdx}`} // Unique key for superset support
+//                 exerciseId={group.exerciseId}
+//                 originalIndices={group.originalIndices}
+//                 allSets={sets}
+//                 onUpdateSet={handleUpdateSet}
+//                 onRemoveSet={handleRemoveSet}
+//                 onAddSet={() => handleAddSetToExercise(group.exerciseId)}
+//             />
+//         ))
+//     )}
+
+//     {/* Spacer to ensure last card isn't covered by sticky footer */}
+//     <div className="h-16" />
+// </div>

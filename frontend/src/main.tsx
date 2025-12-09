@@ -12,6 +12,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import ExerciseLibrary from './pages/ExerciseLibrary.tsx';
 import './index.css'
 import ViveroHomePage from './pages/vivero.tsx';
+import NotFound from './pages/404.js';
 
 
 
@@ -40,7 +41,7 @@ const router = createBrowserRouter([
   },
   {
     path: "*",
-    element: <div className="p-4">404 - Page Not Found</div>,
+    element: <NotFound />,
   }
 ]);
 

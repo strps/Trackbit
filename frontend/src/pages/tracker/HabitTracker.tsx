@@ -11,6 +11,7 @@ import { Stats } from './Stats';
 import { DayLog } from './DetailsPanel';
 import { mapValueToColor } from '@/lib/colorUtils';
 import { Button } from '@/components/ui/button';
+import { useTrackerStore } from './store';
 
 
 // Helper function to map habit icon string to Lucide component
@@ -27,33 +28,33 @@ const getHabitIcon = (iconName: string): React.ElementType => {
 };
 
 const HabitTracker = () => {
-  const { habits, isLoading: habitsLoading } = useHabits();
-  const { logs, logSimple, logWorkout, isLoading: logsLoading } = useHabitLogs();
 
-  const [selectedHabitId, setSelectedHabitId] = useState<number | null>(null);
-  const [selectedDay, setSelectedDay] = useState<string | null>(formatDate(new Date()));
+  const { habitsWithLogs, logSimple, logWorkout, isLoading } = useHabitLogs();
+
+  // console.log(habitsWithlogs);
+
+
+  const selectedHabitId = useTrackerStore(state => state.selectedHabitId);
+  const setSelectedHabitId = useTrackerStore(state => state.setSelectedHabitId);
+  const setSelectedDay = useTrackerStore(state => state.setSelectedDay);
+  const selectedDay = useTrackerStore(state => state.selectedDay);
+
   const todayStr = formatDate(new Date());
 
-  const activeHabitId = selectedHabitId ?? habits[0]?.id;
+  const selecteHabit = habitsWithLogs[selectedHabitId];
+
+  const logsMap = selecteHabit?.dayLogs;
+
+
+
   useEffect(() => {
-    if (!selectedHabitId && habits.length > 0) {
-      setSelectedHabitId(habits[0].id);
+    if (!selectedHabitId && Object.keys(habitsWithLogs).length > 0) {
+      setSelectedHabitId(Number(Object.keys(habitsWithLogs)[0]));
     }
-  }, [habits, selectedHabitId]);
+  }, [habitsWithLogs, selectedHabitId]);
 
-  const activeHabit = habits.find(h => h.id === activeHabitId);
+  // const activeHabit = habits.find(h => h.id === selectedHabitId);
 
-  // Filter logs for heatmap visualization
-  const logsMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    if (!activeHabitId) return map;
-    logs.forEach(log => {
-      if (log.habitId === activeHabitId) {
-        map[log.date] = log.rating || 0;
-      }
-    });
-    return map;
-  }, [logs, activeHabitId]);
 
   const calendarDates = useMemo(() => getCalendarDates(), []);
   const weeks = useMemo(() => {
@@ -67,17 +68,17 @@ const HabitTracker = () => {
   }, [calendarDates]);
 
   const stats = useMemo(() => {
-    if (!activeHabitId) return { currentStreak: 0, totalCount: 0 };
+    if (!selectedHabitId) return { currentStreak: 0, totalCount: 0 };
     let count = 0;
     Object.values(logsMap).forEach(v => count += v);
     // Streak calculation is complex with TanStack Query and dates, simplified for MVP
     return { currentStreak: 0, totalCount: count };
-  }, [logsMap, activeHabitId]);
+  }, [logsMap, selectedHabitId]);
 
 
-  if (habitsLoading || logsLoading) return <div className="p-8 text-center">Loading Tracker Data...</div>;
+  if (isLoading) return <div className="p-8 text-center">Loading Tracker Data...</div>;
 
-  if (habits.length === 0) return (
+  if (Object.keys(habitsWithLogs).length === 0) return (
     <div className="flex h-screen items-center justify-center flex-col gap-4">
       <div className="p-6 bg-slate-100 rounded-full"><Dumbbell className="w-8 h-8 text-slate-400" /></div>
       <p className="text-slate-500">No habits found. Go to Settings to create one!</p>
@@ -95,39 +96,33 @@ const HabitTracker = () => {
             Momentum
           </h1>
           <div className="flex overflow-x-auto gap-2 pb-2">
-            {habits.map(h => {
-              const IconComponent = getHabitIcon(h.icon);
+            {Object.keys(habitsWithLogs).map((id: any) => {
+              const IconComponent = getHabitIcon(habitsWithLogs[id].icon);
               return (
                 <Button
-                  key={h.id}
-                  onClick={() => { setSelectedHabitId(h.id); setSelectedDay(null); }}
-                  style={{ backgroundColor: getColorAtOne(h.colorStops) }}
+                  key={id}
+                  onClick={() => { setSelectedHabitId(id); setSelectedDay(null); }}
+                  style={{ backgroundColor: getColorAtOne(habitsWithLogs[id].colorStops) }}
 
                 >
                   <IconComponent className="w-4 h-4" />
-                  {h.name}
+                  {habitsWithLogs[id].name}
                 </Button>
               );
             })}
           </div>
         </div>
 
-        <Stats stats={stats} activeHabit={activeHabit} />
+        <Stats stats={stats} activeHabit={habitsWithLogs[selectedHabitId]} />
 
         <Heatmap
           weeks={weeks}
-          selectedDay={selectedDay || ''}
-          setSelectedDay={setSelectedDay}
-          activeHabit={activeHabit}
           logsMap={logsMap}
           todayStr={todayStr}
         />
 
         <DayLog
-          activeHabit={activeHabit}
           selectedDay={selectedDay || todayStr}
-          logWorkout={logWorkout}
-          logs={logs}
           logSimple={logSimple}
           logsMap={logsMap}
           setSelectedDay={setSelectedDay}

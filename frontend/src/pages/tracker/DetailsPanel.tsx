@@ -1,10 +1,13 @@
 import { useExercises } from "@/hooks/use-exercises";
-import { CalendarSearch, ChevronDown, Dumbbell, Hash, Minus, Plus, Save, Scale, Trash2, X } from "lucide-react";
+import { CalendarSearch, ChevronDown, Dumbbell, Hash, Minus, NotebookIcon, NotebookPen, Plus, Save, Scale, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { SetInputField } from "./SetInputField";
 import { Button } from "@/components/ui/button";
 import { SimpleHabitPanel } from "./SimpleHabitPanel";
 import { ExerciseSessionPanel } from "./ep";
+import { useTrackerStore } from "./store";
+import { useHabitLogs } from "@/hooks/use-habit-logs";
+import { formatDate } from "./utils";
 
 
 interface WorkoutSet {
@@ -16,19 +19,25 @@ interface WorkoutSet {
 }
 
 interface DetailsPanelProps {
-    selectedDay: string | null;
-    setSelectedDay: (day: string | null) => void;
-    activeHabit: Trackbit.Habit;
-    logsMap: Record<string, number>;
     logSimple: any;
     logWorkout: (data: { habitId: string; date: string; sets: any[] }) => void;
-    logs: any[];
 }
 
-export function DayLog({ selectedDay, setSelectedDay, activeHabit, logsMap, logSimple, logWorkout, logs }: DetailsPanelProps) {
+export function DayLog({ logSimple, logWorkout }: DetailsPanelProps) {
+
+
+    const { habitsWithLogs } = useHabitLogs()
+
+    const selectedDay = useTrackerStore(state => state.selectedDay);
+    const setSelectedDay = useTrackerStore(state => state.setSelectedDay);
+    const selectedHabitId = useTrackerStore(state => state.selectedHabitId);
+
+    const selectedHabit = habitsWithLogs[selectedHabitId!];
+    const logsMap = selectedHabit?.dayLogs || {}
+
     return (
 
-        (selectedDay && activeHabit) ?
+        (selectedDay && selectedHabit) ?
             <div className="bg-background rounded-xl shadow-lg border border-border overflow-hidden">
                 {/* Header Section */}
                 <div className="p-6 border-b border-border flex justify-between items-center">
@@ -37,34 +46,36 @@ export function DayLog({ selectedDay, setSelectedDay, activeHabit, logsMap, logS
                             {new Date(selectedDay).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                         </h2>
                     </div>
-                    <Button
-                        onClick={() => setSelectedDay(new Date().toLocaleDateString())}
-                        variant="outline">
-                        Today
-                        <CalendarSearch className="w-5 h-5" />
-                    </Button>
+                    <div className="flex gap-3">
+                        <Button
+                            variant="outline"
+                        >
+                            <NotebookPen className="w-5 h-5" />
+                        </Button>
+                        <Button
+                            disabled={selectedDay === formatDate(new Date())}
+                            onClick={() => {
+                                setSelectedDay(formatDate(new Date()))
+                            }}
+                            variant="outline">
+                            Today
+                            <CalendarSearch className="w-5 h-5" />
+                        </Button>
+                    </div>
                 </div>
 
 
 
                 {
-                    activeHabit.type === 'complex' ? (
+                    selectedHabit.type === 'complex' ? (
                         <ExerciseSessionPanel
-                            dateStr={selectedDay}
-                            habitId={activeHabit.id}
-                            logs={logs}
+
+
                             onSaveLog={logWorkout}
                             onClose={() => setSelectedDay(null)}
                         />
                     ) : (
-                        <SimpleHabitPanel
-                            dateStr={selectedDay}
-                            value={logsMap[selectedDay] || 0}
-                            color={activeHabit.colorStops}
-                            onClose={() => setSelectedDay(null)}
-                            updateCount={(val: number) => logSimple({ habitId: activeHabit.id, date: selectedDay, value: val })}
-                            activeHabit={activeHabit}
-                        />
+                        <SimpleHabitPanel />
                     )
                 }
             </div >

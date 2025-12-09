@@ -1,8 +1,10 @@
-import { pgTable, serial, text, integer, boolean, timestamp, uuid, date, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, integer, boolean, timestamp, uuid, date, jsonb, primaryKey } from 'drizzle-orm/pg-core';
 import { user } from './user';
 import { relations } from 'drizzle-orm';
-import { exerciseSets } from './exercises';
+import { exerciseSessions } from './exercises';
 
+
+//Habits
 export const habits = pgTable('habits', {
   id: serial('id').primaryKey(),
   userId: text('user_id').references(() => user.id).notNull(),
@@ -25,29 +27,34 @@ export const habits = pgTable('habits', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-
-export const dayLogs = pgTable('day_logs', {
-  id: serial('id').primaryKey(),
-  habitId: integer('habit_id').references(() => habits.id, { onDelete: 'cascade' }).notNull(),
-  date: date('date', { mode: 'string' }).notNull(),
-
-  // Overall rating of the workout (optional)
-  rating: integer('rating'),
-
-  // Notes for the whole session "Felt tired today"
-  notes: text('notes'),
-
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
-
-
-export const habitsRelations = relations(habits, ({ one }) => ({
+export const habitsRelations = relations(habits, ({ one, many }) => ({
   user: one(user, {
     fields: [habits.userId],
     references: [user.id],
   }),
+  dayLogs: many(dayLogs),
 }));
+
+//dayLogs
+export const dayLogs = pgTable('day_logs',
+
+  {
+    //Multi column primary key
+    habitId: integer('habit_id').references(() => habits.id, { onDelete: 'cascade' }).notNull(),
+    date: date('date', { mode: 'string' }).notNull(),
+
+    // Overall rating of the workout (optional)
+    rating: integer('rating'),
+
+    // Notes for the whole session "Felt tired today"
+    notes: text('notes'),
+
+    createdAt: timestamp('created_at').defaultNow(),
+
+  },
+
+  (table) => [primaryKey({ columns: [table.habitId, table.date] })]
+);
 
 export const habitLogsRelations = relations(dayLogs, ({ one, many }) => ({
   habit: one(habits, {
@@ -55,5 +62,7 @@ export const habitLogsRelations = relations(dayLogs, ({ one, many }) => ({
     references: [habits.id],
   }),
   // A log contains many sets
-  sets: many(exerciseSets),
+  exerciseSessions: many(exerciseSessions),
 }));
+
+

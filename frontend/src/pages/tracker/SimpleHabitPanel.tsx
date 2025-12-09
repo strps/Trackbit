@@ -1,25 +1,21 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Minus, Plus, CalendarSearch, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { mapValueToColorOrdered } from "@/lib/colorUtils"; // Adjust path as needed
+import { useHabitLogs } from "@/hooks/use-habit-logs";
+import { useTrackerStore } from "./store";
 
-interface SimpleHabitPanelProps {
-    dateStr: string;
-    value: number;
-    // We expect the full habit object to access colorPalette and dailyGoal
-    activeHabit: Trackbit.Habit;
-    updateCount: (val: number) => void;
-    onClose: () => void;
-}
+export const SimpleHabitPanel = () => {
 
-export const SimpleHabitPanel = ({
-    dateStr,
-    value,
-    activeHabit,
-    updateCount,
-    onClose
-}: SimpleHabitPanelProps) => {
     const [isAnimating, setIsAnimating] = useState(false);
+
+    const { habitsWithLogs, logSimple } = useHabitLogs()
+    const selectedHabitId = useTrackerStore((state) => state.selectedHabitId);
+
+    const dateStr = useTrackerStore((state) => state.selectedDay);
+    const activeHabit = habitsWithLogs[selectedHabitId]
+
+    const value = activeHabit.dayLogs[dateStr]?.rating || 0;
 
     // 1. Calculate Progress
     const goal = activeHabit.dailyGoal || 1;
@@ -27,6 +23,7 @@ export const SimpleHabitPanel = ({
     const radius = 36;
     const circumference = 2 * Math.PI * radius;
     const strokeDashoffset = circumference - progress * circumference;
+    const isGoalMet = value >= goal;
 
     // 2. Get Dynamic Color from Gradient
     // We use the util to pick the color corresponding to current progress (0 to 1)
@@ -38,6 +35,7 @@ export const SimpleHabitPanel = ({
     const colorString = `rgb(${rgb.join(",")})`;
 
     // Trigger animation on value change
+    //TODO: this might be deleted or changed, as values is calculated on each render
     useEffect(() => {
         setIsAnimating(true);
         const timer = setTimeout(() => setIsAnimating(false), 200);
@@ -45,14 +43,14 @@ export const SimpleHabitPanel = ({
     }, [value]);
 
     const handleIncrement = () => {
-        updateCount(value + 1);
+        logSimple({ habitId: Number(selectedHabitId), date: dateStr, rating: Number(value + 1) })
     };
 
     const handleDecrement = () => {
-        updateCount(Math.max(0, value - 1));
+        logSimple({ habitId: Number(selectedHabitId), date: dateStr, rating: Number(value - 1) })
     };
 
-    const isGoalMet = value >= goal;
+
 
     return (
         <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-b-xl animate-in fade-in slide-in-from-top-2 duration-300">
@@ -144,18 +142,7 @@ export const SimpleHabitPanel = ({
                     </Button>
                 </div>
 
-                {/* Right: Close Action */}
-                <div className="flex-1 flex justify-end">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={onClose}
-                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                    >
-                        <span className="sr-only">Close</span>
-                        <CalendarSearch className="w-5 h-5" />
-                    </Button>
-                </div>
+
 
             </div>
         </div>

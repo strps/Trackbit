@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import db from '../db/db'
-import { dayLogs, exerciseSets, habits } from '../db/schema'
+import { dayLogs, exerciseLogs, exerciseSessions, exerciseSets, habits } from '../db/schema'
 import { eq, and, inArray } from 'drizzle-orm'
 import { requireAuth } from '../middleware/auth'
 
@@ -25,108 +25,159 @@ app.get('/history', async (c) => {
 
     if (userHabits.length === 0) return c.json([])
 
-    // 2. Fetch logs for these habits
-    const logs = await db.query.dayLogs.findMany({
-        where: (logs, { inArray }) => inArray(logs.habitId, userHabits.map(h => h.id)),
-        columns: {
-            id: true,
-            habitId: true,
-            date: true,
-            rating: true,
-            notes: true
-        },
+
+    const habitsWithLogs = await db.query.habits.findMany({
+        where: (habits, { eq }) => eq(habits.userId, user.id),
         with: {
-            sets: true // Include sets for workout summaries
+            dayLogs: {
+                with: {
+                    exerciseSessions: {
+                        with: {
+                            exerciseLogs: {
+                                with: {
+                                    exerciseSets: true
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
+
     })
 
-    return c.json(logs)
+    return c.json(habitsWithLogs)
 })
 
-// POST /api/logs/check - For Simple & Negative Habits (Counter/Toggle)
+
 app.post(
     '/check',
-    zValidator('json', z.object({
-        habitId: z.number(),
-        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // YYYY-MM-DD
-        value: z.number(),
-    })),
+    zValidator(
+        'json',
+        z.object({
+            habitId: z.number(),
+            date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // YYYY-MM-DD
+            rating: z.number(),
+        })
+    ),
+    //TODO: check for user id in habit in oreder to make sure the user can only update own.
     async (c) => {
-        const { habitId, date, value } = c.req.valid('json')
+        const { habitId, date, rating } = c.req.valid('json');
 
         // Check if log exists
         const existing = await db.query.dayLogs.findFirst({
-            where: (logs, { eq, and }) => and(eq(logs.habitId, habitId), eq(logs.date, date))
-        })
+            where: (logs, { eq, and }) =>
+                and(eq(logs.habitId, habitId), eq(logs.date, date)),
+        });
 
         if (existing) {
-            // Update
-            await db.update(dayLogs).set({ value }).where(eq(dayLogs.id, existing.id))
-            return c.json({ success: true, id: existing.id })
-        } else {
-            // Insert
-            const res = await db.insert(dayLogs).values({ habitId, date, value }).returning()
-            return c.json({ success: true, id: res[0].id })
-        }
-    }
-)
+            // Update using composite key
+            await db
+                .update(dayLogs)
+                .set({ rating })
+                .where(
+                    and(eq(dayLogs.habitId, habitId), eq(dayLogs.date, date))
+                );
 
-// POST /api/logs/workout - For Complex/Gym Habits
-app.post(
-    '/workout',
-    zValidator('json', z.object({
-        id: z.number().optional(), // If provided, it's an update
-        habitId: z.number(),
-        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-        notes: z.string().optional(),
-        rating: z.number().optional(),
-        sets: z.array(z.object({
-            exerciseId: z.number(),
-            setNumber: z.number(),
-            reps: z.number().optional(),
-            weight: z.number().optional(),
-            weightUnit: z.string().default('kg'),
-            distance: z.number().optional(),
-            duration: z.number().optional()
-        }))
-    })),
-    async (c) => {
-        const body = c.req.valid('json')
-        const { habitId, date, notes, rating, sets } = body
-        let logId = body.id
-
-        // 1. Create or Update Header
-        if (logId) {
-            await db.update(dayLogs).set({ notes, rating }).where(eq(dayLogs.id, logId))
-            // For MVP simplicity: delete old sets and re-insert new ones
-            await db.delete(exerciseSets).where(eq(exerciseSets.habitLogId, logId))
-        } else {
-            const res = await db.insert(dayLogs).values({
+            return c.json({
+                success: true,
                 habitId,
                 date,
-                notes,
-                rating,
-                value: 1 // Marks the habit as "done" for existence check
-            }).returning()
-            logId = res[0].id
-        }
+            });
+        } else {
+            // Insert new log
+            await db.insert(dayLogs).values({ habitId, date, rating });
 
-        // 2. Insert Sets
-        if (sets.length > 0 && logId) {
-            await db.insert(exerciseSets).values(sets.map(s => ({
-                habitLogId: logId!,
-                exerciseId: s.exerciseId,
-                setNumber: s.setNumber,
-                reps: s.reps,
-                weight: s.weight,
-                weightUnit: s.weightUnit,
-                distance: s.distance,
-                duration: s.duration
-            })))
+            return c.json({
+                success: true,
+                habitId,
+                date,
+            });
         }
-
-        return c.json({ success: true, logId })
     }
-)
+);
 
-export default app
+
+// --- GRANULAR WORKOUT LOGGING ---
+
+// 1. Ensure Session Exists (Call this when starting a workout)
+app.post('/session', zValidator('json', z.object({
+    habitId: z.number(),
+    date: z.string(),
+})), async (c) => {
+    const { habitId, date } = c.req.valid('json');
+
+    return await db.transaction(async (tx) => {
+        // Ensure DayLog Wrapper
+        const existingDayLog = await tx.query.dayLogs.findFirst({
+            where: (l, { and, eq }) => and(eq(l.habitId, habitId), eq(l.date, date))
+        });
+        if (!existingDayLog) {
+            await tx.insert(dayLogs).values({ habitId, date });
+        }
+
+        // Ensure Exercise Session
+        const existingSession = await tx.query.exerciseSessions.findFirst({
+            where: (s, { and, eq }) => and(eq(s.habitId, habitId), eq(s.date, date))
+        });
+
+        if (existingSession) return { id: existingSession.id, isNew: false };
+
+        const res = await tx.insert(exerciseSessions).values({ habitId, date }).returning();
+        return { id: res[0].id, isNew: true };
+    });
+});
+
+// 2. Add/Remove Exercises
+app.post('/exercise-logs', zValidator('json', z.object({
+    sessionId: z.number(),
+    exerciseId: z.number(),
+})), async (c) => {
+    const body = c.req.valid('json');
+    const res = await db.insert(exerciseLogs).values({
+        exerciseSessionId: body.sessionId,
+        exerciseId: body.exerciseId
+    }).returning();
+    return c.json(res[0]);
+});
+
+app.delete('/exercise-logs/:id', async (c) => {
+    const id = Number(c.req.param('id'));
+    await db.delete(exerciseLogs).where(eq(exerciseLogs.id, id));
+    return c.json({ success: true, id });
+});
+
+// 3. Add/Update/Remove Sets
+app.post('/exercise-set', zValidator('json', z.object({
+    id: z.number().optional(), // If present, update
+    exerciseLogId: z.number(),
+    reps: z.number(),
+    weight: z.number(),
+})), async (c) => {
+    const body = c.req.valid('json');
+
+    if (body.id) {
+        const res = await db.update(exerciseSets)
+            .set({ reps: body.reps, weight: body.weight })
+            .where(eq(exerciseSets.id, body.id))
+            .returning();
+        return c.json(res[0]);
+    } else {
+        const res = await db.insert(exerciseSets)
+            .values({
+                exerciseLogId: body.exerciseLogId,
+                reps: body.reps,
+                weight: body.weight
+            })
+            .returning();
+        return c.json(res[0]);
+    }
+});
+
+app.delete('/exercise-set/:id', async (c) => {
+    const id = Number(c.req.param('id'));
+    await db.delete(exerciseSets).where(eq(exerciseSets.id, id));
+    return c.json({ success: true, id });
+});
+
+export default app;
