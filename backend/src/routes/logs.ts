@@ -35,7 +35,7 @@ app.get('/history', async (c) => {
                         with: {
                             exerciseLogs: {
                                 with: {
-                                    exerciseSets: true
+                                    exerciseSets: true  //TODO: we need to order the sets according to createdAt
                                 }
                             }
                         }
@@ -101,11 +101,12 @@ app.post(
 // --- GRANULAR WORKOUT LOGGING ---
 
 // 1. Ensure Session Exists (Call this when starting a workout)
-app.post('/session', zValidator('json', z.object({
+app.post('/exercise-sessions', zValidator('json', z.object({
     habitId: z.number(),
     date: z.string(),
 })), async (c) => {
     const { habitId, date } = c.req.valid('json');
+
 
     return await db.transaction(async (tx) => {
         // Ensure DayLog Wrapper
@@ -113,18 +114,13 @@ app.post('/session', zValidator('json', z.object({
             where: (l, { and, eq }) => and(eq(l.habitId, habitId), eq(l.date, date))
         });
         if (!existingDayLog) {
-            await tx.insert(dayLogs).values({ habitId, date });
+            const hres = await tx.insert(dayLogs).values({ habitId, date }).returning();
         }
-
-        // Ensure Exercise Session
-        const existingSession = await tx.query.exerciseSessions.findFirst({
-            where: (s, { and, eq }) => and(eq(s.habitId, habitId), eq(s.date, date))
-        });
-
-        if (existingSession) return { id: existingSession.id, isNew: false };
+        const hres = existingDayLog
 
         const res = await tx.insert(exerciseSessions).values({ habitId, date }).returning();
-        return { id: res[0].id, isNew: true };
+
+        return c.json(res[0])
     });
 });
 
@@ -140,6 +136,54 @@ app.post('/exercise-logs', zValidator('json', z.object({
     }).returning();
     return c.json(res[0]);
 });
+
+app.post(
+    '/exercise-log',
+    zValidator('json', z.object({
+        sessionId: z.number(),
+        exerciseId: z.number(),
+        // New: Accepts an array of sets immediately
+        sets: z.array(z.object({
+            reps: z.number(),
+            weight: z.number(),
+        })).optional(),
+    })),
+    async (c) => {
+        const body = c.req.valid('json');
+
+        return await db.transaction(async (tx) => {
+            // 1. Create the Exercise Log Header
+            const logRes = await tx.insert(exerciseLogs).values({
+                exerciseSessionId: body.sessionId,
+                exerciseId: body.exerciseId
+            }).returning();
+
+            const newLogId = logRes[0].id;
+
+            // 2. Prepare Sets
+            // If sets provided, use them. If not, create 1 default empty set.
+            const setsToInsert = (body.sets && body.sets.length > 0)
+                ? body.sets
+                : [{ reps: 0, weight: 0 }];
+
+            // 3. Insert Sets
+            const setRes = await tx.insert(exerciseSets).values(
+                setsToInsert.map(s => ({
+                    exerciseLogId: newLogId,
+                    reps: s.reps,
+                    weight: s.weight,
+                }))
+            ).returning();
+
+            // 4. Return combined structure
+            return {
+                ...logRes[0],
+                sets: setRes
+            };
+        });
+    }
+);
+
 
 app.delete('/exercise-logs/:id', async (c) => {
     const id = Number(c.req.param('id'));

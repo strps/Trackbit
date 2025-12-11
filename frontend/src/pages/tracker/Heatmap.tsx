@@ -1,14 +1,8 @@
-
-
-
-
-
 import { Activity, CalendarDays, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatDate } from "./utils";
-import { mapValueToColor, mapValueToCSSrgb } from "../../lib/colorUtils";
-import { use } from "react";
+import { mapValueToCSSrgb } from "../../lib/colorUtils";
 import { useTrackerStore } from "./store";
-import { useHabitLogs } from "@/hooks/use-habit-logs";
+import { useHabitLogs } from "@/hooks/use-habit-logs2";
 
 interface HeatmapProps {
     weeks: Date[][];
@@ -34,6 +28,14 @@ export const Heatmap = ({
 
     const logsMap = activeHabit?.dayLogs || {};
 
+    const getRating = (date: string) => {
+        return activeHabit?.type === 'complex' ?
+            logsMap[date]?.exerciseSessions?.reduce(
+                (a, c) => a + (c.exerciseLogs?.length || 0)
+                , 0)
+            :
+            logsMap[date]?.rating || 0;
+    }
 
     // 1. Color Logic
     const dailyTarget = activeHabit?.dailyGoal || 1;
@@ -184,7 +186,7 @@ export const Heatmap = ({
                                 <div key={idx} className="flex flex-col gap-1">
                                     {week.map((date) => {
                                         const dStr = formatDate(date);
-                                        const val = logsMap[dStr]?.rating || 0;
+                                        const val = getRating(dStr);
                                         const isSelected = selectedDay === dStr;
                                         const isToday = dStr === todayStr;
                                         const isFuture = dStr > todayStr;

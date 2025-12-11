@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Minus, Plus, CalendarSearch, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { mapValueToColorOrdered } from "@/lib/colorUtils"; // Adjust path as needed
-import { useHabitLogs } from "@/hooks/use-habit-logs";
+import { useHabitLogs } from "@/hooks/use-habit-logs_";
 import { useTrackerStore } from "./store";
 
 export const SimpleHabitPanel = () => {

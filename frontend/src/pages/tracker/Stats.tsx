@@ -14,7 +14,7 @@ export const Stats = ({ stats, activeHabit }: StatsProps) => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <StatCard
                 title="Total Completions"
-                value={stats.totalCount}
+                value={0}
                 icon={<CheckCircle2 className="w-5 h-5 text-emerald-500" />}
                 trend={activeHabit?.type === 'complex' ? "Total sets/sessions logged" : "Total logs"}
             />

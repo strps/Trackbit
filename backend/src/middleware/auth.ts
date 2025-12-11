@@ -13,6 +13,8 @@ export const requireAuth = createMiddleware<Env>(async (c, next) => {
         headers: c.req.raw.headers
     })
 
+
+
     if (!session) {
         return c.json({ error: "Unauthorized" }, 401)
     }

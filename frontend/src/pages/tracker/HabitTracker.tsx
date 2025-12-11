@@ -4,7 +4,7 @@ import {
   Book as MenuBook, Code, Star, Droplet
 } from 'lucide-react';
 import { useHabits } from '@/hooks/use-habits';
-import { useHabitLogs } from '@/hooks/use-habit-logs';
+import { useHabitLogs } from '@/hooks/use-habit-logs2';
 import { formatDate, getCalendarDates } from './utils';
 import { Heatmap } from './Heatmap';
 import { Stats } from './Stats';
@@ -29,7 +29,7 @@ const getHabitIcon = (iconName: string): React.ElementType => {
 
 const HabitTracker = () => {
 
-  const { habitsWithLogs, logSimple, logWorkout, isLoading } = useHabitLogs();
+  const { habitsWithLogs, logSimple, isLoading } = useHabitLogs();
 
   // console.log(habitsWithlogs);
 

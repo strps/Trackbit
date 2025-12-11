@@ -20,7 +20,7 @@ export const exercises = pgTable('exercises', {
     createdAt: timestamp('created_at').defaultNow(),
 });
 export const exercisesRelations = relations(exercises, ({ many }) => ({
-    sets: many(exerciseSets),
+    exerciseSets: many(exerciseSets),
 }));
 
 

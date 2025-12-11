@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { SimpleHabitPanel } from "./SimpleHabitPanel";
 import { ExerciseSessionPanel } from "./ep";
 import { useTrackerStore } from "./store";
-import { useHabitLogs } from "@/hooks/use-habit-logs";
+import { useHabitLogs } from "@/hooks/use-habit-logs_";
 import { formatDate } from "./utils";
 
 
