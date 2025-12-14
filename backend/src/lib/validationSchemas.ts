@@ -1,7 +1,7 @@
 // backend/src/db/validationSchemas.ts
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
-import type { AnyTable, Any } from 'drizzle-orm';
+import type { AnyTable } from 'drizzle-orm';
 import type { ZodObject, ZodRawShape } from 'zod';
 
 /**
@@ -58,7 +58,7 @@ export function generateCrudSchemas<
         ) as any)
         : refinedSelect;
 
-    const idSchema = options.idSchema ?? z.number().int().positive();
+    const idSchema = options.idSchema ?? z.coerce.number().int().positive();
 
     return {
         create: createSchema,

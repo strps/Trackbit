@@ -51,7 +51,7 @@ interface SessionCardProps {
 }
 
 const SessionCard = ({ session, index }: SessionCardProps) => {
-    const { selectedSessionIndex, } = useHabitLogs()
+    const { selectedSessionIndex, deleteSession } = useHabitLogs()
     const exerciseLogs = session.exerciseLogs || []
     const isSelected = index === selectedSessionIndex; //TODO: we might use id instead of index.
 
@@ -80,7 +80,7 @@ const SessionCard = ({ session, index }: SessionCardProps) => {
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => deleteSession(session.id)}>
                             <Trash2 className="mr-2 h-4 w-4" />
                             Delete
                         </DropdownMenuItem>

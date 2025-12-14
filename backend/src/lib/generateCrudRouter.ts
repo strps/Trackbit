@@ -1,19 +1,20 @@
 // backend/src/routes/utils/generateCrudRouter.ts (updated with integrated authentication)
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import db from '../db/db';
 import { eq } from 'drizzle-orm';
-import type { AnyTable } from 'drizzle-orm';
+import type { InferInsertModel, InferSelectModel, Table } from 'drizzle-orm';
 import type { generateCrudSchemas } from './validationSchemas';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth';
+import { AnyPgTable, PgSelectBuilder, PgTable } from 'drizzle-orm/pg-core';
 
-type CrudRouterOptions<T extends AnyTable<any>> = {
+type CrudRouterOptions<T extends AnyPgTable> = {
     table: T;
     schemas: ReturnType<typeof generateCrudSchemas<T>>;
-    ownershipCheck?: (user: any, record: any) => boolean | Promise<boolean>;
-    beforeCreate?: (c: any, data: any) => Promise<any>;
-    beforeUpdate?: (c: any, data: any) => Promise<any>;
+    ownershipCheck?: (user: any, record: InferSelectModel<T>) => boolean | Promise<boolean>;
+    beforeCreate?: (c: Context, data: InferInsertModel<T>) => Promise<InferInsertModel<T>>;
+    beforeUpdate?: (c: Context, data: Partial<InferInsertModel<T>>) => Promise<Partial<InferInsertModel<T>>>;
     /** Override any standard CRUD endpoint with a custom handler */
     overrides?: {
         list?: Hono['get'] extends (path: '/', ...handlers: infer H) => any ? H[number] : never;
@@ -32,12 +33,23 @@ type CrudRouterOptions<T extends AnyTable<any>> = {
     isPublic?: boolean;
 };
 
+
+/**
+ * Type guard to check if the provided table has a 'userId' column.
+ * This enables safe narrowing of the generic table type T when applying
+ * ownership-based filtering in the list endpoint.
+ */
+function hasUserIdColumn(table: any): table is { userId: typeof table['id'] } {
+    return 'userId' in table;
+}
+
+
 /**
  * Generates a standard CRUD router with integrated authentication middleware.
  * 
  * By default, applies requireAuth to all routes. Set `public: true` to skip authentication.
  */
-export function generateCrudRouter<T extends AnyTable<any>>({
+export function generateCrudRouter<T extends AnyPgTable>({
     table,
     schemas,
     ownershipCheck,
@@ -56,25 +68,25 @@ export function generateCrudRouter<T extends AnyTable<any>>({
 
 
     // LIST - GET /
-    const listHandler = async (c: any) => {
+    const listHandler = async (c: Context) => {
         const user = c.get('user');
         let whereClause;
-        if (ownershipCheck && table.userId) { // Check if column exists
+        if (ownershipCheck && hasUserIdColumn(table)) { // Check if column exists
             whereClause = eq(table.userId, user.id);
         }
         // Or allow custom where via options if needed
-        const records = await db.select().from(table).where(whereClause);
+        const records = await db.select().from(table as PgTable).where(whereClause);
         return c.json(records);
     };
     router.get('/', overrides.list ?? listHandler);
 
     // GET ONE - GET /:id
-    const getHandler = async (c: any) => {
+    const getHandler = async (c: Context) => {
         const user = c.get('user');
         const { id } = c.req.valid('param');
         const record = await db
             .select()
-            .from(table)
+            .from(table as PgTable)
             .where(eq(table.id, id))
             .limit(1);
         const found = record[0];
@@ -91,7 +103,7 @@ export function generateCrudRouter<T extends AnyTable<any>>({
 
 
     // CREATE - POST /
-    const createHandler = async (c: any) => {
+    const createHandler = async (c: Context) => {
         const user = c.get('user');
         let data = c.req.valid('json');
         if (beforeCreate) data = await beforeCreate(c, data);
@@ -105,25 +117,32 @@ export function generateCrudRouter<T extends AnyTable<any>>({
     }
 
     // UPDATE - PATCH /:id
-    const updateHandler = async (c: any) => {
+    const updateHandler = async (c: Context) => {
         const user = c.get('user');
         const { id } = c.req.valid('param');
         let data = c.req.valid('json');
         if (beforeUpdate) data = await beforeUpdate(c, data);
 
-        const existing = await db.query[tableName].findFirst({
-            where: (tbl: any, { eq }) => eq(tbl.id, id),
-        });
+        // Fixed: Use table-based query instead of db.query[tableName]
+        const record = await db
+            .select()
+            .from(table as PgTable)
+            .where(eq(table.id, id))
+            .limit(1);
+
+        const existing = record[0];
+
         if (!existing || (ownershipCheck && !(await ownershipCheck(user, existing)))) {
             return c.json({ error: 'Not found or unauthorized' }, 404);
         }
 
         const [updated] = await db.update(table)
             .set(data)
-            .where(eq((table as any).id, id))
+            .where(eq(table.id, id))
             .returning();
         return c.json(updated);
     };
+
     if (overrides.update) {
         router.patch('/:id', ...overrides.update);
     } else {
@@ -136,18 +155,23 @@ export function generateCrudRouter<T extends AnyTable<any>>({
     }
 
     // DELETE - DELETE /:id
-    const deleteHandler = async (c: any) => {
+    const deleteHandler = async (c: Context) => {
         const user = c.get('user');
         const { id } = c.req.valid('param');
 
-        const existing = await db.query[tableName].findFirst({
-            where: (tbl: any, { eq }) => eq(tbl.id, id),
-        });
+        const record = await db
+            .select()
+            .from(table as PgTable)
+            .where(eq(table.id, id))
+            .limit(1);
+
+        const existing = record[0];
+
         if (!existing || (ownershipCheck && !(await ownershipCheck(user, existing)))) {
             return c.json({ error: 'Not found or unauthorized' }, 404);
         }
 
-        await db.delete(table).where(eq((table as any).id, id));
+        await db.delete(table).where(eq(table.id, id));
         return c.json({ success: true, id });
     };
     if (overrides.delete) {

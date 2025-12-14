@@ -9,29 +9,18 @@ import z from 'zod';
 
 const sessionSchemas = generateCrudSchemas(exerciseSessions, {
     omitFromCreateUpdate: ['id', 'createdAt'],
-    // No fields to omit from select
-    omitFromSelect: [],
-    idSchema: z.number().int().positive(),
 });
 
 const sessionRouter = generateCrudRouter({
     table: exerciseSessions,
     schemas: sessionSchemas,
+
     // Enforce ownership: session belongs to a dayLog of a habit owned by the user
     ownershipCheck: async (user, record) => {
-        // Find the habit associated with this session
-        const dayLog = await db
-            .select()
-            .from(dayLogs)
-            .where(eq(dayLogs.id, record.dayLogId))
-            .limit(1);
-
-        if (dayLog.length === 0) return false;
-
         const habit = await db
             .select()
             .from(habits)
-            .where(eq(habits.id, dayLog[0].habitId))
+            .where(eq(habits.id, record.habitId))
             .limit(1);
 
         return habit.length > 0 && habit[0].userId === user.id;
@@ -40,29 +29,7 @@ const sessionRouter = generateCrudRouter({
         // Optional: additional validation or defaults
         return data;
     },
-    // Optional: override list if you want to restrict to user's habits only
-    overrides: {
-        create: async (c) => {
-            console.log(c)
 
-            const { habitId, date } = c.req.valid('json');
-
-            return await db.transaction(async (tx) => {
-                // Ensure DayLog Wrapper
-                const existingDayLog = await tx.query.dayLogs.findFirst({
-                    where: (l, { and, eq }) => and(eq(l.habitId, habitId), eq(l.date, date))
-                });
-                if (!existingDayLog) {
-                    const hres = await tx.insert(dayLogs).values({ habitId, date }).returning();
-                }
-                const hres = existingDayLog
-
-                const res = await tx.insert(exerciseSessions).values({ habitId, date }).returning();
-
-                return c.json(res[0])
-            });
-        },
-    }
 });
 
 export default sessionRouter;

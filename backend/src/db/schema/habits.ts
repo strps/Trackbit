@@ -2,6 +2,7 @@ import { pgTable, serial, text, integer, boolean, timestamp, uuid, date, jsonb, 
 import { user } from './user';
 import { relations } from 'drizzle-orm';
 import { exerciseSessions } from './exercises';
+import { Trackbit } from 'types/trackbit';
 
 
 //Habits

@@ -27,6 +27,7 @@ export const exercisesRelations = relations(exercises, ({ many }) => ({
 //Exercise Sessions
 export const exerciseSessions = pgTable('exercise_sessions', {
     id: serial('id').primaryKey(),
+
     //Foreing key columns
     habitId: integer('habit_id').notNull(),
     date: date('date', { mode: 'string' }).notNull(),
@@ -54,7 +55,7 @@ export const exerciseLogs = pgTable('exercise_log', {
     id: serial('id').primaryKey(),
 
     exerciseId: integer('exercise_id').references(() => exercises.id).notNull(),
-    exerciseSessionId: integer('session_id').references(() => exerciseSessions.id).notNull(),
+    exerciseSessionId: integer('session_id').references(() => exerciseSessions.id, { onDelete: 'cascade' }).notNull(),
 
     createdAt: timestamp('created_at').defaultNow(),
 

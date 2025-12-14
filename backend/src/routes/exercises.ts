@@ -4,6 +4,8 @@ import { generateCrudSchemas } from '../lib/validationSchemas'; // Adjust path i
 import { z } from 'zod';
 import db from '../db/db';
 import { eq, isNull, or, sql, and } from 'drizzle-orm';
+import { Context } from 'hono';
+import { HandlerResponse } from 'hono/types';
 
 // Generate schemas tailored for exercises
 const exerciseSchemas = generateCrudSchemas(exercises, {
@@ -22,7 +24,7 @@ const exerciseRouter = generateCrudRouter({
     table: exercises,
     schemas: exerciseSchemas,
     overrides: {
-        list: async (c) => {
+        list: async (c: Context) => {
             const user = c.get('user')
 
             //Query exercise exercises with the lastest set.
@@ -66,6 +68,7 @@ const exerciseRouter = generateCrudRouter({
                     )
                 )
                 .where(or(isNull(exercises.userId), eq(exercises.userId, user.id)));
+
 
             return c.json(result)
         },

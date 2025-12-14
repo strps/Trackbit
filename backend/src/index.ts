@@ -33,7 +33,7 @@ app.route('/api/habits', habitRoutes)
 app.route('/api/logs', logRoutes)
 app.route('/api/exercises', exerciseRoutes)
 app.route('/api/config', configRoutes)
-app.route("/api/logs/exercise-sessions", sessionRouter)
+app.route("/api/exercise-sessions", sessionRouter)
 
 // 4. Health Check
 app.get('/health', (c) => c.json({ status: 'ok', time: new Date().toISOString() }))

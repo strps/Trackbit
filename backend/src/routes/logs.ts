@@ -101,27 +101,27 @@ app.post(
 // --- GRANULAR WORKOUT LOGGING ---
 
 // 1. Ensure Session Exists (Call this when starting a workout)
-// app.post('/exercise-sessions', zValidator('json', z.object({
-//     habitId: z.number(),
-//     date: z.string(),
-// })), async (c) => {
-//     const { habitId, date } = c.req.valid('json');
+app.post('/exercise-sessions', zValidator('json', z.object({
+    habitId: z.number(),
+    date: z.string(),
+})), async (c) => {
+    const { habitId, date } = c.req.valid('json');
 
-//     return await db.transaction(async (tx) => {
-//         // Ensure DayLog Wrapper
-//         const existingDayLog = await tx.query.dayLogs.findFirst({
-//             where: (l, { and, eq }) => and(eq(l.habitId, habitId), eq(l.date, date))
-//         });
-//         if (!existingDayLog) {
-//             const hres = await tx.insert(dayLogs).values({ habitId, date }).returning();
-//         }
-//         const hres = existingDayLog
+    return await db.transaction(async (tx) => {
+        // Ensure DayLog Wrapper
+        const existingDayLog = await tx.query.dayLogs.findFirst({
+            where: (l, { and, eq }) => and(eq(l.habitId, habitId), eq(l.date, date))
+        });
+        if (!existingDayLog) {
+            const hres = await tx.insert(dayLogs).values({ habitId, date }).returning();
+        }
+        const hres = existingDayLog
 
-//         const res = await tx.insert(exerciseSessions).values({ habitId, date }).returning();
+        const res = await tx.insert(exerciseSessions).values({ habitId, date }).returning();
 
-//         return c.json(res[0])
-//     });
-// });
+        return c.json(res[0])
+    });
+});
 
 
 
