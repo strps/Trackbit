@@ -3,6 +3,7 @@ import { Settings } from 'lucide-react';
 import { useHabits } from '@/hooks/use-habits';
 import { HabitList } from './HabitsList';
 import { HabitConfigForm } from './HabitConfigForm';
+import { Trackbit } from "../../../../types/trackbit";
 
 const HabitConfig = () => {
     // Mock initial state - in real app, this would come from your database

@@ -1,18 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Trackbit } from '../../../types/trackbit';
 
 const API_URL = 'http://localhost:3000/api/habits';
-
-// Types (Mirrors your backend Drizzle schema)
-export interface Habit {
-  id: number;
-  name: string;
-  type: 'simple' | 'complex' | 'negative';
-  goal: number;
-  color: string;
-  icon: string;
-  userId?: string;
-  createdAt?: string;
-}
 
 // --- Fetcher Functions ---
 
@@ -25,7 +14,7 @@ const fetchHabits = async (): Promise<Trackbit.Habit[]> => {
   return res.json();
 };
 
-const createHabit = async (newHabit: Omit<Habit, 'id' | 'createdAt'>) => {
+const createHabit = async (newHabit: Omit<Trackbit.Habit, 'id' | 'createdAt'>) => {
   const res = await fetch(API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -45,7 +34,8 @@ const deleteHabit = async (id: number) => {
   return res.json();
 };
 
-const updateHabit = async (habit: Habit) => {
+const updateHabit = async (habit: Trackbit.Habit) => {
+  console.log(habit)
   const res = await fetch(`${API_URL}/${habit.id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -77,13 +67,13 @@ export function useHabits() {
       await queryClient.cancelQueries({ queryKey: ['habits'] });
 
       // Snapshot previous value
-      const previousHabits = queryClient.getQueryData<Habit[]>(['habits']);
+      const previousHabits = queryClient.getQueryData<Trackbit.Habit[]>(['habits']);
 
       // Optimistically update to the new value
       // We create a fake temp ID just for the UI render
-      queryClient.setQueryData(['habits'], (old: Habit[] = []) => [
+      queryClient.setQueryData(['habits'], (old: Omit<Trackbit.Habit, 'createdAt'>[] = []) => [
         ...old,
-        { ...newHabit, id: Math.random(), createdAt: new Date().toISOString() },
+        { ...newHabit, id: Math.random() },
       ]);
 
       return { previousHabits };
@@ -105,9 +95,9 @@ export function useHabits() {
     mutationFn: deleteHabit,
     onMutate: async (habitId) => {
       await queryClient.cancelQueries({ queryKey: ['habits'] });
-      const previousHabits = queryClient.getQueryData<Habit[]>(['habits']);
+      const previousHabits = queryClient.getQueryData<Trackbit.Habit[]>(['habits']);
 
-      queryClient.setQueryData(['habits'], (old: Habit[] = []) =>
+      queryClient.setQueryData(['habits'], (old: Trackbit.Habit[] = []) =>
         old.filter(h => h.id !== habitId)
       );
 
@@ -128,9 +118,9 @@ export function useHabits() {
     mutationFn: updateHabit,
     onMutate: async (updatedHabit) => {
       await queryClient.cancelQueries({ queryKey: ['habits'] });
-      const previousHabits = queryClient.getQueryData<Habit[]>(['habits']);
+      const previousHabits = queryClient.getQueryData<Trackbit.Habit[]>(['habits']);
 
-      queryClient.setQueryData(['habits'], (old: Habit[] = []) =>
+      queryClient.setQueryData(['habits'], (old: Trackbit.Habit[] = []) =>
         old.map(h => h.id === updatedHabit.id ? updatedHabit : h)
       );
 

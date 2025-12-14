@@ -4,12 +4,12 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle, Layout, List, Save, XCircle } from "lucide-react";
 import { z } from "zod";
 import { BigButton } from "@/components/BigButton";
-import { useForm, Controller } from "react-hook-form";
-import { Field, RangeField, TextField, TextFieldInput } from "@/components/Field";
+import { useForm } from "react-hook-form";
+import { Field, RangeField, TextField } from "@/components/Field";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
-import { id } from "zod/v4/locales";
 import { useHabits } from "@/hooks/use-habits";
+import { Trackbit } from "../../../../types/trackbit";
 
 interface HabitConfigProps {
     isEditing: boolean;
@@ -104,13 +104,12 @@ export const HabitConfigForm = ({
     };
 
 
-    const { habits, isLoading, createHabit, updateHabit, deleteHabit } = useHabits();
+    const { habits, isLoading, createHabit, updateHabit, } = useHabits();
     /**
      * Ppdate or create new habit
      * @param data 
      */
     const onSubmit = (data: z.infer<typeof formSchema>) => {
-        console.log(data);
         if (!data.id)
             createHabit(data);
         else
@@ -155,7 +154,6 @@ export const HabitConfigForm = ({
                         placeholder="e.g., Drink Water"
                         className="text-4xl! h-14"
                         form={form}
-                        autocomplete="off"
                     />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 

@@ -1,8 +1,10 @@
-import { pgTable, serial, text, integer, boolean, timestamp, uuid, date, jsonb, primaryKey } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, integer, boolean, timestamp, uuid, date, jsonb, primaryKey, pgEnum } from 'drizzle-orm/pg-core';
 import { user } from './user';
 import { relations } from 'drizzle-orm';
 import { exerciseSessions } from './exercises';
 import { Trackbit } from 'types/trackbit';
+
+export const habitTypeEnum = pgEnum('habit_type', ['simple', 'complex', 'negative'])
 
 
 //Habits
@@ -12,7 +14,7 @@ export const habits = pgTable('habits', {
   name: text('name').notNull(),
   description: text('description'),
   // 'simple', 'complex', 'negative'
-  type: text('type').notNull().default('simple'),
+  type: habitTypeEnum('type').notNull().default('simple'),
 
   // Defaults to a simple Green gradient
   colorStops: jsonb('color_palette').$type<Trackbit.ColorStop[]>().notNull().default([

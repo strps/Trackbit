@@ -1,24 +1,17 @@
-import { Button } from "@/components/ui/button"
-import { AlertTriangle, BookOpen, Briefcase, Code, Coffee, Droplet, Dumbbell, Heart, Home, Moon, Music, Plus, Star, Sun, Trash2, XCircle } from "lucide-react"
-import { JSX } from "react";
+import { Plus } from "lucide-react"
 import { ICONS } from "./IconField";
 import { mapValueToCSSrgb } from "@/lib/colorUtils";
 import { Badge } from "@/components/ui/badge";
 import { BigButton } from "@/components/BigButton";
+import { Trackbit } from "../../../../types/trackbit";
 
 interface HabitListProps {
     habits: Trackbit.Habit[];
-    activeHabitId: number | null;
+    activeHabitId?: number | null;
     editHabit: (habit: Trackbit.Habit) => void;
     handleDelete: (id: number, e: React.MouseEvent<HTMLButtonElement>) => void;
     startNewHabit: () => void
 }
-
-
-
-
-
-
 
 // Helper to render the actual Lucide icon component dynamically
 const renderIcon = (iconId: string, className = "w-5 h-5") => {

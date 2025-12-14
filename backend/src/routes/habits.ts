@@ -68,10 +68,18 @@ app.put(
         goal: z.number().optional(),
         colorStops: z.any().optional(), // Simplify validation for now
         icon: z.string().optional(),
+        type: z.enum(['simple', 'complex', 'negative']).optional(),
     })),
     async (c) => {
+
+
+
         const user = c.get('user')
         const id = Number(c.req.param('id'))
+
+        console.log(c.req.valid('json'))
+
+
         const updates = c.req.valid('json')
 
         const result = await db.update(habits)
