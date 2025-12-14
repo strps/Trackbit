@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { SetInputField } from "./SetInputField";
 import { Button } from "@/components/ui/button";
 import { SimpleHabitPanel } from "./SimpleHabitPanel";
-import { ExerciseSessionPanel } from "./ep";
+import { ExerciseSessionPanel } from "./StructuredHabitPanel";
 import { useHabitLogs } from "@/hooks/use-habit-logs";
 import { formatDate } from "./utils";
 

@@ -18,7 +18,7 @@ export const ExerciseSessionPanel = () => {
 
 
     const handleAddSession = () => {
-        createSession(selectedHabitId, selectedDay)
+        createSession()
     }
 
     return (

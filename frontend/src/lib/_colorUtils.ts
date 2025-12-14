@@ -1,15 +1,11 @@
-// Color utilities implemented with Culori
-// Install: npm install culori
-
 import {
     parse,
     formatRgb,
     rgb,
-    oklch,
-    converter,
     interpolate,
     wcagContrast,
-    clampChroma,
+    Color,
+    Rgb,
 } from "culori";
 
 // ---------- Types ----------
@@ -22,12 +18,12 @@ export interface ColorStop {
 // ---------- Conversion Helpers ----------
 export function hexToRgb(hex: string): RGB {
     const c = parse(hex);
-    const { r, g, b } = rgb(c);
+    const { r, g, b } = rgb(c) as Rgb;
     return [r * 255, g * 255, b * 255];
 }
 
 export function rgbToHex(r: number, g: number, b: number): string {
-    return formatRgb({ r: r / 255, g: g / 255, b: b / 255 });
+    return formatRgb({ r: r / 255, g: g / 255, b: b / 255 } as Color);
 }
 
 export function rgbArrayToHex(color: RGB): string {
@@ -39,20 +35,20 @@ export function bestTextColor(bg: RGB): RGB {
     const white: RGB = [255, 255, 255];
     const black: RGB = [0, 0, 0];
 
-    const bgC = { r: bg[0] / 255, g: bg[1] / 255, b: bg[2] / 255 };
-    const contrastWhite = wcagContrast(bgC, { r: 1, g: 1, b: 1 });
-    const contrastBlack = wcagContrast(bgC, { r: 0, g: 0, b: 0 });
+    const bgC = { r: bg[0] / 255, g: bg[1] / 255, b: bg[2] / 255 } as Color;
+    const contrastWhite = wcagContrast(bgC, { r: 1, g: 1, b: 1 } as Color);
+    const contrastBlack = wcagContrast(bgC, { r: 0, g: 0, b: 0 } as Color);
 
     return contrastWhite >= contrastBlack ? white : black;
 }
 
 export function bestContrastFrom(bg: RGB, options: RGB[]): RGB {
-    const bgNorm = { r: bg[0] / 255, g: bg[1] / 255, b: bg[2] / 255 };
+    const bgNorm = { r: bg[0] / 255, g: bg[1] / 255, b: bg[2] / 255 } as Color;
     let best = options[0];
     let bestScore = -Infinity;
 
     for (const opt of options) {
-        const oNorm = { r: opt[0] / 255, g: opt[1] / 255, b: opt[2] / 255 };
+        const oNorm = { r: opt[0] / 255, g: opt[1] / 255, b: opt[2] / 255 } as Color;
         const score = wcagContrast(bgNorm, oNorm);
         if (score > bestScore) {
             best = opt;
@@ -87,9 +83,7 @@ export function mapValueToColor(
     const localT =
         (t - left.position) / (right.position - left.position || 1);
 
-    const interp = interpolate([toCulori(left.color), toCulori(right.color)], {
-        space: oklch,
-    });
+    const interp = interpolate([toCulori(left.color), toCulori(right.color)], "oklch");
     const col = interp(localT);
     return fromCulori(col);
 }
@@ -113,8 +107,8 @@ export function gradientToCSSOrdered(
 }
 
 // ---------- Helpers ----------
-function toCulori(color: RGB) {
-    return { r: color[0] / 255, g: color[1] / 255, b: color[2] / 255 };
+function toCulori(color: RGB): Color {
+    return { r: color[0] / 255, g: color[1] / 255, b: color[2] / 255 } as Color;
 }
 
 function fromCulori({ r, g, b }: any): RGB {
