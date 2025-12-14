@@ -2,6 +2,11 @@
     "compilerOptions": {
         "strict": true,
         "baseUrl": ".",
+        "paths": {
+            "backend/*": [
+                "./backend/*"
+            ]
+        },
         "typeRoots": [
             "./types",
             "./node_modules/@types"

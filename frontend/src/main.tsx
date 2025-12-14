@@ -1,18 +1,19 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import HabitConfig from './pages/habits-configuration/HabitsConfig.tsx'
+import HabitConfig from './pages/habits-configuration/HabitsConfig'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import RootLayout from './layouts/RootLayout.tsx';
-import HabitTracker from './pages/tracker/HabitTracker.tsx';
-import AuthLayout from './layouts/AuthLayout.tsx';
-import AuthPage from './pages/auth/AuthPage.tsx';
-import AccountSettings from './pages/auth/AccountSettings.tsx';
-import { ThemeProvider } from './providers/theme-provider.tsx';
+import RootLayout from './layouts/RootLayout';
+import HabitTracker from './pages/tracker/HabitTracker';
+import AuthLayout from './layouts/AuthLayout';
+import AuthPage from './pages/auth/AuthPage';
+import AccountSettings from './pages/auth/AccountSettings';
+import { ThemeProvider } from './providers/theme-provider';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import ExerciseLibrary from './pages/ExerciseLibrary.tsx';
+import ExerciseLibrary from './pages/ExerciseLibrary';
 import './index.css'
-import ViveroHomePage from './pages/vivero.tsx';
+import ViveroHomePage from './pages/vivero';
 import NotFound from './pages/404.js';
+import ErrorPage from './pages/Error.js';
 
 
 
@@ -42,6 +43,7 @@ const router = createBrowserRouter([
   {
     path: "*",
     element: <NotFound />,
+    errorElement: <ErrorPage />
   }
 ]);
 

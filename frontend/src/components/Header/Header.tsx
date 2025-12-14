@@ -197,6 +197,7 @@ const UserNav = () => {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    //Add buttom bug buttons (sugerences and bug reporting) and user role tester
   );
 
 };

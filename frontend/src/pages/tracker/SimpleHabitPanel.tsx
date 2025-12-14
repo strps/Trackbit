@@ -2,23 +2,20 @@ import { useEffect, useState } from "react";
 import { Minus, Plus, CalendarSearch, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { mapValueToColorOrdered } from "@/lib/colorUtils"; // Adjust path as needed
-import { useHabitLogs } from "@/hooks/use-habit-logs_";
-import { useTrackerStore } from "./store";
+import { useHabitLogs } from "@/hooks/use-habit-logs"
 
 export const SimpleHabitPanel = () => {
 
     const [isAnimating, setIsAnimating] = useState(false);
 
-    const { habitsWithLogs, logSimple } = useHabitLogs()
-    const selectedHabitId = useTrackerStore((state) => state.selectedHabitId);
+    const { habitsWithLogs, logSimple, selectedHabitId, selectedDay, currentHabit } = useHabitLogs()
 
-    const dateStr = useTrackerStore((state) => state.selectedDay);
-    const activeHabit = habitsWithLogs[selectedHabitId]
+    const activeHabit = currentHabit
 
-    const value = activeHabit.dayLogs[dateStr]?.rating || 0;
+    const value = activeHabit?.dayLogs[selectedDay]?.rating || 0;
 
     // 1. Calculate Progress
-    const goal = activeHabit.dailyGoal || 1;
+    const goal = activeHabit?.dailyGoal || 1;
     const progress = Math.min(value / goal, 1);
     const radius = 36;
     const circumference = 2 * Math.PI * radius;
@@ -27,7 +24,7 @@ export const SimpleHabitPanel = () => {
 
     // 2. Get Dynamic Color from Gradient
     // We use the util to pick the color corresponding to current progress (0 to 1)
-    const colorStops = activeHabit.colorStops || [
+    const colorStops = activeHabit?.colorStops || [
         { position: 0, color: [226, 232, 240] },
         { position: 1, color: [16, 185, 129] }
     ];
@@ -43,11 +40,11 @@ export const SimpleHabitPanel = () => {
     }, [value]);
 
     const handleIncrement = () => {
-        logSimple({ habitId: Number(selectedHabitId), date: dateStr, rating: Number(value + 1) })
+        logSimple({ habitId: Number(selectedHabitId), date: selectedDay, rating: Number(value + 1) })
     };
 
     const handleDecrement = () => {
-        logSimple({ habitId: Number(selectedHabitId), date: dateStr, rating: Number(value - 1) })
+        logSimple({ habitId: Number(selectedHabitId), date: selectedDay, rating: Number(value - 1) })
     };
 
 
@@ -59,7 +56,7 @@ export const SimpleHabitPanel = () => {
                 {/* Left: Context Info */}
                 <div className="flex-1">
                     <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                        {new Date(dateStr).toLocaleDateString(undefined, { weekday: 'long' })}
+                        {new Date(selectedDay).toLocaleDateString(undefined, { weekday: 'long' })}
                         {isGoalMet && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 animate-in zoom-in">
                                 <Trophy className="w-3 h-3 mr-1" /> Goal Met

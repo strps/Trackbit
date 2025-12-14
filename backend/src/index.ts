@@ -8,6 +8,7 @@ import { auth } from './lib/auth'
 import habitRoutes from './routes/habits'
 import logRoutes from './routes/logs'
 import exerciseRoutes from './routes/exercises'
+import sessionRouter from './routes/sessions'
 import configRoutes from './routes/config'
 
 const app = new Hono()
@@ -32,6 +33,7 @@ app.route('/api/habits', habitRoutes)
 app.route('/api/logs', logRoutes)
 app.route('/api/exercises', exerciseRoutes)
 app.route('/api/config', configRoutes)
+app.route("/api/logs/exercise-sessions", sessionRouter)
 
 // 4. Health Check
 app.get('/health', (c) => c.json({ status: 'ok', time: new Date().toISOString() }))

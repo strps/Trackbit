@@ -1,4 +1,26 @@
-import { InsertHabit } from "backend/src/db/entitiesTypes";
+// types/trackbit.d.ts
+import {
+    InsertHabit,
+    SelectHabit,
+    InsertDayLog,
+    SelectDayLog,
+    InsertExerciseSession,
+    SelectExerciseSession,
+    InsertExerciseLog,
+    SelectExerciseLog,
+    InsertExerciseSet,
+    SelectExerciseSet,
+    InsertUser,
+    SelectUser,
+    InsertAccount,
+    SelectAccount,
+    InsertSession,
+    SelectSession,
+    InsertVerification,
+    SelectVerification,
+    InsertExercise,
+    SelectExercise,
+} from "../backend/src/db/entitiesTypes";
 
 declare namespace Trackbit {
     // Define the core types used across the entire application (Frontend & Backend)
@@ -17,15 +39,41 @@ declare namespace Trackbit {
         color: [number, number, number];
     };
 
-    // All possible colors that can be set for a habit
-    export type HabitColor = 'emerald' | 'blue' | 'violet' | 'orange' | 'rose' | 'amber';
-
     // All possible icon names (must match the mapping in getHabitIcon)
     export type HabitIcon = 'dumbbell' | 'code' | 'book' | 'star' | 'water' | 'alert';
 
-    export type HabitType = 'simple' | 'complex' | 'negative'; //TODO, change anme from negative to reduce
+    export type HabitType = 'simple' | 'complex' | 'negative'; //TODO, change name from negative to reduce
 
-    export interface Habit extends InsertHabit { }
+    // Re-export Drizzle-inferred types for habits and related entities
+    export type Habit = SelectHabit;
+    export type NewHabit = InsertHabit;
+
+    export type DayLog = SelectDayLog;
+    export type NewDayLog = InsertDayLog;
+
+    export type ExerciseSession = SelectExerciseSession;
+    export type NewExerciseSession = InsertExerciseSession;
+
+    export type ExerciseLog = SelectExerciseLog;
+    export type NewExerciseLog = InsertExerciseLog;
+
+    export type ExerciseSet = SelectExerciseSet;
+    export type NewExerciseSet = InsertExerciseSet;
+
+    export type User = SelectUser;
+    export type NewUser = InsertUser;
+
+    export type Account = SelectAccount;
+    export type NewAccount = InsertAccount;
+
+    export type Session = SelectSession;
+    export type NewSession = InsertSession;
+
+    export type Verification = SelectVerification;
+    export type NewVerification = InsertVerification;
+
+    export type Exercise = SelectExercise;
+    export type NewExercise = InsertExercise;
 
     export interface WorkoutSet {
         exerciseId: number;
@@ -37,20 +85,8 @@ declare namespace Trackbit {
         duration?: number;
     }
 
-    export interface DayLog {
-        id: number;
-        habitId: number;
-        date: string; // YYYY-MM-DD
-        rating?: number;
-        notes?: string;
-        // For complex logs, this is populated by the join with exercise_sets
-        sets?: WorkoutSet[];
-        createdAt?: string;
-    }
-
     export interface GlobalStats {
         totalCount: number;
         currentStreak: number;
     }
-
 }

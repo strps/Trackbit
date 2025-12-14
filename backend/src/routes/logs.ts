@@ -101,28 +101,65 @@ app.post(
 // --- GRANULAR WORKOUT LOGGING ---
 
 // 1. Ensure Session Exists (Call this when starting a workout)
-app.post('/exercise-sessions', zValidator('json', z.object({
-    habitId: z.number(),
-    date: z.string(),
-})), async (c) => {
-    const { habitId, date } = c.req.valid('json');
+// app.post('/exercise-sessions', zValidator('json', z.object({
+//     habitId: z.number(),
+//     date: z.string(),
+// })), async (c) => {
+//     const { habitId, date } = c.req.valid('json');
+
+//     return await db.transaction(async (tx) => {
+//         // Ensure DayLog Wrapper
+//         const existingDayLog = await tx.query.dayLogs.findFirst({
+//             where: (l, { and, eq }) => and(eq(l.habitId, habitId), eq(l.date, date))
+//         });
+//         if (!existingDayLog) {
+//             const hres = await tx.insert(dayLogs).values({ habitId, date }).returning();
+//         }
+//         const hres = existingDayLog
+
+//         const res = await tx.insert(exerciseSessions).values({ habitId, date }).returning();
+
+//         return c.json(res[0])
+//     });
+// });
 
 
-    return await db.transaction(async (tx) => {
-        // Ensure DayLog Wrapper
-        const existingDayLog = await tx.query.dayLogs.findFirst({
-            where: (l, { and, eq }) => and(eq(l.habitId, habitId), eq(l.date, date))
-        });
-        if (!existingDayLog) {
-            const hres = await tx.insert(dayLogs).values({ habitId, date }).returning();
-        }
-        const hres = existingDayLog
 
-        const res = await tx.insert(exerciseSessions).values({ habitId, date }).returning();
 
-        return c.json(res[0])
-    });
-});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // 2. Add/Remove Exercises
 app.post('/exercise-logs', zValidator('json', z.object({
@@ -143,7 +180,7 @@ app.post(
         sessionId: z.number(),
         exerciseId: z.number(),
         // New: Accepts an array of sets immediately
-        sets: z.array(z.object({
+        exerciseSets: z.array(z.object({
             reps: z.number(),
             weight: z.number(),
         })).optional(),
@@ -162,8 +199,8 @@ app.post(
 
             // 2. Prepare Sets
             // If sets provided, use them. If not, create 1 default empty set.
-            const setsToInsert = (body.sets && body.sets.length > 0)
-                ? body.sets
+            const setsToInsert = (body.exerciseSets && body.exerciseSets.length > 0)
+                ? body.exerciseSets
                 : [{ reps: 0, weight: 0 }];
 
             // 3. Insert Sets
@@ -176,10 +213,10 @@ app.post(
             ).returning();
 
             // 4. Return combined structure
-            return {
+            return c.json({
                 ...logRes[0],
                 sets: setRes
-            };
+            });
         });
     }
 );

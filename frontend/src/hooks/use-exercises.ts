@@ -1,14 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Trackbit } from '../../../types/trackbit'
 
 const API_URL = 'http://localhost:3000/api/exercises';
 
-export interface Exercise {
-    id: number;
-    name: string;
-    category: 'strength' | 'cardio' | 'flexibility';
-    muscleGroup?: string;
-    userId?: string; // If null, it's a system default
-    createdAt: string;
+interface Exercise extends Trackbit.Exercise {
+    lastSetId: number;
+    lastSetWeight: number;
+    lastSetReps: number;
+    lastSetCreatedAt: string;
 }
 
 const fetchExercises = async (): Promise<Exercise[]> => {
@@ -43,10 +42,31 @@ export function useExercises() {
         },
     });
 
+    // New: Local update for last set defaults
+    const updateLastSetLocally = useMutation({
+        mutationFn: ({ exerciseId, reps, weight }: { exerciseId: number; reps: number; weight: number }) => {
+            // No server call — immediate cache update only
+            queryClient.setQueryData<Exercise[]>(['exercises'], (old = []) => {
+                return old.map((ex) =>
+                    ex.id === exerciseId
+                        ? {
+                            ...ex,
+                            lastSetReps: reps,
+                            lastSetWeight: weight,
+                            // Optionally update lastSetCreatedAt if needed
+                        }
+                        : ex
+                );
+            });
+            return { exerciseId, reps, weight };
+        },
+    });
+
     return {
         exercises: query.data ?? [],
         isLoading: query.isLoading,
         createExercise: createMutation.mutateAsync,
-        isCreating: createMutation.isPending
+        isCreating: createMutation.isPending,
+        updateLastSetLocally: updateLastSetLocally.mutate,
     };
 }

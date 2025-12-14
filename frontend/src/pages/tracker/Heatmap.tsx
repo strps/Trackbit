@@ -1,8 +1,7 @@
 import { Activity, CalendarDays, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatDate } from "./utils";
 import { mapValueToCSSrgb } from "../../lib/colorUtils";
-import { useTrackerStore } from "./store";
-import { useHabitLogs } from "@/hooks/use-habit-logs2";
+import { useHabitLogs } from "@/hooks/use-habit-logs";
 
 interface HeatmapProps {
     weeks: Date[][];
@@ -18,18 +17,11 @@ export const Heatmap = ({
     weekStart = 'monday' // Default to monday
 }: HeatmapProps) => {
 
-    const { habitsWithLogs } = useHabitLogs();
-
-    const setSelectedDay = useTrackerStore(state => state.setSelectedDay);
-    const selectedDay = useTrackerStore(state => state.selectedDay);
-    const activeHabitId = useTrackerStore(state => state.selectedHabitId);
-
-    const activeHabit = habitsWithLogs[activeHabitId]
-
-    const logsMap = activeHabit?.dayLogs || {};
+    const { currentHabit, selectedDay, setDay: setSelectedDay } = useHabitLogs();
+    const logsMap = currentHabit?.dayLogs || {};
 
     const getRating = (date: string) => {
-        return activeHabit?.type === 'complex' ?
+        return currentHabit?.type === 'complex' ?
             logsMap[date]?.exerciseSessions?.reduce(
                 (a, c) => a + (c.exerciseLogs?.length || 0)
                 , 0)
@@ -38,8 +30,8 @@ export const Heatmap = ({
     }
 
     // 1. Color Logic
-    const dailyTarget = activeHabit?.dailyGoal || 1;
-    const palette: Trackbit.ColorStop[] = activeHabit?.colorStops || [
+    const dailyTarget = currentHabit?.dailyGoal || 1;
+    const palette: Trackbit.ColorStop[] = currentHabit?.colorStops || [
         { position: 0, color: [241, 245, 249] },
         { position: 1, color: [16, 185, 129] }
     ];
@@ -201,7 +193,7 @@ export const Heatmap = ({
                                         return (
                                             <div
                                                 key={dStr}
-                                                onClick={() => setSelectedDay(dStr)}
+                                                onClick={() => { setSelectedDay(dStr) }}
                                                 style={{ backgroundColor }}
                                                 className={`
                                                     w-3 h-3 rounded-[25%] cursor-pointer transition-all border border-transparent

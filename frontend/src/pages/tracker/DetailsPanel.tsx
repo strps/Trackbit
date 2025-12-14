@@ -5,8 +5,7 @@ import { SetInputField } from "./SetInputField";
 import { Button } from "@/components/ui/button";
 import { SimpleHabitPanel } from "./SimpleHabitPanel";
 import { ExerciseSessionPanel } from "./ep";
-import { useTrackerStore } from "./store";
-import { useHabitLogs } from "@/hooks/use-habit-logs_";
+import { useHabitLogs } from "@/hooks/use-habit-logs";
 import { formatDate } from "./utils";
 
 
@@ -23,21 +22,18 @@ interface DetailsPanelProps {
     logWorkout: (data: { habitId: string; date: string; sets: any[] }) => void;
 }
 
-export function DayLog({ logSimple, logWorkout }: DetailsPanelProps) {
+export function DayLog({ logWorkout }: DetailsPanelProps) {
 
 
-    const { habitsWithLogs } = useHabitLogs()
+    const { selectedDay, setDay, currentHabit } = useHabitLogs()
 
-    const selectedDay = useTrackerStore(state => state.selectedDay);
-    const setSelectedDay = useTrackerStore(state => state.setSelectedDay);
-    const selectedHabitId = useTrackerStore(state => state.selectedHabitId);
 
-    const selectedHabit = habitsWithLogs[selectedHabitId!];
-    const logsMap = selectedHabit?.dayLogs || {}
+
+
 
     return (
 
-        (selectedDay && selectedHabit) ?
+        (selectedDay && currentHabit) ?
             <div className="bg-background rounded-xl shadow-lg border border-border overflow-hidden">
                 {/* Header Section */}
                 <div className="p-6 border-b border-border flex justify-between items-center">
@@ -55,7 +51,7 @@ export function DayLog({ logSimple, logWorkout }: DetailsPanelProps) {
                         <Button
                             disabled={selectedDay === formatDate(new Date())}
                             onClick={() => {
-                                setSelectedDay(formatDate(new Date()))
+                                setDay(formatDate(new Date()))
                             }}
                             variant="outline">
                             Today
@@ -67,16 +63,11 @@ export function DayLog({ logSimple, logWorkout }: DetailsPanelProps) {
 
 
                 {
-                    selectedHabit.type === 'complex' ? (
-                        <ExerciseSessionPanel
-
-
-                            onSaveLog={logWorkout}
-                            onClose={() => setSelectedDay(null)}
-                        />
-                    ) : (
+                    currentHabit.type === 'complex' ?
+                        <ExerciseSessionPanel />
+                        :
                         <SimpleHabitPanel />
-                    )
+
                 }
             </div >
             : null

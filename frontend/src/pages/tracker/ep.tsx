@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { useExercises } from "@/hooks/use-exercises";
 import { ChevronDown, Dumbbell, MoreVertical, Plus, Trash2, X, Search, GripVertical, Hash, Scale, Info, PlusCircle, Divide } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,43 +6,26 @@ import { SetInputField } from "./SetInputField";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
-import { useTrackerStore } from "./store";
-import { ExerciseLogEntry, useHabitLogs } from "@/hooks/use-habit-logs2";
-import { Card } from "@/components/ui/card";
-import { DropdownMenu, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-
-// --- Types ---
-interface WorkoutSet {
-    exerciseId: number;
-    setNumber: number;
-    reps: number;
-    weight: number;
-    weightUnit: string;
-}
+import { OptimisticExerciseSession, OptimisticExerciseSet, useHabitLogs } from "@/hooks/use-habit-logs";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { D } from "node_modules/better-auth/dist/index--CrC0_x3.mjs";
 
 
 export const ExerciseSessionPanel = () => {
-    const { habitsWithLogs, createSession } = useHabitLogs()
-
-    const selectedHabitId = useTrackerStore(state => state.selectedHabitId);
-    const selectedDate = useTrackerStore(state => state.selectedDay);
-
-    const dayLog = habitsWithLogs[selectedHabitId!].dayLogs[selectedDate]
-    const exerciseSessions = dayLog?.sessions
-    const exerciseLogs = exerciseSessions?.exerciseLogs
+    const { createSession, currentDayLog: dayLog, selectedHabitId, selectedDay } = useHabitLogs()
+    const exerciseSessions = dayLog?.exerciseSessions
 
 
     const handleAddSession = () => {
-        createSession(selectedHabitId, selectedDate)
+        createSession(selectedHabitId, selectedDay)
     }
 
     return (
         <div className="flex flex-col h-full">
 
             <div className="flex flex-col p-3">
-                {(!dayLog || exerciseSessions?.length === 0) ?
+                {(!dayLog || exerciseSessions?.length === 0 || !exerciseSessions) ?
                     <div
                         onClick={handleAddSession}
                         className="bg-card text-muted-foreground flex flex-col gap-6 rounded-xl border-4 border-dashed p-6 shadow-lg justify-center items-center cursor-pointer"
@@ -54,22 +37,23 @@ export const ExerciseSessionPanel = () => {
                         </div>
                     </div>
                     :
-                    <SessionCard />
+
+                    exerciseSessions.map((session, i) => <SessionCard key={i} session={session} index={i} />)
                 }
             </div>
         </div>
     );
 };
 
+interface SessionCardProps {
+    session: OptimisticExerciseSession;
+    index: number;
+}
 
-
-
-const SessionCard = () => {
-    const { habitsWithLogs, selectedHabitId, selectedDate } = useHabitLogs()
-    const dayLog = habitsWithLogs[selectedHabitId!].dayLogs[selectedDate]
-    const exerciseSessions = dayLog?.exerciseSessions
-    const exerciseLogs = exerciseSessions[0].exerciseLogs
-
+const SessionCard = ({ session, index }: SessionCardProps) => {
+    const { selectedSessionIndex, } = useHabitLogs()
+    const exerciseLogs = session.exerciseLogs || []
+    const isSelected = index === selectedSessionIndex; //TODO: we might use id instead of index.
 
 
     return (
@@ -95,7 +79,12 @@ const SessionCard = () => {
                             <MoreVertical className="w-5 h-5 text-muted-foreground" />
                         </Button>
                     </DropdownMenuTrigger>
-
+                    <DropdownMenuContent>
+                        <DropdownMenuItem>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
                 </DropdownMenu>
             </div>
 
@@ -111,7 +100,7 @@ const SessionCard = () => {
                         <p className="text-xs text-slate-500 mt-1">Add your first exercise to start tracking.</p>
                     </div>
                     :
-                    exerciseLogs.map((exerciseLog, i) => <ExerciseLogCard exerciseLog={exerciseLog} index={i} />)
+                    exerciseLogs.map((exerciseLog, i) => <ExerciseLogCard key={i} exerciseLog={exerciseLog} index={i} />)
 
                 }
 
@@ -129,7 +118,7 @@ const SessionCard = () => {
 
 // --- Sub-Components ---
 interface ExerciseLogCardProps {
-    exerciseLog: ExerciseLogEntry;
+    exerciseLog: OptimisticExerciseSet;
     index: number;
 }
 
@@ -137,12 +126,8 @@ interface ExerciseLogCardProps {
 
 const ExerciseLogCard = ({ exerciseLog, index }: any) => {
     const { exercises } = useExercises()
-    const { saveSet } = useHabitLogs()
-
-
+    const { deleteSet, newSet, updateSet } = useHabitLogs()
     const exercise = exercises.find(e => e.id === exerciseLog.exerciseId)
-
-
 
     return (
         <div className=" rounded-xl border border-border  shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -152,7 +137,6 @@ const ExerciseLogCard = ({ exerciseLog, index }: any) => {
                     <GripVertical className="w-4 h-4 text-slate-300 cursor-grab active:cursor-grabbing" />
                     <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">
                         {exercise?.name || 'Unknown Exercise'}
-
                     </h4>
                     {/*TODO: this down should be redered according to the exrcise, tim distance or sets */}
                     <div className="text-[10px] font-bold text-muted-foreground pl-1 uppercase w-36">
@@ -163,9 +147,20 @@ const ExerciseLogCard = ({ exerciseLog, index }: any) => {
                     </Button>
 
                 </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-600">
-                    <MoreVertical className="w-4 h-4" />
-                </Button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-600">
+                            <MoreVertical className="w-4 h-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuItem>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
 
             {/* Sets List */}
@@ -175,28 +170,36 @@ const ExerciseLogCard = ({ exerciseLog, index }: any) => {
 
                 <div className="flex overflow-x-auto space-x-2 pb-2">
                     {
-                        exerciseLog.exerciseSets.map((e, i) => {
+                        exerciseLog.exerciseSets.map((e: OptimisticExerciseSet, i: number) => {
                             return (
                                 <div key={i} className="flex flex-col items-center group w-20 border border-border">
                                     <div className="flex justify-between items-center text-xs font-bold w-full p-2">
-                                        <span>{i + 1}</span>
-
-                                        <button
-                                            onClick={() => { }}
-                                            tabIndex={-1}
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
+                                        <span>{/*i+1*/ e.id}</span>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="sm" className="p-0">
+                                                    <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent side="top">
+                                                <DropdownMenuItem onSelect={() => deleteSet(e.id)}>
+                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                    Delete
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </div>
 
                                     <SetInputField
+                                        placeholder="-"
                                         value={e.reps}
-                                        onChange={(val: number) => { }}
+                                        onChange={(val: number) => updateSet({ ...e, reps: val })}
                                         isReps={true}
                                     />
                                     <SetInputField
+                                        placeholder="-"
                                         value={e.weight}
-                                        onChange={(val: number) => { }}
+                                        onChange={(val: number) => updateSet({ ...e, weight: val })}
                                         isReps={false}
                                     />
 
@@ -207,7 +210,7 @@ const ExerciseLogCard = ({ exerciseLog, index }: any) => {
                     }
 
                     <button
-                        onClick={() => { saveSet({ exerciseLog: exerciseLog }) }}
+                        onClick={() => { newSet(exerciseLog) }}
                         type="button"
                         title="Add Set"
                         className="flex-none w-20 flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 hover:border-blue-400 text-slate-400 hover:text-blue-500 transition-colors bg-slate-50 dark:bg-slate-800/50"

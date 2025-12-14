@@ -4,14 +4,13 @@ import {
   Book as MenuBook, Code, Star, Droplet
 } from 'lucide-react';
 import { useHabits } from '@/hooks/use-habits';
-import { useHabitLogs } from '@/hooks/use-habit-logs2';
+import { useHabitLogs } from '@/hooks/use-habit-logs';
 import { formatDate, getCalendarDates } from './utils';
 import { Heatmap } from './Heatmap';
 import { Stats } from './Stats';
 import { DayLog } from './DetailsPanel';
 import { mapValueToColor } from '@/lib/colorUtils';
 import { Button } from '@/components/ui/button';
-import { useTrackerStore } from './store';
 
 
 // Helper function to map habit icon string to Lucide component
@@ -29,32 +28,12 @@ const getHabitIcon = (iconName: string): React.ElementType => {
 
 const HabitTracker = () => {
 
-  const { habitsWithLogs, logSimple, isLoading } = useHabitLogs();
-
-  // console.log(habitsWithlogs);
-
-
-  const selectedHabitId = useTrackerStore(state => state.selectedHabitId);
-  const setSelectedHabitId = useTrackerStore(state => state.setSelectedHabitId);
-  const setSelectedDay = useTrackerStore(state => state.setSelectedDay);
-  const selectedDay = useTrackerStore(state => state.selectedDay);
+  const { habitsWithLogs, logSimple, isLoading, setDay: setSelectedDay, selectedHabitId, currentHabit, setHabitId } = useHabitLogs();
 
   const todayStr = formatDate(new Date());
 
-  const selecteHabit = habitsWithLogs[selectedHabitId];
 
-  const logsMap = selecteHabit?.dayLogs;
-
-
-
-  useEffect(() => {
-    if (!selectedHabitId && Object.keys(habitsWithLogs).length > 0) {
-      setSelectedHabitId(Number(Object.keys(habitsWithLogs)[0]));
-    }
-  }, [habitsWithLogs, selectedHabitId]);
-
-  // const activeHabit = habits.find(h => h.id === selectedHabitId);
-
+  const logsMap = currentHabit?.dayLogs;
 
   const calendarDates = useMemo(() => getCalendarDates(), []);
   const weeks = useMemo(() => {
@@ -101,7 +80,7 @@ const HabitTracker = () => {
               return (
                 <Button
                   key={id}
-                  onClick={() => { setSelectedHabitId(id); setSelectedDay(null); }}
+                  onClick={() => { setHabitId(id); setSelectedDay(formatDate(new Date())) }}
                   style={{ backgroundColor: getColorAtOne(habitsWithLogs[id].colorStops) }}
 
                 >
@@ -113,7 +92,7 @@ const HabitTracker = () => {
           </div>
         </div>
 
-        <Stats stats={stats} activeHabit={habitsWithLogs[selectedHabitId]} />
+        <Stats stats={stats} activeHabit={currentHabit} />
 
         <Heatmap
           weeks={weeks}
@@ -122,7 +101,7 @@ const HabitTracker = () => {
         />
 
         <DayLog
-          selectedDay={selectedDay || todayStr}
+          // selectedDay={selectedDay || todayStr}
           logSimple={logSimple}
           logsMap={logsMap}
           setSelectedDay={setSelectedDay}

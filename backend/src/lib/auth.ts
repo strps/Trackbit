@@ -9,21 +9,20 @@ export const auth = betterAuth({
     provider: "pg",
     // Map the Drizzle schema objects so Better-Auth knows where to look
     schema: {
-        user,
-        session,
-        account,
-        verification
+      user,
+      session,
+      account,
+      verification
     }
   }),
   // Enable Email/Password Login
-  emailAndPassword: {  
+  emailAndPassword: {
     enabled: true,
     requireEmailVerification: false, // Set true if you setup SMTP later
   },
   // baseURL: "api/auth",
   basePath: "/api/auth",
 
-
   // Allow cross-origin requests from your Frontend
-  trustedOrigins: ["http://localhost:5173", "http://*"], 
+  trustedOrigins: process.env.TRUSTED_ORIGINS?.split(','),
 });

@@ -35,6 +35,9 @@ importers:
       pino-pretty:
         specifier: ^13.1.2
         version: 13.1.2
+      rate-limiter-flexible:
+        specifier: ^9.0.0
+        version: 9.0.0
       uuid:
         specifier: ^13.0.0
         version: 13.0.0
@@ -740,6 +743,9 @@ packages:
   pump@3.0.3:
     resolution: {integrity: sha512-todwxLMY7/heScKmntwQG8CXVkWUOdYxIvY2s0VWAAMh/nd8SoYiRaKjlr7+iCs984f2P8zvrfWcDDYVb73NfA==}
 
+  rate-limiter-flexible@9.0.0:
+    resolution: {integrity: sha512-Dz+NKRx+V9WVLY6QJv2soo/eN+cYL/+/1XggE/tgnGuA+D/Q1em0hWVp6AZd8lfhzZ6+2wrk7TEwYN+x9AsHeg==}
+
   resolve-pkg-maps@1.0.0:
     resolution: {integrity: sha512-seS2Tj26TBVOC2NIc2rOe2y2ZO7efxITtLZcGSOnHHNOQ7CkiUBfw0Iw2ck6xkIhPwLhKNLS8BO+hEpngQlqzw==}
 
@@ -1293,6 +1299,8 @@ snapshots:
     dependencies:
       end-of-stream: 1.4.5
       once: 1.4.0
+
+  rate-limiter-flexible@9.0.0: {}
 
   resolve-pkg-maps@1.0.0: {}
 
