@@ -6,7 +6,7 @@ interface BigButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     className?: string;
     selectedClassName?: string;
     isSelected: boolean;
-    onClick?: () => void;
+    onClick?: React.MouseEventHandler<HTMLButtonElement>;
     // Remove the old `props?: ...` — we're now properly extending button attributes
 }
 

@@ -58,7 +58,7 @@ const formSchema = z.object({
     weeklyGoal: z.number().min(1).max(7),
 });
 
-const defaultValues = {
+const defaultValues: Omit<Trackbit.Habit, 'id' | 'createdAt' | 'userId'> = {
     name: "",
     description: "",
     type: "simple",
@@ -82,7 +82,7 @@ export const HabitConfigForm = ({
         defaultValues: {
             name: "",
             description: "",
-            type: "simple",
+            type: "simple" as "simple" | "complex" | "negative",
             colorStops: GRADIENT_PRESETS.emerald.stops,
             icon: "star",
             dailyGoal: 5,
@@ -105,17 +105,13 @@ export const HabitConfigForm = ({
 
 
     const { habits, isLoading, createHabit, updateHabit, } = useHabits();
-    /**
-     * Ppdate or create new habit
-     * @param data 
-     */
-    const onSubmit = (data: z.infer<typeof formSchema>) => {
+
+    const onSubmit = (data: Trackbit.Habit) => {
         if (!data.id)
             createHabit(data);
         else
             updateHabit(data);
 
-        // saveHabit(values); // you decide how to handle this later
     };
 
     return (

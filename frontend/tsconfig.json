@@ -1,9 +1,10 @@
 {
-  "extends": "../tsconfig.base.json",
-  "files": [],
+  // "files": [],
   "compilerOptions": {
     "jsx": "react-jsx",
+    "skipLibCheck": true,
     "target": "ES2020",
+    "noEmit": true,
     "lib": [
       "ES2020",
       "DOM",

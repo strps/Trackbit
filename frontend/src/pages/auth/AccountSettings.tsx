@@ -117,13 +117,19 @@ const AccountSettings = () => {
                                         </div>
                                         <div className="flex-1 space-y-2">
                                             <Label>Profile Image URL</Label>
-                                            <Input value={profileData.image} onChange={(e: ChangeEvent) => setProfileData({ ...profileData, image: e.target.value })} placeholder="https://..." />
+                                            <Input
+                                                value={profileData.image}
+                                                onChange={(e: ChangeEvent<HTMLInputElement>) => setProfileData({ ...profileData, image: e.target.value })}
+                                                placeholder="https://..." />
                                         </div>
                                     </div>
 
                                     <div className="space-y-2">
                                         <Label>Full Name</Label>
-                                        <Input value={profileData.name} onChange={(e: ChangeEvent) => setProfileData({ ...profileData, name: e.target.value })} />
+                                        <Input
+                                            type="text"
+                                            value={profileData.name}
+                                            onChange={(e: ChangeEvent<HTMLInputElement>) => setProfileData({ ...profileData, name: e.target.value })} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Email</Label>
@@ -144,9 +150,29 @@ const AccountSettings = () => {
                             <div className="space-y-6">
                                 <div className="p-6 bg-white dark:bg-slate-800 rounded-lg border dark:border-slate-700 space-y-4">
                                     <h3 className="text-lg font-medium">Change Password</h3>
-                                    <div className="space-y-2"><Label>Current Password</Label><Input type="password" value={passData.current} onChange={(e: ChangeEvent) => setPassData({ ...passData, current: e.target.value })} /></div>
-                                    <div className="space-y-2"><Label>New Password</Label><Input type="password" value={passData.new} onChange={(e: ChangeEvent) => setPassData({ ...passData, new: e.target.value })} /></div>
-                                    <div className="space-y-2"><Label>Confirm Password</Label><Input type="password" value={passData.confirm} onChange={(e: ChangeEvent) => setPassData({ ...passData, confirm: e.target.value })} /></div>
+                                    <div className="space-y-2">
+                                        <Label>Current Password</Label>
+                                        <Input
+                                            type="password"
+                                            value={passData.current}
+                                            onChange={(e: ChangeEvent<HTMLInputElement>) => setPassData({ ...passData, current: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>New Password</Label>
+                                        <Input
+                                            type="password"
+                                            value={passData.new}
+                                            onChange={(e: ChangeEvent<HTMLInputElement>) => setPassData({ ...passData, new: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Confirm Password</Label>
+                                        <Input type="password"
+                                            value={passData.confirm}
+                                            onChange={(e: ChangeEvent<HTMLInputElement>) => setPassData({ ...passData, confirm: e.target.value })}
+                                        />
+                                    </div>
                                     <div className="flex justify-end">
                                         <Button onClick={handleChangePassword}>
                                             {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}

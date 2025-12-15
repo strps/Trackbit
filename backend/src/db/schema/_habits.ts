@@ -2,7 +2,7 @@ import { pgTable, serial, text, integer, boolean, timestamp, uuid, date, jsonb, 
 import { user } from './user';
 import { relations } from 'drizzle-orm';
 import { exerciseSessions } from './exercises';
-import { Trackbit } from 'types/trackbit';
+import { Trackbit } from '../../../../types/trackbit'
 
 export const habitTypeEnum = pgEnum('habit_type', ['simple', 'complex', 'negative'])
 
@@ -67,5 +67,3 @@ export const habitLogsRelations = relations(dayLogs, ({ one, many }) => ({
   // A log contains many sets
   exerciseSessions: many(exerciseSessions),
 }));
-
-

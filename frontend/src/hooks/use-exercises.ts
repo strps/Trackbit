@@ -44,7 +44,7 @@ export function useExercises() {
 
     // New: Local update for last set defaults
     const updateLastSetLocally = useMutation({
-        mutationFn: ({ exerciseId, reps, weight }: { exerciseId: number; reps: number; weight: number }) => {
+        mutationFn: async ({ exerciseId, reps, weight }: { exerciseId: number; reps: number; weight: number }) => {
             // No server call — immediate cache update only
             queryClient.setQueryData<Exercise[]>(['exercises'], (old = []) => {
                 return old.map((ex) =>

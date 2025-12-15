@@ -1,35 +1,13 @@
-import { useExercises } from "@/hooks/use-exercises";
-import { CalendarSearch, ChevronDown, Dumbbell, Hash, Minus, NotebookIcon, NotebookPen, Plus, Save, Scale, Trash2, X } from "lucide-react";
-import { useEffect, useState } from "react";
-import { SetInputField } from "./SetInputField";
+import { CalendarSearch, NotebookPen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SimpleHabitPanel } from "./SimpleHabitPanel";
 import { ExerciseSessionPanel } from "./StructuredHabitPanel";
 import { useHabitLogs } from "@/hooks/use-habit-logs";
 import { formatDate } from "./utils";
 
-
-interface WorkoutSet {
-    exerciseId: number;
-    setNumber: number;
-    reps: number;
-    weight: number;
-    weightUnit: string;
-}
-
-interface DetailsPanelProps {
-    logSimple: any;
-    logWorkout: (data: { habitId: string; date: string; sets: any[] }) => void;
-}
-
-export function DayLog({ logWorkout }: DetailsPanelProps) {
-
+export function DayLog() {
 
     const { selectedDay, setDay, currentHabit } = useHabitLogs()
-
-
-
-
 
     return (
 

@@ -1,6 +1,6 @@
 import { relations } from "drizzle-orm";
 import { date, foreignKey, integer, pgTable, real, serial, text, timestamp } from "drizzle-orm/pg-core";
-import { dayLogs } from "./habits";
+import { dayLogs } from "./_habits";
 import { user } from "./user";
 
 //Exercises

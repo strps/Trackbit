@@ -1,9 +1,8 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useMemo } from 'react';
 import {
   Flame, Trophy, Activity, Dumbbell,
   Book as MenuBook, Code, Star, Droplet
 } from 'lucide-react';
-import { useHabits } from '@/hooks/use-habits';
 import { useHabitLogs } from '@/hooks/use-habit-logs';
 import { formatDate, getCalendarDates } from './utils';
 import { Heatmap } from './Heatmap';
@@ -11,6 +10,7 @@ import { Stats } from './Stats';
 import { DayLog } from './DetailsPanel';
 import { mapValueToColor } from '@/lib/colorUtils';
 import { Button } from '@/components/ui/button';
+import { Trackbit } from '../../../../types/trackbit';
 
 
 // Helper function to map habit icon string to Lucide component
@@ -28,7 +28,7 @@ const getHabitIcon = (iconName: string): React.ElementType => {
 
 const HabitTracker = () => {
 
-  const { habitsWithLogs, logSimple, isLoading, setDay: setSelectedDay, selectedHabitId, currentHabit, setHabitId } = useHabitLogs();
+  const { habitsWithLogs, isLoading, setDay: setSelectedDay, selectedHabitId, currentHabit, setHabitId } = useHabitLogs();
 
   const todayStr = formatDate(new Date());
 
@@ -49,7 +49,11 @@ const HabitTracker = () => {
   const stats = useMemo(() => {
     if (!selectedHabitId) return { currentStreak: 0, totalCount: 0 };
     let count = 0;
-    Object.values(logsMap).forEach(v => count += v);
+    // The type of 'v' is 'EnhancedDayLog', which cannot be directly added to a number.
+    // Assuming 'v' has a 'rating' property for simple habits or 'exerciseSessions' for complex habits.
+    Object.values(logsMap).forEach(v => {
+      count += v.rating || v.exerciseSessions?.length || 0;
+    });
     // Streak calculation is complex with TanStack Query and dates, simplified for MVP
     return { currentStreak: 0, totalCount: count };
   }, [logsMap, selectedHabitId]);
@@ -96,15 +100,10 @@ const HabitTracker = () => {
 
         <Heatmap
           weeks={weeks}
-          logsMap={logsMap}
           todayStr={todayStr}
         />
 
         <DayLog
-          // selectedDay={selectedDay || todayStr}
-          logSimple={logSimple}
-          logsMap={logsMap}
-          setSelectedDay={setSelectedDay}
         />
       </div>
     </div>

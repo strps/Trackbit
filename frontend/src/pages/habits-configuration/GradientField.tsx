@@ -3,6 +3,7 @@ import { Check } from 'lucide-react';
 import { gradientToCSS, mapValueToColor, mapValueToCSSrgb } from '../../lib/colorUtils';
 import { GradientPicker } from './GradientPicker';
 import { BigButton } from '@/components/BigButton';
+import { Trackbit } from '../../../../types/trackbit';
 
 
 type Preset = {
@@ -104,7 +105,7 @@ export const GradientField = ({ value, onChange }: GradientPickerProps) => {
                         <BigButton
                             key={key}
                             type="button"
-                            onClick={(e) => handleOnclick(e, key, preset)}
+                            onClick={(e: React.MouseEvent<HTMLButtonElement>) => handleOnclick(e, key, preset)}
                             isSelected={isActive}
                             className='flex flex-col justify-center items-center'
                         >
