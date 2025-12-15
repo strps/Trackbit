@@ -1,15 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useExercises } from './use-exercises';
 import { create } from 'zustand';
-import { Trackbit } from '../../../types/trackbit'
+import { Habit, ExerciseSession, ExerciseLog, ExerciseSet } from 'trackbit-types';
 
 
 const API_URL = 'http://localhost:3000/api/logs';
 
 // --- Optimistic extensions of centralized types ---
-export type OptimisticExerciseSet = Trackbit.ExerciseSet & { tempId?: string };
+export type OptimisticExerciseSet = ExerciseSet & { tempId?: string };
 
-type OptimisticExerciseLog = Trackbit.ExerciseLog & {
+type OptimisticExerciseLog = ExerciseLog & {
     tempId?: string;
     exerciseSets: OptimisticExerciseSet[];
 };
@@ -26,7 +26,7 @@ interface EnhancedDayLog {
     notes?: string;
 }
 
-interface HabitWithLogs extends Trackbit.Habit {
+interface HabitWithLogs extends Habit {
     dayLogs: Record<string, EnhancedDayLog>;
 }
 
@@ -183,7 +183,7 @@ export function useHabitLogs() {
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
             });
-            return res.json() as Promise<Trackbit.ExerciseSession>;
+            return res.json() as Promise<ExerciseSession>;
         },
         onMutate: async () => {
             await queryClient.cancelQueries({ queryKey: ['habit-logs'] });
@@ -269,7 +269,7 @@ export function useHabitLogs() {
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
             });
-            return res.json() as Promise<Trackbit.ExerciseLog>;
+            return res.json() as Promise<ExerciseLog>;
         },
         onMutate: async (exerciseId) => {
             await queryClient.cancelQueries({ queryKey: ['habit-logs'] });
@@ -540,5 +540,3 @@ export function useHabitLogs() {
         deleteSet: deleteSet.mutate,
     };
 }
-
-

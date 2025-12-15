@@ -1,9 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Trackbit } from '../../../types/trackbit'
+import { Exercise as TrackbitExercise } from 'trackbit-types';
 
 const API_URL = 'http://localhost:3000/api/exercises';
 
-interface Exercise extends Trackbit.Exercise {
+interface Exercise extends TrackbitExercise {
     lastSetId: number;
     lastSetWeight: number;
     lastSetReps: number;

@@ -2,7 +2,7 @@ import { Activity, CalendarDays, ChevronUp, ChevronDown, ChevronLeft, ChevronRig
 import { formatDate } from "./utils";
 import { mapValueToCSSrgb } from "../../lib/colorUtils";
 import { useHabitLogs } from "@/hooks/use-habit-logs";
-import { Trackbit } from "../../../../types/trackbit";
+import { ColorStop } from "trackbit-types";
 
 interface HeatmapProps {
     weeks: Date[][];
@@ -30,7 +30,7 @@ export const Heatmap = ({
 
     // 1. Color Logic
     const dailyTarget = currentHabit?.dailyGoal || 1;
-    const palette: Trackbit.ColorStop[] = currentHabit?.colorStops || [
+    const palette: ColorStop[] = currentHabit?.colorStops || [
         { position: 0, color: [241, 245, 249] },
         { position: 1, color: [16, 185, 129] }
     ];

@@ -8,9 +8,9 @@ import { formatDate, getCalendarDates } from './utils';
 import { Heatmap } from './Heatmap';
 import { Stats } from './Stats';
 import { DayLog } from './DetailsPanel';
-import { mapValueToColor } from '@/lib/colorUtils';
+import { mapValueToColor, mapValueToCSSrgb } from '@/lib/colorUtils';
 import { Button } from '@/components/ui/button';
-import { Trackbit } from '../../../../types/trackbit';
+import { ColorStop } from 'trackbit-types';
 
 
 // Helper function to map habit icon string to Lucide component
@@ -112,7 +112,7 @@ const HabitTracker = () => {
 
 export default HabitTracker;
 
-const getColorAtOne = (colorStops: Trackbit.ColorStop[]) => {
+const getColorAtOne = (colorStops: ColorStop[]) => {
   const [r, g, b] = mapValueToColor(1, 0, 1, colorStops);
   //TODO: return text color in order to make sure it has enough contrast
   return `rgb(${r}, ${g}, ${b})`;
