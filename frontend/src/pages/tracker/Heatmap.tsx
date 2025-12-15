@@ -150,7 +150,7 @@ export const Heatmap = ({
                 <div className="flex gap-2 min-w-max">
 
                     {/* Y-Axis Labels (Weekdays) */}
-                    <div className="flex flex-col justify-end gap-[5px] pt-6 pb-0.5 pr-2 text-[10px] font-bold text-muted-foreground leading-[12px]">
+                    <div className="flex flex-col justify-end gap-1.25 pt-6 pb-0.5 pr-2 text-[10px] font-bold text-muted-foreground leading-3">
                         {getDayLabels().map((label, i) => (
                             <span key={i} className="h-3">{label}</span>
                         ))}

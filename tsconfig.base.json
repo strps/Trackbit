@@ -1,15 +1,14 @@
 {
     "compilerOptions": {
         "strict": true,
-        "baseUrl": ".",
-        "paths": {
-            "backend/*": [
-                "./backend/*"
-            ]
-        },
-        "typeRoots": [
-            "./types",
-            "./node_modules/@types"
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "esModuleInterop": true,
+        "resolveJsonModule": true,
+        "moduleResolution": "node16", // Consistent base; overrides can adjust
+        "target": "ES2022",
+        "lib": [
+            "ES2022"
         ]
     },
     "include": [

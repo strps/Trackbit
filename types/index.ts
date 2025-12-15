@@ -1,3 +1,5 @@
+export * from "../backend/src/db/entitiesTypes";
+
 export interface ColorStop {
     position: number;
     color: [number, number, number];

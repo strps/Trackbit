@@ -1,0 +1,4 @@
+packages:
+  - 'backend'
+  - 'frontend'
+  - 'types'  # This includes your trackbit-types package
