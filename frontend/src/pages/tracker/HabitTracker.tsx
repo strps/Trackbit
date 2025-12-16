@@ -46,19 +46,6 @@ const HabitTracker = () => {
     return w;
   }, [calendarDates]);
 
-  const stats = useMemo(() => {
-    if (!selectedHabitId) return { currentStreak: 0, totalCount: 0 };
-    let count = 0;
-    // The type of 'v' is 'EnhancedDayLog', which cannot be directly added to a number.
-    // Assuming 'v' has a 'rating' property for simple habits or 'exerciseSessions' for complex habits.
-    Object.values(logsMap).forEach(v => {
-      count += v.rating || v.exerciseSessions?.length || 0;
-    });
-    // Streak calculation is complex with TanStack Query and dates, simplified for MVP
-    return { currentStreak: 0, totalCount: count };
-  }, [logsMap, selectedHabitId]);
-
-
   if (isLoading) return <div className="p-8 text-center">Loading Tracker Data...</div>;
 
   if (Object.keys(habitsWithLogs).length === 0) return (
@@ -96,7 +83,7 @@ const HabitTracker = () => {
           </div>
         </div>
 
-        <Stats stats={stats} activeHabit={currentHabit} />
+        <Stats />
 
         <Heatmap
           weeks={weeks}

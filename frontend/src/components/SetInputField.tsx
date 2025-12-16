@@ -34,7 +34,8 @@ export const SetInputField = ({ value, onChange, placeholder, isReps }: SetInput
                 <button
                     onClick={decrement}
                     tabIndex={-1}
-                    className="flex-none w-5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors disabled:opacity-50 flex items-center justify-center border-r border-slate-300 dark:border-slate-600" disabled={value <= 0}
+                    disabled={(value || 0) <= 0}
+                    className="flex-none w-5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors disabled:opacity-50 flex items-center justify-center border-r border-slate-300 dark:border-slate-600"
                 >
                     <Minus className={`w-2 h-2 ${isReps ? 'text-blue-500' : 'text-slate-500'}`} />
                 </button>

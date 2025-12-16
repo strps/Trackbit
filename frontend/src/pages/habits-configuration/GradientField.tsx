@@ -3,12 +3,12 @@ import { Check } from 'lucide-react';
 import { gradientToCSS, mapValueToColor, mapValueToCSSrgb } from '../../lib/colorUtils';
 import { GradientPicker } from './GradientPicker';
 import { BigButton } from '@/components/BigButton';
-import { Trackbit } from '../../../../types/trackbit';
+import { ColorStop } from 'trackbit-types';
 
 
 type Preset = {
     label: string;
-    stops: Trackbit.ColorStop[];
+    stops: ColorStop[];
 };
 
 
@@ -75,8 +75,8 @@ export const GRADIENT_PRESETS: Record<string, Preset> = {
 
 
 interface GradientPickerProps {
-    value: Trackbit.ColorStop[];
-    onChange: (stops: Trackbit.ColorStop[]) => void;
+    value: ColorStop[];
+    onChange: (stops: ColorStop[]) => void;
 }
 
 // --- 2. The Component ---

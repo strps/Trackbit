@@ -187,7 +187,7 @@ export const Heatmap = ({
                                             return <div key={dStr} className="w-3 h-3" />;
                                         }
 
-                                        const backgroundColor = getColorForValue(val);
+                                        const backgroundColor = getColorForValue(val || 0);
 
                                         return (
                                             <div

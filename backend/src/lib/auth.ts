@@ -3,6 +3,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import db from "../db/db";
 import { user } from "../db/schema/user";
 import { account, session, verification } from "../db/schema/auth";
+console.log(process.env.TRUSTED_ORIGINS);
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -24,5 +25,6 @@ export const auth = betterAuth({
   basePath: "/api/auth",
 
   // Allow cross-origin requests from your Frontend
-  trustedOrigins: process.env.TRUSTED_ORIGINS?.split(','),
+  trustedOrigins: process.env.TRUSTED_ORIGINS?.split(',') || ["http://localhost:5173"],
+
 });

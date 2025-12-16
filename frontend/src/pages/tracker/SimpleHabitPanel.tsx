@@ -64,7 +64,7 @@ export const SimpleHabitPanel = () => {
                         )}
                     </h3>
                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                        {value} / {goal} {activeHabit.type === 'complex' ? 'sessions' : 'units'} completed
+                        {value} / {goal} {activeHabit!.type === 'complex' ? 'sessions' : 'units'} completed
                     </p>
                 </div>
 

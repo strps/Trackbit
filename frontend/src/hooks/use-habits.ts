@@ -1,11 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Trackbit } from '../../../types/trackbit';
+import { Habit, InsertHabit } from 'trackbit-types';
 
 const API_URL = 'http://localhost:3000/api/habits';
 
 // --- Fetcher Functions ---
 
-const fetchHabits = async (): Promise<Trackbit.Habit[]> => {
+const fetchHabits = async (): Promise<Habit[]> => {
   const res = await fetch(API_URL, {
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include' // Important for Better-Auth cookies
@@ -14,7 +14,7 @@ const fetchHabits = async (): Promise<Trackbit.Habit[]> => {
   return res.json();
 };
 
-const createHabit = async (newHabit: Omit<Trackbit.Habit, 'id' | 'createdAt'>) => {
+const createHabit = async (newHabit: Omit<Habit, 'id' | 'createdAt'>) => {
   const res = await fetch(API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -34,7 +34,7 @@ const deleteHabit = async (id: number) => {
   return res.json();
 };
 
-const updateHabit = async (habit: Trackbit.Habit) => {
+const updateHabit = async (habit: Habit) => {
   console.log(habit)
   const res = await fetch(`${API_URL}/${habit.id}`, {
     method: 'PUT',
@@ -67,11 +67,11 @@ export function useHabits() {
       await queryClient.cancelQueries({ queryKey: ['habits'] });
 
       // Snapshot previous value
-      const previousHabits = queryClient.getQueryData<Trackbit.Habit[]>(['habits']);
+      const previousHabits = queryClient.getQueryData<Habit[]>(['habits']);
 
       // Optimistically update to the new value
       // We create a fake temp ID just for the UI render
-      queryClient.setQueryData(['habits'], (old: Omit<Trackbit.Habit, 'createdAt'>[] = []) => [
+      queryClient.setQueryData(['habits'], (old: Omit<Habit, 'createdAt'>[] = []) => [
         ...old,
         { ...newHabit, id: Math.random() },
       ]);
@@ -95,9 +95,9 @@ export function useHabits() {
     mutationFn: deleteHabit,
     onMutate: async (habitId) => {
       await queryClient.cancelQueries({ queryKey: ['habits'] });
-      const previousHabits = queryClient.getQueryData<Trackbit.Habit[]>(['habits']);
+      const previousHabits = queryClient.getQueryData<Habit[]>(['habits']);
 
-      queryClient.setQueryData(['habits'], (old: Trackbit.Habit[] = []) =>
+      queryClient.setQueryData(['habits'], (old: Habit[] = []) =>
         old.filter(h => h.id !== habitId)
       );
 
@@ -118,9 +118,9 @@ export function useHabits() {
     mutationFn: updateHabit,
     onMutate: async (updatedHabit) => {
       await queryClient.cancelQueries({ queryKey: ['habits'] });
-      const previousHabits = queryClient.getQueryData<Trackbit.Habit[]>(['habits']);
+      const previousHabits = queryClient.getQueryData<Habit[]>(['habits']);
 
-      queryClient.setQueryData(['habits'], (old: Trackbit.Habit[] = []) =>
+      queryClient.setQueryData(['habits'], (old: Habit[] = []) =>
         old.map(h => h.id === updatedHabit.id ? updatedHabit : h)
       );
 

@@ -9,7 +9,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
 import { OptimisticExerciseSession, OptimisticExerciseSet, useHabitLogs } from "@/hooks/use-habit-logs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { D } from "node_modules/better-auth/dist/index--CrC0_x3.mjs";
 
 
 export const ExerciseSessionPanel = () => {
@@ -255,7 +254,7 @@ const AddExercisePicker = () => {
                         <ChevronDown className="w-4 h-4 ml-2" />
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[340px] p-0" align="center" sideOffset={16} onOpenAutoFocus={(e) => e.preventDefault()}>
+                <PopoverContent className="w-85 p-0" align="center" sideOffset={16} onOpenAutoFocus={(e) => e.preventDefault()}>
                     <div className="p-3 border-b border-slate-100 dark:border-slate-800">
                         <div className="relative">
                             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
@@ -268,7 +267,7 @@ const AddExercisePicker = () => {
                             />
                         </div>
                     </div>
-                    <ScrollArea className="h-[280px]">
+                    <ScrollArea className="h-70">
                         <div className="p-1">
                             {filtered.length === 0 ? (
                                 <div className="p-8 text-center">

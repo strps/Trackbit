@@ -5,13 +5,9 @@
         "module": "commonjs",
         "moduleResolution": "node",
         "outDir": "./dist",
-        "rootDir": "./src",
+        "rootDir": "..",
         "types": [
             "node"
         ]
     },
-    "include": [
-        "src/**/*",
-        "../types/**/*" // For shared types package
-    ]
 }

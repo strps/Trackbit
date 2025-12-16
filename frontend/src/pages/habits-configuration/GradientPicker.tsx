@@ -11,11 +11,11 @@ import { Trash2, Plus } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { CollapsibleSection } from "../../components/Collapsible";
 import { bigButtonSelectedClassName } from "@/components/BigButton";
-import { Trackbit } from "../../../../types/trackbit";
+import { ColorStop } from 'trackbit-types';
 
 interface GradientPickerProps {
-    value?: Trackbit.ColorStop[];
-    onChange?: (stops: Trackbit.ColorStop[]) => void;
+    value?: ColorStop[];
+    onChange?: (stops: ColorStop[]) => void;
     isActive?: boolean;
     onClick?: () => void;
 }
@@ -26,7 +26,7 @@ export function GradientPicker({ value, onChange, isActive, onClick }: GradientP
     const containerRef = useRef<HTMLDivElement>(null);
 
     // Default state
-    const [localStops, setLocalStops] = useState<Trackbit.ColorStop[]>([
+    const [localStops, setLocalStops] = useState<ColorStop[]>([
         { position: 0, color: [255, 0, 0] },
         { position: 0.5, color: [255, 225, 0] },
         { position: 1, color: [12, 148, 62] }
@@ -40,7 +40,7 @@ export function GradientPicker({ value, onChange, isActive, onClick }: GradientP
     const stops = value || localStops;
 
     // Internal helper to update state
-    const updateStops = (newStops: Trackbit.ColorStop[]) => {
+    const updateStops = (newStops: ColorStop[]) => {
         if (!value) setLocalStops(newStops);
         if (isActive) onChange?.(newStops)
     };

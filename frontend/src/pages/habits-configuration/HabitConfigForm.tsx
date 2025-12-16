@@ -9,12 +9,9 @@ import { Field, RangeField, TextField } from "@/components/Field";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import { useHabits } from "@/hooks/use-habits";
-import { Trackbit } from "../../../../types/trackbit";
+import { Habit, InsertHabit } from "trackbit-types";
 
-interface HabitConfigProps {
-    isEditing: boolean;
-    habit?: Trackbit.Habit | null;
-}
+
 
 const TRACKING_TYPES = [
     {
@@ -45,8 +42,8 @@ const formSchema = z.object({
         .max(50, "Name should not exceed 50 characters long"),
 
 
-    description: z.string().optional(),
-    type: z.enum(["simple", "complex", "negative"]),
+    description: z.string().optional().nullable(),
+    type: z.enum(["simple", "complex", "negative"]).optional(),
     icon: z.string().optional(),
     colorStops: z.array(
         z.object({
@@ -58,14 +55,20 @@ const formSchema = z.object({
     weeklyGoal: z.number().min(1).max(7),
 });
 
-const defaultValues: Omit<Trackbit.Habit, 'id' | 'createdAt' | 'userId'> = {
+const defaultValues = {
     name: "",
-    description: "",
-    type: "simple",
+    description: undefined as string | undefined,
+    type: "simple" as const,
     colorStops: GRADIENT_PRESETS.emerald.stops,
     icon: "star",
     dailyGoal: 5,
     weeklyGoal: 7,
+} satisfies z.infer<typeof formSchema>;
+
+
+interface HabitConfigProps {
+    isEditing: boolean;
+    habit?: Habit | null;
 }
 
 export const HabitConfigForm = ({
@@ -82,7 +85,7 @@ export const HabitConfigForm = ({
         defaultValues: {
             name: "",
             description: "",
-            type: "simple" as "simple" | "complex" | "negative",
+            type: "simple",
             colorStops: GRADIENT_PRESETS.emerald.stops,
             icon: "star",
             dailyGoal: 5,
@@ -104,13 +107,13 @@ export const HabitConfigForm = ({
     };
 
 
-    const { habits, isLoading, createHabit, updateHabit, } = useHabits();
+    const { isLoading, createHabit, updateHabit, } = useHabits();
 
-    const onSubmit = (data: Trackbit.Habit) => {
+    const onSubmit = (data: z.infer<typeof formSchema>) => {
         if (!data.id)
-            createHabit(data);
+            createHabit(data as Habit);
         else
-            updateHabit(data);
+            updateHabit(data as Habit);
 
     };
 

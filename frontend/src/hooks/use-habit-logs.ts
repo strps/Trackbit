@@ -14,7 +14,7 @@ type OptimisticExerciseLog = ExerciseLog & {
     exerciseSets: OptimisticExerciseSet[];
 };
 
-export type OptimisticExerciseSession = Trackbit.ExerciseSession & {
+export type OptimisticExerciseSession = ExerciseSession & {
     exerciseLogs: OptimisticExerciseLog[];
 };
 
@@ -38,7 +38,7 @@ const fetchHistory = async (): Promise<Record<number, HabitWithLogs>> => {
 
     const habitsObj: Record<number, HabitWithLogs> = {};
 
-    data.forEach((habit: Trackbit.Habit & { dayLogs?: any[] }) => {
+    data.forEach((habit: Habit & { dayLogs?: any[] }) => {
         const dayLogsMap: Record<string, EnhancedDayLog> = {};
         if (habit.dayLogs) {
             habit.dayLogs.forEach((dl: any) => {
@@ -294,7 +294,7 @@ export function useHabitLogs() {
         onSuccess: (data, _variables, context) => {
             updateCache((newData) => {
                 const session = getCurrentSession(newData);
-                const log = session?.exerciseLogs.find((l) => 'tempId' in l && l.tempId === context.tempId);
+                const log = session?.exerciseLogs.find((l) => 'tempId' in l && l.tempId === context!.tempId);
                 if (log) {
                     Object.assign(log, data);
                     delete (log as any).tempId;
@@ -363,7 +363,7 @@ export function useHabitLogs() {
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
             });
-            return res.json() as Promise<Trackbit.ExerciseSet>;
+            return res.json() as Promise<ExerciseSet>;
         },
         onMutate: async (exerciseLog) => {
             await queryClient.cancelQueries({ queryKey: ['habit-logs'] });
@@ -390,7 +390,7 @@ export function useHabitLogs() {
                 const session = getCurrentSession(newData);
                 const set = session?.exerciseLogs
                     .flatMap((l) => l.exerciseSets)
-                    .find((s) => 'tempId' in s && s.tempId === context.tempSetId);
+                    .find((s) => 'tempId' in s && s.tempId === context!.tempSetId);
                 if (set) {
                     Object.assign(set, data);
                     delete (set as any).tempId;
@@ -424,7 +424,7 @@ export function useHabitLogs() {
                 credentials: 'include',
             });
 
-            return res.json() as Promise<Trackbit.ExerciseSet>;
+            return res.json() as Promise<ExerciseSet>;
         },
 
         onMutate: async (exerciseSet) => {

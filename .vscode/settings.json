@@ -5,6 +5,7 @@
     "editor.defaultFormatter": "ms-python.python"
   },
   "python.formatting.provider": "black",
+  "typescript.tsserver.experimental.enableProjectDiagnostics": true,
   "workbench.editor.showTabs": "multiple",
   "zenMode.hideLineNumbers": false,
   "[jsonc]": {

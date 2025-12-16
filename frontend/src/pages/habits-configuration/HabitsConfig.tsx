@@ -3,7 +3,7 @@ import { Settings } from 'lucide-react';
 import { useHabits } from '@/hooks/use-habits';
 import { HabitList } from './HabitsList';
 import { HabitConfigForm } from './HabitConfigForm';
-import { Trackbit } from "../../../../types/trackbit";
+import { Habit } from "trackbit-types";
 
 const HabitConfig = () => {
     // Mock initial state - in real app, this would come from your database
@@ -18,7 +18,7 @@ const HabitConfig = () => {
         setIsEditing(true);
     };
 
-    const editHabit = (habit: Trackbit.Habit) => {
+    const editHabit = (habit: Habit) => {
         setActiveHabitId(habit.id);
         setIsEditing(true);
     };

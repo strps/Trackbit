@@ -3,12 +3,12 @@ import { ICONS } from "./IconField";
 import { mapValueToCSSrgb } from "@/lib/colorUtils";
 import { Badge } from "@/components/ui/badge";
 import { BigButton } from "@/components/BigButton";
-import { Trackbit } from "../../../../types/trackbit";
+import { Habit } from "trackbit-types";
 
 interface HabitListProps {
-    habits: Trackbit.Habit[];
+    habits: Habit[];
     activeHabitId?: number | null;
-    editHabit: (habit: Trackbit.Habit) => void;
+    editHabit: (habit: Habit) => void;
     handleDelete: (id: number, e: React.MouseEvent<HTMLButtonElement>) => void;
     startNewHabit: () => void
 }

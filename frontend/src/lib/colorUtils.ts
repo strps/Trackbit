@@ -1,4 +1,4 @@
-import { Trackbit } from "../../../types/trackbit";
+import { ColorStop } from "trackbit-types";
 
 
 /**
@@ -21,7 +21,7 @@ export function mapValueToColor(
     value: number,
     minValue: number = 0,
     maxValue: number = 1,
-    stops: Trackbit.ColorStop[]
+    stops: ColorStop[]
 ): [number, number, number] {
     const normalizedPosition = (value - minValue) / (maxValue - minValue);
     const clampedPosition = Math.max(0, Math.min(1, normalizedPosition));
@@ -33,8 +33,8 @@ export function mapValueToColor(
         return stops[stops.length - 1].color;
     }
 
-    let startStop: Trackbit.ColorStop | undefined;
-    let endStop: Trackbit.ColorStop | undefined;
+    let startStop: ColorStop | undefined;
+    let endStop: ColorStop | undefined;
 
     for (let i = 0; i < stops.length - 1; i++) {
         if (clampedPosition >= stops[i].position &&
@@ -61,7 +61,7 @@ export function mapValueToColorOrdered(
     value: number,
     minValue: number = 0,
     maxValue: number = 1,
-    stops: Trackbit.ColorStop[]
+    stops: ColorStop[]
 ): [number, number, number] {
     const normalizedPosition = (value - minValue) / (maxValue - minValue);
     const clampedPosition = Math.max(0, Math.min(1, normalizedPosition));
@@ -75,8 +75,8 @@ export function mapValueToColorOrdered(
         return sortedStops[sortedStops.length - 1].color;
     }
 
-    let startStop: Trackbit.ColorStop | undefined;
-    let endStop: Trackbit.ColorStop | undefined;
+    let startStop: ColorStop | undefined;
+    let endStop: ColorStop | undefined;
 
     for (let i = 0; i < sortedStops.length - 1; i++) {
         if (clampedPosition >= sortedStops[i].position &&
@@ -124,7 +124,7 @@ export function mapValueToCSSrgb(
     value: number,
     minValue: number = 0,
     maxValue: number = 1,
-    stops: Trackbit.ColorStop[]) {
+    stops: ColorStop[]) {
     const color = mapValueToColor(value, minValue, maxValue, stops);
     return `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
 }
@@ -156,7 +156,7 @@ export function rgbToHex(r: number, g: number, b: number): string {
  * element.style.background = css;
  */
 export function gradientToCSS(
-    stops: Trackbit.ColorStop[],
+    stops: ColorStop[],
     direction: string = 'to right'
 ): string {
     const colorStops = stops.map(stop => {
@@ -182,7 +182,7 @@ export function gradientToCSS(
  * element.style.background = css;
  */
 export function gradientToCSSOrdered(
-    stops: Trackbit.ColorStop[],
+    stops: ColorStop[],
     direction: string = 'to right'
 ): string {
 
@@ -208,7 +208,7 @@ export function gradientToCSSOrdered(
  * @returns CSS linear-gradient string with hex colors
  */
 export function gradientToCSSHex(
-    stops: Trackbit.ColorStop[],
+    stops: ColorStop[],
     direction: string = 'to right'
 ): string {
     const colorStops = stops.map(stop => {
