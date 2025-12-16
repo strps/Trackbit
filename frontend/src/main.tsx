@@ -14,6 +14,7 @@ import './index.css'
 import ViveroHomePage from './pages/vivero';
 import NotFound from './pages/404.js';
 import ErrorPage from './pages/Error.js';
+import Landing from './pages/Landing';
 
 
 
@@ -22,7 +23,7 @@ const router = createBrowserRouter([
     path: "/",
     element: <RootLayout />, // <--- This is the wrapper we just built
     children: [
-      { index: true, element: <HabitTracker /> }, // 'index' means this renders at "/"
+      { index: true, element: <Landing /> }, // 'index' means this renders at "/"
       { path: "habits", element: <HabitConfig /> },
       { path: "dashboard", element: <HabitTracker /> },
       { path: "analytics", element: <div className="p-4">Analytics Page</div> },

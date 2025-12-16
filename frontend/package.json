@@ -1,5 +1,6 @@
 {
   "name": "trackbit-frontend",
+  "packageManager": "pnpm@10.24.0",
   "private": true,
   "version": "0.0.0",
   "type": "module",
