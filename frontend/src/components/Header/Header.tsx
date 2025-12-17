@@ -120,7 +120,7 @@ const UserNav = () => {
 
   const handleLogout = async () => {
     await signOut();
-    navigate('/auth');
+    navigate('/');
   };
 
   // Loading State
@@ -131,7 +131,7 @@ const UserNav = () => {
   // Not Logged In State
   if (!user) {
     return (
-      <Button variant="outline" onClick={() => navigate('/auth')}>
+      <Button variant="outline" onClick={() => navigate('/signin')}>
         Sign In
       </Button>
     );
@@ -191,7 +191,7 @@ const UserNav = () => {
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/20">
+        <DropdownMenuItem onClick={handleLogout}>
           <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>
         </DropdownMenuItem>

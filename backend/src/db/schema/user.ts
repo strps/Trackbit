@@ -4,6 +4,7 @@ import { habits } from "./habits";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
+  role: text("role").default("user").notNull(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").notNull(),

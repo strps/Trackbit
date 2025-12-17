@@ -2,10 +2,8 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import HabitConfig from './pages/habits-configuration/HabitsConfig'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import RootLayout from './layouts/RootLayout';
+import AppLayout from './layouts/AppLayout';
 import HabitTracker from './pages/tracker/HabitTracker';
-import AuthLayout from './layouts/AuthLayout';
-import AuthPage from './pages/auth/AuthPage';
 import AccountSettings from './pages/auth/AccountSettings';
 import { ThemeProvider } from './providers/theme-provider';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -15,30 +13,38 @@ import ViveroHomePage from './pages/vivero';
 import NotFound from './pages/404.js';
 import ErrorPage from './pages/Error.js';
 import Landing from './pages/Landing';
-
-
+import SignInPage from './pages/auth/SignIn';
+import SignUpPage from './pages/auth/SignUp';
+import ForgotPasswordPage from './pages/auth/ForgotPassword';
+import AuthLayout from './layouts/AuthLayout';
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <RootLayout />, // <--- This is the wrapper we just built
+    element: <AppLayout isPublic />,
     children: [
       { index: true, element: <Landing /> }, // 'index' means this renders at "/"
+      { path: "vivero", element: <ViveroHomePage /> },
+    ],
+  },
+  {
+    path: "/",
+    element: <AppLayout />,
+    children: [
       { path: "habits", element: <HabitConfig /> },
       { path: "dashboard", element: <HabitTracker /> },
       { path: "analytics", element: <div className="p-4">Analytics Page</div> },
       { path: "account-settings", element: <AccountSettings /> },
       { path: "exercises", element: <ExerciseLibrary /> },
-      { path: "vivero", element: <ViveroHomePage /> },
-
-    ],
+    ]
   },
   {
-    path: "/auth",
+    path: "/",
     element: <AuthLayout />,
     children: [
-      { index: true, element: <AuthPage /> },
-      { path: "login", element: <AuthPage /> },
+      { path: "signin", element: <SignInPage /> },
+      { path: "signup", element: <SignUpPage /> },
+      { path: "forgot", element: <ForgotPasswordPage /> },
     ]
   },
   {

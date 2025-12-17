@@ -4,7 +4,7 @@ import { relations } from 'drizzle-orm';
 import { exerciseSessions } from './exercises';
 import { ColorStop } from 'trackbit-types'
 
-export const habitTypeEnum = pgEnum('habit_type', ['simple', 'complex', 'negative'])
+export const habitTypeEnum = pgEnum('habit_type', ['simple', 'complex', 'negative', 'timed'])
 
 //Habits
 export const habits = pgTable('habits', {
