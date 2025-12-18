@@ -8,7 +8,7 @@ export const exercises = pgTable('exercises', {
     id: serial('id').primaryKey(),
 
     // If NULL, it's a "System Default" exercise. If set, it's a user's custom exercise.
-    userId: text('user_id').references(() => user.id),
+    userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }),
 
     name: text('name').notNull(), // "Bench Press", "Running"
     category: text('category').notNull().default('strength'), // 'strength', 'cardio', 'flexibility'

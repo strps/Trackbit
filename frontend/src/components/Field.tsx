@@ -2,6 +2,27 @@ import { Controller, ControllerFieldState, ControllerRenderProps, FieldValues, U
 import { Field as SField, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "./ui/input";
 import { Slider } from "./ui/slider";
+import { Button } from "./ui/button";
+import { Eye, EyeOff } from "lucide-react";
+import { useState } from "react";
+
+/*
+Areas for Potential Improvement
+
+Aria Attribute Handling:
+The prop is named "aria-valid" (a string literal key), which is unconventional and potentially confusing. A more standard approach would be to use aria-invalid={!fieldState.invalid} directly on the input component, as most screen readers expect aria-invalid. The current inversion (aria-invalid={!ariaValid}) works but adds unnecessary complexity.
+
+Error Display Granularity:
+FieldError receives an array of errors (errors={[fieldState.error]}), which suggests support for multiple errors per field. However, React Hook Form typically provides a single error per field unless using advanced validation. Simplifying to a single error object could reduce overhead unless multiple errors are intentionally supported.
+
+Orientation Prop:
+The orientation prop is passed through but not actively used in all child inputs. Ensure that custom inputs (e.g., RangeFieldInput) respect it if horizontal layouts are needed.
+
+ClassName Propagation:
+The className prop is forwarded only to the custom FieldInput, which is appropriate, but consider whether some fields might need additional wrapper classes for layout consistency.
+
+ */
+
 
 interface InputProps {
     id: string;
@@ -12,6 +33,7 @@ interface InputProps {
     fieldState: ControllerFieldState;
     formState: UseFormStateReturn<any>
     className?: string;
+    disabled?: boolean;
 }
 
 interface FieldProps {
@@ -23,9 +45,10 @@ interface FieldProps {
     description?: string;
     orientation?: "horizontal" | "vertical" | "responsive" | null;
     className?: string;
+    disabled?: boolean;
 }
 
-export const Field = ({ name, label, form, placeholder, fieldInput: FieldInput, description, orientation, className }: FieldProps) => {
+export const Field = ({ name, label, form, placeholder, fieldInput: FieldInput, description, orientation, className, disabled }: FieldProps) => {
 
     return (
 
@@ -46,6 +69,7 @@ export const Field = ({ name, label, form, placeholder, fieldInput: FieldInput, 
                         fieldState={fieldState}
                         formState={formState}
                         className={className}
+                        disabled={disabled}
                     />
                     {description && <FieldDescription>
                         {description}
@@ -146,3 +170,33 @@ export const RangeFieldInput = ({
         </div>
     );
 };
+
+
+interface PasswordFieldInputProps extends InputProps { }
+
+export const PasswordFieldInput = ({ id, placeholder, "aria-valid": ariaValid, field, className }: PasswordFieldInputProps) => {
+    const [showPassword, setShowPassword] = useState(false);
+    return (
+        <div className="relative">
+            <Input
+                id={id}
+                type={showPassword ? "text" : "password"}
+                placeholder={placeholder}
+                aria-invalid={!ariaValid}
+                className={className}
+                {...field}
+            />
+            <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 top-0"
+                onClick={() => setShowPassword(!showPassword)}
+            >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </Button>
+        </div>
+    );
+};
+
+export const PasswordField = ({ ...props }: Omit<FieldProps, "fieldInput">) => <Field fieldInput={PasswordFieldInput} {...props} />;

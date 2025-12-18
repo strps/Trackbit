@@ -9,7 +9,7 @@ export const habitTypeEnum = pgEnum('habit_type', ['simple', 'complex', 'negativ
 //Habits
 export const habits = pgTable('habits', {
   id: serial('id').primaryKey(),
-  userId: text('user_id').references(() => user.id).notNull(),
+  userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }).notNull(),
   name: text('name').notNull(),
   description: text('description'),
   // 'simple', 'complex', 'negative'

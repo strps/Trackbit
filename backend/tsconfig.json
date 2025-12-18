@@ -4,8 +4,10 @@
         "target": "ES2022",
         "module": "node20",
         "moduleResolution": "nodenext",
+        "jsx": "react-jsx",
+        "jsxImportSource": "react",
         "outDir": "./dist",
-        "rootDir": "..",
+        "rootDir": ".",
         "types": [
             "node"
         ]

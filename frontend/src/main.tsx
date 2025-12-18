@@ -17,6 +17,7 @@ import SignInPage from './pages/auth/SignIn';
 import SignUpPage from './pages/auth/SignUp';
 import ForgotPasswordPage from './pages/auth/ForgotPassword';
 import AuthLayout from './layouts/AuthLayout';
+import VerifyEmail from './pages/auth/VerifyEmail';
 
 const router = createBrowserRouter([
   {
@@ -45,6 +46,7 @@ const router = createBrowserRouter([
       { path: "signin", element: <SignInPage /> },
       { path: "signup", element: <SignUpPage /> },
       { path: "forgot", element: <ForgotPasswordPage /> },
+      { path: "verify-email", element: <VerifyEmail /> },
     ]
   },
   {

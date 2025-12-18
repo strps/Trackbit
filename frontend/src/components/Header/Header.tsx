@@ -20,7 +20,6 @@ const navItems: NavItem[] = [
   { title: "Habits", href: "/habits", icon: ListTodo },
   { title: "Analytics", href: "/analytics", icon: BarChart3 },
   { title: "Exercises", href: "/exercises", icon: BarChart3 },
-  { title: "Tracker", href: "/tracker", icon: BarChart3 },
 
 ];
 

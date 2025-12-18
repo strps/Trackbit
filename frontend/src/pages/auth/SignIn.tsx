@@ -99,7 +99,7 @@ export default function SignInPage() {
                     <CardFooter className="flex flex-col space-y-4">
                         <Button variant="link" onClick={() => navigate('/forgot')}>Forgot password?</Button>
                         <p className="text-center text-sm text-muted-foreground">
-                            Don't have an account? <Button variant="link" onClick={() => navigate('/signup')}>Sign up</Button>
+                            Don't have an account? <Button variant="link" onClick={() => navigate('/signup?invite=true')}>Sign up</Button>
                         </p>
                     </CardFooter>
                 </Card>

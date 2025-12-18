@@ -1,56 +1,69 @@
-import React, { useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardFooter,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import React from 'react';
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { authClient } from '@/lib/auth-client';
-import { GoogleIcon, GithubIcon } from './Icons'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { TextField, PasswordField } from "@/components/Field"; // Adjust import if PasswordField is separate
+import { UseFormReturn } from "react-hook-form";
+import { Alert, AlertDescription } from "@/components/ui/alert"; // Assuming shadcn alert exists
+import { GoogleIcon, GithubIcon } from './Icons';
+
+const signUpSchema = z.object({
+    name: z.string().min(1, "Full name is required"),
+    email: z.string().email("Invalid email address"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    inviteCode: z.string().optional(),
+});
+
+type SignUpFormData = z.infer<typeof signUpSchema>;
 
 export default function SignUpPage() {
     const navigate = useNavigate();
-
     const [searchParams] = useSearchParams();
-
     const urlInviteCode = searchParams.get('code') || '';
     const showInviteField = searchParams.get('invite') === 'true';
 
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [showPassword, setShowPassword] = useState(false);
-    const [formData, setFormData] = useState({
-        name: '',
-        email: '',
-        password: '',
-        inviteCode: urlInviteCode,
+    const [isLoading, setIsLoading] = React.useState(false);
+    const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
+    const [error, setError] = React.useState<string | null>(null);
+
+    const form: UseFormReturn<SignUpFormData> = useForm<SignUpFormData>({
+        resolver: zodResolver(signUpSchema),
+        defaultValues: {
+            name: '',
+            email: '',
+            password: '',
+            inviteCode: urlInviteCode,
+        },
     });
-    //TODO: change this form to use react hook form
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!formData.inviteCode.trim()) {
+
+    const onSubmit = async (data: SignUpFormData) => {
+        if (showInviteField && !data.inviteCode?.trim()) {
             setError('Invite code is required for registration.');
             return;
         }
+
         setIsLoading(true);
         setError(null);
+        setSuccessMessage(null);
 
         try {
             await authClient.signUp.email({
-                name: formData.name,
-                email: formData.email,
-                password: formData.password,
-                inviteCode: formData.inviteCode,
+                name: data.name,
+                email: data.email,
+                password: data.password,
+                inviteCode: data.inviteCode,
             }, {
-                onSuccess: () => navigate('/dashboard'),
-                onError: (ctx) => setError(ctx.error.message),
+                onSuccess: () => {
+                    setSuccessMessage("Account created successfully! Please check your email for a verification link to activate your account.");
+                    form.reset();
+                },
+                onError: (ctx) => {
+                    setError(ctx.error.message || 'An error occurred during registration.');
+                },
             });
         } catch (err: any) {
             setError(err.message || 'An unexpected error occurred');
@@ -60,89 +73,62 @@ export default function SignUpPage() {
     };
 
     const handleSocial = async (provider: 'google' | 'github') => {
-        // For social signup, you may prompt for inviteCode separately or pass via state
-        // Here we assume inviteCode is collected in the form (recommended for consistency)
-        if (!formData.inviteCode.trim()) {
+        const inviteCode = form.getValues().inviteCode;
+        if (showInviteField && !inviteCode?.trim()) {
             setError('Invite code is required for registration.');
             return;
         }
         setIsLoading(true);
         await authClient.signIn.social({
             provider,
-            state: JSON.stringify({ inviteCode: formData.inviteCode, callbackURL: '/dashboard' }),
+            additionalData: { inviteCode },
         });
     };
 
     return (
         <div className="min-h-screen flex bg-background">
-            {/* Left: Form */}
             <div className="flex-1 flex items-center justify-center p-6">
                 <Card className="w-full max-w-md">
                     <CardHeader className="space-y-1">
                         <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
-                        <CardDescription>Enter your details below to get started with trackbit</CardDescription>
+                        <CardDescription>Enter your details below to get started with Trackbit</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            {error && <p className="text-destructive text-sm">{error}</p>}
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                            {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+                            {successMessage && <Alert variant="default"><AlertDescription className="text-green-600">{successMessage}</AlertDescription></Alert>}
 
-                            <div className="space-y-2">
-                                <Label htmlFor="name">Full name</Label>
-                                <Input
-                                    id="name"
-                                    placeholder="John Doe"
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    required
+                            <TextField
+                                name="name"
+                                label="Full name"
+                                form={form}
+                                placeholder="John Doe"
+                            />
+
+                            <TextField
+                                name="email"
+                                label="Email"
+                                form={form}
+                                placeholder="name@example.com"
+                            />
+
+                            <PasswordField
+                                name="password"
+                                label="Password"
+                                form={form}
+                                placeholder="••••••••"
+                            />
+
+                            {showInviteField && (
+                                <TextField
+                                    name="inviteCode"
+                                    label={'Invite Code *'}
+                                    form={form}
+                                    placeholder="ABC123XYZ"
+                                    disabled={!!urlInviteCode}
                                 />
-                            </div>
+                            )}
 
-                            <div className="space-y-2">
-                                <Label htmlFor="email">Email</Label>
-                                <Input
-                                    id="email"
-                                    type="email"
-                                    placeholder="name@example.com"
-                                    value={formData.email}
-                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                    required
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="password">Password</Label>
-                                <div className="relative">
-                                    <Input
-                                        id="password"
-                                        type={showPassword ? 'text' : 'password'}
-                                        value={formData.password}
-                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                        required
-                                    />
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        className="absolute right-0 top-0"
-                                        onClick={() => setShowPassword(!showPassword)}
-                                    >
-                                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                    </Button>
-                                </div>
-                            </div>
-                            {showInviteField &&
-                                <div className="space-y-2">
-                                    <Label htmlFor="inviteCode">Invite Code <span className="text-destructive">*</span></Label>
-                                    <Input
-                                        disabled={urlInviteCode != ""}
-                                        id="inviteCode"
-                                        placeholder="ABC123XYZ"
-                                        value={formData.inviteCode}
-                                        onChange={(e) => setFormData({ ...formData, inviteCode: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                            }
                             <Button className="w-full" type="submit" disabled={isLoading}>
                                 {isLoading ? 'Creating account...' : 'Sign up'}
                             </Button>
@@ -156,12 +142,10 @@ export default function SignUpPage() {
 
                             <div className="mt-6 grid grid-cols-2 gap-4">
                                 <Button variant="outline" onClick={() => handleSocial('google')} disabled={isLoading}>
-                                    <GoogleIcon />
-                                    Google
+                                    <GoogleIcon /> Google
                                 </Button>
                                 <Button variant="outline" onClick={() => handleSocial('github')} disabled={isLoading}>
-                                    <GithubIcon />
-                                    GitHub
+                                    <GithubIcon /> GitHub
                                 </Button>
                             </div>
                         </div>
@@ -174,9 +158,8 @@ export default function SignUpPage() {
                 </Card>
             </div>
 
-            {/* Right: Branding – copy from original AuthPage.tsx */}
             <div className="hidden lg:flex w-1/2 bg-muted relative overflow-hidden items-center justify-center">
-                {/* Paste your existing decorative and testimonial content here */}
+                {/* Existing decorative content */}
             </div>
         </div>
     );

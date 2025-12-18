@@ -6,7 +6,7 @@ export const invites = pgTable("invites", {
     id: serial("id").primaryKey(),
     code: text("code").notNull().unique(), // e.g., crypto-random 12-char string
     email: text("email"), // Optional: target specific email
-    invitedBy: text("invited_by").references(() => user.id).notNull(),
+    invitedBy: text("invited_by").references(() => user.id),
     role: text("role").notNull().default("tester"),
     maxUses: integer("max_uses").notNull().default(1),
     uses: integer("uses").notNull().default(0),
