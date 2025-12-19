@@ -1,8 +1,8 @@
 import { generateCrudRouter } from '../lib/generateCrudRouter'; // Adjust path if necessary
-import { exerciseLogs, exercises, exerciseSets } from '../../../../packages/db/src/schema';
+import { exerciseLogs, exercises, exerciseSets } from '../db/schema';
 import { generateCrudSchemas } from '../lib/validationSchemas'; // Adjust path if necessary
 import { z } from 'zod';
-import db from '@trackbit/db';
+import db from "../db/db";
 import { eq, isNull, or, sql, and } from 'drizzle-orm';
 import { Context } from 'hono';
 

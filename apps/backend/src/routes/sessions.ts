@@ -2,10 +2,10 @@
 
 import { generateCrudRouter } from '../lib/generateCrudRouter';
 import { generateCrudSchemas } from '../lib/validationSchemas';
-import { dayLogs, exerciseSessions, habits } from '../../../../packages/db/src/schema';
+import { exerciseSessions, habits } from '../db/schema';
 import { eq } from 'drizzle-orm';
-import db from '@trackbit/db';
-import z from 'zod';
+import db from "../db/db";
+
 
 const sessionSchemas = generateCrudSchemas(exerciseSessions, {
     omitFromCreateUpdate: ['id', 'createdAt'],

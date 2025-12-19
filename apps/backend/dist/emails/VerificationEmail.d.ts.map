@@ -1,0 +1,1 @@
+{"version":3,"file":"VerificationEmail.d.ts","sourceRoot":"","sources":["../../src/emails/VerificationEmail.tsx"],"names":[],"mappings":"AAIA,UAAU,sBAAsB;IAC5B,GAAG,EAAE,MAAM,CAAC;IACZ,QAAQ,CAAC,EAAE,MAAM,CAAC;CACrB;AAED,eAAO,MAAM,iBAAiB,GAAI,mBAA4B,sBAAsB,4CA0CnF,CAAA"}

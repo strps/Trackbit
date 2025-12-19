@@ -3,7 +3,7 @@ import { Check } from 'lucide-react';
 import { gradientToCSS, mapValueToColor, mapValueToCSSrgb } from '../../lib/colorUtils';
 import { GradientPicker } from './GradientPicker';
 import { BigButton } from '@/components/BigButton';
-import { ColorStop } from "@trackbit/db";
+import { ColorStop } from "@trackbit/types";
 
 
 type Preset = {

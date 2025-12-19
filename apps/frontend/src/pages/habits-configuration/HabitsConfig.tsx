@@ -3,7 +3,7 @@ import { Settings } from 'lucide-react';
 import { useHabits } from '@/hooks/use-habits';
 import { HabitList } from './HabitsList';
 import { HabitConfigForm } from './HabitConfigForm';
-import { Habit } from "@trackbit/db";
+import { Habit } from "@trackbit/types";
 
 const HabitConfig = () => {
     const { habits, isLoading, createHabit, updateHabit, deleteHabit } = useHabits();

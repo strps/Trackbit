@@ -4,7 +4,14 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "tsx watch --env-file=.env src/index.ts "
+    "dev": "tsx watch --env-file=.env src/index.ts",
+    "build": "tsc",
+    "db:generate": "pnpm drizzle-kit generate",
+    "db:migrate": "pnpm drizzle-kit migrate",
+    "db:push": "pnpm drizzle-kit push",
+    "db:studio": "pnpm drizzle-kit studio",
+    "db:pull": "pnpm drizzle-kit pull",
+    "db:drop": "pnpm drizzle-kit drop"
   },
   "keywords": [],
   "author": "",
@@ -26,7 +33,7 @@
     "react-email": "^5.0.8",
     "resend": "^6.6.0",
     "@trackbit/hacienda-client": "workspace:*",
-    "@trackbit/db": "workspace:*",
+    "@trackbit/types": "workspace:*",
     "uuid": "^13.0.0",
     "zod": "^4.1.13"
   },

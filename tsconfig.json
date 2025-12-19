@@ -11,7 +11,7 @@
             "path": "./packages/hacienda-client"
         },
         {
-            "path": "./packages/db"
+            "path": "./packages/types"
         }
     ]
 }

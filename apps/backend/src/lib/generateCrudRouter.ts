@@ -1,13 +1,17 @@
-// backend/src/routes/utils/generateCrudRouter.ts (updated with integrated authentication)
+// backend/src/routes/utils/generateCrudRouter.ts (fixed version)
 import { Hono, type Context } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import db from '@trackbit/db';
+import db from "../db/db";
 import { eq } from 'drizzle-orm';
 import type { InferInsertModel, InferSelectModel, Table } from 'drizzle-orm';
 import type { generateCrudSchemas } from './validationSchemas';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth';
-import { AnyPgTable, PgSelectBuilder, PgTable } from 'drizzle-orm/pg-core';
+import { AnyPgTable, PgTable } from 'drizzle-orm/pg-core';
+
+
+// Helper type to extract the id column type
+type IdColumn<T extends AnyPgTable> = T extends { id: infer U } ? U : never;
 
 type CrudRouterOptions<T extends AnyPgTable> = {
     table: T;
@@ -15,41 +19,35 @@ type CrudRouterOptions<T extends AnyPgTable> = {
     ownershipCheck?: (user: any, record: InferSelectModel<T>) => boolean | Promise<boolean>;
     beforeCreate?: (c: Context, data: InferInsertModel<T>) => Promise<InferInsertModel<T>>;
     beforeUpdate?: (c: Context, data: Partial<InferInsertModel<T>>) => Promise<Partial<InferInsertModel<T>>>;
-    /** Override any standard CRUD endpoint with a custom handler */
+    /** Override any standard CRUD endpoint with a custom handler (or array of middleware + handler) */
     overrides?: {
-        list?: Hono['get'] extends (path: '/', ...handlers: infer H) => any ? H[number] : never;
-        get?: Hono['get'] extends (path: '/:id', ...handlers: infer H) => any ? H[number] : never;
-        create?: Hono['post'] extends (path: '/', ...handlers: infer H) => any ? H[number] : never;
-        update?: Hono['patch'] extends (path: '/:id', ...handlers: infer H) => any ? H[number] : never;
-        delete?: Hono['delete'] extends (path: '/:id', ...handlers: infer H) => any ? H[number] : never;
+        list?: Parameters<Hono['get']>[1];
+        get?: Parameters<Hono['get']>[1];
+        create?: Parameters<Hono['post']>[1];
+        update?: Parameters<Hono['patch']>[1];
+        delete?: Parameters<Hono['delete']>[1];
     };
     /** Add completely custom endpoints (path + method + handlers) */
     customEndpoints?: Array<{
         method: 'get' | 'post' | 'put' | 'patch' | 'delete';
         path: string;
-        handlers: any[];
+        handlers: Parameters<Hono['get']>[1];
     }>;
     /** Optional: Skip applying requireAuth middleware (e.g., for public routes) */
     isPublic?: boolean;
 };
 
-
 /**
  * Type guard to check if the provided table has a 'userId' column.
- * This enables safe narrowing of the generic table type T when applying
- * ownership-based filtering in the list endpoint.
  */
-function hasUserIdColumn(table: any): table is { userId: typeof table['id'] } {
-    return 'userId' in table;
+function hasUserIdColumn(table: any): table is { userId: any; id: any } {
+    return 'userId' in table && 'id' in table;
 }
-
 
 /**
  * Generates a standard CRUD router with integrated authentication middleware.
- * 
- * By default, applies requireAuth to all routes. Set `public: true` to skip authentication.
  */
-export function generateCrudRouter<T extends AnyPgTable>({
+export function generateCrudRouter<T extends AnyPgTable & { id: any }>({
     table,
     schemas,
     ownershipCheck,
@@ -59,6 +57,7 @@ export function generateCrudRouter<T extends AnyPgTable>({
     customEndpoints = [],
     isPublic = false,
 }: CrudRouterOptions<T>) {
+
     const router = new Hono();
 
     // Apply authentication middleware unless explicitly public
@@ -66,15 +65,13 @@ export function generateCrudRouter<T extends AnyPgTable>({
         router.use('*', requireAuth);
     }
 
-
     // LIST - GET /
     const listHandler = async (c: Context) => {
         const user = c.get('user');
         let whereClause;
-        if (ownershipCheck && hasUserIdColumn(table)) { // Check if column exists
+        if (ownershipCheck && hasUserIdColumn(table)) {
             whereClause = eq(table.userId, user.id);
         }
-        // Or allow custom where via options if needed
         const records = await db.select().from(table as PgTable).where(whereClause);
         return c.json(records);
     };
@@ -101,7 +98,6 @@ export function generateCrudRouter<T extends AnyPgTable>({
         overrides.get ?? getHandler
     );
 
-
     // CREATE - POST /
     const createHandler = async (c: Context) => {
         const user = c.get('user');
@@ -111,7 +107,7 @@ export function generateCrudRouter<T extends AnyPgTable>({
         return c.json(newRecord, 201);
     };
     if (overrides.create) {
-        router.post('/', overrides.create);
+        router.post('/', ...(Array.isArray(overrides.create) ? overrides.create : [overrides.create]));
     } else {
         router.post('/', zValidator('json', schemas.create), createHandler);
     }
@@ -123,7 +119,6 @@ export function generateCrudRouter<T extends AnyPgTable>({
         let data = c.req.valid('json');
         if (beforeUpdate) data = await beforeUpdate(c, data);
 
-        // Fixed: Use table-based query instead of db.query[tableName]
         const record = await db
             .select()
             .from(table as PgTable)
@@ -144,7 +139,7 @@ export function generateCrudRouter<T extends AnyPgTable>({
     };
 
     if (overrides.update) {
-        router.patch('/:id', ...overrides.update);
+        router.patch('/:id', ...(Array.isArray(overrides.update) ? overrides.update : [overrides.update]));
     } else {
         router.patch(
             '/:id',
@@ -174,8 +169,9 @@ export function generateCrudRouter<T extends AnyPgTable>({
         await db.delete(table).where(eq(table.id, id));
         return c.json({ success: true, id });
     };
+
     if (overrides.delete) {
-        router.delete('/:id', ...overrides.delete);
+        router.delete('/:id', ...(Array.isArray(overrides.delete) ? overrides.delete : [overrides.delete]));
     } else {
         router.delete(
             '/:id',
@@ -186,21 +182,22 @@ export function generateCrudRouter<T extends AnyPgTable>({
 
     // Custom Endpoints
     customEndpoints.forEach(({ method, path, handlers }) => {
+        const handlerArray = Array.isArray(handlers) ? handlers : [handlers];
         switch (method) {
             case 'get':
-                router.get(path, ...handlers);
+                router.get(path, ...handlerArray);
                 break;
             case 'post':
-                router.post(path, ...handlers);
+                router.post(path, ...handlerArray);
                 break;
             case 'put':
-                router.put(path, ...handlers);
+                router.put(path, ...handlerArray);
                 break;
             case 'patch':
-                router.patch(path, ...handlers);
+                router.patch(path, ...handlerArray);
                 break;
             case 'delete':
-                router.delete(path, ...handlers);
+                router.delete(path, ...handlerArray);
                 break;
         }
     });

@@ -1,15 +1,15 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import db from "@trackbit/db";
-import { user } from "../../../../packages/db/src/schema/user";
-import { account, session, verification } from "../../../../packages/db/src/schema/auth";
-import { invites } from "../../../../packages/db/src/schema/invites";
+import { user } from "../db/schema/user";
+import { account, session, verification } from "../db/schema/auth";
+import { invites } from "../db/schema/invites";
 import { lt, gte, eq } from "drizzle-orm";
 import { getOAuthState } from "better-auth/api";
 import { PasswordResetEmail } from "../emails/PasswordReset"
 import { VerificationEmail } from "../emails/VerificationEmail"
 import { sendEmail } from "./email";
 import { jsx } from "react/jsx-runtime";
+import db from "../db/db";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -94,7 +94,7 @@ export const auth = betterAuth({
           }
 
           // For social/OAuth signup: retrieve from state during callback
-          if (ctx.path?.startsWith("/callback/")) {  // Detect OAuth callback route
+          if (ctx?.path?.startsWith("/callback/")) {  // Detect OAuth callback route
             const stateData = await getOAuthState();
             inviteCode = stateData?.inviteCode ?? inviteCode;  // Override or fallback
           }

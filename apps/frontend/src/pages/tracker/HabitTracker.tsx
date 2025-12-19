@@ -10,7 +10,7 @@ import { Stats } from './Stats';
 import { DayLog } from './DetailsPanel';
 import { mapValueToColor, mapValueToCSSrgb } from '@/lib/colorUtils';
 import { Button } from '@/components/ui/button';
-import { ColorStop } from "@trackbit/db";
+import { ColorStop } from "@trackbit/types";
 
 
 // Helper function to map habit icon string to Lucide component

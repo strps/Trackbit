@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { TrackbitExercise } from '@trackbit/db'
+import type { Exercise as TrackbitExercise, } from '@trackbit/types';
 const API_URL = 'http://localhost:3000/api/exercises';
 
 interface Exercise extends TrackbitExercise {

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Habit, InsertHabit } from '@trackbit/db'
+import { Habit } from "@trackbit/types"
 
 const API_URL = 'http://localhost:3000/api/habits';
 

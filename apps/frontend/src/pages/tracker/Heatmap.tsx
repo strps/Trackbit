@@ -2,7 +2,7 @@ import { Activity, CalendarDays, ChevronUp, ChevronDown, ChevronLeft, ChevronRig
 import { formatDate } from "./utils";
 import { mapValueToCSSrgb } from "../../lib/colorUtils";
 import { useHabitLogs } from "@/hooks/use-habit-logs";
-import { ColorStop } from "@trackbit/db"
+import { ColorStop } from "@trackbit/types"
 
 interface HeatmapProps {
     weeks: Date[][];

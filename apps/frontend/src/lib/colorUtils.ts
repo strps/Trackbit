@@ -1,4 +1,4 @@
-import { ColorStop } from "@trackbit/db"
+import { ColorStop } from "@trackbit/types"
 
 
 /**

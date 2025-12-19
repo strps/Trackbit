@@ -1,8 +1,8 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
-import db from '@trackbit/db'
-import { dayLogs, exerciseLogs, exerciseSessions, exerciseSets, habits } from '@trackbit/db'
+import db from "../db/db";
+import { dayLogs, exerciseLogs, exerciseSessions, exerciseSets, habits } from "../db/schema"
 import { eq, and, inArray } from 'drizzle-orm'
 import { requireAuth } from '../middleware/auth'
 
@@ -122,44 +122,6 @@ app.post('/exercise-sessions', zValidator('json', z.object({
         return c.json(res[0])
     });
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // 2. Add/Remove Exercises
 app.post('/exercise-logs', zValidator('json', z.object({

@@ -3,7 +3,7 @@ import { ICONS } from "./IconField";
 import { mapValueToCSSrgb } from "@/lib/colorUtils";
 import { Badge } from "@/components/ui/badge";
 import { BigButton } from "@/components/BigButton";
-import type { Habit } from "@trackbit/db";
+import type { Habit } from "@trackbit/types";
 
 interface HabitListProps {
     habits: Habit[];

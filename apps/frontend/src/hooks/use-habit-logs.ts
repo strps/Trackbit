@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useExercises } from './use-exercises';
 import { create } from 'zustand';
-import { Habit, ExerciseSession, ExerciseLog, ExerciseSet } from "@trackbit/db";
+import { Habit, ExerciseSession, ExerciseLog, ExerciseSet } from "@trackbit/types";
 
 const API_URL = 'http://localhost:3000/api/logs';
 

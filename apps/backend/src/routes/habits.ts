@@ -1,8 +1,8 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
-import db from '@trackbit/db'
-import { habits } from '../../../../packages/db/src/schema'
+import db from "../db/db";
+import { habits } from '../db/schema'
 import { eq, and, desc } from 'drizzle-orm'
 import { requireAuth } from '../middleware/auth'
 
