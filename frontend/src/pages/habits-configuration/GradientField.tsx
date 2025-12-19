@@ -147,7 +147,7 @@ export const GradientField = ({ value, onChange }: GradientPickerProps) => {
                             </div>
 
                             <div className="text-left">
-                                <span className={`block text-sm font-bold ${isActive ? 'text-blue-700 dark:text-blue-300' : 'text-slate-700 dark:text-slate-300'}`}>
+                                <span className="block text-sm font-bold text-foreground">
                                     {preset.label}
                                 </span>
                             </div>

@@ -13,21 +13,18 @@ interface HabitListProps {
     startNewHabit: () => void
 }
 
-// Helper to render the actual Lucide icon component dynamically
 const renderIcon = (iconId: string, className = "w-5 h-5") => {
     const iconDef = ICONS.find(i => i.id === iconId) || ICONS[0];
     const IconComponent = iconDef.icon;
     return IconComponent ? <IconComponent className={className} /> : null;
 };
 
-
 export const HabitList = ({ habits, activeHabitId, editHabit, startNewHabit }: HabitListProps) => {
-
     return (
         <div className="lg:col-span-5 space-y-4">
             <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-slate-700 dark:text-slate-300">Your Habits</h2>
-                <span className="text-xs font-medium px-2 py-1 bg-slate-200 dark:bg-slate-700 rounded-full text-slate-600 dark:text-slate-300">
+                <h2 className="text-lg font-semibold text-foreground">Your Habits</h2>
+                <span className="text-xs font-medium px-2 py-1 bg-muted rounded-full text-muted-foreground">
                     {habits.length} Active
                 </span>
             </div>
@@ -42,7 +39,7 @@ export const HabitList = ({ habits, activeHabitId, editHabit, startNewHabit }: H
                     >
                         <div className="flex items-center gap-4 relative z-10">
                             <div
-                                className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm`}
+                                className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm"
                                 style={{
                                     backgroundColor: mapValueToCSSrgb(1, 0, 1, habit.colorStops)
                                 }}
@@ -52,7 +49,7 @@ export const HabitList = ({ habits, activeHabitId, editHabit, startNewHabit }: H
 
                             <div className="flex-1 min-w-0">
                                 <h3 className="font-bold text-lg truncate">{habit.name}</h3>
-                                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                     <Badge variant="secondary">
                                         {habit.type === 'complex' ? 'Structured' : habit.type === 'negative' ? 'Negative' : 'Simple'}
                                     </Badge>
@@ -62,17 +59,14 @@ export const HabitList = ({ habits, activeHabitId, editHabit, startNewHabit }: H
                                     <span>{`Weekly ${habit.type === 'negative' ? 'Limit:' : 'Goal:'}`} {habit.weeklyGoal}/w</span>
                                 </div>
                             </div>
-
-
                         </div>
-
                     </BigButton>
                 ))}
 
                 <BigButton
                     onClick={startNewHabit}
                     isSelected={activeHabitId === null}
-                    className="flex items-center cursor-pointer border-4 border-dashed"
+                    className="flex items-center cursor-pointer border-4 border-dashed border-border"
                 >
                     <Plus className="w-5 h-5" />
                     Create New Habit

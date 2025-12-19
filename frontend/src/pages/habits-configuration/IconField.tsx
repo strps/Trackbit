@@ -18,19 +18,11 @@ export const ICONS = [
     { id: 'heart', icon: Heart, label: 'Wellness' },
 ];
 
-
 interface IconSelectorProps {
     selected: string;
     onChange: (iconId: string) => void;
 }
 
-
-/**
- * Icon selection component
- * @param {string} selected - currently selected icon id
- * @param {function} onChange - callback when an icon is selected
- * @returns 
- */
 export const IconSelector = ({ selected, onChange }: IconSelectorProps) => (
     <div className="grid grid-cols-7 gap-2">
         {ICONS.map(({ id, icon: Icon }) => (
@@ -38,14 +30,11 @@ export const IconSelector = ({ selected, onChange }: IconSelectorProps) => (
                 key={id}
                 onClick={() => onChange(id)}
                 type="button"
+                variant={selected === id ? "default" : "outline"}
                 size="icon-sm"
-                className={`${selected === id
-                    ? 'bg-slate-900 text-white shadow-md scale-110'
-                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:scale-105'}
-                `}
+                className={`${selected === id ? 'shadow-md scale-110' : 'hover:scale-105'}`}
                 title={id}
             >
-                {/* Render Icon safely */}
                 {Icon && <Icon className="w-5 h-5" />}
             </Button>
         ))}

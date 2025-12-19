@@ -25,21 +25,18 @@ export function GradientPicker({ value, onChange, isActive, onClick }: GradientP
     const gradientRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Default state
     const [localStops, setLocalStops] = useState<ColorStop[]>([
         { position: 0, color: [255, 0, 0] },
         { position: 0.5, color: [255, 225, 0] },
         { position: 1, color: [12, 148, 62] }
     ]);
 
-    // Sync with parent value if provided
     useEffect(() => {
         if (onChange) onChange(localStops);
     }, [isActive]);
 
     const stops = value || localStops;
 
-    // Internal helper to update state
     const updateStops = (newStops: ColorStop[]) => {
         if (!value) setLocalStops(newStops);
         if (isActive) onChange?.(newStops)
@@ -48,7 +45,6 @@ export function GradientPicker({ value, onChange, isActive, onClick }: GradientP
     const [selected, setSelected] = useState<number | null>(null);
     const [dragging, setDragging] = useState<number | null>(null);
 
-    // --- Keyboard Handling (Delete) ---
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.key === 'Delete' || e.key === 'Backspace') && selected !== null) {
@@ -65,11 +61,9 @@ export function GradientPicker({ value, onChange, isActive, onClick }: GradientP
         return () => container?.removeEventListener('keydown', handleKeyDown);
     }, [selected, stops]);
 
-    // --- Pointer Events ---
-
     const onPointerDown = (e: React.PointerEvent<HTMLDivElement>, index: number) => {
-        e.stopPropagation(); // Stop event so we don't trigger "Add Stop"
-        e.preventDefault();  // Prevent text selection
+        e.stopPropagation();
+        e.preventDefault();
 
         setSelected(index);
         setDragging(index);
@@ -84,7 +78,6 @@ export function GradientPicker({ value, onChange, isActive, onClick }: GradientP
         let relativeValue = (e.clientX - rect.left) / rect.width;
         relativeValue = Math.max(0, Math.min(relativeValue, 1));
 
-        // Update strictly by index (no sorting)
         const newStops = stops.map((stop, idx) => {
             if (idx === dragging) {
                 return { ...stop, position: relativeValue };
@@ -100,20 +93,16 @@ export function GradientPicker({ value, onChange, isActive, onClick }: GradientP
         e.currentTarget.releasePointerCapture(e.pointerId);
     };
 
-    // --- Modification Actions ---
-
     const handleAddStop = (e: React.MouseEvent<HTMLDivElement>) => {
         if (!gradientRef.current) return;
         const rect = gradientRef.current.getBoundingClientRect();
         const position = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
 
-        // Use your ordered util to find the interpolated color at this exact position
-        // This ensures the new stop blends in perfectly
         const color = mapValueToColorOrdered(position, 0, 1, stops);
 
         const newStops = [...stops, { position, color }];
         updateStops(newStops);
-        setSelected(newStops.length - 1); // Select the new stop (it's at the end)
+        setSelected(newStops.length - 1);
     };
 
     const onColorChange = (newColor: { r: number, g: number, b: number }) => {
@@ -158,7 +147,7 @@ export function GradientPicker({ value, onChange, isActive, onClick }: GradientP
             setSelected(null);
         }
     };
-    //TODO: add alpha to picker as optional and to habit db table
+
     return (
         <CollapsibleSection
             className={`col-span-2 ${isActive && bigButtonSelectedClassName}`}
@@ -168,9 +157,7 @@ export function GradientPicker({ value, onChange, isActive, onClick }: GradientP
                     onClick={onClick}
                     className="col-span-2 w-full relative flex flex-col gap-2 items-center p-4 transition-all "
                 >
-                    <div
-                        className="flex gap-2"
-                    >
+                    <div className="flex gap-2">
                         <div style={{
                             backgroundColor: `rgb(${mapValueToColorOrdered(0, 0, 1, stops).join(", ")})`,
                             width: 20,
@@ -201,7 +188,6 @@ export function GradientPicker({ value, onChange, isActive, onClick }: GradientP
                             height: 20,
                             borderRadius: '25%',
                         }} />
-
                     </div>
 
                     <div className="text-left">
@@ -211,17 +197,15 @@ export function GradientPicker({ value, onChange, isActive, onClick }: GradientP
                     </div>
                 </div>
             }
-
         >
             <div ref={containerRef} className="space-y-4 outline-none" tabIndex={0}>
 
-                {/* 1. Gradient Bar Area */}
-                <div className="relative h-10 select-none"> {/* Container with height for handles */}
+                <div className="relative h-10 select-none">
                     <div
                         ref={gradientRef}
                         onClick={handleAddStop}
                         style={{ backgroundImage: gradientToCSSOrdered(stops) }}
-                        className="w-full h-5 rounded-md relative cursor-crosshair shadow-inner border border-slate-200 dark:border-slate-700 top-2"
+                        className="w-full h-5 rounded-md relative cursor-crosshair shadow-inner border border-border top-2"
                     >
                         {stops.map((stop, idx) => (
                             <div
@@ -248,18 +232,15 @@ export function GradientPicker({ value, onChange, isActive, onClick }: GradientP
                     </div>
                 </div>
 
-                {/* 2. Controls */}
-                <div className="flex flex-wrap gap-4 items-end p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                <div className="flex flex-wrap gap-4 items-end p-4 bg-muted rounded-xl border border-border">
 
-
-                    {/* Color Popover */}
                     <div className="space-y-1.5">
-                        <Label className="text-xs font-bold text-slate-500 uppercase">Picker</Label>
+                        <Label className="text-xs font-bold text-muted-foreground uppercase">Picker</Label>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <button
                                     disabled={selected === null}
-                                    className="block w-12 h-10 rounded-md border border-slate-200 dark:border-slate-700 shadow-sm disabled:opacity-50 cursor-pointer"
+                                    className="block w-12 h-10 rounded-md border border-border shadow-sm disabled:opacity-50 cursor-pointer"
                                     style={{
                                         backgroundColor: selected !== null
                                             ? `rgb(${stops[selected].color.join(",")})`
@@ -280,36 +261,28 @@ export function GradientPicker({ value, onChange, isActive, onClick }: GradientP
                                 )}
                             </PopoverContent>
                         </Popover>
-
                     </div>
 
-
-
-
-                    {/* Position Control */}
                     <div className="space-y-1.5">
-                        <Label className="text-xs font-bold text-slate-500 uppercase">Pos %</Label>
+                        <Label className="text-xs font-bold text-muted-foreground uppercase">Pos %</Label>
                         <Input
                             type="number"
-                            className="w-20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-inner-spin-button]:m-0"
+                            className="w-20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             onChange={onManualPositionChange}
                             value={selected !== null ? Math.round(stops[selected].position * 100) : ""}
                             disabled={selected === null}
                         />
                     </div>
 
-
-
-                    {/* Manual RGB Inputs */}
                     <div className="space-y-1.5">
-                        <Label className="text-xs font-bold text-slate-500 uppercase">RGB Values</Label>
+                        <Label className="text-xs font-bold text-muted-foreground uppercase">RGB Values</Label>
                         <div className="flex gap-2">
                             {['R', 'G', 'B'].map((label, i) => (
                                 <div key={label} className="relative">
                                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">{label}</span>
                                     <Input
                                         type="number"
-                                        className="w-16 pl-5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-inner-spin-button]:m-0"
+                                        className="w-16 pl-5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         value={selected !== null ? stops[selected].color[i] : ""}
                                         onChange={(e) => onRGBChange(i, e.target.value)}
                                         disabled={selected === null}
@@ -331,6 +304,5 @@ export function GradientPicker({ value, onChange, isActive, onClick }: GradientP
             </div>
 
         </CollapsibleSection>
-
     );
 }
