@@ -1,0 +1,17 @@
+{
+    "files": [],
+    "references": [
+        {
+            "path": "./apps/frontend"
+        },
+        {
+            "path": "./apps/backend"
+        },
+        {
+            "path": "./packages/hacienda-client"
+        },
+        {
+            "path": "./packages/db"
+        }
+    ]
+}
