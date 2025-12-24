@@ -32,6 +32,9 @@ importers:
       '@trackbit/types':
         specifier: workspace:*
         version: link:../../packages/types
+      '@types/node':
+        specifier: ^24.10.4
+        version: 24.10.4
       '@types/react':
         specifier: ^19.2.7
         version: 19.2.7
@@ -72,9 +75,6 @@ importers:
         specifier: ^4.1.13
         version: 4.2.0
     devDependencies:
-      '@types/node':
-        specifier: ^24.10.4
-        version: 24.10.4
       drizzle-kit:
         specifier: ^0.31.8
         version: 0.31.8
