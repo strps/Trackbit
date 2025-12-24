@@ -5,7 +5,7 @@
     "outputDirectory": "apps/frontend/dist",
     "functions": {
         "apps/backend/src/**/*.ts": {
-            "runtime": "nodejs20.19.6"
+            "runtime": "nodejs"
         }
     },
     "rewrites": [
