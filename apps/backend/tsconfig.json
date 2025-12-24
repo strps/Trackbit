@@ -8,7 +8,7 @@
         "outDir": "./dist",
         "rootDir": "./src",
         "target": "ES2022",
-        "module": "nodenext",
+        "module": "esnext",
         "moduleResolution": "nodenext",
         "jsx": "react-jsx",
         "jsxImportSource": "react",
