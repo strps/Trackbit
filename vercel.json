@@ -1,18 +1,22 @@
 {
-    "version": 3,
-    "routes": [
+    "$schema": "https://openapi.vercel.sh/vercel.json",
+    "version": 2,
+    "buildCommand": "pnpm -r build",
+    "outputDirectory": "apps/frontend/dist",
+    "functions": {
+        "apps/backend/src/**/*.ts": {
+            "runtime": "nodejs20.x"
+        }
+    },
+    "rewrites": [
         {
-            "src": "/api/(.*)",
-            "dest": "/apps/backend/src/index.ts"
+            "source": "/(.*)",
+            "destination": "/apps/frontend/dist/index.html"
         },
         {
-            "handle": "filesystem"
-        },
-        {
-            "src": "/(.*)",
-            "dest": "/apps/frontend/dist/index.html"
+            "source": "/api/(.*)",
+            "destination": "/apps/backend/src/index.ts"
         }
     ],
-    "outputDirectory": "apps/frontend/dist",
     "framework": null
 }
