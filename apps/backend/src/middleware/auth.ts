@@ -10,7 +10,7 @@ type Env = {
 
 export const requireAuth = createMiddleware<Env>(async (c, next) => {
     const session = await auth.api.getSession({
-        headers: c.req.raw.headers as Headers
+        headers: (c.req.raw as any).headers
     })
 
     if (!session) {
