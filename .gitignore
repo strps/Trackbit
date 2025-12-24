@@ -84,3 +84,7 @@ database.db
 diagram.png
 __pycache__/
 firebase-key.json
+
+# Ignore build output directories
+build
+dist/

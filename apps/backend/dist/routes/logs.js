@@ -20,7 +20,7 @@ app.get('/history', async (c) => {
     if (userHabits.length === 0)
         return c.json([]);
     const habitsWithLogs = await db_1.default.query.habits.findMany({
-        where: (habits, { eq }) => eq(habits.userId, user.id),
+        where: (habits) => (0, drizzle_orm_1.eq)(habits.userId, user.id),
         with: {
             dayLogs: {
                 with: {
@@ -49,7 +49,7 @@ async (c) => {
     const { habitId, date, rating } = c.req.valid('json');
     // Check if log exists
     const existing = await db_1.default.query.dayLogs.findFirst({
-        where: (logs, { eq, and }) => and(eq(logs.habitId, habitId), eq(logs.date, date)),
+        where: (logs) => (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(logs.habitId, habitId), (0, drizzle_orm_1.eq)(logs.date, date)),
     });
     if (existing) {
         // Update using composite key
@@ -83,7 +83,7 @@ app.post('/exercise-sessions', (0, zod_validator_1.zValidator)('json', zod_1.z.o
     return await db_1.default.transaction(async (tx) => {
         // Ensure DayLog Wrapper
         const existingDayLog = await tx.query.dayLogs.findFirst({
-            where: (l, { and, eq }) => and(eq(l.habitId, habitId), eq(l.date, date))
+            where: (l) => (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(l.habitId, habitId), (0, drizzle_orm_1.eq)(l.date, date))
         });
         if (!existingDayLog) {
             const hres = await tx.insert(schema_1.dayLogs).values({ habitId, date }).returning();

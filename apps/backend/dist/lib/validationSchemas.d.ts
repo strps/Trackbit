@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { AnyTable } from 'drizzle-orm';
+import type { Table } from 'drizzle-orm';
 import type { ZodObject, ZodRawShape } from 'zod';
 /**
  * Generates Zod schemas tailored for typical REST API CRUD operations.
@@ -14,7 +14,7 @@ import type { ZodObject, ZodRawShape } from 'zod';
  * @param options - Optional refinements and overrides
  * @returns An object containing named Zod schemas for CRUD operations
  */
-export declare function generateCrudSchemas<T extends AnyTable<any>, InsertShape extends ZodRawShape = ZodRawShape>(table: T, options?: {
+export declare function generateCrudSchemas<T extends Table, InsertShape extends ZodRawShape = ZodRawShape>(table: T, options?: {
     /** Common refinements applied to all schemas (e.g., date formats, min/max) */
     refine?: (schema: ZodObject<any>) => ZodObject<any>;
     /** Fields to omit from create/update (e.g., id, createdAt, userId managed server-side) */
@@ -30,7 +30,7 @@ export declare function generateCrudSchemas<T extends AnyTable<any>, InsertShape
     }, z.core.$strip>;
     select: z.ZodObject<any, z.core.$strip>;
     id: z.ZodType<any, unknown, z.core.$ZodTypeInternals<any, unknown>>;
-    _insertBase: import("drizzle-zod").BuildSchema<"insert", Record<string, import("drizzle-orm").Column<any, object, object>>, undefined, undefined>;
-    _selectBase: import("drizzle-zod").BuildSchema<"select", Record<string, import("drizzle-orm").Column<any, object, object>>, undefined, undefined>;
+    _insertBase: import("drizzle-zod").BuildSchema<"insert", T["_"]["columns"], undefined, undefined>;
+    _selectBase: import("drizzle-zod").BuildSchema<"select", T["_"]["columns"], undefined, undefined>;
 };
 //# sourceMappingURL=validationSchemas.d.ts.map

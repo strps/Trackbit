@@ -27,7 +27,7 @@ app.get('/history', async (c) => {
 
 
     const habitsWithLogs = await db.query.habits.findMany({
-        where: (habits, { eq }) => eq(habits.userId, user.id),
+        where: (habits) => eq(habits.userId, user.id),
         with: {
             dayLogs: {
                 with: {
@@ -66,7 +66,7 @@ app.post(
 
         // Check if log exists
         const existing = await db.query.dayLogs.findFirst({
-            where: (logs, { eq, and }) =>
+            where: (logs) =>
                 and(eq(logs.habitId, habitId), eq(logs.date, date)),
         });
 
@@ -110,7 +110,7 @@ app.post('/exercise-sessions', zValidator('json', z.object({
     return await db.transaction(async (tx) => {
         // Ensure DayLog Wrapper
         const existingDayLog = await tx.query.dayLogs.findFirst({
-            where: (l, { and, eq }) => and(eq(l.habitId, habitId), eq(l.date, date))
+            where: (l) => and(eq(l.habitId, habitId), eq(l.date, date))
         });
         if (!existingDayLog) {
             const hres = await tx.insert(dayLogs).values({ habitId, date }).returning();

@@ -1,7 +1,7 @@
 // backend/src/db/validationSchemas.ts
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
-import type { AnyTable } from 'drizzle-orm';
+import type { Table } from 'drizzle-orm';
 import type { ZodObject, ZodRawShape } from 'zod';
 
 /**
@@ -18,7 +18,7 @@ import type { ZodObject, ZodRawShape } from 'zod';
  * @returns An object containing named Zod schemas for CRUD operations
  */
 export function generateCrudSchemas<
-    T extends AnyTable<any>,
+    T extends Table,
     InsertShape extends ZodRawShape = ZodRawShape,
 >(
     table: T,

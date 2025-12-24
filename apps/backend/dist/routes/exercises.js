@@ -13,7 +13,7 @@ const drizzle_orm_1 = require("drizzle-orm");
 const exerciseSchemas = (0, validationSchemas_1.generateCrudSchemas)(schema_1.exercises, {
     omitFromCreateUpdate: ['id', 'createdAt', 'userId',], // Server-managed fields
     omitFromSelect: ['createdAt',],
-    refine: (schema) => schema.refine((data) => data.name?.trim().length > 0, { message: 'Exercise name is required', path: ['name'] }),
+    refine: (schema) => schema.refine((data) => !!data.name?.trim(), { message: 'Exercise name is required', path: ['name'] }),
     idSchema: zod_1.z.number().int().positive(),
 });
 // Generate full CRUD router

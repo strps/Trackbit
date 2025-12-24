@@ -13,7 +13,7 @@ const exerciseSchemas = generateCrudSchemas(exercises, {
     omitFromSelect: ['createdAt',],
     refine: (schema) =>
         schema.refine(
-            (data) => data.name?.trim().length > 0,
+            (data: any) => !!data.name?.trim(),
             { message: 'Exercise name is required', path: ['name'] }
         ),
     idSchema: z.number().int().positive(),
