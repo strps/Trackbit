@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
-const API_URL = 'http://localhost:3000/api/config/ui';
+const API_URL = `${import.meta.env.VITE_API_URL}/config/ui`;
 
 export interface NavItem {
     title: string;

@@ -3,7 +3,7 @@ import { useExercises } from './use-exercises';
 import { create } from 'zustand';
 import { Habit, ExerciseSession, ExerciseLog, ExerciseSet } from "@trackbit/types";
 
-const API_URL = 'http://localhost:3000/api/logs';
+const API_URL = `${import.meta.env.VITE_API_URL}/logs`;
 
 // --- Optimistic extensions of centralized types ---
 export type OptimisticExerciseSet = ExerciseSet & { tempId?: string };

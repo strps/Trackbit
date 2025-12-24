@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Habit } from "@trackbit/types"
 
-const API_URL = 'http://localhost:3000/api/habits';
+const API_URL = `${import.meta.env.VITE_API_URL}/habits`;
 
 // --- Fetcher Functions ---
 

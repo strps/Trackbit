@@ -12,6 +12,9 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "baseUrl": ".",
+    "types": [
+      "vite/client",
+    ],
     "paths": {
       "@/*": [
         "./src/*"
