@@ -1,4 +1,4 @@
-import * as schema from "./schema/index"
+import * as schema from "./schema/index.js"
 
 export type InsertHabit = typeof schema.habits.$inferInsert;
 export type SelectHabit = typeof schema.habits.$inferSelect;

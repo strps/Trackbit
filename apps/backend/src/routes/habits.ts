@@ -1,10 +1,10 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
-import db from "../db/db";
-import { habits } from '../db/schema'
+import db from "../db/db.js";
+import { habits } from '../db/schema/index.js'
 import { eq, and, desc } from 'drizzle-orm'
-import { requireAuth } from '../middleware/auth'
+import { requireAuth } from '../middleware/auth.js'
 
 // Define the Context Type to include User from middleware
 type AuthEnv = {

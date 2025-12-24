@@ -1,5 +1,5 @@
 import { createMiddleware } from 'hono/factory'
-import { auth } from '../lib/auth'
+import { auth } from '../lib/auth.js'
 
 type Env = {
     Variables: {

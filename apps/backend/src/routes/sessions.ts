@@ -1,10 +1,10 @@
 // backend/src/routes/exercise-sessions.ts
 
-import { generateCrudRouter } from '../lib/generateCrudRouter';
-import { generateCrudSchemas } from '../lib/validationSchemas';
-import { exerciseSessions, habits } from '../db/schema';
+import { generateCrudRouter } from '../lib/generateCrudRouter.js';
+import { generateCrudSchemas } from '../lib/validationSchemas.js';
+import { exerciseSessions, habits } from '../db/schema/index.js';
 import { eq } from 'drizzle-orm';
-import db from "../db/db";
+import db from "../db/db.js";
 
 
 const sessionSchemas = generateCrudSchemas(exerciseSessions, {

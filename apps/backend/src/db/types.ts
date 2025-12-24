@@ -1,4 +1,4 @@
-export * from "./entitiesTypes";
+export * from "./entitiesTypes.js";
 
 export interface ColorStop {
     position: number;

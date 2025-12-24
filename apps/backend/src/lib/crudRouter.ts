@@ -1,10 +1,10 @@
 // backend/src/routes/utils/generateCrudRouter.ts (configuration-based version)
 import { Hono, type Context, type Handler } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import db from "../db/db";
+import db from "../db/db.js";
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { requireAuth } from '../middleware/auth';
+import { requireAuth } from '../middleware/auth.js';
 import type { AnyPgTable } from 'drizzle-orm/pg-core';
 
 type CrudConfig<

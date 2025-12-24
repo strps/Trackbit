@@ -1,15 +1,15 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { user } from "../db/schema/user";
-import { account, session, verification } from "../db/schema/auth";
-import { invites } from "../db/schema/invites";
+import { user } from "../db/schema/user.js";
+import { account, session, verification } from "../db/schema/auth.js";
+import { invites } from "../db/schema/invites.js";
 import { lt, gte, eq } from "drizzle-orm";
 import { getOAuthState } from "better-auth/api";
-import { PasswordResetEmail } from "../emails/PasswordReset"
-import { VerificationEmail } from "../emails/VerificationEmail"
-import { sendEmail } from "./email";
+import { PasswordResetEmail } from "../emails/PasswordReset.js"
+import { VerificationEmail } from "../emails/VerificationEmail.js"
+import { sendEmail } from "./email.js";
 import { jsx } from "react/jsx-runtime";
-import db from "../db/db";
+import db from "../db/db.js";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {

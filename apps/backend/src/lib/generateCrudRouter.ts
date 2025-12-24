@@ -1,11 +1,11 @@
 // backend/src/routes/utils/generateCrudRouter.ts (resolved version with type assertions for Drizzle generics)
 import { Hono, type Context, type Handler } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import db from "../db/db";
+import db from "../db/db.js";
 import { eq } from 'drizzle-orm';
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
-import type { generateCrudSchemas } from './validationSchemas';
-import { requireAuth } from '../middleware/auth';
+import type { generateCrudSchemas } from './validationSchemas.js';
+import { requireAuth } from '../middleware/auth.js';
 import { AnyPgTable } from 'drizzle-orm/pg-core';
 import z from 'zod';
 

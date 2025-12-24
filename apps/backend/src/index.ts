@@ -4,12 +4,12 @@ import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 
 // Import Routes
-import { auth } from './lib/auth'
-import habitRoutes from './routes/habits'
-import logRoutes from './routes/logs'
-import exerciseRoutes from './routes/exercises'
-import sessionRouter from './routes/sessions'
-import configRoutes from './routes/config'
+import { auth } from './lib/auth.js'
+import habitRoutes from './routes/habits.js'
+import logRoutes from './routes/logs.js'
+import exerciseRoutes from './routes/exercises.js'
+import sessionRouter from './routes/sessions.js'
+import configRoutes from './routes/config.js'
 
 const app = new Hono()
 

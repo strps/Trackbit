@@ -1,8 +1,8 @@
 import { pgTable, serial, text, integer, timestamp, date, jsonb, primaryKey, pgEnum } from 'drizzle-orm/pg-core';
-import { user } from './user';
+import { user } from './user.js';
 import { relations } from 'drizzle-orm';
-import { exerciseSessions } from './exercises';
-import { ColorStop } from '../types';
+import { exerciseSessions } from './exercises.js';
+import { ColorStop } from '../types.js';
 
 export const habitTypeEnum = pgEnum('habit_type', ['simple', 'complex', 'negative', 'timed'])
 

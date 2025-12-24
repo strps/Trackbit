@@ -1,10 +1,10 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
-import db from "../db/db";
-import { dayLogs, exerciseLogs, exerciseSessions, exerciseSets, habits } from "../db/schema"
+import db from "../db/db.js";
+import { dayLogs, exerciseLogs, exerciseSessions, exerciseSets, habits } from "../db/schema/index.js"
 import { eq, and, inArray } from 'drizzle-orm'
-import { requireAuth } from '../middleware/auth'
+import { requireAuth } from '../middleware/auth.js'
 
 type AuthEnv = {
     Variables: {
