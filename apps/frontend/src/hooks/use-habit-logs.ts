@@ -217,7 +217,7 @@ export function useHabitLogs() {
     // 6. Delete Exercise Session
     const deleteSession = useMutation({
         mutationFn: async (sessionId: number) => {
-            const res = await fetch(`http://localhost:3000/api/exercise-sessions/${sessionId}`, {
+            const res = await fetch(`${API_URL}/api/exercise-sessions/${sessionId}`, {
                 method: 'DELETE',
                 credentials: 'include',
             });
