@@ -38,6 +38,10 @@ app.route("/api/exercise-sessions", sessionRouter)
 // 4. Health Check
 app.get('/health', (c) => c.json({ status: 'ok', time: new Date().toISOString() }))
 
+// 5. Not Found Handler
+app.notFound((c) => {
+    return c.json({ message: 'Route not found' }, 404)
+})
 
 export default handle(app)
 
