@@ -2,7 +2,6 @@ import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
-import { handle } from "hono/vercel";
 
 // Import Routes
 import { auth } from './lib/auth.js'
@@ -49,4 +48,4 @@ if (!process.env.VERCEL) {
     });
 }
 
-export default handle(app)
+export default app

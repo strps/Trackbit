@@ -88,3 +88,4 @@ firebase-key.json
 build
 dist
 dist/
+dist/*
