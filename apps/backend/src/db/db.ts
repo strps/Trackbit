@@ -1,7 +1,7 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from './schema/index.js';
-import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { sql } from '@vercel/postgres'
 
-const db: NodePgDatabase<typeof schema> = drizzle(process.env.DATABASE_URL!, { schema });
+const db = drizzle(sql, { schema });
 
 export default db;
