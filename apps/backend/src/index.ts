@@ -39,13 +39,13 @@ app.route("/api/exercise-sessions", sessionRouter)
 app.get('/health', (c) => c.json({ status: 'ok', time: new Date().toISOString() }))
 
 // ✅ LOCAL ONLY
-if (!process.env.VERCEL) {
-    const port = 3000;
-    console.log(`Server running on http://localhost:${port}`);
-    serve({
-        fetch: app.fetch,
-        port,
-    });
-}
+// if (!process.env.VERCEL) {
+//     const port = 3000;
+//     console.log(`Server running on http://localhost:${port}`);
+//     serve({
+//         fetch: app.fetch,
+//         port,
+//     });
+// }
 
 export default app
