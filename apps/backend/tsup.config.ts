@@ -8,8 +8,10 @@ export default defineConfig({
     clean: true,
 
     // IMPORTANT for React Email
-    jsx: "automatic",
     external: ["react", "react-dom"],
 
-    sourcemap: true
+    sourcemap: true,
+    esbuildOptions(options) {
+        options.jsx = "automatic";
+    },
 });
