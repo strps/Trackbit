@@ -1,7 +1,7 @@
-import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
+import { handle } from '@hono/node-server/vercel'
 
 // Import Routes
 import { auth } from './lib/auth.js'
@@ -38,14 +38,7 @@ app.route("/api/exercise-sessions", sessionRouter)
 // 4. Health Check
 app.get('/health', (c) => c.json({ status: 'ok', time: new Date().toISOString() }))
 
-// ✅ LOCAL ONLY
-// if (!process.env.VERCEL) {
-//     const port = 3000;
-//     console.log(`Server running on http://localhost:${port}`);
-//     serve({
-//         fetch: app.fetch,
-//         port,
-//     });
-// }
 
-export default app
+export default handle(app)
+
+export { app }
