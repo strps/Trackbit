@@ -43,6 +43,12 @@ app.notFound((c) => {
     return c.json({ message: 'Route not found' }, 404)
 })
 
+// 6. Error Handler
+app.onError((err, c) => {
+    console.error('Unhandled error:', err);
+    return c.json({ error: 'Internal Server Error' }, 500);
+});
+
 export default handle(app)
 
 export { app }
