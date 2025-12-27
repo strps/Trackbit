@@ -24,7 +24,7 @@ export const auth = betterAuth({
 
 
   // Trusted origins for cross-site requests
-  trustedOrigins: process.env.TRUSTED_ORIGINS?.split(','),
+  trustedOrigins: process.env.ALLOWED_ORIGINS?.split(','),
   advanced: {
     defaultCookieAttributes: {
       sameSite: "none",  // Critical for cross-site cookie setting/sending
