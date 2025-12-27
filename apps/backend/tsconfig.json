@@ -19,6 +19,9 @@
     "include": [
         "src/**/*"
     ],
+    "exclude": [
+        "drizzle.config.ts"
+    ],
     "references": [
         {
             "path": "../../packages/types"
