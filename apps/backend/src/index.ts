@@ -49,6 +49,7 @@ app.onError((err, c) => {
     return c.json({ error: 'Internal Server Error' }, 500);
 });
 
+//TODO check if cannot export directly, wronly changed bc bad mistakenly infer error cause.
 export default handle(app)
 
 export { app }

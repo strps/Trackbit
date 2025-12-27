@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  app:
+    container_name: trackbit
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    command: sleep infinity
+    volumes:
+      # Mount the current project directory into the container
+      - ../:/workspaces/${localWorkspaceFolderBasename}
+    # Forward the Vite port
+    ports:
+      - "5173:5173"
+    environment:
+      # Tell the app how to connect to the DB service defined below
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/trackbit
+    working_dir: /workspaces/${localWorkspaceFolderBasename}
+
+  db:
+    container_name: habit-tracker-db
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: trackbit
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    # Expose port 5432 to the host (optional, useful for local GUI tools like DBeaver)
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres-data:
