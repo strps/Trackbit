@@ -16,7 +16,7 @@ const app = new Hono()
 // 1. Global Middleware
 app.use('*', logger())
 app.use('*', cors({
-    origin: process.env.FRONT_URL!,
+    origin: process.env.ALLOWED_ORIGINS!.split(','),
     credentials: true,
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
