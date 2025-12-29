@@ -16,7 +16,7 @@ const app = new Hono<AuthEnv>()
 
 app.use('*', requireAuth)
 
-// GET /api/logs/history - Fetch all logs for the user (for Heatmap)
+// GET /api/tracker/history - Fetch all logs for the user (for Heatmap)
 app.get('/history', async (c) => {
     const user = c.get('user')
 

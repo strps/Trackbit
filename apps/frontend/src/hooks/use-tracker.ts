@@ -31,7 +31,7 @@ interface HabitWithLogs extends Habit {
 
 // --- Fetcher ---
 const fetchHistory = async (): Promise<Record<number, HabitWithLogs>> => {
-    const res = await fetch(`${API_URL}/logs/history`, { credentials: 'include' });
+    const res = await fetch(`${API_URL}/tracker/history`, { credentials: 'include' });
     if (!res.ok) throw new Error('Failed to fetch history');
     const data = await res.json();
 
@@ -134,7 +134,7 @@ export function useTracker() {
     const logSimple = useMutation({
         mutationFn: async (payload: { habitId: number; date: string; rating: number }) => {
             console.log(payload)
-            const res = await fetch(`${API_URL}/logs/check`, {
+            const res = await fetch(`${API_URL}/tracker/check`, {
                 method: 'POST',
                 body: JSON.stringify({
                     habitId: payload.habitId,
@@ -176,7 +176,7 @@ export function useTracker() {
     const createSession = useMutation({
         mutationFn: async () => {
             if (!selectedHabitId || !selectedDay) throw new Error('No context');
-            const res = await fetch(`${API_URL}/exercise-sessions`, {
+            const res = await fetch(`${API_URL}/tracker/exercise-sessions`, {
                 method: 'POST',
                 body: JSON.stringify({ habitId: Number(selectedHabitId), date: selectedDay }),
                 headers: { 'Content-Type': 'application/json' },
@@ -217,7 +217,7 @@ export function useTracker() {
     // 6. Delete Exercise Session
     const deleteSession = useMutation({
         mutationFn: async (sessionId: number) => {
-            const res = await fetch(`${API_URL}/exercise-sessions/${sessionId}`, {
+            const res = await fetch(`${API_URL}/tracker/exercise-sessions/${sessionId}`, {
                 method: 'DELETE',
                 credentials: 'include',
             });
@@ -258,13 +258,15 @@ export function useTracker() {
     // 2. Add Exercise Log
     const addExerciseLog = useMutation({
         mutationFn: async (exerciseId: number) => {
+
             if (!currentSession?.id) throw new Error('No active session');
             const exercise = exercises.find((e) => e.id === exerciseId);
             if (!exercise) throw new Error('Exercise not found');
             const defaultSet = { reps: exercise.lastSetReps || 10, weight: exercise.lastSetWeight || 25 };
-            const res = await fetch(`${API_URL}/logs/exercise-log`, {
+            console.log(JSON.stringify({ exerciseSessionId: currentSession.id, exerciseId, exerciseSets: [defaultSet] }));
+            const res = await fetch(`${API_URL}/tracker/exercise-logs`, {
                 method: 'POST',
-                body: JSON.stringify({ sessionId: currentSession.id, exerciseId, exerciseSets: [defaultSet] }),
+                body: JSON.stringify({ exerciseSessionId: currentSession.id, exerciseId, exerciseSets: [defaultSet] }),
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
             });
@@ -311,7 +313,7 @@ export function useTracker() {
     // 3. Remove Exercise Log
     const removeExerciseLog = useMutation({
         mutationFn: async (exerciseLogId: number) => {
-            await fetch(`${API_URL}/exercise/${exerciseLogId}`, { method: 'DELETE', credentials: 'include' });
+            await fetch(`${API_URL}/tracker/exercise-logs/${exerciseLogId}`, { method: 'DELETE', credentials: 'include' });
         },
         onMutate: async (exerciseLogId) => {
             await queryClient.cancelQueries({ queryKey: ['habit-logs'] });
@@ -356,7 +358,7 @@ export function useTracker() {
                 weight: defaults.weight,
             };
 
-            const res = await fetch(`${API_URL}/logs/exercise-set`, {
+            const res = await fetch(`${API_URL}/tracker/exercise-sets`, {
                 method: 'POST',
                 body: JSON.stringify(payload),
                 headers: { 'Content-Type': 'application/json' },
@@ -370,7 +372,6 @@ export function useTracker() {
             const tempSetId = `temp-set-${Math.random()}`;
 
             updateCache((newData) => {
-                console.log(exerciseLog)
                 const session = getCurrentSession(newData);
                 const log = session?.exerciseLogs.find((l) => l.id === exerciseLog.id);
                 if (log) {
@@ -416,8 +417,8 @@ export function useTracker() {
                 weight: exerciseSet.weight,
             };
 
-            const res = await fetch(`${API_URL}/logs/exercise-set`, {
-                method: 'POST',
+            const res = await fetch(`${API_URL}/tracker/exercise-sets/${exerciseSet.id}`, {
+                method: 'PATCH',
                 body: JSON.stringify(payload),
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -471,6 +472,7 @@ export function useTracker() {
 
     });
 
+    //TODO: this is essential, we need ot update it the last rep or set
     // 4c. Update only the virtual "last set" defaults (local only)
     // const updateLastSetLocally = useMutation({
     //     mutationFn: (payload: { exerciseId: number; reps: number; weight: number }) => {
@@ -491,7 +493,7 @@ export function useTracker() {
     // 5. Delete Set
     const deleteSet = useMutation({
         mutationFn: async (exerciseSetId: number) => {
-            await fetch(`${API_URL}/logs/exercise-set/${exerciseSetId}`, {
+            await fetch(`${API_URL}/tracker/exercise-sets/${exerciseSetId}`, {
                 method: 'DELETE',
                 credentials: 'include',
             });

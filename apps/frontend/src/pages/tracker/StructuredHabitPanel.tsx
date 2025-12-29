@@ -128,7 +128,7 @@ interface ExerciseLogCardProps {
 
 const ExerciseLogCard = ({ exerciseLog, index }: any) => {
     const { exercises } = useExercises()
-    const { deleteSet, newSet, updateSet } = useTracker()
+    const { deleteSet, newSet, updateSet, removeExerciseLog } = useTracker()
     const exercise = exercises.find(e => e.id === exerciseLog.exerciseId)
 
     return (
@@ -158,7 +158,7 @@ const ExerciseLogCard = ({ exerciseLog, index }: any) => {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
                         <DropdownMenuItem
-                            onSelect={() => deleteSet(exerciseLog.id)}
+                            onSelect={() => removeExerciseLog(exerciseLog.id)}
                         >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Delete
@@ -168,7 +168,7 @@ const ExerciseLogCard = ({ exerciseLog, index }: any) => {
             </div>
 
             {/* Sets List */}
-            <div className="flex gap-2 p-2">
+            <div className="flex  overflow-x-scroll gap-2 p-2">
 
                 {
                     exerciseLog.exerciseSets.map((e: OptimisticExerciseSet, i: number) => {
@@ -202,7 +202,7 @@ const ExerciseLogCard = ({ exerciseLog, index }: any) => {
 
 const AddExercisePicker = () => {
     const { exercises } = useExercises(); //TODO: add reomended exercises. An ordered list of execises depending of workout program, selected muscular zones, or favorites/most done. for now we use the lis of exerciese as it is
-    const { addExerciseLog: addExerciseLog } = useTracker()
+    const { addExerciseLog } = useTracker()
 
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
@@ -288,7 +288,7 @@ interface SetCardProps {
 
 export const SetCard = ({ e, i, deleteSet, updateSet }: SetCardProps) => {
     return (
-        <div className="flex flex-col items-center group w-26 border border-border rounded-lg overflow-hidden bg-card">
+        <div className="flex flex-col shrink-0 items-center group w-26 border border-border rounded-lg overflow-hidden bg-card">
             <div className="flex justify-between items-center text-xs font-bold w-full p-2 bg-muted/30">
                 <span className="text-muted-foreground">Set {i + 1}</span>
                 <DropdownMenu>

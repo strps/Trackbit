@@ -17,7 +17,7 @@ import type { ZodObject, ZodRawShape } from 'zod';
  * @param options - Optional refinements and overrides
  * @returns An object containing named Zod schemas for CRUD operations
  */
-export function generateCrudSchemas<
+export function generateValidationCrudSchemas<
     T extends Table,
     InsertShape extends ZodRawShape = ZodRawShape,
 >(
@@ -33,8 +33,8 @@ export function generateCrudSchemas<
         idSchema?: z.ZodType<any>;
     } = {}
 ) {
-    const insertBase = createInsertSchema(table);
-    const selectBase = createSelectSchema(table);
+    const insertBase = createInsertSchema(table).strict();
+    const selectBase = createSelectSchema(table).strict();
 
     // Apply common refinements if provided
     const refinedInsert = options.refine ? options.refine(insertBase) : insertBase;

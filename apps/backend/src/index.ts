@@ -6,9 +6,8 @@ import { handle } from '@hono/node-server/vercel'
 // Import Routes
 import { auth } from './lib/auth.js'
 import habitRoutes from './routes/habits.js'
-import logRoutes from './routes/logs.js'
+import trackerRoutes from './routes/tracker.js'
 import exerciseRoutes from './routes/exercises.js'
-import sessionRouter from './routes/sessions.js'
 import configRoutes from './routes/config.js'
 
 const app = new Hono()
@@ -18,7 +17,7 @@ app.use('*', logger())
 app.use('*', cors({
     origin: process.env.ALLOWED_ORIGINS!.split(','),
     credentials: true,
-    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowHeaders: ['Content-Type', 'Authorization'],
 }))
 
@@ -30,10 +29,9 @@ app.all('/api/auth/*', async (c) => {
 
 // 3. Application Routes
 app.route('/api/habits', habitRoutes)
-app.route('/api/logs', logRoutes)
+app.route('/api/tracker', trackerRoutes)
 app.route('/api/exercises', exerciseRoutes)
 app.route('/api/config', configRoutes)
-app.route("/api/exercise-sessions", sessionRouter)
 
 // 4. Health Check
 app.get('/health', (c) => c.json({ status: 'ok', time: new Date().toISOString() }))

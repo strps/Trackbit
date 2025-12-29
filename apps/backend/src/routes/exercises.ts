@@ -1,6 +1,6 @@
 import { generateCrudRouter } from '../lib/generateCrudRouter.js'; // Adjust path if necessary
 import { exerciseLogs, exercises, exerciseSets } from '../db/schema/index.js';
-import { generateCrudSchemas } from '../lib/validationSchemas.js'; // Adjust path if necessary
+import { generateValidationCrudSchemas } from '../lib/generateValidationCrudSchemas.js'; // Adjust path if necessary
 import { z } from 'zod';
 import db from "../db/db.js";
 import { eq, isNull, or, sql, and } from 'drizzle-orm';
@@ -8,7 +8,7 @@ import { Context } from 'hono';
 
 
 // Generate schemas tailored for exercises
-const exerciseSchemas = generateCrudSchemas(exercises, {
+const exerciseSchemas = generateValidationCrudSchemas(exercises, {
     omitFromCreateUpdate: ['id', 'createdAt', 'userId',], // Server-managed fields
     omitFromSelect: ['createdAt',],
     refine: (schema) =>
@@ -23,6 +23,7 @@ const exerciseSchemas = generateCrudSchemas(exercises, {
 const exerciseRouter = generateCrudRouter({
     table: exercises,
     schemas: exerciseSchemas,
+    primaryKeyFields: ['id'],
     overrides: {
         list: async (c: Context) => {
             const user = c.get('user')
