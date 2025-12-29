@@ -42,7 +42,11 @@ app.get('/history', async (c) => {
                         with: {
                             exerciseLogs: {
                                 with: {
-                                    exerciseSets: true  //TODO: we need to order the sets according to createdAt
+                                    exerciseSets:
+                                    // true,
+                                    {
+                                        orderBy: (exerciseSets, { asc }) => asc(exerciseSets.createdAt),
+                                    },
                                 }
                             }
                         }
@@ -207,7 +211,7 @@ const exerciseLogsSchemas = generateValidationCrudSchemas(exerciseLogs, {
             ).optional(),
         }),
 });
-
+// TODO: exercise logs should be ordered by createdAt, similar exercise sets
 const exerciseLogsRouter = generateCrudRouter({
     table: exerciseLogs,
     schemas: exerciseLogsSchemas,
@@ -235,8 +239,8 @@ const exerciseLogsRouter = generateCrudRouter({
 
     overrides: {
         create: async (c) => {
-            const body = c.req.valid("json");
-            console.log("Creating exercise log with body:", body);
+            //TODO: this values should be inferred from schema, this should be handeled in the generateCrudRouter
+            const body = c.req.valid("json") as any;
             return await db.transaction(async (tx) => {
                 // 1. Create the Exercise Log Header
                 const logRes = await tx.insert(exerciseLogs).values({
@@ -254,7 +258,7 @@ const exerciseLogsRouter = generateCrudRouter({
 
                 // 3. Insert Sets
                 const setRes = await tx.insert(exerciseSets).values(
-                    setsToInsert.map(s => ({
+                    setsToInsert.map((s: { reps: number, weight: number }) => ({
                         exerciseLogId: newLogId,
                         reps: s.reps,
                         weight: s.weight,
@@ -281,7 +285,7 @@ app.route('/exercise-logs', exerciseLogsRouter);
 const exerciseSetSchemas = generateValidationCrudSchemas(exerciseSets, {
     omitFromCreateUpdate: ['createdAt'],
 });
-
+// TODO: sets should be ordered by createdAt, similar exercise logs
 const exerciseSetsRouter = generateCrudRouter({
     table: exerciseSets,
     schemas: exerciseSetSchemas,

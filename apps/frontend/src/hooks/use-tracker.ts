@@ -338,7 +338,8 @@ export function useTracker() {
 
 
 
-    // Helper to get default reps/weight for an exercise
+    //TODO: last reps should be define according to the last set but from the last day
+    // Helper to get default reps/weight for an exercise\
     const getExerciseDefaults = (exerciseId: number) => {
         const exercise = exercises.find((e) => e.id === exerciseId);
         return {

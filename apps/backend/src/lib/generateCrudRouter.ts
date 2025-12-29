@@ -3,13 +3,28 @@
 import { Hono, type Context, type Handler } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import db from "../db/db.js";
-import { eq, and } from 'drizzle-orm'; // ← added 'and'
+import { eq, and } from 'drizzle-orm';
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
-import type { generateValidationCrudSchemas } from './generateValidationCrudSchemas.js';
 import { requireAuth } from '../middleware/auth.js';
 import { AnyPgTable } from 'drizzle-orm/pg-core';
-import z from 'zod';
+import z, { ZodError } from 'zod';
 import { formatZodError } from './utils.js';
+
+type AppEnv = {
+    Variables: {
+        user: any;  // Replace 'any' with your actual User type if available
+    }
+};
+
+// Define a precise, reusable type for the CRUD schemas
+export type CrudSchemas = {
+    create: z.ZodObject<any>;       // Schema for POST/create (insert without auto-managed fields)
+    update: z.ZodObject<any>;       // Schema for PATCH/update (partial + at least one field required)
+    select: z.ZodObject<any>;       // Schema for GET/response (full selectable shape)
+    id: z.ZodType<any>;             // Schema for primary key path parameter(s) – defaults to number().int().positive()
+    _insertBase: z.ZodObject<any>;  // Raw base insert schema (before omissions/refinements)
+    _selectBase: z.ZodObject<any>;  // Raw base select schema (before omissions/refinements)
+};
 
 // Utility to build equality conditions for composite PK
 function buildPkWhere<T extends AnyPgTable>(
@@ -26,27 +41,27 @@ function buildPkWhere<T extends AnyPgTable>(
 type CrudRouterOptions<
     T extends AnyPgTable,
     PKFields extends (keyof InferSelectModel<T>)[] =
-    'id' extends keyof InferSelectModel<T> ? ['id'] : never
+    'id' extends keyof InferSelectModel<T> ? ['id'] : never,
+    PkParamOut = z.infer<z.ZodObject<Record<PKFields[number], z.ZodType<any>>>>
 > = {
     table: T;
-    schemas: ReturnType<typeof generateValidationCrudSchemas<T>>;
-    // Always require explicit primaryKeyFields, but default to ['id'] when possible
+    schemas: CrudSchemas;
     primaryKeyFields: PKFields;
     ownershipCheck?: (user: any, record: InferSelectModel<T>) => boolean | Promise<boolean>;
     beforeCreate?: (c: Context, data: InferInsertModel<T>) => Promise<InferInsertModel<T>>;
     beforeUpdate?: (c: Context, data: Partial<InferInsertModel<T>>) => Promise<Partial<InferInsertModel<T>>>;
     overrides?: {
-        list?: Handler | Handler[];
-        get?: Handler | Handler[];
-        create?: Handler | Handler[];
-        update?: Handler | Handler[];
-        delete?: Handler | Handler[];
+        list?: Handler;
+        get?: Handler<any, any, { out: { param: PkParamOut } }>
+        create?: Handler<any, any, { out: { json: InferInsertModel<T> } }>
+        update?: Handler<any, any, { out: { param: PkParamOut; json: Partial<InferInsertModel<T>> } }>
+        delete?: Handler<any, any, { out: { param: PkParamOut } }>
     };
     ommitOperations?: Array<'list' | 'get' | 'create' | 'update' | 'delete'>;
     customEndpoints?: Array<{
         method: 'get' | 'post' | 'put' | 'patch' | 'delete';
         path: string;
-        handlers: Handler | Handler[];
+        handler: Handler;
     }>;
     isPublic?: boolean;
 };
@@ -66,12 +81,13 @@ export function generateCrudRouter<
     ownershipCheck,
     beforeCreate,
     beforeUpdate,
-    overrides = {},
+    overrides = {} as CrudRouterOptions<T, PKFields>['overrides'],
     ommitOperations = [],
     customEndpoints = [],
     isPublic = false,
 }: CrudRouterOptions<T, PKFields>) {
-    const router = new Hono();
+
+    const router = new Hono<AppEnv>();
 
     if (!isPublic) {
         router.use('*', requireAuth);
@@ -82,10 +98,9 @@ export function generateCrudRouter<
     // Determine route segment and param schema for PK
     const pkParamNames = Array.isArray(primaryKeyFields) ? primaryKeyFields : [primaryKeyFields];
     const pkRouteSegment = `:${pkParamNames.join('/:')}`;
-    console.log("Primary Key Route Segment:", pkRouteSegment);
     const pkParamSchema = z.object(
         Object.fromEntries(
-            pkParamNames.map(field => [field, (schemas as any)[field] ?? z.any()])
+            pkParamNames.map(field => [field, schemas.id ?? z.any()])
         )
     );
 
@@ -94,10 +109,17 @@ export function generateCrudRouter<
     // Helper to extract PK values in order
     const extractPkValues = (params: PkParamOut): any[] => pkParamNames.map(name => params[name as keyof PkParamOut]);
 
+    // Param validator (shared where needed)
+    const paramValidator = zValidator('param', pkParamSchema, (result, c) => {
+        if (!result.success) {
+            return c.json(formatZodError(result.error as ZodError), 400);
+        }
+    });
+
     // LIST - GET /
     if (shouldInclude('list')) {
-        if (overrides.list) {
-            router.get('/', ...(Array.isArray(overrides.list) ? overrides.list : [overrides.list]) as [Handler, ...Handler[]]);
+        if (overrides?.list) {
+            router.get('/', overrides.list);
         } else {
             router.get('/', async (c: Context) => {
                 const user = c.get('user');
@@ -114,22 +136,22 @@ export function generateCrudRouter<
     // GET ONE - GET /:field1/:field2/...
     if (shouldInclude('get')) {
         const path = `/${pkRouteSegment}`;
-        if (overrides.get) {
-            router.get(path, zValidator('param', pkParamSchema), ...(Array.isArray(overrides.get) ? overrides.get : [overrides.get]));
+        if (overrides?.get) {
+            router.get(path, paramValidator, overrides.get);
         } else {
             router.get(
                 path,
-                zValidator('param', pkParamSchema),
+                paramValidator,
                 async (c: Context<any, any, { out: { param: PkParamOut } }>) => {
                     const user = c.get('user');
                     const params = c.req.valid('param');
                     const pkValues = extractPkValues(params);
 
-                    const [found] = (await db
+                    const [found] = await db
                         .select()
                         .from(table as any)
                         .where(buildPkWhere(table, pkParamNames, pkValues))
-                        .limit(1)) as InferSelectModel<T>[];
+                        .limit(1) as InferSelectModel<T>[];
 
                     if (!found || (ownershipCheck && !(await ownershipCheck(user, found)))) {
                         return c.json({ error: 'Not found or unauthorized' }, 404);
@@ -142,23 +164,18 @@ export function generateCrudRouter<
 
     // CREATE - POST /
     if (shouldInclude('create')) {
-        if (overrides.create) {
-            router.post(
-                '/',
-                zValidator('json', schemas.create, (result, c) => {
-                    if (!result.success) {
-                        return c.json(formatZodError(result.error), 400);
-                    }
-                }),
-                ...(Array.isArray(overrides.create) ? overrides.create : [overrides.create]) as [Handler, ...Handler[]]);
+        const jsonValidator = zValidator('json', schemas.create, (result, c) => {
+            if (!result.success) {
+                return c.json(formatZodError(result.error as ZodError), 400);
+            }
+        });
+
+        if (overrides?.create) {
+            router.post('/', jsonValidator, overrides.create);
         } else {
             router.post(
                 '/',
-                zValidator('json', schemas.create, (result, c) => {
-                    if (!result.success) {
-                        return c.json(formatZodError(result.error), 400);
-                    }
-                }),
+                jsonValidator,
                 async (c: Context<any, any, { out: { json: InferInsertModel<T> } }>) => {
                     const user = c.get('user');
                     let data = c.req.valid('json');
@@ -173,21 +190,19 @@ export function generateCrudRouter<
     // UPDATE - PATCH /:field1/:field2/...
     if (shouldInclude('update')) {
         const path = `/${pkRouteSegment}`;
-        if (overrides.update) {
-            router.patch(path, ...(Array.isArray(overrides.update) ? overrides.update : [overrides.update]) as [Handler, ...Handler[]]);
+        const updateJsonValidator = zValidator('json', schemas.update, (result, c) => {
+            if (!result.success) {
+                return c.json(formatZodError(result.error as ZodError), 400);
+            }
+        });
+
+        if (overrides?.update) {
+            router.patch(path, paramValidator, updateJsonValidator, overrides.update);
         } else {
             router.patch(
                 path,
-                zValidator('param', pkParamSchema, (result, c) => {
-                    if (!result.success) {
-                        return c.json(formatZodError(result.error), 400);
-                    }
-                }),
-                zValidator('json', schemas.update, (result, c) => {
-                    if (!result.success) {
-                        return c.json(formatZodError(result.error), 400);
-                    }
-                }),
+                paramValidator,
+                updateJsonValidator,
                 async (c: Context<any, any, { out: { param: PkParamOut; json: Partial<InferInsertModel<T>> } }>) => {
                     const user = c.get('user');
                     const params = c.req.valid('param');
@@ -195,11 +210,11 @@ export function generateCrudRouter<
                     let data = c.req.valid('json');
                     if (beforeUpdate) data = await beforeUpdate(c, data);
 
-                    const [existing] = (await db
+                    const [existing] = await db
                         .select()
                         .from(table as any)
                         .where(buildPkWhere(table, pkParamNames, pkValues))
-                        .limit(1)) as InferSelectModel<T>[];
+                        .limit(1) as InferSelectModel<T>[];
 
                     if (!existing || (ownershipCheck && !(await ownershipCheck(user, existing)))) {
                         return c.json({ error: 'Not found or unauthorized' }, 404);
@@ -220,22 +235,22 @@ export function generateCrudRouter<
     // DELETE - DELETE /:field1/:field2/...
     if (shouldInclude('delete')) {
         const path = `/${pkRouteSegment}`;
-        if (overrides.delete) {
-            router.delete(path, ...(Array.isArray(overrides.delete) ? overrides.delete : [overrides.delete]) as [Handler, ...Handler[]]);
+        if (overrides?.delete) {
+            router.delete(path, paramValidator, overrides.delete);
         } else {
             router.delete(
                 path,
-                zValidator('param', pkParamSchema),
+                paramValidator,
                 async (c: Context<any, any, { out: { param: PkParamOut } }>) => {
                     const user = c.get('user');
                     const params = c.req.valid('param');
                     const pkValues = extractPkValues(params);
 
-                    const [existing] = (await db
+                    const [existing] = await db
                         .select()
                         .from(table as any)
                         .where(buildPkWhere(table, pkParamNames, pkValues))
-                        .limit(1)) as InferSelectModel<T>[];
+                        .limit(1) as InferSelectModel<T>[];
 
                     if (!existing || (ownershipCheck && !(await ownershipCheck(user, existing)))) {
                         return c.json({ error: 'Not found or unauthorized' }, 404);
@@ -248,15 +263,14 @@ export function generateCrudRouter<
         }
     }
 
-    // Custom Endpoints (unchanged)
-    customEndpoints.forEach(({ method, path, handlers }) => {
-        const handlerArray = (Array.isArray(handlers) ? handlers : [handlers]) as [Handler, ...Handler[]];
+    // Custom Endpoints
+    customEndpoints.forEach(({ method, path, handler }) => {
         switch (method) {
-            case 'get': router.get(path, ...handlerArray); break;
-            case 'post': router.post(path, ...handlerArray); break;
-            case 'put': router.put(path, ...handlerArray); break;
-            case 'patch': router.patch(path, ...handlerArray); break;
-            case 'delete': router.delete(path, ...handlerArray); break;
+            case 'get': router.get(path, handler); break;
+            case 'post': router.post(path, handler); break;
+            case 'put': router.put(path, handler); break;
+            case 'patch': router.patch(path, handler); break;
+            case 'delete': router.delete(path, handler); break;
         }
     });
 

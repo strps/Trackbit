@@ -12,6 +12,8 @@ import configRoutes from './routes/config.js'
 
 const app = new Hono()
 
+console.log('Starting Backend Server...')
+console.log('Allowed Origins:', process.env.ALLOWED_ORIGINS)
 // 1. Global Middleware
 app.use('*', logger())
 app.use('*', cors({

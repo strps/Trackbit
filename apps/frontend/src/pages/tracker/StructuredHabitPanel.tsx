@@ -168,7 +168,7 @@ const ExerciseLogCard = ({ exerciseLog, index }: any) => {
             </div>
 
             {/* Sets List */}
-            <div className="flex  overflow-x-scroll gap-2 p-2">
+            <div className="flex overflow-x-auto scrollbar-stable gap-2 p-2">
 
                 {
                     exerciseLog.exerciseSets.map((e: OptimisticExerciseSet, i: number) => {
@@ -199,7 +199,7 @@ const ExerciseLogCard = ({ exerciseLog, index }: any) => {
 };
 
 
-
+// --- Add Exercise Picker ---
 const AddExercisePicker = () => {
     const { exercises } = useExercises(); //TODO: add reomended exercises. An ordered list of execises depending of workout program, selected muscular zones, or favorites/most done. for now we use the lis of exerciese as it is
     const { addExerciseLog } = useTracker()
@@ -279,6 +279,8 @@ const AddExercisePicker = () => {
     );
 };
 
+
+// --- Set Card Component ---
 interface SetCardProps {
     e: OptimisticExerciseSet;
     i: number;
@@ -289,9 +291,9 @@ interface SetCardProps {
 export const SetCard = ({ e, i, deleteSet, updateSet }: SetCardProps) => {
     return (
         <div className="flex flex-col shrink-0 items-center group w-26 border border-border rounded-lg overflow-hidden bg-card">
-            <div className="flex justify-between items-center text-xs font-bold w-full p-2 bg-muted/30">
+            <div className="flex justify-between items-center text-xs font-bold w-full h-10 p-2 bg-muted/30">
                 <span className="text-muted-foreground">Set {i + 1}</span>
-                <DropdownMenu>
+                {i !== 0 && <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="link" size="icon" className="h-6 w-6 p-0 bg-muted/0 hover:bg-muted transition-colors">
                             <MoreVertical className="w-4 h-4 text-muted-foreground" />
@@ -307,6 +309,7 @@ export const SetCard = ({ e, i, deleteSet, updateSet }: SetCardProps) => {
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
+                }
             </div>
 
             <div className="flex flex-col w-full">

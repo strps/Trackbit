@@ -34,7 +34,6 @@ const router = createBrowserRouter([
     children: [
       { path: "habits", element: <HabitConfig /> },
       { path: "dashboard", element: <HabitTracker /> },
-      { path: "analytics", element: <div className="p-4">Analytics Page</div> },
       { path: "account-settings", element: <AccountSettings /> },
       { path: "exercises", element: <ExerciseLibrary /> },
     ]
