@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button } from "../ui/button";
+import { Button } from "./ui/button";
 import { NavLink } from "react-router-dom";
 
 import {
@@ -87,11 +87,12 @@ export const AppHeader: React.FC = () => {
 
 export default AppHeader;
 
-import { DropdownMenu, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuContent } from "../ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { DropdownMenu, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuContent } from "./ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "@/providers/theme-provider";
 import { signOut, useSession } from "@/lib/auth-client";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 
 const UserNav = () => {
   const { data, isPending } = useSession();
@@ -184,28 +185,25 @@ const UserNav = () => {
   );
 };
 
-const MobileNav = ({ items, isOpen, onClose }: { items: NavItem[], isOpen: boolean, onClose: () => void }) => {
-  if (!isOpen) return null;
-
+const MobileNav = ({ items, isOpen, onClose }: { items: NavItem[]; isOpen: boolean; onClose: () => void }) => {
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 lg:hidden animate-in fade-in" onClick={onClose}>
-      <div
-        className="fixed inset-y-0 left-0 z-50 h-full w-3/4 max-w-sm gap-4 border-r border-border bg-background p-6 shadow-xl transition-transform animate-in slide-in-from-left duration-300 sm:max-w-sm"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-2 font-bold text-xl">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <Flame className="h-5 w-5 text-primary-foreground fill-current" />
-            </div>
-            <span className="text-foreground">HabitTrack</span>
+    <Sheet open={isOpen} onOpenChange={onClose}>
+      <SheetContent side="left" className="w-3/4 max-w-sm p-0 lg:hidden">
+        <SheetHeader className="border-b border-border p-6">
+          <div className="flex items-center justify-between">
+            <SheetTitle className="flex items-center gap-2 font-bold text-xl">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+                <Flame className="h-5 w-5 text-primary-foreground fill-current" />
+              </div>
+              <span>Trackbit</span>
+            </SheetTitle>
+            {/* <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="h-5 w-5" />
+            </Button> */}
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
+        </SheetHeader>
 
-        <div className="flex flex-col space-y-3">
+        <div className="flex flex-col space-y-3 p-6">
           {items.map((item) => (
             <NavLink
               key={item.to}
@@ -223,7 +221,7 @@ const MobileNav = ({ items, isOpen, onClose }: { items: NavItem[], isOpen: boole
             </NavLink>
           ))}
         </div>
-      </div>
-    </div>
+      </SheetContent>
+    </Sheet>
   );
 };

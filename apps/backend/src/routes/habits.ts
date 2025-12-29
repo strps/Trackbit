@@ -42,7 +42,7 @@ app.post(
         // Validate the JSONB structure if you want, or just accept array
         colorStops: z.array(z.object({
             position: z.number(),
-            color: z.tuple([z.number(), z.number(), z.number()])
+            color: z.tuple([z.number(), z.number(), z.number(), z.number()])
         })).optional(),
         icon: z.string().default('star'),
     })),
@@ -64,9 +64,12 @@ app.put(
     '/:id',
     zValidator('json', z.object({
         name: z.string().optional(),
-        description: z.string().optional(),
+        description: z.string().optional().nullable(),
         goal: z.number().optional(),
-        colorStops: z.any().optional(), // Simplify validation for now
+        colorStops: z.array(z.object({
+            position: z.number(),
+            color: z.tuple([z.number(), z.number(), z.number(), z.number()])
+        })).optional(),
         icon: z.string().optional(),
         type: z.enum(['simple', 'complex', 'negative']).optional(),
     })),
@@ -78,7 +81,6 @@ app.put(
         const id = Number(c.req.param('id'))
 
         console.log(c.req.valid('json'))
-
 
         const updates = c.req.valid('json')
 

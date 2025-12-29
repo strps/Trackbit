@@ -11,7 +11,7 @@ import { ColorStop } from "@trackbit/types"
  * @returns RGB color as [red, green, blue] tuple
  * 
  * @example
- * const gradient = [
+ * const gradient: ColorStop[] = [
  *   { position: 0.0, color: [0, 0, 255] },
  *   { position: 1.0, color: [255, 0, 0] }
  * ];
@@ -22,7 +22,7 @@ export function mapValueToColor(
     minValue: number = 0,
     maxValue: number = 1,
     stops: ColorStop[]
-): [number, number, number] {
+): number[] {
     const normalizedPosition = (value - minValue) / (maxValue - minValue);
     const clampedPosition = Math.max(0, Math.min(1, normalizedPosition));
 
@@ -62,7 +62,7 @@ export function mapValueToColorOrdered(
     minValue: number = 0,
     maxValue: number = 1,
     stops: ColorStop[]
-): [number, number, number] {
+): number[] {
     const normalizedPosition = (value - minValue) / (maxValue - minValue);
     const clampedPosition = Math.max(0, Math.min(1, normalizedPosition));
     const sortedStops = [...stops].sort((a, b) => a.position - b.position);
@@ -107,15 +107,23 @@ export function mapValueToColorOrdered(
  * @returns Interpolated RGB color
  */
 function interpolateColors(
-    colorA: [number, number, number],
-    colorB: [number, number, number],
+    colorA: number[],
+    colorB: number[],
     factor: number
-): [number, number, number] {
-    return [
+): number[] {
+    const result = [
         Math.round(colorA[0] + factor * (colorB[0] - colorA[0])),
         Math.round(colorA[1] + factor * (colorB[1] - colorA[1])),
         Math.round(colorA[2] + factor * (colorB[2] - colorA[2]))
     ];
+
+    const alphaA = colorA[3] ?? 1;
+    const alphaB = colorB[3] ?? 1;
+
+    if (colorA.length > 3 || colorB.length > 3) {
+        result.push(Number((alphaA + factor * (alphaB - alphaA)).toFixed(3)));
+    }
+    return result;
 }
 
 
@@ -126,6 +134,9 @@ export function mapValueToCSSrgb(
     maxValue: number = 1,
     stops: ColorStop[]) {
     const color = mapValueToColor(value, minValue, maxValue, stops);
+    if (color.length > 3 && color[3] !== 1) {
+        return `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3]})`;
+    }
     return `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
 }
 
@@ -137,11 +148,18 @@ export function mapValueToCSSrgb(
  * @param b - Blue value (0-255)
  * @returns Hex color string (e.g., "#ff0000")
  */
-export function rgbToHex(r: number, g: number, b: number): string {
-    return '#' + [r, g, b].map(x => {
+export function rgbToHex(r: number, g: number, b: number, a?: number): string {
+    const hex = [r, g, b].map(x => {
         const hex = x.toString(16);
         return hex.length === 1 ? '0' + hex : hex;
     }).join('');
+
+    if (a !== undefined && a !== 1) {
+        const alpha = Math.round(a * 255);
+        const alphaHex = alpha.toString(16);
+        return '#' + hex + (alphaHex.length === 1 ? '0' + alphaHex : alphaHex);
+    }
+    return '#' + hex;
 }
 
 /**
@@ -160,8 +178,11 @@ export function gradientToCSS(
     direction: string = 'to right'
 ): string {
     const colorStops = stops.map(stop => {
-        const [r, g, b] = stop.color;
+        const [r, g, b, a] = stop.color;
         const percentage = (stop.position * 100).toFixed(1);
+        if (a !== undefined && a !== 1) {
+            return `rgba(${r}, ${g}, ${b}, ${a}) ${percentage}%`;
+        }
         return `rgb(${r}, ${g}, ${b}) ${percentage}%`;
     }).join(', ');
 
@@ -189,8 +210,11 @@ export function gradientToCSSOrdered(
     const colorStops = [...stops]
         .sort((a, b) => a.position - b.position)
         .map(stop => {
-            const [r, g, b] = stop.color;
+            const [r, g, b, a] = stop.color;
             const percentage = (stop.position * 100).toFixed(1);
+            if (a !== undefined && a !== 1) {
+                return `rgba(${r}, ${g}, ${b}, ${a}) ${percentage}%`;
+            }
             return `rgb(${r}, ${g}, ${b}) ${percentage}%`;
         })
         .join(', ');

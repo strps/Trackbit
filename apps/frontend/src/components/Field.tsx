@@ -1,5 +1,5 @@
 import { Controller, ControllerFieldState, ControllerRenderProps, FieldValues, UseFormReturn, UseFormStateReturn } from "react-hook-form";
-import { Field as SField, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field"
+import { Field as ShadcnField, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "./ui/input";
 import { Slider } from "./ui/slider";
 import { Button } from "./ui/button";
@@ -24,7 +24,7 @@ The className prop is forwarded only to the custom FieldInput, which is appropri
  */
 
 
-interface InputProps {
+export interface InputProps {
     id: string;
     "aria-valid": boolean;
     placeholder?: string;
@@ -56,7 +56,7 @@ export const Field = ({ name, label, form, placeholder, fieldInput: FieldInput, 
             name={name}
             control={form.control}
             render={({ field, fieldState, formState }) => (
-                <SField
+                <ShadcnField
                     data-invalid={fieldState.invalid}
                     orientation={orientation}
                 >
@@ -71,11 +71,9 @@ export const Field = ({ name, label, form, placeholder, fieldInput: FieldInput, 
                         className={className}
                         disabled={disabled}
                     />
-                    {description && <FieldDescription>
-                        {description}
-                    </FieldDescription>}
+                    {description && <FieldDescription>{description}</FieldDescription>}
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                </SField>
+                </ShadcnField>
             )}
         />
 
@@ -98,18 +96,21 @@ export const RangeField = ({ min, max, step, ...props }: RangeFieldProps) => <Fi
 
 
 
-export const TextFieldInput = ({
-    id,
-    placeholder,
-    "aria-valid": ariaValid,
-    field,
-    className,
-}: InputProps) => {
+export const TextFieldInput = (props: InputProps) => {
+    const {
+        id,
+        placeholder,
+        "aria-valid": ariaValid,
+        field,
+        fieldState,
+        className,
+    } = props;
+    console.log(JSON.stringify(fieldState));
     return (
         <Input
             id={id}
             placeholder={placeholder}
-            aria-invalid={!ariaValid}
+            aria-invalid={ariaValid}
             className={className}
             {...field}
         />
@@ -151,7 +152,27 @@ export const RangeFieldInput = ({
     step = 1,
     "aria-valid": ariaValid,
 }: RangeFieldInputProps) => {
-    const { onChange, value, ...fieldProps } = field
+    const currentValue = Number(field.value ?? min);
+
+    const sliderValue = [currentValue] as number[];
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value === "" ? min : Number(e.target.value);
+        if (!isNaN(val)) {
+            const clamped = Math.max(min, Math.min(max, val));
+            field.onChange(clamped);
+        }
+    };
+
+    const handleInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+        // Ensure value is clamped and integer on blur
+        const val = e.target.value === "" ? min : Number(e.target.value);
+        if (!isNaN(val)) {
+            const clamped = Math.max(min, Math.min(max, Math.round(val / step) * step));
+            field.onChange(clamped);
+        }
+    };
+
     return (
         <div className="flex items-center gap-4">
             <Slider
@@ -159,17 +180,43 @@ export const RangeFieldInput = ({
                 min={min}
                 max={max}
                 step={step}
-                onValueChange={(value) => onChange(value)}
+                value={sliderValue}
+                onValueChange={(vals) => field.onChange(vals[0])}
                 aria-invalid={!ariaValid}
-                className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-slate-900 dark:accent-white"
-                {...fieldProps}
+                className="flex-1"
             />
-            <span className="w-12 text-center font-bold text-xl py-1 rounded-lg bg-slate-100 dark:bg-slate-700">
-                {value}
-            </span>
+            <Input
+                type="number"
+                min={min}
+                max={max}
+                step={step}
+                value={currentValue}
+                onChange={handleInputChange}
+                onBlur={handleInputBlur}
+                className="w-12 py-1 text-center text-4xl font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none border-0 bg-transparent focus-visible:bg-transparent focus-visible:border-0 shadow-none focus-visible:shadow-none"
+                aria-invalid={!ariaValid}
+            />
         </div>
     );
 };
+
+
+
+
+
+
+// <span className="w-12 text-center font-bold text-xl py-1 rounded-lg bg-slate-100 dark:bg-slate-700">
+//     {currentValue}
+// </span>
+
+
+
+
+
+
+
+
+
 
 
 interface PasswordFieldInputProps extends InputProps { }

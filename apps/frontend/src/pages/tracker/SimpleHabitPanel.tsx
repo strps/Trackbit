@@ -2,13 +2,13 @@ import { useEffect, useState } from "react";
 import { Minus, Plus, CalendarSearch, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { mapValueToColorOrdered } from "@/lib/colorUtils"; // Adjust path as needed
-import { useHabitLogs } from "@/hooks/use-habit-logs"
+import { useTracker } from "@/hooks/use-tracker"
 
 export const SimpleHabitPanel = () => {
 
     const [isAnimating, setIsAnimating] = useState(false);
 
-    const { habitsWithLogs, logSimple, selectedHabitId, selectedDay, currentHabit } = useHabitLogs()
+    const { habitsWithLogs, logSimple, selectedHabitId, selectedDay, currentHabit } = useTracker()
 
     const activeHabit = currentHabit
 
@@ -25,8 +25,8 @@ export const SimpleHabitPanel = () => {
     // 2. Get Dynamic Color from Gradient
     // We use the util to pick the color corresponding to current progress (0 to 1)
     const colorStops = activeHabit?.colorStops || [
-        { position: 0, color: [226, 232, 240] },
-        { position: 1, color: [16, 185, 129] }
+        { position: 0, color: [226, 232, 240, 1] },
+        { position: 1, color: [16, 185, 129, 1] }
     ];
     const rgb = mapValueToColorOrdered(progress, 0, 1, colorStops);
     const colorString = `rgb(${rgb.join(",")})`;

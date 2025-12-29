@@ -2,7 +2,7 @@ import { pgTable, serial, text, integer, timestamp, date, jsonb, primaryKey, pgE
 import { user } from './user.js';
 import { relations } from 'drizzle-orm';
 import { exerciseSessions } from './exercises.js';
-import { ColorStop } from '../types.js';
+import { ColorStop } from '@trackbit/types';
 
 export const habitTypeEnum = pgEnum('habit_type', ['simple', 'complex', 'negative', 'timed'])
 
@@ -17,8 +17,8 @@ export const habits = pgTable('habits', {
 
   // Defaults to a simple Green gradient
   colorStops: jsonb('color_palette').$type<ColorStop[]>().notNull().default([
-    { position: 0, color: [241, 245, 249] },
-    { position: 1, color: [16, 185, 129] }
+    { position: 0, color: [241, 245, 249, 1] },
+    { position: 1, color: [16, 185, 129, 1] }
   ]),
   // e.g., 'book', 'dumbbell'
   icon: text('icon').notNull().default('star').notNull(),

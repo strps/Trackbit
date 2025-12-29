@@ -2,12 +2,12 @@ import { CalendarSearch, NotebookPen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SimpleHabitPanel } from "./SimpleHabitPanel";
 import { ExerciseSessionPanel } from "./StructuredHabitPanel";
-import { useHabitLogs } from "@/hooks/use-habit-logs";
+import { useTracker } from "@/hooks/use-tracker";
 import { formatDate } from "./utils";
 
 export function DayLog() {
 
-    const { selectedDay, setDay, currentHabit } = useHabitLogs()
+    const { selectedDay, setDay, currentHabit } = useTracker()
 
     return (
 

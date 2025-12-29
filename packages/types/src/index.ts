@@ -1,7 +1,7 @@
 
 export interface ColorStop {
     position: number;
-    color: [number, number, number];
+    color: [number, number, number, number];
 }
 
 export interface Habit {

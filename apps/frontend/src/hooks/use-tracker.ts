@@ -3,7 +3,7 @@ import { useExercises } from './use-exercises';
 import { create } from 'zustand';
 import { Habit, ExerciseSession, ExerciseLog, ExerciseSet } from "@trackbit/types";
 
-const API_URL = `${import.meta.env.VITE_API_URL}/logs`;
+const API_URL = import.meta.env.VITE_API_URL;
 
 // --- Optimistic extensions of centralized types ---
 export type OptimisticExerciseSet = ExerciseSet & { tempId?: string };
@@ -31,7 +31,7 @@ interface HabitWithLogs extends Habit {
 
 // --- Fetcher ---
 const fetchHistory = async (): Promise<Record<number, HabitWithLogs>> => {
-    const res = await fetch(`${API_URL}/history`, { credentials: 'include' });
+    const res = await fetch(`${API_URL}/logs/history`, { credentials: 'include' });
     if (!res.ok) throw new Error('Failed to fetch history');
     const data = await res.json();
 
@@ -76,7 +76,7 @@ export const useUIStore = create<UIState>((set) => ({
     selectSessionIndex: (i) => set({ selectedSessionIndex: i }),
 }));
 
-export function useHabitLogs() {
+export function useTracker() {
     const {
         selectedHabitId,
         selectHabitId,
@@ -134,7 +134,7 @@ export function useHabitLogs() {
     const logSimple = useMutation({
         mutationFn: async (payload: { habitId: number; date: string; rating: number }) => {
             console.log(payload)
-            const res = await fetch(`${API_URL}/check`, {
+            const res = await fetch(`${API_URL}/logs/check`, {
                 method: 'POST',
                 body: JSON.stringify({
                     habitId: payload.habitId,
@@ -217,7 +217,7 @@ export function useHabitLogs() {
     // 6. Delete Exercise Session
     const deleteSession = useMutation({
         mutationFn: async (sessionId: number) => {
-            const res = await fetch(`${API_URL}/api/exercise-sessions/${sessionId}`, {
+            const res = await fetch(`${API_URL}/exercise-sessions/${sessionId}`, {
                 method: 'DELETE',
                 credentials: 'include',
             });
@@ -262,7 +262,7 @@ export function useHabitLogs() {
             const exercise = exercises.find((e) => e.id === exerciseId);
             if (!exercise) throw new Error('Exercise not found');
             const defaultSet = { reps: exercise.lastSetReps || 10, weight: exercise.lastSetWeight || 25 };
-            const res = await fetch(`${API_URL}/exercise-log`, {
+            const res = await fetch(`${API_URL}/logs/exercise-log`, {
                 method: 'POST',
                 body: JSON.stringify({ sessionId: currentSession.id, exerciseId, exerciseSets: [defaultSet] }),
                 headers: { 'Content-Type': 'application/json' },
@@ -346,7 +346,7 @@ export function useHabitLogs() {
     };
 
     // 4a. Add a new persisted set
-    const newSet = useMutation({
+    const createSet = useMutation({
         mutationFn: async (exerciseLog: OptimisticExerciseLog) => {
             if (!exerciseLog.id) throw new Error('Exercise log must have an ID');
             const defaults = getExerciseDefaults(exerciseLog.exerciseId);
@@ -356,7 +356,7 @@ export function useHabitLogs() {
                 weight: defaults.weight,
             };
 
-            const res = await fetch(`${API_URL}/exercise-set`, {
+            const res = await fetch(`${API_URL}/logs/exercise-set`, {
                 method: 'POST',
                 body: JSON.stringify(payload),
                 headers: { 'Content-Type': 'application/json' },
@@ -416,7 +416,7 @@ export function useHabitLogs() {
                 weight: exerciseSet.weight,
             };
 
-            const res = await fetch(`${API_URL}/exercise-set`, {
+            const res = await fetch(`${API_URL}/logs/exercise-set`, {
                 method: 'POST',
                 body: JSON.stringify(payload),
                 headers: { 'Content-Type': 'application/json' },
@@ -491,7 +491,7 @@ export function useHabitLogs() {
     // 5. Delete Set
     const deleteSet = useMutation({
         mutationFn: async (exerciseSetId: number) => {
-            await fetch(`${API_URL}/exercise-set/${exerciseSetId}`, {
+            await fetch(`${API_URL}/logs/exercise-set/${exerciseSetId}`, {
                 method: 'DELETE',
                 credentials: 'include',
             });
@@ -534,7 +534,7 @@ export function useHabitLogs() {
         deleteSession: deleteSession.mutate,
         addExerciseLog: addExerciseLog.mutate,
         removeExerciseLog: removeExerciseLog.mutate,
-        newSet: newSet.mutate,
+        newSet: createSet.mutate,
         updateSet: updateSet.mutate,
         deleteSet: deleteSet.mutate,
     };

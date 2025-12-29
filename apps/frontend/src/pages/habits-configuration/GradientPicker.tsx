@@ -4,13 +4,13 @@ import {
 } from "@/lib/colorUtils";
 import { useEffect, useRef, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { RgbColorPicker } from "react-colorful";
+import { RgbaColorPicker } from "react-colorful";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Trash2, Plus } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { CollapsibleSection } from "../../components/Collapsible";
-import { bigButtonSelectedClassName } from "@/components/BigButton";
+import { bigButtonClassName, bigButtonSelectedClassName } from "@/components/BigButton";
 import { ColorStop } from "@trackbit/types";
 
 interface GradientPickerProps {
@@ -26,9 +26,9 @@ export function GradientPicker({ value, onChange, isActive, onClick }: GradientP
     const containerRef = useRef<HTMLDivElement>(null);
 
     const [localStops, setLocalStops] = useState<ColorStop[]>([
-        { position: 0, color: [255, 0, 0] },
-        { position: 0.5, color: [255, 225, 0] },
-        { position: 1, color: [12, 148, 62] }
+        { position: 0, color: [255, 0, 0, 1] },
+        { position: 0.5, color: [255, 225, 0, 1] },
+        { position: 1, color: [12, 148, 62, 1] }
     ]);
 
     useEffect(() => {
@@ -99,17 +99,17 @@ export function GradientPicker({ value, onChange, isActive, onClick }: GradientP
         const position = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
 
         const color = mapValueToColorOrdered(position, 0, 1, stops);
-
-        const newStops = [...stops, { position, color }];
+        const colorWithAlpha = color.length === 3 ? [...color, 1] : color;
+        const newStops = [...stops, { position, color: colorWithAlpha }] as ColorStop[];
         updateStops(newStops);
         setSelected(newStops.length - 1);
     };
 
-    const onColorChange = (newColor: { r: number, g: number, b: number }) => {
+    const onColorChange = (newColor: { r: number, g: number, b: number, a: number }) => {
         if (selected === null) return;
         const newStops = stops.map((stop, idx) => {
             if (idx === selected) {
-                return { ...stop, color: [newColor.r, newColor.g, newColor.b] as [number, number, number] };
+                return { ...stop, color: [newColor.r, newColor.g, newColor.b, newColor.a] as [number, number, number, number] };
             }
             return stop;
         });
@@ -128,11 +128,11 @@ export function GradientPicker({ value, onChange, isActive, onClick }: GradientP
 
     const onRGBChange = (channel: number, val: string) => {
         if (selected === null) return;
-        const numVal = Math.max(0, Math.min(255, Number(val)));
+        const numVal = Math.max(0, Math.min(channel === 3 ? 1 : 255, Number(val)));
 
         const newStops = stops.map((stop, idx) => {
             if (idx === selected) {
-                const newColor = [...stop.color] as [number, number, number];
+                const newColor = [...stop.color] as [number, number, number, number];
                 newColor[channel] = numVal;
                 return { ...stop, color: newColor };
             }
@@ -150,7 +150,7 @@ export function GradientPicker({ value, onChange, isActive, onClick }: GradientP
 
     return (
         <CollapsibleSection
-            className={`col-span-2 ${isActive && bigButtonSelectedClassName}`}
+            className={`col-span-2 p-4 rounded-xl border-2 ${isActive && bigButtonSelectedClassName}`}
             isOpen={isActive}
             headerContent={
                 <div
@@ -250,11 +250,12 @@ export function GradientPicker({ value, onChange, isActive, onClick }: GradientP
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-3">
                                 {selected !== null && (
-                                    <RgbColorPicker
+                                    <RgbaColorPicker
                                         color={{
                                             r: stops[selected].color[0],
                                             g: stops[selected].color[1],
-                                            b: stops[selected].color[2]
+                                            b: stops[selected].color[2],
+                                            a: stops[selected].color[3] ?? 1
                                         }}
                                         onChange={onColorChange}
                                     />
@@ -275,15 +276,16 @@ export function GradientPicker({ value, onChange, isActive, onClick }: GradientP
                     </div>
 
                     <div className="space-y-1.5">
-                        <Label className="text-xs font-bold text-muted-foreground uppercase">RGB Values</Label>
+                        <Label className="text-xs font-bold text-muted-foreground uppercase">RGBA Values</Label>
                         <div className="flex gap-2">
-                            {['R', 'G', 'B'].map((label, i) => (
+                            {['R', 'G', 'B', 'A'].map((label, i) => (
                                 <div key={label} className="relative">
                                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">{label}</span>
                                     <Input
                                         type="number"
+                                        step={label === 'A' ? 0.1 : 1}
                                         className="w-16 pl-5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                        value={selected !== null ? stops[selected].color[i] : ""}
+                                        value={selected !== null ? (stops[selected].color[i] ?? (label === 'A' ? 1 : 0)) : ""}
                                         onChange={(e) => onRGBChange(i, e.target.value)}
                                         disabled={selected === null}
                                     />

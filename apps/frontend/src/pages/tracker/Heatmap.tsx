@@ -1,8 +1,11 @@
 import { Activity, CalendarDays, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatDate } from "./utils";
 import { mapValueToCSSrgb } from "../../lib/colorUtils";
-import { useHabitLogs } from "@/hooks/use-habit-logs";
+import { useTracker } from "@/hooks/use-tracker";
 import { ColorStop } from "@trackbit/types"
+import React from "react";
+import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface HeatmapProps {
     weeks: Date[][];
@@ -16,7 +19,7 @@ export const Heatmap = ({
     weekStart = 'monday' // Default to monday
 }: HeatmapProps) => {
 
-    const { currentHabit, selectedDay, setDay: setSelectedDay } = useHabitLogs();
+    const { currentHabit, selectedDay, setDay: setSelectedDay } = useTracker();
     const logsMap = currentHabit?.dayLogs || {};
 
     const getRating = (date: string) => {
@@ -31,8 +34,8 @@ export const Heatmap = ({
     // 1. Color Logic
     const dailyTarget = currentHabit?.dailyGoal || 1;
     const palette: ColorStop[] = currentHabit?.colorStops || [
-        { position: 0, color: [241, 245, 249] },
-        { position: 1, color: [16, 185, 129] }
+        { position: 0, color: [241, 245, 249, 1] },
+        { position: 1, color: [16, 185, 129, 1] }
     ];
 
     const getColorForValue = (val: number) => {
@@ -135,10 +138,13 @@ export const Heatmap = ({
                         return (
                             <div
                                 key={ratio}
-                                className="w-3 h-3 rounded-[25%]"
-                                style={{ backgroundColor: getColorForValue(val) }}
-                                title={`Value: ${val}`}
-                            />
+                                className={dateCellBaseClassName}
+                            >
+                                <div
+                                    className="w-full h-full rounded-[25%]"
+                                    style={{ backgroundColor: getColorForValue(val) }}
+                                />
+                            </div>
                         );
                     })}
                     <span>More</span>
@@ -190,17 +196,14 @@ export const Heatmap = ({
                                         const backgroundColor = getColorForValue(val || 0);
 
                                         return (
-                                            <div
+                                            <DateCell
                                                 key={dStr}
                                                 onClick={() => { setSelectedDay(dStr) }}
-                                                style={{ backgroundColor }}
-                                                className={`
-                                                    w-3 h-3 rounded-[25%] cursor-pointer transition-all border border-transparent
-                                                    ${isSelected ? 'border-border! z-10 scale-125 shadow-md ring-1 ring-primary' : ''}
-                                                    ${isToday ? 'ring-1 ring-slate-900 dark:ring-white z-10' : ''}
-                                                    hover:scale-125 hover:z-20 hover:shadow-sm
-                                                `}
-                                                title={`${dStr}: ${val} units`}
+                                                isSelected={isSelected}
+                                                isToday={isToday}
+                                                val={val || 0}
+                                                dateStr={dStr}
+                                                color={backgroundColor}
                                             />
                                         )
                                     })}
@@ -211,5 +214,44 @@ export const Heatmap = ({
                 </div>
             </div>
         </div>
+    )
+}
+
+
+interface DateCellProps {
+    color: string;
+    val: number;
+    isSelected: boolean;
+    isToday: boolean;
+    onClick?: React.MouseEventHandler<HTMLDivElement>;
+    className?: string;
+    dateStr?: string;
+}
+
+export const dateCellBaseClassName = "w-3 h-3 rounded-[25%]  border border-border shadow-sm bg-muted/25 ";
+
+export const DateCell = ({ color, val, isSelected, isToday, onClick, className, dateStr }: DateCellProps) => {
+
+    return (
+        <Tooltip delayDuration={1000}>
+            <TooltipTrigger asChild>
+                <div
+                    className={cn(dateCellBaseClassName,
+                        `${isSelected ? 'border-border! z-10 scale-130 shadow-md ring-1 ring-primary' : ''}
+                        ${isToday ? 'ring-1 ring-primary z-10' : ''}
+                        hover:scale-125 hover:z-20 hover:shadow-sm cursor-pointer transition-all
+                        `)}
+                    onClick={onClick}
+                >
+                    <div
+                        className="w-full h-full rounded-[25%]"
+                        style={{ backgroundColor: color }}
+                    />
+                </div>
+            </TooltipTrigger>
+            <TooltipContent>
+                <span>{dateStr}: {val} unit{val !== 1 ? 's' : ''}</span>
+            </TooltipContent>
+        </Tooltip>
     )
 }

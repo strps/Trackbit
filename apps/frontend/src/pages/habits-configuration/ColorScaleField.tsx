@@ -4,6 +4,7 @@ import { gradientToCSS, mapValueToColor, mapValueToCSSrgb } from '../../lib/colo
 import { GradientPicker } from './GradientPicker';
 import { BigButton } from '@/components/BigButton';
 import { ColorStop } from "@trackbit/types";
+import { InputProps } from "@/components/Field";
 
 
 type Preset = {
@@ -16,57 +17,57 @@ export const GRADIENT_PRESETS: Record<string, Preset> = {
     emerald: {
         label: "Growth (Green)",
         stops: [
-            { position: 0, color: [241, 245, 249] },   // slate-100
-            { position: 0.4, color: [134, 239, 172] }, // green-300
-            { position: 1, color: [21, 128, 61] }      // green-700
+            { position: 0, color: [241, 245, 249, 1] },   // slate-100
+            { position: 0.4, color: [134, 239, 172, 1] }, // green-300
+            { position: 1, color: [21, 128, 61, 1] }      // green-700
         ]
     },
     blue: {
         label: "Focus (Blue)",
         stops: [
-            { position: 0, color: [241, 245, 249] },   // slate-100
-            { position: 0.4, color: [147, 197, 253] }, // blue-300
-            { position: 1, color: [29, 78, 216] }      // blue-700
+            { position: 0, color: [241, 245, 249, 1] },   // slate-100
+            { position: 0.4, color: [147, 197, 253, 1] }, // blue-300
+            { position: 1, color: [29, 78, 216, 1] }      // blue-700
         ]
     },
     orange: {
         label: "Energy (Orange)",
         stops: [
-            { position: 0, color: [241, 245, 249] },   // slate-100
-            { position: 0.4, color: [253, 186, 116] }, // orange-300
-            { position: 1, color: [194, 65, 12] }      // orange-700
+            { position: 0, color: [241, 245, 249, 1] },   // slate-100
+            { position: 0.4, color: [253, 186, 116, 1] }, // orange-300
+            { position: 1, color: [194, 65, 12, 1] }      // orange-700
         ]
     },
     violet: {
         label: "Deep Work (Purple)",
         stops: [
-            { position: 0, color: [241, 245, 249] },   // slate-100
-            { position: 0.4, color: [216, 180, 254] }, // purple-300
-            { position: 1, color: [126, 34, 206] }     // purple-700
+            { position: 0, color: [241, 245, 249, 1] },   // slate-100
+            { position: 0.4, color: [216, 180, 254, 1] }, // purple-300
+            { position: 1, color: [126, 34, 206, 1] }     // purple-700
         ]
     },
     rose: {
         label: "Passion (Rose)",
         stops: [
-            { position: 0, color: [241, 245, 249] },   // slate-100
-            { position: 0.4, color: [253, 164, 175] }, // rose-300
-            { position: 1, color: [190, 18, 60] }      // rose-700
+            { position: 0, color: [241, 245, 249, 1] },   // slate-100
+            { position: 0.4, color: [253, 164, 175, 1] }, // rose-300
+            { position: 1, color: [190, 18, 60, 1] }      // rose-700
         ]
     },
     fire: {
         label: "Intensity (Fire)",
         stops: [
-            { position: 0, color: [255, 237, 213] },   // orange-100
-            { position: 0.5, color: [249, 115, 22] },  // orange-500
-            { position: 1, color: [185, 28, 28] }      // red-700
+            { position: 0, color: [255, 237, 213, 1] },   // orange-100
+            { position: 0.5, color: [249, 115, 22, 1] },  // orange-500
+            { position: 1, color: [185, 28, 28, 1] }      // red-700
         ]
     },
     custom: {
         label: "Custom Theme",
         stops: [
-            { position: 0, color: [255, 0, 0] },
-            { position: 0.5, color: [255, 225, 0] },
-            { position: 1, color: [12, 148, 62] }
+            { position: 0, color: [255, 0, 0, 1] },
+            { position: 0.5, color: [255, 225, 0, 1] },
+            { position: 1, color: [12, 148, 62, 1] }
         ]
     }
 
@@ -74,14 +75,10 @@ export const GRADIENT_PRESETS: Record<string, Preset> = {
 
 
 
-interface GradientPickerProps {
-    value: ColorStop[];
-    onChange: (stops: ColorStop[]) => void;
-}
-
 // --- 2. The Component ---
-export const GradientField = ({ value, onChange }: GradientPickerProps) => {
+export const ColorScaleFieldInput = ({ field, className }: InputProps) => {
 
+    const { onChange } = field;
     //TODO: We migth order the stops before saving or rendering, so we don't have to use the ordered version of color gradient utilities. 
 
 
@@ -95,7 +92,7 @@ export const GradientField = ({ value, onChange }: GradientPickerProps) => {
 
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className={`grid grid-cols-2 gap-3 ${className || ''}`}>
             {Object.entries(GRADIENT_PRESETS).map(([key, preset]) => {
                 const isActive = activeKey === key;
                 const background = gradientToCSS(preset.stops);
@@ -164,4 +161,3 @@ export const GradientField = ({ value, onChange }: GradientPickerProps) => {
         </div>
     );
 };
-

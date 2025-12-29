@@ -1,4 +1,4 @@
-import { GRADIENT_PRESETS, GradientField } from "@/pages/habits-configuration/GradientField";
+import { GRADIENT_PRESETS, ColorScaleFieldInput } from "@/pages/habits-configuration/ColorScaleField";
 import { IconSelector } from "./IconField";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Layout, List, Save, XCircle } from "lucide-react";
@@ -8,8 +8,8 @@ import { useForm } from "react-hook-form";
 import { Field, RangeField, TextField } from "@/components/Field";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
-import { useHabits } from "@/hooks/use-habits";
 import { Habit } from "@trackbit/types"
+import { useHabits } from "@/hooks/use-habits";
 
 
 
@@ -48,7 +48,7 @@ const formSchema = z.object({
     colorStops: z.array(
         z.object({
             position: z.number().min(0).max(1),
-            color: z.array(z.number().min(0).max(255)).length(3)
+            color: z.array(z.number().min(0).max(255)).length(4)
         })
     ),
     dailyGoal: z.number().min(0).max(100),
@@ -76,12 +76,13 @@ export const HabitConfigForm = ({
     habit
 }: HabitConfigProps) => {
 
-
+    const { createHabit, updateHabit } = useHabits();
 
     const form = useForm<z.infer<typeof formSchema>>({
         mode: "onSubmit",
         reValidateMode: "onSubmit",
         resolver: zodResolver(formSchema),
+
         defaultValues: {
             name: "",
             description: "",
@@ -107,8 +108,6 @@ export const HabitConfigForm = ({
     };
 
 
-    const { isLoading, createHabit, updateHabit, } = useHabits();
-
     const onSubmit = (data: z.infer<typeof formSchema>) => {
         if (!data.id)
             createHabit(data as Habit);
@@ -123,7 +122,7 @@ export const HabitConfigForm = ({
                 className={`
                     rounded-2xl shadow-xl border 
                     overflow-hidden sticky top-8 transition-all duration-300
-                    ${isEditing ? 'opacity-100 translate-y-0' : 'opacity-50 grayscale pointer-events-none translate-y-4'}
+                    ${isEditing ? 'opacity-100' : 'opacity-50 grayscale pointer-events-none'}
                 `}
             >
                 {/* Header */}
@@ -235,16 +234,7 @@ export const HabitConfigForm = ({
                             label="Color Theme"
                             form={form}
                             name="colorStops"
-                            fieldInput={({ field }) => (
-                                <div className="space-y-3">
-                                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-700 border">
-                                        <GradientField
-                                            value={field.value}
-                                            onChange={field.onChange}
-                                        />
-                                    </div>
-                                </div>
-                            )}
+                            fieldInput={ColorScaleFieldInput}
                         />
 
                     </div>
@@ -253,9 +243,9 @@ export const HabitConfigForm = ({
             </div>
 
             {!isEditing && (
-                <div className="absolute flex flex-col items-center justify-center border-2 border-dashed rounded-2xl inset-0 bottom-0 bg-muted/75">
+                <div className="absolute flex flex-col items-center justify-center border-4 border-dashed rounded-2xl inset-0 bg-muted/75">
                     <Layout className="w-16 h-16 mb-4 opacity-20" />
-                    <p className="text-lg font-medium">Select a habit to edit</p>
+                    <p className="text-3xl font-medium">Select a habit to edit</p>
                 </div>
             )}
         </form>

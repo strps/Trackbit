@@ -22,7 +22,6 @@ export const auth = betterAuth({
     }
   }),
 
-
   // Trusted origins for cross-site requests
   trustedOrigins: process.env.ALLOWED_ORIGINS?.split(','),
   advanced: {
@@ -31,7 +30,6 @@ export const auth = betterAuth({
       secure: true,      // Required for SameSite=None and HTTPS (Vercel always uses HTTPS)
     },
   },
-
 
   emailAndPassword: {
     enabled: true,

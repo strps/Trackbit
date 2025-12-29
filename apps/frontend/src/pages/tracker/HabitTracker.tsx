@@ -3,7 +3,7 @@ import {
   Flame, Trophy, Activity, Dumbbell,
   Book as MenuBook, Code, Star, Droplet
 } from 'lucide-react';
-import { useHabitLogs } from '@/hooks/use-habit-logs';
+import { useTracker } from '@/hooks/use-tracker';
 import { formatDate, getCalendarDates } from './utils';
 import { Heatmap } from './Heatmap';
 import { Stats } from './Stats';
@@ -28,7 +28,7 @@ const getHabitIcon = (iconName: string): React.ElementType => {
 
 const HabitTracker = () => {
 
-  const { habitsWithLogs, isLoading, setDay: setSelectedDay, selectedHabitId, currentHabit, setHabitId } = useHabitLogs();
+  const { habitsWithLogs, isLoading, setDay: setSelectedDay, selectedHabitId, currentHabit, setHabitId } = useTracker();
 
   const todayStr = formatDate(new Date());
 
@@ -46,22 +46,22 @@ const HabitTracker = () => {
     return w;
   }, [calendarDates]);
 
-  if (isLoading) return <div className="p-8 text-center">Loading Tracker Data...</div>;
+  if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading Tracker Data...</div>;
 
   if (Object.keys(habitsWithLogs).length === 0) return (
     <div className="flex h-screen items-center justify-center flex-col gap-4">
-      <div className="p-6 bg-slate-100 rounded-full"><Dumbbell className="w-8 h-8 text-slate-400" /></div>
-      <p className="text-slate-500">No habits found. Go to Settings to create one!</p>
+      <div className="p-6 bg-muted rounded-full"><Dumbbell className="w-8 h-8 text-muted-foreground" /></div>
+      <p className="text-muted-foreground">No habits found. Go to Settings to create one!</p>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 p-4 md:p-8 font-sans">
+    <div className="min-h-screen bg-background text-foreground p-4 md:p-8 font-sans">
       <div className="max-w-6xl mx-auto space-y-8">
 
         {/* Header & Habit Selector */}
         <div className="flex flex-col md:flex-row justify-between gap-4">
-          <h1 className="text-3xl font-bold flex items-center gap-2">
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
             <Flame className="w-8 h-8 text-orange-500 fill-orange-500" />
             Momentum
           </h1>
@@ -73,7 +73,7 @@ const HabitTracker = () => {
                   key={id}
                   onClick={() => { setHabitId(id); setSelectedDay(formatDate(new Date())) }}
                   style={{ backgroundColor: getColorAtOne(habitsWithLogs[id].colorStops) }}
-
+                  className="gap-2"
                 >
                   <IconComponent className="w-4 h-4" />
                   {habitsWithLogs[id].name}
