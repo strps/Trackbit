@@ -50,12 +50,12 @@ export const SimpleHabitPanel = () => {
 
 
     return (
-        <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-b-xl animate-in fade-in slide-in-from-top-2 duration-300">
+        <div className="p-6 border-t border-border bg-card text-card-foreground rounded-b-xl animate-in fade-in slide-in-from-top-2 duration-300">
             <div className="flex items-center justify-between gap-6">
 
                 {/* Left: Context Info */}
                 <div className="flex-1">
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
                         {new Date(selectedDay).toLocaleDateString(undefined, { weekday: 'long' })}
                         {isGoalMet && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 animate-in zoom-in">
@@ -63,7 +63,7 @@ export const SimpleHabitPanel = () => {
                             </span>
                         )}
                     </h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                    <p className="text-sm text-muted-foreground mt-1">
                         {value} / {goal} {activeHabit!.type === 'complex' ? 'sessions' : 'units'} completed
                     </p>
                 </div>
@@ -76,7 +76,7 @@ export const SimpleHabitPanel = () => {
                         size="icon"
                         onClick={handleDecrement}
                         disabled={value <= 0}
-                        className="h-12 w-12 rounded-full border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10"
+                        className="h-12 w-12 rounded-full border border-input text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                     >
                         <Minus className="w-6 h-6" />
                     </Button>
@@ -91,7 +91,7 @@ export const SimpleHabitPanel = () => {
                                 stroke="currentColor"
                                 strokeWidth="8"
                                 fill="transparent"
-                                className="text-slate-100 dark:text-slate-800"
+                                className="text-muted"
                             />
                             {/* Progress Ring */}
                             <circle
@@ -118,7 +118,7 @@ export const SimpleHabitPanel = () => {
                             >
                                 {value}
                             </span>
-                            <span className="text-[10px] uppercase font-bold text-slate-400">Count</span>
+                            <span className="text-[10px] uppercase font-bold text-muted-foreground">Count</span>
                         </div>
                     </div>
 
@@ -128,7 +128,7 @@ export const SimpleHabitPanel = () => {
                         onClick={handleIncrement}
                         className={`
                             h-14 w-14 rounded-full shadow-md border-2 transition-all active:scale-95
-                            ${isGoalMet ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/10' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'}
+                            ${isGoalMet ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/10' : 'border-input bg-background'}
                         `}
                         style={{
                             borderColor: !isGoalMet ? colorString : undefined,

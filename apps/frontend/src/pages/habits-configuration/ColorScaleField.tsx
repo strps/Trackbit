@@ -4,7 +4,7 @@ import { gradientToCSS, mapValueToColor, mapValueToCSSrgb } from '../../lib/colo
 import { GradientPicker } from './GradientPicker';
 import { BigButton } from '@/components/BigButton';
 import { ColorStop } from "@trackbit/types";
-import { InputProps } from "@/components/Field";
+import { InputProps } from '@/components/Fields/FieldBase';
 
 
 type Preset = {

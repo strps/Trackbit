@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Exercise as TrackbitExercise, } from '@trackbit/types';
-const API_URL = `${import.meta.env.VITE_API_URL}/exercises`;
+const API_URL = `${import.meta.env.VITE_API_URL}/exercise-info`;
 
 interface Exercise extends TrackbitExercise {
     lastSetId: number;
@@ -10,10 +10,16 @@ interface Exercise extends TrackbitExercise {
 }
 
 const fetchExercises = async (): Promise<Exercise[]> => {
-    const res = await fetch(API_URL, { credentials: 'include' });
+    const res = await fetch(`${API_URL}/exercises`, { credentials: 'include' });
     if (!res.ok) throw new Error('Failed to fetch exercises');
     return res.json();
 };
+
+const fetchMuscleGroups = async (): Promise<string[]> => {
+    const res = await fetch(`${API_URL}/muscle-groups`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Failed to fetch muscle groups');
+    return res.json();
+}
 
 const createExercise = async (newExercise: { name: string; category: string; muscleGroup?: string }) => {
     const res = await fetch(API_URL, {
@@ -33,6 +39,12 @@ export function useExercises() {
         queryKey: ['exercises'],
         queryFn: fetchExercises,
     });
+
+    const muscleGroupsQuery = useQuery({
+        queryKey: ['muscle-groups'],
+        queryFn: fetchMuscleGroups,
+    });
+
 
     const createMutation = useMutation({
         mutationFn: createExercise,
@@ -61,8 +73,11 @@ export function useExercises() {
         },
     });
 
+
+
     return {
         exercises: query.data ?? [],
+        muscleGroups: muscleGroupsQuery.data ?? [],
         isLoading: query.isLoading,
         createExercise: createMutation.mutateAsync,
         isCreating: createMutation.isPending,

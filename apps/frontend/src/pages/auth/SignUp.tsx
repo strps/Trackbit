@@ -6,10 +6,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { authClient } from '@/lib/auth-client';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { TextField, PasswordField } from "@/components/Field"; // Adjust import if PasswordField is separate
 import { UseFormReturn } from "react-hook-form";
 import { Alert, AlertDescription } from "@/components/ui/alert"; // Assuming shadcn alert exists
 import { GoogleIcon, GithubIcon } from './Icons';
+import { TextField } from '@/components/Fields/TextFieldInput';
+import { PasswordField } from '@/components/Fields/PasswordField';
 
 const signUpSchema = z.object({
     name: z.string().min(1, "Full name is required"),

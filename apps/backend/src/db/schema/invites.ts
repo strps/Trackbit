@@ -1,5 +1,5 @@
 import { pgTable, serial, text, timestamp, integer, boolean } from "drizzle-orm/pg-core";
-import { user } from "./user.js";
+import { user } from "./user.ts";
 import { relations } from "drizzle-orm";
 
 export const invites = pgTable("invites", {

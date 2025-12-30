@@ -1,8 +1,8 @@
-import { generateCrudRouter } from '../lib/generateCrudRouter.js'; // Adjust path if necessary
-import { exerciseLogs, exercises, exerciseSets } from '../db/schema/index.js';
-import { generateValidationCrudSchemas } from '../lib/generateValidationCrudSchemas.js'; // Adjust path if necessary
+import { generateCrudRouter } from '../../lib/generateCrudRouter.js'; // Adjust path if necessary
+import { exerciseLogs, exercises, exerciseSets, muscleGroups } from '../../db/schema/index.js';
+import { generateValidationCrudSchemas } from '../../lib/generateValidationCrudSchemas.js'; // Adjust path if necessary
 import { z } from 'zod';
-import db from "../db/db.js";
+import db from "../../db/db.js";
 import { eq, isNull, or, sql, and } from 'drizzle-orm';
 import { Context } from 'hono';
 
@@ -51,10 +51,8 @@ const exerciseRouter = generateCrudRouter({
                     id: exercises.id,
                     name: exercises.name,
                     category: exercises.category,
-                    muscleGroup: exercises.muscleGroup,
                     defaultWeightUnit: exercises.defaultWeightUnit,
                     defaultDistanceUnit: exercises.defaultDistanceUnit,
-
                     lastSetId: latestSetSubquery.setId,
                     lastSetWeight: latestSetSubquery.weight,
                     lastSetReps: latestSetSubquery.reps,
@@ -85,5 +83,11 @@ const exerciseRouter = generateCrudRouter({
     }),
     // Optional: Add beforeUpdate if additional logic is needed
 });
+
+
+
+
+
+
 
 export default exerciseRouter;

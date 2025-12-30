@@ -9,44 +9,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Select } from '@radix-ui/react-select';
+import { SelectListField, SelectListOptionComponentProps, SelectOption } from '@/components/Fields/SelectListField';
+import { TextField } from '@/components/Fields/TextFieldInput';
 
-// --- Configuration: Define Behavior per Category ---
-const CATEGORY_CONFIG = {
-    strength: {
-        label: 'Strength Training',
-        icon: Dumbbell,
-        description: 'For lifting and resistance exercises.',
-        fields: [
-            { label: 'Sets', icon: Hash },
-            { label: 'Reps', icon: Activity },
-            { label: 'Weight', icon: Scale },
-        ],
-        color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
-    },
-    cardio: {
-        label: 'Cardio & Endurance',
-        icon: Activity,
-        description: 'For running, cycling, and stamina.',
-        fields: [
-            { label: 'Distance', icon: Ruler },
-            { label: 'Duration', icon: Timer },
-        ],
-        color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-    },
-    flexibility: {
-        label: 'Flexibility & Balance',
-        icon: User,
-        description: 'For yoga, stretching, and mobility.',
-        fields: [
-            { label: 'Duration', icon: Timer },
-        ],
-        color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-    }
-};
 
-const MUSCLE_GROUPS = [
-    'Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Full Body'
-];
+
+
 
 const ExerciseLibrary = () => {
     const { exercises, isLoading, createExercise, isCreating } = useExercises();
@@ -57,7 +29,7 @@ const ExerciseLibrary = () => {
     const [formData, setFormData] = useState({
         name: '',
         category: 'strength' as keyof typeof CATEGORY_CONFIG,
-        muscleGroup: 'Chest'
+        muscleGroups: [] as string[]
     });
 
     const filteredExercises = exercises.filter(ex => {
@@ -73,7 +45,7 @@ const ExerciseLibrary = () => {
         e.preventDefault();
         await createExercise(formData);
         setIsFormOpen(false);
-        setFormData({ name: '', category: 'strength', muscleGroup: 'Chest' });
+        setFormData({ name: '', category: 'strength', muscleGroups: [] });
     };
 
     if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading Library...</div>;
@@ -107,90 +79,7 @@ const ExerciseLibrary = () => {
                 </div>
 
                 {/* Add Form (Expanded) */}
-                {isFormOpen && (
-                    <div className="p-6 bg-card rounded-xl border border-border shadow-sm">
-                        <h3 className="font-bold text-lg mb-6">Create New Exercise</h3>
-                        <form onSubmit={handleSubmit} className="space-y-6">
-
-                            {/* Name & Target */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <Label className="text-xs font-bold uppercase">Exercise Name</Label>
-                                    <Input
-                                        type="text"
-                                        required
-                                        placeholder="e.g. Bulgarian Split Squat"
-                                        value={formData.name}
-                                        onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-xs font-bold uppercase">Target Muscle</Label>
-                                    <select
-                                        value={formData.muscleGroup}
-                                        onChange={e => setFormData({ ...formData, muscleGroup: e.target.value })}
-                                        className="w-full h-10 px-3 rounded-md border border-input bg-background outline-none focus:ring-2 focus:ring-ring"
-                                    >
-                                        {MUSCLE_GROUPS.map(m => <option key={m} value={m}>{m}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-
-                            {/* Category Selector (Visual) */}
-                            <div className="space-y-3">
-                                <Label className="text-xs font-bold uppercase">Tracking Logic</Label>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    {(Object.entries(CATEGORY_CONFIG) as [keyof typeof CATEGORY_CONFIG, typeof CATEGORY_CONFIG['strength']][]).map(([key, config]) => {
-                                        const isSelected = formData.category === key;
-                                        const Icon = config.icon;
-                                        return (
-                                            <div
-                                                key={key}
-                                                onClick={() => setFormData({ ...formData, category: key })}
-                                                className={`
-                                                    cursor-pointer p-4 rounded-xl border-2 transition-all relative overflow-hidden
-                                                    ${isSelected
-                                                        ? 'border-primary bg-primary/5'
-                                                        : 'border-border hover:border-accent'}
-                                                `}
-                                            >
-                                                <div className="flex items-start justify-between mb-2">
-                                                    <div className={`p-2 rounded-lg ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                                                        <Icon className="w-5 h-5" />
-                                                    </div>
-                                                    {isSelected && <Check className="w-5 h-5 text-primary" />}
-                                                </div>
-                                                <h4 className={`font-bold ${isSelected ? 'text-primary' : 'text-foreground'}`}>
-                                                    {config.label}
-                                                </h4>
-                                                <p className="text-xs text-muted-foreground mt-1">{config.description}</p>
-
-                                                <div className="mt-4 pt-3 border-t border-border/50">
-                                                    <span className="text-[10px] uppercase font-bold text-muted-foreground mb-2 block">Inputs:</span>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {config.fields.map(f => (
-                                                            <span key={f.label} className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-muted border border-border shadow-sm text-muted-foreground font-medium">
-                                                                <f.icon className="w-3 h-3" /> {f.label}
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            <Button
-                                disabled={isCreating}
-                                type="submit"
-                                className="w-full"
-                            >
-                                {isCreating ? 'Saving...' : 'Save to Library'}
-                            </Button>
-                        </form>
-                    </div>
-                )}
+                {isFormOpen && <CreateExerciseForm />}
 
                 {/* Filters & Search */}
                 <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-border">
@@ -247,7 +136,11 @@ const ExerciseLibrary = () => {
 
                                 <div className="text-sm text-muted-foreground flex items-center gap-2 mb-3">
                                     <Activity className="w-4 h-4" />
-                                    <span>{exercise.muscleGroup || 'General'}</span>
+                                    <span>
+                                        {(exercise as any).muscleGroups?.length > 0
+                                            ? (exercise as any).muscleGroups.join(', ')
+                                            : exercise.muscleGroup || 'General'}
+                                    </span>
                                 </div>
 
                                 <div className="pt-3 border-t border-border flex gap-2">
@@ -266,5 +159,194 @@ const ExerciseLibrary = () => {
         </div>
     );
 };
+
+
+
+
+
+
+
+
+
+
+// --- Configuration: Define Behavior per Category ---
+type ExerciseCategoryOption = {
+    value: string;
+    label: string;
+    icon: React.FC<any>;
+    description: string;
+    fields: { label: string; icon: React.FC<any> }[];
+    color: string;
+}
+
+const CATEGORY_CONFIG: SelectOption<ExerciseCategoryOption>[] = [
+    {
+        value: "strength",
+        label: 'Strength Training',
+        icon: Dumbbell,
+        description: 'For lifting and resistance exercises.',
+        fields: [
+            { label: 'Sets', icon: Hash },
+            { label: 'Reps', icon: Activity },
+            { label: 'Weight', icon: Scale },
+        ],
+        color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
+    },
+    {
+        value: "cardio",
+        label: 'Cardio & Endurance',
+        icon: Activity,
+        description: 'For running, cycling, and stamina.',
+        fields: [
+            { label: 'Laps', icon: Hash },
+            { label: 'Distance', icon: Ruler },
+            { label: 'Duration', icon: Timer },
+        ],
+        color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+    },
+    {
+        value: "flexibility",
+        label: 'Flexibility & Balance',
+        icon: User,
+        description: 'For yoga, stretching, and mobility.',
+        fields: [
+            { label: 'Duration', icon: Timer },
+        ],
+        color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+    }
+]
+
+const createExerciseSchema = z.object({
+    name: z.string().min(1, 'Name is required'),
+    category: z.enum(['strength', 'cardio', 'flexibility']),
+    muscleGroups: z.array(z.string())
+});
+
+const CreateExerciseForm = () => {
+
+    const { createExercise, isCreating, muscleGroups } = useExercises();
+
+
+    const form = useForm({
+        defaultValues: {
+            name: '',
+            category: 'strength' as keyof typeof CATEGORY_CONFIG,
+            muscleGroups: [] as string[]
+        },
+        resolver: zodResolver(createExerciseSchema)
+    });
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        // await createExercise(form.values);
+    };
+
+    const options = muscleGroups.map(m => ({ value: m.id, label: m.name }));
+
+
+    return (
+        <div className="p-6 bg-card rounded-xl border border-border shadow-sm">
+            <h3 className="font-bold text-lg mb-6">Create New Exercise</h3>
+            <form onSubmit={handleSubmit} className="space-y-6">
+
+                {/* Name & Target */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <TextField
+                        name="name"
+                        label="Exercise Nam"
+                        placeholder="e.g. Bulgarian Split Squat"
+                        form={form}
+                    />
+
+                    <SelectListField
+                        form={form}
+                        name='muscleGroups'
+                        label='Target Muscles'
+                        options={options}
+                        mode='multi'
+                        className='flex flex-wrap gap-2'
+                        optionComponent={({ value, label, isSelected, onToggle, disabled }) => {
+                            console.log(isSelected)
+                            const className = `
+                                                        cursor-pointer px-3 py-2 rounded-md border text-sm font-medium transition-all
+                                                        ${isSelected
+                                    ? 'bg-primary text-primary-foreground border-primary'
+                                    : 'bg-background hover:bg-accent hover:text-accent-foreground border-input'}
+                                                    `
+                            return (
+                                <div
+                                    key={value}
+                                    onClick={() => onToggle(value)}
+                                    className={className}
+                                >
+                                    {label}
+                                </div>
+                            )
+                        }}
+                    />
+
+
+
+                </div>
+
+                <SelectListField
+                    form={form}
+                    name='category'
+                    label='Category'
+                    options={CATEGORY_CONFIG}
+                    className='grid grid-cols-1 md:grid-cols-2 gap-6'
+                    optionComponent={({ value, label, isSelected, onToggle, disabled, icon: Icon, fields, ...props }: SelectListOptionComponentProps<ExerciseCategoryOption>) => {
+                        console.log(props)
+                        return (
+                            <div
+                                onClick={() => onToggle(value)}
+                                className={`
+                                                    cursor-pointer p-4 rounded-xl border-2 transition-all relative overflow-hidden
+                                                    ${isSelected
+                                        ? 'border-primary bg-primary/5'
+                                        : 'border-border hover:border-accent'}
+                                                `}
+                            >
+
+                                <div className="flex items-start justify-between mb-2">
+                                    <div className={`p-2 rounded-lg ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                                        <Icon className="w-5 h-5" />
+                                    </div>
+                                    {isSelected && <Check className="w-5 h-5 text-primary" />}
+                                </div>
+
+                                <h4 className={`font-bold ${isSelected ? 'text-primary' : 'text-foreground'}`}>
+                                    {label}
+                                </h4>
+
+                                <p className="text-xs text-muted-foreground mt-1">{props.description}</p>
+
+                                <div className="mt-4 pt-3 border-t border-border/50">
+                                    <span className="text-[10px] uppercase font-bold text-muted-foreground mb-2 block">Inputs:</span>
+                                    <div className="flex flex-wrap gap-2">
+                                        {fields.map(f => (
+                                            <span key={f.label} className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-muted border border-border shadow-sm text-muted-foreground font-medium">
+                                                <f.icon className="w-3 h-3" /> {f.label}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    }}
+                />
+
+
+                <Button
+                    disabled={isCreating}
+                    type="submit"
+                    className="w-full"
+                >
+                    {isCreating ? 'Saving...' : 'Save to Library'}
+                </Button>
+            </form>
+        </div>
+    );
+}
 
 export default ExerciseLibrary;

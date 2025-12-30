@@ -7,7 +7,7 @@ import { handle } from '@hono/node-server/vercel'
 import { auth } from './lib/auth.js'
 import habitRoutes from './routes/habits.js'
 import trackerRoutes from './routes/tracker.js'
-import exerciseRoutes from './routes/exercises.js'
+import exerciseInfoRoutes from './routes/exercise-info/index.js'
 import configRoutes from './routes/config.js'
 
 const app = new Hono()
@@ -32,7 +32,7 @@ app.all('/api/auth/*', async (c) => {
 // 3. Application Routes
 app.route('/api/habits', habitRoutes)
 app.route('/api/tracker', trackerRoutes)
-app.route('/api/exercises', exerciseRoutes)
+app.route('/api/exercise-info', exerciseInfoRoutes)
 app.route('/api/config', configRoutes)
 
 // 4. Health Check

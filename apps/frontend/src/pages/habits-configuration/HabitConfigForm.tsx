@@ -5,11 +5,13 @@ import { CheckCircle, Layout, List, Save, XCircle } from "lucide-react";
 import { z } from "zod";
 import { BigButton } from "@/components/BigButton";
 import { useForm } from "react-hook-form";
-import { Field, RangeField, TextField } from "@/components/Field";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import { Habit } from "@trackbit/types"
 import { useHabits } from "@/hooks/use-habits";
+import { TextField } from "@/components/Fields/TextFieldInput";
+import { RangeField } from "@/components/Fields/RangeFieldInput";
+import { Field } from "@/components/Fields/FieldBase";
 
 
 
