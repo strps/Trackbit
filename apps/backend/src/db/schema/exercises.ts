@@ -1,8 +1,7 @@
 import { relations } from "drizzle-orm";
-import { date, foreignKey, integer, pgTable, primaryKey, real, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, date, foreignKey, integer, numeric, pgTable, primaryKey, real, serial, text, timestamp, unique } from "drizzle-orm/pg-core";
 import { dayLogs } from "./habits.ts";
 import { user } from "./user.ts";
-import { de } from "zod/v4/locales";
 
 //Exercises
 export const exercises = pgTable('exercises', {
@@ -15,9 +14,14 @@ export const exercises = pgTable('exercises', {
     defaultWeightUnit: text('default_weight_unit').default('kg'), // 'kg' or 'lbs'
     defaultDistanceUnit: text('default_distance_unit').default('km'), // 'km' or 'miles'
     createdAt: timestamp('created_at').defaultNow(),
-});
+},
+    (table) => [
+        unique('unique_user_exercise_name').on(table.userId, table.name),
+    ]
+);
+
 export const exercisesRelations = relations(exercises, ({ many }) => ({
-    exerciseSets: many(exerciseSets),
+    exercisePerformances: many(exercisePerformances),
 }));
 //========================================================
 //------- Exercise information tables ------- 
@@ -55,11 +59,6 @@ export const exerciseMuscleGroupRelations = relations(exerciseMuscleGroup, ({ on
         references: [muscleGroups.id],
     }),
 }));
-
-
-
-
-
 
 
 
@@ -115,59 +114,35 @@ export const exerciseLogRelations = relations(exerciseLogs, ({ one, many }) => (
         fields: [exerciseLogs.exerciseId],
         references: [exercises.id],
     }),
-    exerciseSets: many(exerciseSets),
+    exercisePerformances: many(exercisePerformances),
 }));
 
 
 //Exercise Sets 
-export const exerciseSets = pgTable('exercise_sets', {
+export const exercisePerformances = pgTable('exercise_performances', {
     id: serial('id').primaryKey(),
     exerciseLogId: integer('exercise_log_id').references(() => exerciseLogs.id, { onDelete: 'cascade' }).notNull(),
+
+    number: integer('number').notNull(),// Sequential order (1, 2, 3...)
 
     // Data points
-    reps: integer('reps'),
+    reps: integer('reps'), // For strength/bodyweight
     weight: real('weight'), // Use real/decimal for 22.5kg
+    duration: integer('duration_miliseconds'), // For timed sets or laps Miliseconds
+    distance: numeric('distance'),         // meters/km, for laps
+    // pace: numeric('pace'),                 // Optional derived: min/km
+    // rpe: integer('rpe'),// Rate of Perceived Exertion (1-10)
+    // isWarmup: boolean('is_warmup').default(false),
+    // isDropSet: boolean('is_drop_set').default(false),
+
 
     createdAt: timestamp('created_at').defaultNow(),
 });
 
-export const exerciseSetsRelations = relations(exerciseSets, ({ one }) => ({
+export const Relations = relations(exercisePerformances, ({ one }) => ({
     exerciseLog: one(exerciseLogs, {
-        fields: [exerciseSets.exerciseLogId],
+        fields: [exercisePerformances.exerciseLogId],
         references: [exerciseLogs.id],
     }),
 }));
 
-//Exercise Laps (for activities like running, swimming)
-export const exerciseLaps = pgTable('exercise_laps', {
-    id: serial('id').primaryKey(),
-    exerciseLogId: integer('exercise_log_id').references(() => exerciseLogs.id, { onDelete: 'cascade' }).notNull(),
-    lapNumber: integer('lap_number').notNull(),
-    distance: real('distance').notNull(), // in km or miles
-    duration: integer('duration').notNull(), // in seconds
-    createdAt: timestamp('created_at').defaultNow(),
-});
-
-export const exerciseLapsRelations = relations(exerciseLaps, ({ one }) => ({
-    exerciseLog: one(exerciseLogs, {
-        fields: [exerciseLaps.exerciseLogId],
-        references: [exerciseLogs.id],
-    }),
-}));
-
-//Exercise Intervals (for interval training sessions)
-export const exerciseIntervals = pgTable('exercise_intervals', {
-    id: serial('id').primaryKey(),
-    exerciseLogId: integer('exercise_log_id').references(() => exerciseLogs.id, { onDelete: 'cascade' }).notNull(),
-    intervalNumber: integer('interval_number').notNull(),
-    workDuration: integer('work_duration').notNull(), // in seconds
-    restDuration: integer('rest_duration').notNull(), // in seconds
-    createdAt: timestamp('created_at').defaultNow(),
-});
-
-export const exerciseIntervalsRelations = relations(exerciseIntervals, ({ one }) => ({
-    exerciseLog: one(exerciseLogs, {
-        fields: [exerciseIntervals.exerciseLogId],
-        references: [exerciseLogs.id],
-    }),
-}));

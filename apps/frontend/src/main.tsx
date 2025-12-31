@@ -31,6 +31,7 @@ const router = createBrowserRouter([
   {
     path: "/",
     element: <AppLayout />,
+    errorElement: <ErrorPage />,
     children: [
       { path: "habits", element: <HabitConfig /> },
       { path: "dashboard", element: <HabitTracker /> },
@@ -49,7 +50,7 @@ const router = createBrowserRouter([
     ]
   },
   {
-    path: "*",
+    path: "/",
     element: <NotFound />,
     errorElement: <ErrorPage />
   }

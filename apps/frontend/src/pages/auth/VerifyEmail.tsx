@@ -8,7 +8,7 @@ import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { TextField } from "@/components/Fields/TextFieldInput";
+import { TextField } from "@/components/Fields/TextField";
 
 type VerificationState = "loading" | "success" | "error" | "resending";
 

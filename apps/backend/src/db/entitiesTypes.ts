@@ -12,8 +12,8 @@ export type SelectExerciseSession = typeof schema.exerciseSessions.$inferSelect;
 export type InsertExerciseLog = typeof schema.exerciseLogs.$inferInsert;
 export type SelectExerciseLog = typeof schema.exerciseLogs.$inferSelect;
 
-export type InsertExerciseSet = typeof schema.exerciseSets.$inferInsert;
-export type SelectExerciseSet = typeof schema.exerciseSets.$inferSelect;
+export type InsertExerciseSet = typeof schema.exercisePerformances.$inferInsert;
+export type SelectExerciseSet = typeof schema.exercisePerformances.$inferSelect;
 
 export type InsertUser = typeof schema.user.$inferInsert;
 export type SelectUser = typeof schema.user.$inferSelect;

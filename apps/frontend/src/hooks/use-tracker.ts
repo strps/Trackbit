@@ -1,16 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useExercises } from './use-exercises';
 import { create } from 'zustand';
-import { Habit, ExerciseSession, ExerciseLog, ExerciseSet } from "@trackbit/types";
+import { Habit, ExerciseSession, ExerciseLog, ExercisePerformance } from "@trackbit/types";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 // --- Optimistic extensions of centralized types ---
-export type OptimisticExerciseSet = ExerciseSet & { tempId?: string };
+export type OptimisticExercisePerformance = ExercisePerformance & { tempId?: string };
 
 type OptimisticExerciseLog = ExerciseLog & {
     tempId?: string;
-    exerciseSets: OptimisticExerciseSet[];
+    exercisePerformances: OptimisticExercisePerformance[];
 };
 
 export type OptimisticExerciseSession = ExerciseSession & {
@@ -262,11 +262,11 @@ export function useTracker() {
             if (!currentSession?.id) throw new Error('No active session');
             const exercise = exercises.find((e) => e.id === exerciseId);
             if (!exercise) throw new Error('Exercise not found');
-            const defaultSet = { reps: exercise.lastSetReps || 10, weight: exercise.lastSetWeight || 25 };
-            console.log(JSON.stringify({ exerciseSessionId: currentSession.id, exerciseId, exerciseSets: [defaultSet] }));
+            const defaultSet = { reps: exercise.lastSetReps, weight: exercise.lastSetWeight };
+            console.log(JSON.stringify({ exerciseSessionId: currentSession.id, exerciseId, exercisePerformances: [defaultSet] }));
             const res = await fetch(`${API_URL}/tracker/exercise-logs`, {
                 method: 'POST',
-                body: JSON.stringify({ exerciseSessionId: currentSession.id, exerciseId, exerciseSets: [defaultSet] }),
+                body: JSON.stringify({ exerciseSessionId: currentSession.id, exerciseId, exercisePerformances: [defaultSet] }),
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
             });
@@ -278,7 +278,7 @@ export function useTracker() {
             const tempId = `temp-log-${Math.random()}`;
             const exercise = exercises.find((e) => e.id === exerciseId);
             if (!exercise) throw new Error('Exercise not found');
-            const defaultSet = { reps: exercise.lastSetReps || 10, weight: exercise.lastSetWeight || 25, tempId: `temp-set-${Math.random()}` };
+            const defaultSet = { reps: exercise.lastSetReps, weight: exercise.lastSetWeight, tempId: `temp-set-${Math.random()}` };
 
             updateCache((newData) => {
                 const session = getCurrentSession(newData);
@@ -286,7 +286,7 @@ export function useTracker() {
                     session.exerciseLogs.push({
                         tempId,
                         exerciseId,
-                        exerciseSets: [defaultSet],
+                        exercisePerformances: [defaultSet],
                     } as OptimisticExerciseLog);
                 }
             });
@@ -343,18 +343,20 @@ export function useTracker() {
     const getExerciseDefaults = (exerciseId: number) => {
         const exercise = exercises.find((e) => e.id === exerciseId);
         return {
-            reps: exercise?.lastSetReps ?? 10,
-            weight: exercise?.lastSetWeight ?? 25,
+            reps: exercise?.lastSetReps,
+            weight: exercise?.lastSetWeight,
         };
     };
 
     // 4a. Add a new persisted set
     const createSet = useMutation({
-        mutationFn: async (exerciseLog: OptimisticExerciseLog) => {
+        mutationFn: async ({ exerciseLog, number }: { exerciseLog: OptimisticExerciseLog, number: number }) => {
             if (!exerciseLog.id) throw new Error('Exercise log must have an ID');
             const defaults = getExerciseDefaults(exerciseLog.exerciseId);
+            console.log(number)
             const payload = {
                 exerciseLogId: exerciseLog.id,
+                number,
                 reps: defaults.reps,
                 weight: defaults.weight,
             };
@@ -365,9 +367,9 @@ export function useTracker() {
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
             });
-            return res.json() as Promise<ExerciseSet>;
+            return res.json() as Promise<ExercisePerformance>;
         },
-        onMutate: async (exerciseLog) => {
+        onMutate: async ({ exerciseLog }) => {
             await queryClient.cancelQueries({ queryKey: ['habit-logs'] });
             const previousData = queryClient.getQueryData(['habit-logs']);
             const tempSetId = `temp-set-${Math.random()}`;
@@ -377,11 +379,11 @@ export function useTracker() {
                 const log = session?.exerciseLogs.find((l) => l.id === exerciseLog.id);
                 if (log) {
                     const defaults = getExerciseDefaults(exerciseLog.exerciseId);
-                    log.exerciseSets.push({
+                    log.exercisePerformances.push({
                         tempId: tempSetId,
                         reps: defaults.reps,
                         weight: defaults.weight,
-                    } as OptimisticExerciseSet);
+                    } as OptimisticExercisePerformance);
                 }
             });
             return { previousData, tempSetId };
@@ -390,7 +392,7 @@ export function useTracker() {
             updateCache((newData) => {
                 const session = getCurrentSession(newData);
                 const set = session?.exerciseLogs
-                    .flatMap((l) => l.exerciseSets)
+                    .flatMap((l) => l.exercisePerformances)
                     .find((s) => 'tempId' in s && s.tempId === context!.tempSetId);
                 if (set) {
                     Object.assign(set, data);
@@ -408,27 +410,28 @@ export function useTracker() {
 
     // 4b. Update an existing persisted set
     const updateSet = useMutation({
-        mutationFn: async (exerciseSet: OptimisticExerciseSet) => {
+        mutationFn: async (exercisePerformance: OptimisticExercisePerformance) => {
 
-            if (!exerciseSet.id) throw new Error('Cannot update set without ID');
+            if (!exercisePerformance.id) throw new Error('Cannot update set without ID');
             const payload = {
-                id: Number(exerciseSet.id),
-                exerciseLogId: exerciseSet.exerciseLogId,
-                reps: exerciseSet.reps,
-                weight: exerciseSet.weight,
+                id: Number(exercisePerformance.id),
+                number: exercisePerformance.number,
+                exerciseLogId: exercisePerformance.exerciseLogId,
+                reps: exercisePerformance.reps,
+                weight: exercisePerformance.weight,
             };
 
-            const res = await fetch(`${API_URL}/tracker/exercise-sets/${exerciseSet.id}`, {
+            const res = await fetch(`${API_URL}/tracker/exercise-sets/${exercisePerformance.id}`, {
                 method: 'PATCH',
                 body: JSON.stringify(payload),
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
             });
 
-            return res.json() as Promise<ExerciseSet>;
+            return res.json() as Promise<ExercisePerformance>;
         },
 
-        onMutate: async (exerciseSet) => {
+        onMutate: async (exercisePerformance) => {
 
             await queryClient.cancelQueries({ queryKey: ['habit-logs'] });
             const previousData = queryClient.getQueryData(['habit-logs']);
@@ -436,12 +439,12 @@ export function useTracker() {
             updateCache((newData) => {
 
                 const set = getCurrentSession(newData)?.
-                    exerciseLogs.find((l) => l.id === exerciseSet.exerciseLogId)?.
-                    exerciseSets.find((s) => s.id === exerciseSet.id);
+                    exerciseLogs.find((l) => l.id === exercisePerformance.exerciseLogId)?.
+                    exercisePerformances.find((s) => s.id === exercisePerformance.id);
 
                 if (set) {
-                    set.reps = exerciseSet.reps;
-                    set.weight = exerciseSet.weight;
+                    set.reps = exercisePerformance.reps;
+                    set.weight = exercisePerformance.weight;
                 }
 
             });
@@ -453,12 +456,12 @@ export function useTracker() {
 
                 // const session = getCurrentSession(newData);
                 // const set = session?.exerciseLogs
-                //     .flatMap((l) => l.exerciseSets)
+                //     .flatMap((l) => l.exercisePerformances)
                 //     .find((s) => s.id === data.id);
 
                 const set = getCurrentSession(newData)?.
                     exerciseLogs.find((l) => l.id === data.exerciseLogId)?.
-                    exerciseSets.find((s) => s.id === data.id);
+                    exercisePerformances.find((s) => s.id === data.id);
                 if (set) Object.assign(set, data);
             });
         },
@@ -506,7 +509,7 @@ export function useTracker() {
                 const session = getCurrentSession(newData);
                 if (session) {
                     for (const log of session.exerciseLogs) {
-                        log.exerciseSets = log.exerciseSets.filter((s) => s.id !== exerciseSetId);
+                        log.exercisePerformances = log.exercisePerformances.filter((s) => s.id !== exerciseSetId);
                     }
                 }
             });

@@ -17,7 +17,7 @@ import type { ZodObject, ZodRawShape } from 'zod';
  * @param options - Optional refinements and overrides
  * @returns An object containing named Zod schemas for CRUD operations
  */
-export function generateValidationCrudSchemas<
+export function defineCrudSchemas<
     T extends Table,
     InsertShape extends ZodRawShape = ZodRawShape,
 >(

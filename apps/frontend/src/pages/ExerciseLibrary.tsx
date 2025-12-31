@@ -7,30 +7,20 @@ import {
 import { useExercises } from '../hooks/use-exercises';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Select } from '@radix-ui/react-select';
-import { SelectListField, SelectListOptionComponentProps, SelectOption } from '@/components/Fields/SelectListField';
-import { TextField } from '@/components/Fields/TextFieldInput';
-
-
-
-
+import { ChoiceListField, SelectListOptionComponentProps, SelectOption } from '@/components/Fields/ChoiceListField';
+import { TextField } from '@/components/Fields/TextField';
+import { TextAreaField } from '@/components/Fields/TextAreaField';
 
 const ExerciseLibrary = () => {
-    const { exercises, isLoading, createExercise, isCreating } = useExercises();
+    const { exercises, isLoading } = useExercises();
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState<'all' | 'custom' | 'system'>('all');
 
     const [isFormOpen, setIsFormOpen] = useState(false);
-    const [formData, setFormData] = useState({
-        name: '',
-        category: 'strength' as keyof typeof CATEGORY_CONFIG,
-        muscleGroups: [] as string[]
-    });
 
     const filteredExercises = exercises.filter(ex => {
         const matchesSearch = ex.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -41,12 +31,7 @@ const ExerciseLibrary = () => {
         return matchesSearch && matchesType;
     });
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        await createExercise(formData);
-        setIsFormOpen(false);
-        setFormData({ name: '', category: 'strength', muscleGroups: [] });
-    };
+
 
     if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading Library...</div>;
 
@@ -110,7 +95,7 @@ const ExerciseLibrary = () => {
                 {/* List Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredExercises.map((exercise) => {
-                        const config = CATEGORY_CONFIG[exercise.category as keyof typeof CATEGORY_CONFIG] || CATEGORY_CONFIG.strength;
+                        const config = CATEGORY_CONFIG.find(c => c.value === exercise.category) || CATEGORY_CONFIG[0];
 
                         return (
                             <div
@@ -159,9 +144,6 @@ const ExerciseLibrary = () => {
         </div>
     );
 };
-
-
-
 
 
 
@@ -218,8 +200,10 @@ const CATEGORY_CONFIG: SelectOption<ExerciseCategoryOption>[] = [
 
 const createExerciseSchema = z.object({
     name: z.string().min(1, 'Name is required'),
+    description: z.string().max(500, 'Description is too long').optional(),
     category: z.enum(['strength', 'cardio', 'flexibility']),
-    muscleGroups: z.array(z.string())
+    muscleGroups: z.array(z.number()),
+
 });
 
 const CreateExerciseForm = () => {
@@ -230,15 +214,16 @@ const CreateExerciseForm = () => {
     const form = useForm({
         defaultValues: {
             name: '',
-            category: 'strength' as keyof typeof CATEGORY_CONFIG,
-            muscleGroups: [] as string[]
+            category: 'strength',
+            muscleGroups: [],
+            description: ''
         },
         resolver: zodResolver(createExerciseSchema)
     });
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        // await createExercise(form.values);
+    const handleSubmit = (data: z.infer<typeof createExerciseSchema>) => {
+        console.log(data);
+        createExercise(data);
     };
 
     const options = muscleGroups.map(m => ({ value: m.id, label: m.name }));
@@ -247,26 +232,35 @@ const CreateExerciseForm = () => {
     return (
         <div className="p-6 bg-card rounded-xl border border-border shadow-sm">
             <h3 className="font-bold text-lg mb-6">Create New Exercise</h3>
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
 
                 {/* Name & Target */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <TextField
-                        name="name"
-                        label="Exercise Nam"
-                        placeholder="e.g. Bulgarian Split Squat"
-                        form={form}
-                    />
+                    <div className='flex flex-col gap-4'>
 
-                    <SelectListField
+                        <TextField
+                            name="name"
+                            label="Exercise Name"
+                            placeholder="e.g. Bulgarian Split Squat"
+                            form={form}
+                        />
+                        <TextAreaField
+                            name="description"
+                            label="Description"
+                            placeholder="Exercise Description"
+                            form={form}
+                        />
+                    </div>
+
+
+                    <ChoiceListField
                         form={form}
                         name='muscleGroups'
                         label='Target Muscles'
                         options={options}
                         mode='multi'
                         className='flex flex-wrap gap-2'
-                        optionComponent={({ value, label, isSelected, onToggle, disabled }) => {
-                            console.log(isSelected)
+                        optionComponent={({ value, label, isSelected, onToggle, disabled, number }) => {
                             const className = `
                                                         cursor-pointer px-3 py-2 rounded-md border text-sm font-medium transition-all
                                                         ${isSelected
@@ -289,14 +283,13 @@ const CreateExerciseForm = () => {
 
                 </div>
 
-                <SelectListField
+                <ChoiceListField
                     form={form}
                     name='category'
                     label='Category'
                     options={CATEGORY_CONFIG}
                     className='grid grid-cols-1 md:grid-cols-2 gap-6'
                     optionComponent={({ value, label, isSelected, onToggle, disabled, icon: Icon, fields, ...props }: SelectListOptionComponentProps<ExerciseCategoryOption>) => {
-                        console.log(props)
                         return (
                             <div
                                 onClick={() => onToggle(value)}
@@ -324,7 +317,7 @@ const CreateExerciseForm = () => {
                                 <div className="mt-4 pt-3 border-t border-border/50">
                                     <span className="text-[10px] uppercase font-bold text-muted-foreground mb-2 block">Inputs:</span>
                                     <div className="flex flex-wrap gap-2">
-                                        {fields.map(f => (
+                                        {fields.map((f: any) => (
                                             <span key={f.label} className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-muted border border-border shadow-sm text-muted-foreground font-medium">
                                                 <f.icon className="w-3 h-3" /> {f.label}
                                             </span>
@@ -338,7 +331,7 @@ const CreateExerciseForm = () => {
 
 
                 <Button
-                    disabled={isCreating}
+                    // disabled={isCreating}
                     type="submit"
                     className="w-full"
                 >

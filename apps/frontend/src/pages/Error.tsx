@@ -1,83 +1,123 @@
 import { useRouteError, isRouteErrorResponse, useNavigate } from "react-router-dom";
-import { AlertTriangle, Home, RotateCcw, ArrowLeft, FileQuestion } from "lucide-react";
+import { AlertTriangle, Home, RotateCcw, ArrowLeft, FileQuestion, Bug } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
+import { useState } from "react";
 
 export default function ErrorPage() {
     const error = useRouteError();
     const navigate = useNavigate();
+    const [isOpen, setIsOpen] = useState(false);
 
     // Default Error State
     let title = "Something went wrong";
     let message = "An unexpected error occurred. Our team has been notified.";
-    let icon = <AlertTriangle className="w-10 h-10 text-red-500" />;
+    let icon = <AlertTriangle className="h-12 w-12 text-destructive" />;
+    let status: number | null = null;
+    let errorDetails: string | null = null;
 
     // Detect specific error types
     if (isRouteErrorResponse(error)) {
+        status = error.status;
         if (error.status === 404) {
             title = "Page Not Found";
             message = "We couldn't find the page you're looking for. It might have been moved or deleted.";
-            icon = <FileQuestion className="w-10 h-10 text-blue-500" />;
+            icon = <FileQuestion className="h-12 w-12 text-primary" />;
         } else {
-            title = `${error.status} Error`;
-            message = error.statusText || message;
+            title = `${error.status} ${error.statusText || "Error"}`;
+            message = error.data?.message || error.statusText || message;
         }
     } else if (error instanceof Error) {
-        message = error.message;
+        title = "Unexpected Error";
+        message = error.message || message;
+        errorDetails = error.stack || null;
+        icon = <Bug className="h-12 w-12 text-destructive" />;
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-900 font-sans">
-            <div className="max-w-md w-full bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden animate-in fade-in zoom-in-95 duration-300">
-                <div className="p-8 text-center space-y-6">
-
-                    {/* Icon Container */}
-                    <div className="mx-auto w-20 h-20 rounded-full bg-slate-50 dark:bg-slate-900 flex items-center justify-center border border-slate-100 dark:border-slate-700 shadow-inner">
-                        <div className="p-3 bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-200 dark:border-slate-700">
-                            {icon}
-                        </div>
+        <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+            <Card className="w-full max-w-lg">
+                <CardHeader className="text-center space-y-6">
+                    <div className="mx-auto w-24 h-24 rounded-full bg-muted flex items-center justify-center">
+                        <div>{icon}</div>
                     </div>
-
-                    {/* Text Content */}
                     <div className="space-y-2">
-                        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
-                            {title}
-                        </h1>
-                        <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
+                        <CardTitle className="text-3xl">{title}</CardTitle>
+                        {status && <p className="text-5xl font-bold text-muted-foreground">{status}</p>}
+                        <CardDescription className="text-base max-w-md mx-auto">
                             {message}
-                        </p>
+                        </CardDescription>
                     </div>
+                </CardHeader>
 
-                    {/* Actions */}
-                    <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <CardContent className="space-y-4">
+                    <Alert variant={status === 404 ? "default" : "destructive"}>
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>Error Summary</AlertTitle>
+                        <AlertDescription>
+                            {isRouteErrorResponse(error)
+                                ? "This is a route-related error."
+                                : "This is a client-side JavaScript error."}
+                        </AlertDescription>
+                    </Alert>
+
+                    {(error instanceof Error || isRouteErrorResponse(error)) && (
+                        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+                            <CollapsibleTrigger asChild>
+                                <Button variant="outline" className="w-full justify-between">
+                                    <span className="flex items-center gap-2">
+                                        <Bug className="h-4 w-4" />
+                                        Show technical details
+                                    </span>
+                                    <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                                </Button>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="mt-4">
+                                <pre className="text-xs bg-muted p-4 rounded-md overflow-x-auto">
+                                    {errorDetails || (error as any).data || (error as Error).message || String(error)}
+                                </pre>
+                            </CollapsibleContent>
+                        </Collapsible>
+                    )}
+                </CardContent>
+
+                <CardFooter className="flex flex-col gap-3 border-t bg-muted/50 pt-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
                         <Button
                             variant="outline"
                             onClick={() => navigate(-1)}
-                            className="flex-1 gap-2 border-slate-200 dark:border-slate-700"
+                            className="gap-2"
                         >
-                            <ArrowLeft className="w-4 h-4" />
+                            <ArrowLeft className="h-4 w-4" />
                             Go Back
                         </Button>
                         <Button
                             onClick={() => navigate("/")}
-                            className="flex-1 gap-2 bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white"
+                            className="gap-2"
                         >
-                            <Home className="w-4 h-4" />
+                            <Home className="h-4 w-4" />
                             Dashboard
                         </Button>
                     </div>
-                </div>
-
-                {/* Footer Strip */}
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-4 border-t border-slate-100 dark:border-slate-700/50 flex justify-center">
                     <button
                         onClick={() => window.location.reload()}
-                        className="flex items-center gap-2 text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+                        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                     >
-                        <RotateCcw className="w-3 h-3" />
+                        <RotateCcw className="h-4 w-4" />
                         Reload Application
                     </button>
-                </div>
-            </div>
+                </CardFooter>
+            </Card>
         </div>
     );
 }

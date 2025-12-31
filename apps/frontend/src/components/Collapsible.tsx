@@ -6,7 +6,7 @@ interface CollapsibleSectionProps {
     title?: string;
     /** Optional content to show in the header (like your color preview circles) */
     headerContent?: React.ReactNode;
-    children: React.ReactNode;
+    children?: React.ReactNode;
     isOpen?: boolean;
     className?: string;
 }

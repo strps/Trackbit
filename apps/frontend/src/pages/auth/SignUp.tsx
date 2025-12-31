@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { UseFormReturn } from "react-hook-form";
 import { Alert, AlertDescription } from "@/components/ui/alert"; // Assuming shadcn alert exists
 import { GoogleIcon, GithubIcon } from './Icons';
-import { TextField } from '@/components/Fields/TextFieldInput';
+import { TextField } from '@/components/Fields/TextField';
 import { PasswordField } from '@/components/Fields/PasswordField';
 
 const signUpSchema = z.object({

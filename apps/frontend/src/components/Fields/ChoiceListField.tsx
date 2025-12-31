@@ -7,7 +7,7 @@ import { Field, FieldProps, InputProps } from "./FieldBase";
  * Base type for a select option. Consumers can extend it with additional data.
  */
 export type SelectOption<T = {}> = {
-    value: string;
+    value: any;
     label: string;
 } & T;
 
@@ -31,7 +31,7 @@ export interface SelectListOptionComponentProps<T = {}> {
  * Props for the SelectListField component.
  * The generic T represents extra data on each option.
  */
-export interface SelectListFieldProps<T = {}>
+export interface ChoiceListFieldProps<T = {}>
     extends Omit<FieldProps, "fieldInput"> {
     options: SelectOption<T>[];
     /** Custom component used to render each option */
@@ -42,29 +42,31 @@ export interface SelectListFieldProps<T = {}>
 /**
  * SelectListField – a custom field supporting single or multi-select via a fully customizable list.
  */
-export const SelectListField = <T = {}>({
+export const ChoiceListField = <T = {}>({
     options,
     optionComponent,
     mode = "single",
     ...fieldProps
-}: SelectListFieldProps<T>) => (
-    <Field
-        {...fieldProps}
-        fieldInput={(inputProps: InputProps) => (
-            <SelectListFieldInput
-                {...inputProps}
-                options={options}
-                optionComponent={optionComponent}
-                mode={mode}
-            />
-        )}
-    />
-);
+}: ChoiceListFieldProps<T>) => {
+    return (
+        <Field
+            {...fieldProps}
+            fieldInput={(inputProps: InputProps) => (
+                <ChoiceListFieldInput
+                    {...inputProps}
+                    options={options}
+                    optionComponent={optionComponent}
+                    mode={mode}
+                />
+            )}
+        />
+    );
+};
 
 /**
  * Internal input component that renders the list of options.
  */
-export const SelectListFieldInput = <T = {}>({
+export const ChoiceListFieldInput = <T = {}>({
     id,
     field,
     fieldState,

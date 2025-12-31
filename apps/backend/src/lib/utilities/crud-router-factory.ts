@@ -1,14 +1,24 @@
-// backend/src/routes/utils/generateCrudRouter.ts
+// TODO: Define a standardized ApiError interface for consistent client-facing error responses
+// Example: { error: string; details?: Record<string, any>; code?: string; }
+// Update formatZodError to align with this format
+
+// TODO: Add centralized error handling middleware with server-side logging
+// Implement router.onError to catch unhandled exceptions, handle common cases (ZodError, unique constraints),
+// and return standardized error responses (e.g., 400 for validation, 409 for conflicts, 500 for internals)
+// Optionally accept a logger function via CrudRouterOptions
+
+// TODO: Wrap database operations in try-catch for specific error handling (e.g., unique constraint violations → 409 Conflict)
+// Also safely execute beforeCreate hook and handle any exceptions (return 400 if hook fails)
 
 import { Hono, type Context, type Handler } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import db from "../db/db.js";
+import db from "../../db/db.js";
 import { eq, and } from 'drizzle-orm';
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth } from '../../middleware/auth.js';
 import { AnyPgTable } from 'drizzle-orm/pg-core';
 import z, { ZodError } from 'zod';
-import { formatZodError } from './utils.js';
+import { formatZodError } from '../utils.js';
 
 type AppEnv = {
     Variables: {

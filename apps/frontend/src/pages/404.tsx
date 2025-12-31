@@ -6,34 +6,34 @@ export default function NotFound() {
     const navigate = useNavigate();
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4 font-sans">
+        <div className="min-h-screen bg-background flex items-center justify-center p-4 font-sans">
             <div className="max-w-md w-full text-center space-y-8 animate-in fade-in zoom-in-95 duration-300">
 
                 {/* Visual Element: A "Ghost" Heatmap */}
                 <div className="relative mx-auto w-32 h-32 flex items-center justify-center">
                     {/* Background decoration */}
-                    <div className="absolute inset-0 bg-blue-100 dark:bg-blue-900/20 rounded-full blur-xl opacity-50" />
+                    <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl opacity-50" />
 
-                    <div className="relative bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 flex flex-col gap-1.5 items-center">
+                    <div className="relative bg-card p-4 rounded-2xl shadow-lg border border-border flex flex-col gap-1.5 items-center">
                         {/* A mini 404 grid pattern */}
                         <div className="flex gap-1.5">
-                            <div className="w-3 h-3 rounded-sm bg-slate-200 dark:bg-slate-700" />
-                            <div className="w-3 h-3 rounded-sm bg-blue-500" />
-                            <div className="w-3 h-3 rounded-sm bg-slate-200 dark:bg-slate-700" />
+                            <div className="w-3 h-3 rounded-sm bg-muted" />
+                            <div className="w-3 h-3 rounded-sm bg-primary" />
+                            <div className="w-3 h-3 rounded-sm bg-muted" />
                         </div>
                         <div className="flex gap-1.5">
-                            <div className="w-3 h-3 rounded-sm bg-blue-500" />
-                            <div className="w-3 h-3 rounded-sm bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-600" /> {/* The Missing Piece */}
-                            <div className="w-3 h-3 rounded-sm bg-blue-500" />
+                            <div className="w-3 h-3 rounded-sm bg-primary" />
+                            <div className="w-3 h-3 rounded-sm bg-muted/50 border-2 border-dashed border-muted-foreground/25" /> {/* The Missing Piece */}
+                            <div className="w-3 h-3 rounded-sm bg-primary" />
                         </div>
                         <div className="flex gap-1.5">
-                            <div className="w-3 h-3 rounded-sm bg-slate-200 dark:bg-slate-700" />
-                            <div className="w-3 h-3 rounded-sm bg-blue-500" />
-                            <div className="w-3 h-3 rounded-sm bg-slate-200 dark:bg-slate-700" />
+                            <div className="w-3 h-3 rounded-sm bg-muted" />
+                            <div className="w-3 h-3 rounded-sm bg-primary" />
+                            <div className="w-3 h-3 rounded-sm bg-muted" />
                         </div>
 
                         {/* Floating Icon */}
-                        <div className="absolute -right-2 -bottom-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-1.5 rounded-lg border border-white dark:border-slate-800 shadow-sm">
+                        <div className="absolute -right-2 -bottom-2 bg-destructive/10 text-destructive p-1.5 rounded-lg border border-background shadow-sm">
                             <FileQuestion className="w-5 h-5" />
                         </div>
                     </div>
@@ -41,11 +41,12 @@ export default function NotFound() {
 
                 {/* Text Content */}
                 <div className="space-y-2">
-                    <h1 className="text-4xl font-black text-slate-900 dark:text-slate-50 tracking-tight">
-                        Off the Grid
+                    <h1 className="text-4xl font-black text-foreground tracking-tight">
+                        Lost the Track? 404 Not Found! 🏃‍♂️
                     </h1>
-                    <p className="text-slate-500 dark:text-slate-400 text-lg">
-                        We couldn't find the page you're looking for. It seems this data point hasn't been logged yet.
+                    <p className="text-muted-foreground text-lg">
+                        This page has veered off course and couldn't be located. No worries—your habits and progress are still on track elsewhere.
+                        Head back to the dashboard and keep logging those consistent wins!
                     </p>
                 </div>
 
@@ -54,7 +55,7 @@ export default function NotFound() {
                     <Button
                         variant="outline"
                         onClick={() => navigate(-1)}
-                        className="gap-2 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        className="gap-2"
                     >
                         <ArrowLeft className="w-4 h-4" />
                         Go Back
@@ -62,7 +63,7 @@ export default function NotFound() {
 
                     <Button
                         onClick={() => navigate("/")}
-                        className="gap-2 bg-slate-900 hover:bg-slate-800 dark:bg-slate-50 dark:text-slate-900 dark:hover:bg-slate-200"
+                        className="gap-2"
                     >
                         <Home className="w-4 h-4" />
                         Back to Dashboard
@@ -71,7 +72,7 @@ export default function NotFound() {
 
                 {/* Footer decoration */}
                 <div className="pt-8">
-                    <div className="flex items-center justify-center gap-2 text-xs font-medium text-slate-400 uppercase tracking-widest opacity-50">
+                    <div className="flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-widest opacity-50">
                         <Activity className="w-3 h-3" />
                         Trackbit System
                     </div>

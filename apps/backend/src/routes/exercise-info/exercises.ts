@@ -1,6 +1,6 @@
-import { generateCrudRouter } from '../../lib/generateCrudRouter.js'; // Adjust path if necessary
-import { exerciseLogs, exercises, exerciseSets, muscleGroups } from '../../db/schema/index.js';
-import { generateValidationCrudSchemas } from '../../lib/generateValidationCrudSchemas.js'; // Adjust path if necessary
+import { generateCrudRouter } from '../../lib/utilities/crud-router-factory.js'; // Adjust path if necessary
+import { exerciseLogs, exercises, exercisePerformances, muscleGroups } from '../../db/schema/index.js';
+import { defineCrudSchemas } from '../../lib/utilities/drizzle-crud-schemas.js'; // Adjust path if necessary
 import { z } from 'zod';
 import db from "../../db/db.js";
 import { eq, isNull, or, sql, and } from 'drizzle-orm';
@@ -8,11 +8,13 @@ import { Context } from 'hono';
 
 
 // Generate schemas tailored for exercises
-const exerciseSchemas = generateValidationCrudSchemas(exercises, {
+const exerciseSchemas = defineCrudSchemas(exercises, {
     omitFromCreateUpdate: ['id', 'createdAt', 'userId',], // Server-managed fields
     omitFromSelect: ['createdAt',],
     refine: (schema) =>
-        schema.refine(
+        schema.extend({
+            muscleGroups: z.array(z.number().int().positive())
+        }).refine(
             (data: any) => !!data.name?.trim(),
             { message: 'Exercise name is required', path: ['name'] }
         ),
@@ -36,11 +38,13 @@ const exerciseRouter = generateCrudRouter({
                     setId: sql<number>`es.id`.as('setId'),
                     weight: sql<number | null>`es.weight`.as('weight'),
                     reps: sql<number | null>`es.reps`.as('reps'),
+                    distance: sql<number | null>`es.distance`.as('distance'),
+                    duration: sql<number | null>`es.duration_miliseconds`.as('durationMilliSeconds'),
                     createdAt: sql<string | null>`es.created_at`.as('createdAt'),
                     rowNumber: sql<number>`row_number() over (partition by el.exercise_id order by es.created_at desc)`.as('row_number'),
                 })
                     .from(sql`${exerciseLogs} el`)
-                    .leftJoin(sql`${exerciseSets} es`, sql`es.exercise_log_id = el.id`)
+                    .leftJoin(sql`${exercisePerformances} es`, sql`es.exercise_log_id = el.id`)
                     .where(sql`es.id IS NOT NULL`)  // Optional: exclude rows without sets if desired
             );
 
@@ -56,7 +60,9 @@ const exerciseRouter = generateCrudRouter({
                     lastSetId: latestSetSubquery.setId,
                     lastSetWeight: latestSetSubquery.weight,
                     lastSetReps: latestSetSubquery.reps,
-                    lastSetCreatedAt: latestSetSubquery.createdAt,
+                    lastDistance: latestSetSubquery.distance,
+                    lastDuration: latestSetSubquery.duration,
+
                 })
                 .from(exercises)
                 .leftJoin(
@@ -72,16 +78,24 @@ const exerciseRouter = generateCrudRouter({
             return c.json(result)
         },
     },
+
+    // Allow modification only of user-created (custom) exercises
+    // Global exercises (userId === null) are read-only
     ownershipCheck: async (user, record) => {
-        // Allow modification only of user-created (custom) exercises
-        // Global exercises (userId === null) are read-only
         return record.userId === user.id;
     },
-    beforeCreate: async (c, data) => ({
-        ...data,
-        userId: c.get('user').id, // Mark as custom
-    }),
-    // Optional: Add beforeUpdate if additional logic is needed
+
+    beforeCreate: async (c, data) => {
+
+        const r = {
+            ...data,
+            userId: c.get('user').id, // Mark as custom
+        }
+
+        console.log(r)
+
+        return (r)
+    },
 });
 
 

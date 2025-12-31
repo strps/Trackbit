@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { PlusCircle } from "lucide-react";
+import { LucideIcon, PlusCircle } from "lucide-react";
 
 interface EmptyCreateNewProps {
     title?: string;
@@ -7,7 +7,7 @@ interface EmptyCreateNewProps {
     onClick?: React.MouseEventHandler<HTMLDivElement>;
     className?: string;
     textPosition?: "top" | "bottom" | "left" | "right";
-
+    icon?: LucideIcon;
 }
 
 
@@ -63,7 +63,7 @@ interface EmptyCreateNewProps {
  *
  * @since 1.0.0
  */
-export const EmptyState = ({ onClick, title, description, className, textPosition = "bottom" }: EmptyCreateNewProps) => {
+export const EmptyState = ({ onClick, title, description, className, textPosition = "bottom", icon: Icon }: EmptyCreateNewProps) => {
 
     const textAling =
         (textPosition === "left") ? "left" :
@@ -75,11 +75,13 @@ export const EmptyState = ({ onClick, title, description, className, textPositio
                 (textPosition === "left") ? "flex-row-reverse" :
                     "flex-row";
 
+    const iconClassName = "w-10 h-10 text-muted-foreground"
     return (
         <div
             onClick={onClick}
             className={cn(onClick ? "cursor-pointer" : "", flexDirection, EmptyStateClassName, className)}>
-            <PlusCircle className="w-10 h-10 text-muted-foreground" />
+            {Icon ? <Icon className={iconClassName} /> : <PlusCircle className={iconClassName} />}
+
             <div className={`text-${textAling}`}>
                 <h4 className="font-medium text-foreground">{title}</h4>
                 <p className="text-xs text-muted-foreground mt-1">{description}</p>

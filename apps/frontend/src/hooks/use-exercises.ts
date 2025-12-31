@@ -15,14 +15,14 @@ const fetchExercises = async (): Promise<Exercise[]> => {
     return res.json();
 };
 
-const fetchMuscleGroups = async (): Promise<string[]> => {
+const fetchMuscleGroups = async (): Promise<{ name: string; id: number }[]> => {
     const res = await fetch(`${API_URL}/muscle-groups`, { credentials: 'include' });
     if (!res.ok) throw new Error('Failed to fetch muscle groups');
     return res.json();
 }
 
-const createExercise = async (newExercise: { name: string; category: string; muscleGroup?: string }) => {
-    const res = await fetch(API_URL, {
+const createExercise = async (newExercise: { name: string; category: string; muscleGroups?: number[] }) => {
+    const res = await fetch(`${API_URL}/exercises`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

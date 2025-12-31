@@ -12,7 +12,6 @@ export const TextFieldInput = (props: InputProps) => {
         fieldState,
         className,
     } = props;
-    console.log(JSON.stringify(fieldState));
     return (
         <Input
             id={id}

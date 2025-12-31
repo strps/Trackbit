@@ -1,13 +1,13 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useExercises } from "@/hooks/use-exercises";
-import { ChevronDown, Dumbbell, MoreVertical, Plus, Trash2, X, Search, GripVertical, Hash, Scale, Info, PlusCircle, Divide } from "lucide-react";
+import { ChevronDown, Dumbbell, MoreVertical, Plus, Trash2, X, Search, GripVertical, Hash, Scale, Info, PlusCircle, Divide, ChevronLeft, Play, Pause } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NumericStepper } from "../../components/NumericStepper";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
-import { OptimisticExerciseSession, OptimisticExerciseSet, useTracker } from "@/hooks/use-tracker";
+import { OptimisticExerciseSession, OptimisticExercisePerformance, useTracker } from "@/hooks/use-tracker";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { EmptyState } from "@/components/EmptyState";
 
@@ -120,9 +120,14 @@ const SessionCard = ({ session, index }: SessionCardProps) => {
 
 // --- Sub-Components ---
 interface ExerciseLogCardProps {
-    exerciseLog: OptimisticExerciseSet;
+    exerciseLog: OptimisticExercisePerformance;
     index: number;
 }
+
+
+//=============================================================================
+//-----------------------------ExerciseLogCard---------------------------------
+//=============================================================================
 
 
 
@@ -130,6 +135,49 @@ const ExerciseLogCard = ({ exerciseLog, index }: any) => {
     const { exercises } = useExercises()
     const { deleteSet, newSet, updateSet, removeExerciseLog } = useTracker()
     const exercise = exercises.find(e => e.id === exerciseLog.exerciseId)
+
+
+    const cardContents: any = {
+        strength:
+            <div className="flex overflow-x-auto gap-2 p-2">
+                {
+                    exerciseLog.exercisePerformances.map((e: OptimisticExercisePerformance, i: number) => {
+                        return (
+                            <SetCard
+                                key={i}
+                                e={e}
+                                i={i}
+                                deleteSet={deleteSet}
+                                updateSet={updateSet}
+                            />
+                        )
+                    })
+
+                }
+                <EmptyState
+                    description="Start Set"
+                    onClick={() => { newSet({ exerciseLog, number: index + 1 }) }}
+                    className="w-26 py-0"
+                    icon={Play}
+                />
+            </div>,
+        cardio:
+            <div className="flex overflow-x-auto gap-2 p-2">
+                {
+                    Array.from({ length: 4 }).map((_e, i) => {
+                        return (
+                            <LapCard
+                                key={i}
+                                e={exerciseLog.exercisePerformances[i]}
+                                i={i}
+                            />
+                        )
+                    })
+                }
+            </div>,
+        flexibility:
+            <div>FLEXIBILITY EXERCISE CONTROLS TO BE IMPLEMENTED</div>,
+    }
 
     return (
         <div className=" rounded-xl border border-border  shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -167,33 +215,7 @@ const ExerciseLogCard = ({ exerciseLog, index }: any) => {
                 </DropdownMenu>
             </div>
 
-            {/* Sets List */}
-            <div className="flex overflow-x-auto scrollbar-stable gap-2 p-2">
-
-                {
-                    exerciseLog.exerciseSets.map((e: OptimisticExerciseSet, i: number) => {
-                        return (
-
-                            <SetCard
-                                key={i}
-                                e={e}
-                                i={i}
-                                deleteSet={deleteSet}
-                                updateSet={updateSet}
-                            />
-                        )
-                    })
-
-                }
-                <EmptyState
-                    description="New Set"
-                    onClick={() => { newSet(exerciseLog) }}
-                    className="w-26 py-0"
-                />
-
-
-
-            </div>
+            {cardContents[exercise?.category || 'strength']}
         </div>
     );
 };
@@ -219,61 +241,66 @@ const AddExercisePicker = () => {
 
     return (
         <div className="w-full flex justify-end items-center ">
-            <Label className="mr-2">Recomended:</Label>
-            <Popover open={open} onOpenChange={setOpen}>
-                <PopoverTrigger asChild>
-                    <Button className="rounded-r-none border border-border w-36">
-                        {exercises.length > 0 ? exercises[0].name : "Pick one"}
-                        <ChevronDown className="w-4 h-4 ml-2" />
-                    </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-85 p-0" align="center" sideOffset={16} onOpenAutoFocus={(e) => e.preventDefault()}>
-                    <div className="p-3 border-b border-border">
-                        <div className="relative">
-                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Find exercise..."
-                                className="pl-9 bg-muted border-none shadow-none focus-visible:ring-0 h-9"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                autoFocus
-                            />
+            <div className="flex flex-col gap-2">
+
+                <Label className="mr-2">Recomended:</Label>
+                <Popover open={open} onOpenChange={setOpen}>
+                    <PopoverTrigger asChild>
+                        <Button className=" border border-border w-36">
+                            {exercises.length > 0 ? exercises[0].name : "Pick one"}
+                            <ChevronDown className="w-4 h-4 ml-2" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-85 p-0" align="center" sideOffset={16} onOpenAutoFocus={(e) => e.preventDefault()}>
+                        <div className="p-3 border-b border-border">
+                            <div className="relative">
+                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Find exercise..."
+                                    className="pl-9 bg-muted border-none shadow-none focus-visible:ring-0 h-9"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    autoFocus
+                                />
+                            </div>
                         </div>
-                    </div>
-                    <ScrollArea className="h-70">
-                        <div className="p-1">
-                            {filtered.length === 0 ? (
-                                <div className="p-8 text-center">
-                                    <p className="text-sm text-muted-foreground">No exercises found.</p>
-                                    <Button variant="link" size="sm" className="mt-2 text-primary">
-                                        + Create "{search}"
-                                    </Button>
-                                </div>
-                            ) : (
-                                filtered.map((ex: any) => (
-                                    <button
-                                        key={ex.id}
-                                        onClick={() => {
-                                            handleAddExerciseLog(ex.id);
-                                            setOpen(false);
-                                            setSearch("");
-                                        }}
-                                        className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-accent text-left group transition-colors"
-                                    >
-                                        <div className="flex flex-col">
-                                            <span className="font-medium text-foreground">{ex.name}</span>
-                                            <span className="text-[10px] text-muted-foreground uppercase">{ex.muscleGroup || 'General'}</span>
-                                        </div>
-                                        <Plus className="w-4 h-4 text-muted-foreground group-hover:text-primary" />
-                                    </button>
-                                ))
-                            )}
-                        </div>
-                    </ScrollArea>
-                </PopoverContent>
-            </Popover>
-            <Button className="rounded-l-none border-l border-y border-border w-36">
-                + Add Exercise
+                        <ScrollArea className="h-70">
+                            <div className="p-1">
+                                {filtered.length === 0 ? (
+                                    <div className="p-8 text-center">
+                                        <p className="text-sm text-muted-foreground">No exercises found.</p>
+                                        <Button variant="link" size="sm" className="mt-2 text-primary">
+                                            + Create "{search}"
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    filtered.map((ex: any) => (
+                                        <button
+                                            key={ex.id}
+                                            onClick={() => {
+                                                handleAddExerciseLog(ex.id);
+                                                setOpen(false);
+                                                setSearch("");
+                                            }}
+                                            className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-accent text-left group transition-colors"
+                                        >
+                                            <div className="flex flex-col">
+                                                <span className="font-medium text-foreground">{ex.name}</span>
+                                                <span className="text-[10px] text-muted-foreground uppercase">{ex.muscleGroup || 'General'}</span>
+                                            </div>
+                                            <Plus className="w-4 h-4 text-muted-foreground group-hover:text-primary" />
+                                        </button>
+                                    ))
+                                )}
+                            </div>
+                        </ScrollArea>
+                    </PopoverContent>
+                </Popover>
+            </div>
+
+            <Button className="h-full border-l border-y border-border w-36">
+                Start Exercise
+                <Play className="w-4 h-4 ml-2" />
             </Button>
         </div>
     );
@@ -282,11 +309,13 @@ const AddExercisePicker = () => {
 
 // --- Set Card Component ---
 interface SetCardProps {
-    e: OptimisticExerciseSet;
+    e: OptimisticExercisePerformance;
     i: number;
-    deleteSet: (id: OptimisticExerciseSet["id"]) => void;
-    updateSet: (set: OptimisticExerciseSet) => void;
+    deleteSet: (id: OptimisticExercisePerformance["id"]) => void;
+    updateSet: (set: OptimisticExercisePerformance) => void;
 }
+
+
 
 export const SetCard = ({ e, i, deleteSet, updateSet }: SetCardProps) => {
     return (
@@ -329,6 +358,90 @@ export const SetCard = ({ e, i, deleteSet, updateSet }: SetCardProps) => {
                     step={2.5}
                     min={0}
                     aria-label={`Weight for set ${i + 1}`}
+                />
+            </div>
+        </div>
+    );
+};
+
+// --- Set Card Component ---
+interface LapCardProps {
+    e: OptimisticExercisePerformance;
+    i: number;
+    deleteLap?: (id: OptimisticExercisePerformance["id"]) => void;
+    updateLap?: (set: OptimisticExercisePerformance) => void;
+}
+
+export const LapCard = ({ e, i, deleteLap, updateLap }: LapCardProps) => {
+
+    const [miliseconds, setMiliseconds] = useState(0);
+    const [isStarted, setIsStarted] = useState(false);
+
+    useEffect(() => {
+        let interval: any
+        if (isStarted) {
+            interval = setInterval(() => {
+                setMiliseconds((prev) => prev + 100)
+            }, 100)
+        } else if (!isStarted && miliseconds !== 0) {
+            clearInterval(interval)
+        }
+        return () => clearInterval(interval)
+    }, [isStarted])
+
+
+    //Timer Component
+
+    const Timer = ({ miliseconds }: { miliseconds: number }) => {
+        const minutes = Math.floor(miliseconds / 60000);
+        const seconds = Math.floor((miliseconds % 60000) / 1000);
+        return (
+            <div className="flex items-center gap-1">
+                <span>{minutes.toString().padStart(2, '0')}</span>
+                <span>:</span>
+                <span>{seconds.toString().padStart(2, '0')}</span>
+                <span>.</span>
+                <span>{miliseconds.toString().slice(1, 3).padEnd(2, '0')}</span>
+            </div>
+        )
+    }
+    return (
+        <div className="flex flex-col shrink-0 items-center group w-26 border border-border rounded-lg overflow-hidden bg-card">
+            <div className="flex justify-between items-center text-xs font-bold w-full h-10 p-2 bg-muted/30">
+                <span className="text-muted-foreground">Lap {i + 1}</span>
+                {i !== 0 && <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="link" size="icon" className="h-6 w-6 p-0 bg-muted/0 hover:bg-muted transition-colors">
+                            <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                            <span className="sr-only">Set options</span>
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent side="top" align="end">
+                        <DropdownMenuItem
+                            onSelect={deleteLap ? () => deleteLap(e.id) : undefined}
+                        >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            onSelect={() => setIsStarted(!isStarted)}
+                        >{isStarted ? <Pause /> : <Play />}</DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+                }
+            </div>
+
+            <div className="flex flex-col w-full">
+                <Timer miliseconds={miliseconds} />
+
+
+                <NumericStepper
+                    value={null}
+                    onChange={(e) => { }}
+                    placeholder="—"
+                    step={2.5}
+                    min={0}
+                    aria-label={`Weight for set`}
                 />
             </div>
         </div>

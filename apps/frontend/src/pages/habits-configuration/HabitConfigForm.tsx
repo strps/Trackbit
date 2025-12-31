@@ -1,4 +1,4 @@
-import { GRADIENT_PRESETS, ColorScaleFieldInput } from "@/pages/habits-configuration/ColorScaleField";
+import { GRADIENT_PRESETS, ColorThemeField } from "@/pages/habits-configuration/ColorThemeField";
 import { IconSelector } from "./IconField";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Layout, List, Save, XCircle } from "lucide-react";
@@ -9,8 +9,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import { Habit } from "@trackbit/types"
 import { useHabits } from "@/hooks/use-habits";
-import { TextField } from "@/components/Fields/TextFieldInput";
-import { RangeField } from "@/components/Fields/RangeFieldInput";
+import { TextField } from "@/components/Fields/TextField";
+import { RangeField } from "@/components/Fields/RangeField";
 import { Field } from "@/components/Fields/FieldBase";
 
 
@@ -47,6 +47,8 @@ const formSchema = z.object({
     description: z.string().optional().nullable(),
     type: z.enum(["simple", "complex", "negative"]).optional(),
     icon: z.string().optional(),
+    //color theme enum
+    colorTheme: z.enum(["green", "blue", "orange", "purple", "rose", "fire", "custom"]),
     colorStops: z.array(
         z.object({
             position: z.number().min(0).max(1),
@@ -61,7 +63,8 @@ const defaultValues = {
     name: "",
     description: undefined as string | undefined,
     type: "simple" as const,
-    colorStops: GRADIENT_PRESETS.emerald.stops,
+    colorTheme: "green",
+    colorStops: GRADIENT_PRESETS.custom.stops,
     icon: "star",
     dailyGoal: 5,
     weeklyGoal: 7,
@@ -85,15 +88,7 @@ export const HabitConfigForm = ({
         reValidateMode: "onSubmit",
         resolver: zodResolver(formSchema),
 
-        defaultValues: {
-            name: "",
-            description: "",
-            type: "simple",
-            colorStops: GRADIENT_PRESETS.emerald.stops,
-            icon: "star",
-            dailyGoal: 5,
-            weeklyGoal: 7,
-        },
+        defaultValues
     });
 
     useEffect(() => {
@@ -102,6 +97,7 @@ export const HabitConfigForm = ({
 
 
     const resetForm = () => {
+        console.log(habit)
         form.reset(
             habit
                 ? habit
@@ -115,7 +111,6 @@ export const HabitConfigForm = ({
             createHabit(data as Habit);
         else
             updateHabit(data as Habit);
-
     };
 
     return (
@@ -232,11 +227,8 @@ export const HabitConfigForm = ({
                         />
 
                         {/* Color */}
-                        <Field
-                            label="Color Theme"
+                        <ColorThemeField
                             form={form}
-                            name="colorStops"
-                            fieldInput={ColorScaleFieldInput}
                         />
 
                     </div>

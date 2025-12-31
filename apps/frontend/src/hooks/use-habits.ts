@@ -15,6 +15,7 @@ const fetchHabits = async (): Promise<Habit[]> => {
 };
 
 const createHabit = async (newHabit: Omit<Habit, 'id' | 'createdAt'>) => {
+  console.log(newHabit)
   const res = await fetch(API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

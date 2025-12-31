@@ -1,11 +1,11 @@
 import z from "zod";
 import { muscleGroups } from "../../db/schema/index.js";
-import { generateCrudRouter } from "../../lib/generateCrudRouter.js";
-import { generateValidationCrudSchemas } from "../../lib/generateValidationCrudSchemas.js";
+import { generateCrudRouter } from "../../lib/utilities/crud-router-factory.js";
+import { defineCrudSchemas } from "../../lib/utilities/drizzle-crud-schemas.js";
 
 const muscleGroupRouter = generateCrudRouter({
     table: muscleGroups,
-    schemas: generateValidationCrudSchemas(muscleGroups, {
+    schemas: defineCrudSchemas(muscleGroups, {
         omitFromCreateUpdate: ['id'],
         refine: (schema) =>
             schema.refine(
