@@ -53,5 +53,8 @@ export interface ExercisePerformance {
     exerciseLogId: number;
     reps: number | null;
     weight: number | null;
+    duration: number | null;
+    distance: string | null;
     createdAt: string | null;
+    rpe: number | null;
 }

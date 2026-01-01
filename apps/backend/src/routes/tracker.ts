@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
-import { z } from 'zod'
+import { number, z } from 'zod'
 import db from "../db/db.js";
 import { dayLogs, exerciseLogs, exerciseSessions, exercisePerformances, habits } from "../db/schema/index.js"
 import { eq, and, inArray } from 'drizzle-orm'
@@ -207,6 +207,7 @@ const exerciseLogsSchemas = defineCrudSchemas(exerciseLogs, {
                 z.object({
                     reps: z.number().min(0).nullable(),
                     weight: z.number().min(0).nullable(),
+                    number: z.number().min(0).nullable(),
                 })
             ).optional(),
         }),
@@ -216,8 +217,8 @@ const exerciseLogsRouter = generateCrudRouter({
     table: exerciseLogs,
     schemas: exerciseLogsSchemas,
     primaryKeyFields: ['id'],
-    // Enforce ownership: log belongs to a session of a dayLog of a habit owned by the user
 
+    // Enforce ownership: log belongs to a session of a dayLog of a habit owned by the user
     ownershipCheck: async (user, record) => {
         //TODO: optimize with joins, currently 3 queries per check, it can be just one.
         const session = await db
@@ -258,8 +259,9 @@ const exerciseLogsRouter = generateCrudRouter({
 
                 // 3. Insert Sets
                 const setRes = await tx.insert(exercisePerformances).values(
-                    setsToInsert.map((s: { reps: number, weight: number }) => ({
+                    setsToInsert.map((s: { reps: number, weight: number, number: number }) => ({
                         exerciseLogId: newLogId,
+                        number: s.number,
                         reps: s.reps,
                         weight: s.weight,
                     }))
@@ -279,13 +281,13 @@ const exerciseLogsRouter = generateCrudRouter({
 app.route('/exercise-logs', exerciseLogsRouter);
 
 //============================================================================================
-//--- EXERCISE SETS ---
+//--- EXERCISE PERFORMANCES ---
 //============================================================================================
 
 const exercisePerformanceSchemas = defineCrudSchemas(exercisePerformances, {
     omitFromCreateUpdate: ['createdAt'],
 });
-// TODO: sets should be ordered by createdAt, similar exercise logs
+
 const exercisePerformancesRouter = generateCrudRouter({
     table: exercisePerformances,
     schemas: exercisePerformanceSchemas,
@@ -320,7 +322,7 @@ const exercisePerformancesRouter = generateCrudRouter({
     },
 });
 
-app.route('/exercise-sets', exercisePerformancesRouter);
+app.route('/exercise-performances', exercisePerformancesRouter);
 
 
 //============================================================================================

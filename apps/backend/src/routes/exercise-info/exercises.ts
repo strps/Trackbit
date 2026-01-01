@@ -57,11 +57,14 @@ const exerciseRouter = generateCrudRouter({
                     category: exercises.category,
                     defaultWeightUnit: exercises.defaultWeightUnit,
                     defaultDistanceUnit: exercises.defaultDistanceUnit,
-                    lastSetId: latestSetSubquery.setId,
-                    lastSetWeight: latestSetSubquery.weight,
-                    lastSetReps: latestSetSubquery.reps,
-                    lastDistance: latestSetSubquery.distance,
-                    lastDuration: latestSetSubquery.duration,
+                    lastPerformance: {
+                        id: latestSetSubquery.setId,
+                        weight: latestSetSubquery.weight,
+                        reps: latestSetSubquery.reps,
+                        distance: latestSetSubquery.distance,
+                        duration: latestSetSubquery.duration,
+                        createdAt: latestSetSubquery.createdAt,
+                    }
 
                 })
                 .from(exercises)

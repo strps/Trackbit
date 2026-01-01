@@ -18,7 +18,7 @@ export const habits = pgTable('habits', {
 
   colorTheme: colorThemeEnum('color_theme').notNull().default('green').notNull(),
   // Defaults to a simple Green gradient
-  colorStops: jsonb('color_palette').$type<ColorStop[]>().notNull().default([
+  colorStops: jsonb('color_stops').$type<ColorStop[]>().notNull().default([
     { position: 0, color: [255, 0, 0, 1] },
     { position: 0.5, color: [255, 225, 0, 1] },
     { position: 1, color: [12, 148, 62, 1] }

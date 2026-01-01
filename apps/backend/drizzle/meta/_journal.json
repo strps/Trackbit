@@ -29,6 +29,20 @@
       "when": 1767148983680,
       "tag": "0002_great_genesis",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1767289236416,
+      "tag": "0003_stormy_stellaris",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1767307955173,
+      "tag": "0004_hot_bromley",
+      "breakpoints": true
     }
   ]
 }

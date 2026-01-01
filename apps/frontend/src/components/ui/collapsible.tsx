@@ -1,4 +1,5 @@
 import * as CollapsiblePrimitive from "@radix-ui/react-collapsible"
+import { cn } from "@/lib/utils"  // Assuming you have a cn utility for className merging, common in shadcn/ui projects
 
 function Collapsible({
   ...props
@@ -18,12 +19,16 @@ function CollapsibleTrigger({
 }
 
 function CollapsibleContent({
+  className,
   ...props
 }: React.ComponentProps<typeof CollapsiblePrimitive.CollapsibleContent>) {
-  //TODO: add animation, replace my owncollapsible with this component
   return (
     <CollapsiblePrimitive.CollapsibleContent
       data-slot="collapsible-content"
+      className={cn(
+        "overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up",
+        className
+      )}
       {...props}
     />
   )

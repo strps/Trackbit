@@ -1,15 +1,19 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Exercise as TrackbitExercise, } from '@trackbit/types';
+import type { Exercise, } from '@trackbit/types';
 const API_URL = `${import.meta.env.VITE_API_URL}/exercise-info`;
 
-interface Exercise extends TrackbitExercise {
-    lastSetId: number;
-    lastSetWeight: number;
-    lastSetReps: number;
-    lastSetCreatedAt: string;
+export interface ExerciseWithLastPerformance extends Exercise {
+    lastPerformance?: {
+        id: number | null;
+        weight: number | null;
+        reps: number | null;
+        distance: number | null;
+        duration: number | null;
+        createdAt: string;
+    };
 }
 
-const fetchExercises = async (): Promise<Exercise[]> => {
+const fetchExercises = async (): Promise<ExerciseWithLastPerformance[]> => {
     const res = await fetch(`${API_URL}/exercises`, { credentials: 'include' });
     if (!res.ok) throw new Error('Failed to fetch exercises');
     return res.json();
@@ -57,7 +61,7 @@ export function useExercises() {
     const updateLastSetLocally = useMutation({
         mutationFn: async ({ exerciseId, reps, weight }: { exerciseId: number; reps: number; weight: number }) => {
             // No server call — immediate cache update only
-            queryClient.setQueryData<Exercise[]>(['exercises'], (old = []) => {
+            queryClient.setQueryData<ExerciseWithLastPerformance[]>(['exercises'], (old = []) => {
                 return old.map((ex) =>
                     ex.id === exerciseId
                         ? {
