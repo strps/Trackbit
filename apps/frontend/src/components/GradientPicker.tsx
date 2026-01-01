@@ -9,8 +9,6 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Trash2, Plus } from "lucide-react";
 import { Button } from "./ui/button";
-import { CollapsibleSection } from "./Collapsible";
-import { bigButtonClassName, bigButtonSelectedClassName } from "@/components/BigButton";
 import { ColorStop } from "@trackbit/types";
 
 interface GradientPickerProps {
