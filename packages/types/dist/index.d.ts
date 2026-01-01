@@ -1,6 +1,6 @@
 export interface ColorStop {
     position: number;
-    color: [number, number, number];
+    color: [number, number, number] | [number, number, number, number];
 }
 export interface Habit {
     id: number;
@@ -8,6 +8,7 @@ export interface Habit {
     name: string;
     description: string | null;
     type: 'simple' | 'complex' | 'negative';
+    colorTheme: 'green' | 'blue' | 'orange' | 'purple' | 'rose' | 'fire' | 'custom';
     colorStops: ColorStop[];
     icon: string;
     weeklyGoal: number;
@@ -40,11 +41,15 @@ export interface ExerciseLog {
     distanceUnit: string | null;
     weightUnit: string | null;
 }
-export interface ExerciseSet {
+export interface ExercisePerformance {
     id: number;
+    number: number;
     exerciseLogId: number;
     reps: number | null;
     weight: number | null;
+    duration: number | null;
+    distance: string | null;
     createdAt: string | null;
+    rpe: number | null;
 }
 //# sourceMappingURL=index.d.ts.map

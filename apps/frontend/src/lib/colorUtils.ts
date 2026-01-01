@@ -236,7 +236,7 @@ export function gradientToCSSHex(
     direction: string = 'to right'
 ): string {
     const colorStops = stops.map(stop => {
-        const hex = rgbToHex(...stop.color);
+        const hex = rgbToHex(stop.color[0], stop.color[1], stop.color[2], stop.color[3] || 1);
         const percentage = (stop.position * 100).toFixed(1);
         return `${hex} ${percentage}%`;
     }).join(', ');
