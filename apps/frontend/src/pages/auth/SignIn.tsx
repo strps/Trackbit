@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useNavigate } from 'react-router-dom';
 import { authClient } from '@/lib/auth-client';
 import { GoogleIcon, GithubIcon } from './Icons'
+import { process } from 'better-auth';
 
 export default function SignInPage() {
     const navigate = useNavigate();
@@ -41,7 +42,7 @@ export default function SignInPage() {
         await authClient.signIn.social({
             provider,
             // Pass inviteCode via state if collected separately
-            callbackURL: '/dashboard',
+            callbackURL: `${process.env.VITE_FRONTEND_URL}/dashboard`,
         });
     };
 
