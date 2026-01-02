@@ -41,7 +41,7 @@ export default function SignInPage() {
         await authClient.signIn.social({
             provider,
             // Pass inviteCode via state if collected separately
-            callbackURL: `${process.env.VITE_FRONTEND_URL}/dashboard`,
+            callbackURL: `${import.meta.env.VITE_FRONTEND_URL}/dashboard`,
         });
     };
 
