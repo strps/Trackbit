@@ -1,0 +1,45 @@
+{
+  "name": "@trackbit/ui",
+  "version": "0.1.0",
+  "description": "Shared UI components built on shadcn/ui, including form fields and reusables",
+  "sideEffects": false,
+  "main": "./dist/index.cjs.js",
+  "module": "./dist/index.esm.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.cjs.js"
+    },
+    "./react-internal": {
+      "types": "./dist/index.d.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "dev": "tsup src/index.ts --format esm --dts --watch --clean"
+  },
+  "peerDependencies": {
+    "@radix-ui/react-*": "*",
+    "class-variance-authority": "^0.7.0",
+    "lucide-react": "^0.400.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-hook-form": "^7.0.0",
+    "tailwind-merge": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.0"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "tw-animate-css": "^1.4.0"
+  }
+}
