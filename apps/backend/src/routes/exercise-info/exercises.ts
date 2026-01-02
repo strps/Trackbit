@@ -53,6 +53,7 @@ const exerciseRouter = generateCrudRouter({
                 .with(latestSetSubquery)
                 .select({
                     id: exercises.id,
+                    userId: exercises.userId,
                     name: exercises.name,
                     category: exercises.category,
                     defaultWeightUnit: exercises.defaultWeightUnit,
@@ -94,8 +95,6 @@ const exerciseRouter = generateCrudRouter({
             ...data,
             userId: c.get('user').id, // Mark as custom
         }
-
-        console.log(r)
 
         return (r)
     },
