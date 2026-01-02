@@ -7,7 +7,7 @@ import { authClient } from '@/lib/auth-client';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { UseFormReturn } from "react-hook-form";
-import { Alert, AlertDescription } from "@/components/ui/alert"; // Assuming shadcn alert exists
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { GoogleIcon, GithubIcon } from './Icons';
 import { TextField } from '@/components/Fields/TextField';
 import { PasswordField } from '@/components/Fields/PasswordField';
@@ -16,7 +16,11 @@ const signUpSchema = z.object({
     name: z.string().min(1, "Full name is required"),
     email: z.string().email("Invalid email address"),
     password: z.string().min(8, "Password must be at least 8 characters"),
+    passwordConfirm: z.string(),
     inviteCode: z.string().optional(),
+}).refine((data) => data.password === data.passwordConfirm, {
+    message: "Passwords do not match",
+    path: ["passwordConfirm"],
 });
 
 type SignUpFormData = z.infer<typeof signUpSchema>;
@@ -37,6 +41,7 @@ export default function SignUpPage() {
             name: '',
             email: '',
             password: '',
+            passwordConfirm: '',
             inviteCode: urlInviteCode,
         },
     });
@@ -116,6 +121,13 @@ export default function SignUpPage() {
                             <PasswordField
                                 name="password"
                                 label="Password"
+                                form={form}
+                                placeholder="••••••••"
+                            />
+
+                            <PasswordField
+                                name="passwordConfirm"
+                                label="Confirm password"
                                 form={form}
                                 placeholder="••••••••"
                             />

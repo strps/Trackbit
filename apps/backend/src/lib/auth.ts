@@ -12,6 +12,9 @@ import { jsx } from "react/jsx-runtime";
 import db from "../db/db.js";
 
 export const auth = betterAuth({
+
+  baseURL: process.env.SERVER_URL || 'http://localhost:3000',
+
   database: drizzleAdapter(db, {
     provider: "pg",
     schema: {
