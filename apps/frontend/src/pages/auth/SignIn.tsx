@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { useNavigate } from 'react-router-dom';
 import { authClient } from '@/lib/auth-client';
 import { GoogleIcon, GithubIcon } from './Icons'
-import { process } from 'better-auth';
 
 export default function SignInPage() {
     const navigate = useNavigate();
