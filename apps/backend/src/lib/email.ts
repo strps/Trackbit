@@ -17,7 +17,6 @@ export const sendEmail = async ({
         console.warn("Resend API key not configured – skipping email send");
         return { success: false, error: "No API key" };
     }
-
     try {
         const data = await resend.emails.send({
             from: process.env.EMAIL_FROM || "Trackbit <noreply@resend.dev>",
@@ -26,7 +25,6 @@ export const sendEmail = async ({
             react,
             text,
         });
-        console.log(data)
         return { success: true, data };
     } catch (error) {
         console.error("Failed to send email:", error);
