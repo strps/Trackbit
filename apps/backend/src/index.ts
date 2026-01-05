@@ -9,6 +9,7 @@ import habitRoutes from './routes/habits.js'
 import trackerRoutes from './routes/tracker.js'
 import exerciseInfoRoutes from './routes/exercise-info/index.js'
 import configRoutes from './routes/config.js'
+import analytics from './routes/analytics/index.js'
 
 const app = new Hono()
 
@@ -34,6 +35,8 @@ app.route('/api/habits', habitRoutes)
 app.route('/api/tracker', trackerRoutes)
 app.route('/api/exercise-info', exerciseInfoRoutes)
 app.route('/api/config', configRoutes)
+app.route('/api/analytics', analytics)
+
 
 // 4. Health Check
 app.get('/health', (c) => c.json({ status: 'ok', time: new Date().toISOString() }))

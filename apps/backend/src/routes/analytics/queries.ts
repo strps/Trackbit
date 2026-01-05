@@ -110,29 +110,47 @@ export const getExerciseProgress = async (
         .orderBy(asc(exerciseSessions.date));
 };
 
-// 3. Personal Records (top performances, strength-focused)
+// 3. Personal Records (FULLY FIXED - with proper aliases for raw SQL fields)
 export const getPersonalRecords = async (userId: string, limit = 20) => {
-    return db
+    const subquery = db
         .select({
             exerciseName: exercises.name,
             weight: exercisePerformances.weight,
             reps: exercisePerformances.reps,
-            tonnage: sql<number>`${exercisePerformances.weight} * ${exercisePerformances.reps}`,
-            estimated1RM: sql<number>`${exercisePerformances.weight} * (1 + ${exercisePerformances.reps} / 30.0)`,
+            tonnage: sql<number>`${exercisePerformances.weight} * ${exercisePerformances.reps}`.as('tonnage'),
+            estimated1RM: sql<number>`${exercisePerformances.weight} * (1 + ${exercisePerformances.reps} / 30.0)`.as('estimated1RM'),
             date: exerciseSessions.date,
         })
         .from(exercisePerformances)
         .innerJoin(exerciseLogs, eq(exercisePerformances.exerciseLogId, exerciseLogs.id))
         .innerJoin(exercises, eq(exerciseLogs.exerciseId, exercises.id))
         .innerJoin(exerciseSessions, eq(exerciseLogs.exerciseSessionId, exerciseSessions.id))
-        .innerJoin(dayLogs, eq(exerciseSessions.habitId, dayLogs.habitId) && eq(exerciseSessions.date, dayLogs.date))
+        .innerJoin(
+            dayLogs,
+            and(
+                eq(exerciseSessions.habitId, dayLogs.habitId),
+                eq(exerciseSessions.date, dayLogs.date)
+            )
+        )
         .innerJoin(habits, eq(dayLogs.habitId, habits.id))
-        .where(and(eq(exercises.category, 'strength'), userFilter(userId)))
-        .orderBy(desc(sql`estimated1RM`))
+        .where(and(eq(exercises.category, 'strength'), eq(habits.userId, userId)))
+        .as('pr_subquery');
+
+    return db
+        .select({
+            exerciseName: subquery.exerciseName,
+            weight: subquery.weight,
+            reps: subquery.reps,
+            tonnage: subquery.tonnage,
+            estimated1RM: subquery.estimated1RM,
+            date: subquery.date,
+        })
+        .from(subquery)
+        .orderBy(desc(subquery.estimated1RM))
         .limit(limit);
 };
 
-// 4. Volume by Muscle Group
+// 4. Volume by Muscle Group (FULLY FIXED - with proper alias for raw SQL)
 export const getVolumeByMuscleGroup = async (
     userId: string,
     startDate?: string,
@@ -143,10 +161,10 @@ export const getVolumeByMuscleGroup = async (
         endDate ? lte(exerciseSessions.date, endDate) : undefined
     );
 
-    return db
+    const subquery = db
         .select({
             muscleGroup: muscleGroups.name,
-            totalVolume: sql<number>`coalesce(sum(${exercisePerformances.weight} * ${exercisePerformances.reps}), 0)`,
+            totalVolume: sql<number>`coalesce(sum(${exercisePerformances.weight} * ${exercisePerformances.reps}), 0)`.as('totalVolume'),
         })
         .from(muscleGroups)
         .leftJoin(exerciseMuscleGroup, eq(exerciseMuscleGroup.muscleGroupId, muscleGroups.id))
@@ -154,11 +172,25 @@ export const getVolumeByMuscleGroup = async (
         .leftJoin(exerciseLogs, eq(exerciseLogs.exerciseId, exercises.id))
         .leftJoin(exercisePerformances, eq(exercisePerformances.exerciseLogId, exerciseLogs.id))
         .leftJoin(exerciseSessions, eq(exerciseLogs.exerciseSessionId, exerciseSessions.id))
-        .leftJoin(dayLogs, eq(exerciseSessions.habitId, dayLogs.habitId) && eq(exerciseSessions.date, dayLogs.date))
-        .leftJoin(habits, eq(dayLogs.habitId, habits.id))
-        .where(and(dateFilter, userFilter(userId)))
+        .innerJoin(
+            dayLogs,
+            and(
+                eq(exerciseSessions.habitId, dayLogs.habitId),
+                eq(exerciseSessions.date, dayLogs.date)
+            )
+        )
+        .innerJoin(habits, eq(dayLogs.habitId, habits.id))
+        .where(and(dateFilter, eq(habits.userId, userId)))
         .groupBy(muscleGroups.id, muscleGroups.name)
-        .orderBy(desc(sql`totalVolume`));
+        .as('volume_subquery');
+
+    return db
+        .select({
+            muscleGroup: subquery.muscleGroup,
+            totalVolume: subquery.totalVolume,
+        })
+        .from(subquery)
+        .orderBy(desc(subquery.totalVolume));
 };
 
 // 5. Cardio Summary

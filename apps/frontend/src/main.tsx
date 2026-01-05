@@ -18,6 +18,7 @@ import SignUpPage from './pages/auth/SignUp';
 import ForgotPasswordPage from './pages/auth/ForgotPassword';
 import AuthLayout from './layouts/AuthLayout';
 import VerifyEmail from './pages/auth/VerifyEmail';
+import AnalyticsPage from './pages/analytics';
 
 const router = createBrowserRouter([
   {
@@ -37,6 +38,7 @@ const router = createBrowserRouter([
       { path: "dashboard", element: <HabitTracker /> },
       { path: "account-settings", element: <AccountSettings /> },
       { path: "exercises", element: <ExerciseLibrary /> },
+      { path: "analytics", element: <AnalyticsPage /> },
     ]
   },
   {
