@@ -88,6 +88,7 @@ export default function SignUpPage() {
         await authClient.signIn.social({
             provider,
             additionalData: { inviteCode },
+            callbackURL: `${import.meta.env.VITE_FRONTEND_URL}/dashboard`
         });
     };
 
