@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, use, ReactEventHandler } from "react";
 import { useExercises } from "@/hooks/use-exercises";
-import { ChevronDown, Dumbbell, MoreVertical, Plus, Trash2, X, Search, GripVertical, Hash, Scale, Info, PlusCircle, Divide, ChevronLeft, Play, Pause, SquarePen, Clock, MapPin } from "lucide-react";
+import { ChevronDown, Dumbbell, MoreVertical, Plus, Trash2, X, Search, GripVertical, Hash, Scale, Info, PlusCircle, Divide, ChevronLeft, Play, Pause, SquarePen, Clock, MapPin, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NumericStepper } from "../../components/NumericStepper";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -300,6 +300,7 @@ const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: onEditTri
                 <div className="flex items-center gap-2">
                     {isSelected &&
                         <Button onClick={() => onEditTrigger(null)}>
+                            <Pause />
                             Finish
                         </Button>
                     }
@@ -316,14 +317,14 @@ const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: onEditTri
                                     onSelect={() => onEditTrigger(null)}
                                 >
                                     <SquarePen className="mr-2 h-4 w-4" />
-                                    Finish Editing
+                                    Finish Exercise
                                 </DropdownMenuItem>
                                 :
                                 <DropdownMenuItem
                                     onSelect={() => onEditTrigger(index)}
                                 >
-                                    <SquarePen className="mr-2 h-4 w-4" />
-                                    Edit Exercise
+                                    <Play className="mr-2 h-4 w-4" />
+                                    Start Exercise
                                 </DropdownMenuItem>
 
                             }
