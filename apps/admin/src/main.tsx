@@ -5,8 +5,8 @@ import AppLayout from './layouts/AppLayout';
 import { ThemeProvider } from './providers/theme-provider';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import './index.css'
-
-import Landing from './pages/Landing';
+import { Home } from './pages/Home';
+import { InvitationCodeForm } from './forms/InvitationCode';
 
 
 const router = createBrowserRouter([
@@ -14,8 +14,8 @@ const router = createBrowserRouter([
     path: "/",
     element: <AppLayout isPublic />,
     children: [
-      { index: true, element: <Landing /> }, // 'index' means this renders at "/"
-      { path: "vivero", element: <ViveroHomePage /> },
+      { index: true, element: <Home /> }, // 'index' means this renders at "/"
+      { path: "/invite", element: <InvitationCodeForm /> },
     ],
   },
 

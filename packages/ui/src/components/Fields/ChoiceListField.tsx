@@ -60,12 +60,15 @@ export const ChoiceListField = <T = {}>({
                 />
             )}
         />
-    );
-};
+    )
+}
 
-/**
- * Internal input component that renders the list of options.
- */
+
+
+
+
+
+
 export const ChoiceListFieldInput = <T = {}>({
     id,
     field,

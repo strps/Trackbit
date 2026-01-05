@@ -3,7 +3,7 @@ import { Field, FieldProps, InputProps } from "./FieldBase";
 
 export const NumberField = ({ ...props }: Omit<FieldProps, "fieldInput">) => <Field fieldInput={NumberFieldInput} {...props} />
 
-export const NumberFieldInput = ({
+export const NumberFieldInput: React.FC<InputProps> = ({
     id,
     field,
     placeholder,

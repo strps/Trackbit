@@ -8,8 +8,6 @@ interface RangeFieldInputProps extends InputProps {
     step?: number;
 }
 
-
-
 interface RangeFieldProps extends Omit<FieldProps, "fieldInput"> {
     min?: number;
     max?: number;
@@ -18,7 +16,7 @@ interface RangeFieldProps extends Omit<FieldProps, "fieldInput"> {
 
 export const RangeField = ({ min, max, step, ...props }: RangeFieldProps) => <Field fieldInput={(iprops) => <RangeFieldInput min={min} max={max} step={step} {...iprops} />} {...props} />
 
-export const RangeFieldInput = ({
+export const RangeFieldInput: React.FC<RangeFieldInputProps> = ({
     id,
     field,
     min = 0,

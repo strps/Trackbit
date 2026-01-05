@@ -1,4 +1,4 @@
-import Header from "@/components/Header";
+// import Header from "@/components/Header";
 import { useSession } from "@/lib/auth-client";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 
@@ -18,7 +18,7 @@ export default function AppLayout({ isPublic }: AppLayoutProps) {
 
     return (
         <div className="app-container min-h-svh">
-            <Header />
+            {/* <Header /> */}
 
             <main >
 

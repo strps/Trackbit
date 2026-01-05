@@ -9,13 +9,13 @@ import { cn } from "@/lib/utils";
  * Props specific to the TextArea input (extends the shared InputProps contract).
  * Additional Textarea-specific props can be added here if needed in the future.
  */
-type TextAreaFieldInputProps = InputProps & React.TextareaHTMLAttributes<HTMLTextAreaElement>;
+export type TextAreaFieldInputProps = InputProps & React.TextareaHTMLAttributes<HTMLTextAreaElement>;
 
 /**
  * The actual input component rendered inside the generic Field.
  * It receives all props required by the Field contract and forwards remaining props to shadcn's Textarea.
  */
-const TextAreaFieldInput: React.FC<TextAreaFieldInputProps> = ({
+export const TextAreaFieldInput: React.FC<TextAreaFieldInputProps> = ({
     field,
     fieldState,
     formState,
@@ -51,7 +51,7 @@ const TextAreaFieldInput: React.FC<TextAreaFieldInputProps> = ({
 
 type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;
 
-type TextAreaFieldProps = Omit<FieldProps, "fieldInput">
+export type TextAreaFieldProps = Omit<FieldProps, "fieldInput">
 
 export const TextAreaField: React.FC<TextAreaFieldProps> = ({
     name,

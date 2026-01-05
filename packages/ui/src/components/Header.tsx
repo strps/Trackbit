@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
-import { NavLink } from "react-router-dom";
 
 import {
   Flame, Menu, X, Sun, Moon,

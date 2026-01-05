@@ -1,11 +1,6 @@
 import { Controller, ControllerFieldState, ControllerRenderProps, FieldValues, UseFormReturn, UseFormStateReturn } from "react-hook-form";
 import { Field as ShadcnField, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field"
-import { Input } from "../ui/input";
-import { Slider } from "../ui/slider";
-import { Button } from "../ui/button";
-import { Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
-import { cn } from "@/lib/utils";
+
 
 /*
 Areas for Potential Improvement
@@ -72,6 +67,7 @@ export const Field = ({ name, label, form, placeholder, fieldInput: FieldInput, 
                         className={className}
                         disabled={disabled}
                     />
+
                     {description && <FieldDescription>{description}</FieldDescription>}
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                 </ShadcnField>
