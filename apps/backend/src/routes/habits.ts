@@ -37,7 +37,7 @@ app.post(
         name: z.string().min(1),
         description: z.string().optional(),
         type: z.enum(['simple', 'complex', 'negative']).default('simple'),
-        goal: z.number().int().min(1).max(7).default(5),
+        weeklyGoal: z.number().int().min(1).max(7).default(5),
         dailyGoal: z.number().default(1),
         colorTheme: z.enum(['green', 'blue', 'orange', 'purple', 'rose', 'fire', 'custom']).optional(),
         // Validate the JSONB structure if you want, or just accept array
@@ -50,7 +50,6 @@ app.post(
     async (c) => {
         const user = c.get('user')
         const body = c.req.valid('json') // Type-safe body from Zod
-        console.log(body)
         const result = await db.insert(habits).values({
             ...body,
             userId: user.id
@@ -64,9 +63,11 @@ app.post(
 app.put(
     '/:id',
     zValidator('json', z.object({
+        id: z.number().optional(),
         name: z.string().optional(),
         description: z.string().optional().nullable(),
-        goal: z.number().optional(),
+        weeklyGoal: z.number().int().min(1).max(7).default(5),
+        dailyGoal: z.number().default(1),
         colorTheme: z.enum(['green', 'blue', 'orange', 'purple', 'rose', 'fire', 'custom']).optional(),
         colorStops: z.array(z.object({
             position: z.number(),
@@ -74,7 +75,7 @@ app.put(
         })).optional(),
         icon: z.string().optional(),
         type: z.enum(['simple', 'complex', 'negative']).optional(),
-    })),
+    }).strict()),
     async (c) => {
 
 

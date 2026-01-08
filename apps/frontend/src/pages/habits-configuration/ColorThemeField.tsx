@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Check } from 'lucide-react';
-import { gradientToCSS, mapValueToColor, mapValueToCSSrgb } from '../../lib/colorUtils';
+import { gradientToCSS, mapValueToColor, mapValueToCSSrgba } from '../../lib/colorUtils';
 import { GradientPicker } from '../../components/GradientPicker';
 import { BigButton } from '@/components/BigButton';
 import { ColorStop } from "@trackbit/types";
@@ -104,7 +104,7 @@ export const ColorThemeField = ({
                 className="flex gap-2"
             >
                 <div style={{
-                    backgroundColor: mapValueToCSSrgb(0, 0, 1, stops),
+                    backgroundColor: mapValueToCSSrgba(0, 0, 1, stops),
                     width: 20,
                     height: 20,
                     borderRadius: '25%'
@@ -113,7 +113,7 @@ export const ColorThemeField = ({
                     className="border border-border"
                 />
                 <div style={{
-                    backgroundColor: mapValueToCSSrgb(0.25, 0, 1, stops),
+                    backgroundColor: mapValueToCSSrgba(0.25, 0, 1, stops),
                     width: 20,
                     height: 20,
                     borderRadius: '25%',
@@ -121,7 +121,7 @@ export const ColorThemeField = ({
                     className="border border-border"
                 />
                 <div style={{
-                    backgroundColor: mapValueToCSSrgb(0.50, 0, 1, stops),
+                    backgroundColor: mapValueToCSSrgba(0.50, 0, 1, stops),
                     width: 20,
                     height: 20,
                     borderRadius: '25%',
@@ -129,7 +129,7 @@ export const ColorThemeField = ({
                     className="border border-border"
                 />
                 <div style={{
-                    backgroundColor: mapValueToCSSrgb(0.75, 0, 1, stops),
+                    backgroundColor: mapValueToCSSrgba(0.75, 0, 1, stops),
                     width: 20,
                     height: 20,
                     borderRadius: '25%',
@@ -137,7 +137,7 @@ export const ColorThemeField = ({
                     className="border border-border"
                 />
                 <div style={{
-                    backgroundColor: mapValueToCSSrgb(1, 0, 1, stops),
+                    backgroundColor: mapValueToCSSrgba(1, 0, 1, stops),
                     width: 20,
                     height: 20,
                     borderRadius: '25%',

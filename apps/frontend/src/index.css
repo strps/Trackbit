@@ -1,8 +1,10 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "tailwind-scrollbar-utilities";
+@config "../tailwind.config.js";
 
 @custom-variant dark (&:is(.dark *));
+
 
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
