@@ -255,7 +255,9 @@ const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: onEditTri
                         <div className="flex items-center gap-1"><Clock className="w-3 h-3" /> Time</div>
                         <div className="flex items-center gap-1"><MapPin className="w-3 h-3" /> Distance (km)</div>
                     </div>
-                    <div className="grid grid-cols-[repeat(var(--set-count),minmax(40px,1fr))] gap-2 text-foreground font-medium">
+                    {/* <ScrollArea className="shrink"> */}
+
+                    <div className="flex gap-2 text-foreground font-medium">
                         {exerciseLog.exercisePerformances.map((_: any, i: number) => (
                             <div key={i} className="flex flex-col gap-1 text-center">
                                 <span className="text-muted-foreground text-[9px]">Lap {i + 1}</span>
@@ -264,6 +266,7 @@ const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: onEditTri
                             </div>
                         ))}
                     </div>
+                    {/* </ScrollArea> */}
                 </div>
             </div>
         },
@@ -284,82 +287,85 @@ const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: onEditTri
             className={`rounded-xl border border-border  shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300 ${isSelected && "ring ring-primary"}`}
         >
             {/* Card Header */}
-            <CollapsibleTrigger className="flex justify-between items-center min-h-21 px-4 py-3 w-full">
-                {/* <div
-                    className="flex justify-between items-baseline px-4 py-3  border-b border-border"
-                > */}
-                <div className="flex items-center gap-2">
-                    <h4 className="font-bold text-sm text-foreground">
-                        {exercise?.name || 'Unknown Exercise'}
-                    </h4>
-                    <Button variant="ghost">
-                        <Info />
-                    </Button>
+            <CollapsibleTrigger className=" gap-y-3  justify-between items-center min-h-21  w-full">
+                {/* 1 */}
+                <div className="flex border-b justify-between w-full px-6 py-1">
+
+                    <div className="flex items-center">
+
+                        <h4 className="font-bold text-sm text-foreground">
+                            {exercise?.name || 'Unknown Exercise'}
+                        </h4>
+                        <Button variant="ghost">
+                            <Info />
+                        </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {isSelected &&
+                            <Button onClick={() => onEditTrigger(null)}>
+                                Finish
+                            </Button>
+                        }
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon-lg" className="h-8 w-8 self-start text-muted-foreground hover:text-foreground">
+                                    <MoreVertical className="w-4 h-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                {isSelected ?
+                                    <DropdownMenuItem
+                                        onSelect={() => onEditTrigger(null)}
+                                    >
+                                        <SquarePen className="mr-2 h-4 w-4" />
+                                        Finish Editing
+                                    </DropdownMenuItem>
+                                    :
+                                    <DropdownMenuItem
+                                        onSelect={() => onEditTrigger(index)}
+                                    >
+                                        <SquarePen className="mr-2 h-4 w-4" />
+                                        Edit Exercise
+                                    </DropdownMenuItem>
+
+                                }
+                                <DropdownMenuItem
+                                    onSelect={() => removeExerciseLog(exerciseLog.id)}
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete Exercise
+                                </DropdownMenuItem>
+                                {isSelected &&
+                                    <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                            onSelect={() => selectedPerformanceId && deleteSet(selectedPerformanceId)}
+                                            disabled={!selectedPerformanceId}
+                                        >
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            Delete Selected {
+                                                (exercise?.category == 'strength') ?
+                                                    "Set" :
+                                                    exercise?.category == 'cardio' ?
+                                                        "Lap"
+                                                        :
+                                                        "Set"
+                                            }
+                                        </DropdownMenuItem>
+                                    </>
+                                }
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                </div>
+
+                <div className="py-4 px-6">
                     {cardContents[exercise?.category || 'strength'].legend}
                 </div>
-                <div className="flex items-center gap-2">
-                    {isSelected &&
-                        <Button onClick={() => onEditTrigger(null)}>
-                            Finish
-                        </Button>
-                    }
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
 
-                            <Button variant="ghost" size="icon-lg" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                                <MoreVertical className="w-4 h-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                            {isSelected ?
-                                <DropdownMenuItem
-                                    onSelect={() => onEditTrigger(null)}
-                                >
-                                    <SquarePen className="mr-2 h-4 w-4" />
-                                    Finish Editing
-                                </DropdownMenuItem>
-                                :
-                                <DropdownMenuItem
-                                    onSelect={() => onEditTrigger(index)}
-                                >
-                                    <SquarePen className="mr-2 h-4 w-4" />
-                                    Edit Exercise
-                                </DropdownMenuItem>
-
-                            }
-                            <DropdownMenuItem
-                                onSelect={() => removeExerciseLog(exerciseLog.id)}
-                            >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete Exercise
-                            </DropdownMenuItem>
-                            {isSelected &&
-                                <>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                        onSelect={() => selectedPerformanceId && deleteSet(selectedPerformanceId)}
-                                        disabled={!selectedPerformanceId}
-                                    >
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        Delete Selected {
-                                            (exercise?.category == 'strength') ?
-                                                "Set" :
-                                                exercise?.category == 'cardio' ?
-                                                    "Lap"
-                                                    :
-                                                    "Set"
-                                        }
-                                    </DropdownMenuItem>
-                                </>
-                            }
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
-
-                {/* </div> */}
             </CollapsibleTrigger>
 
-            <CollapsibleContent className="p-4 border-t border-border">
+            <CollapsibleContent className="p-4 border-t border-border -order-1">
                 {cardContents[exercise?.category || 'strength'].content}
             </CollapsibleContent>
 

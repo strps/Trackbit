@@ -48,7 +48,7 @@ export const AppHeader: React.FC = () => {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary transition-colors">
             <Flame className="h-5 w-5 text-primary-foreground fill-current" />
           </div>
-          <span className="hidden sm:inline-block text-foreground">HabitTrack</span>
+          <span className="hidden sm:inline-block text-foreground">Trackbit</span>
         </div>
 
         {/* Desktop Navigation */}

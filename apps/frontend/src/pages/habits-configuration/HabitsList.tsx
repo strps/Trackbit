@@ -1,6 +1,6 @@
 import { Plus } from "lucide-react"
 import { ICONS } from "./IconField";
-import { mapValueToCSSrgb } from "@/lib/colorUtils";
+import { mapValueToCSSrgba } from "@/lib/colorUtils";
 import { Badge } from "@/components/ui/badge";
 import { BigButton } from "@/components/BigButton";
 import type { Habit } from "@trackbit/types";
@@ -41,7 +41,7 @@ export const HabitList = ({ habits, activeHabitId, editHabit, startNewHabit }: H
                             <div
                                 className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm"
                                 style={{
-                                    backgroundColor: mapValueToCSSrgb(1, 0, 1, habit.colorStops)
+                                    backgroundColor: mapValueToCSSrgba(1, 0, 1, habit.colorStops)
                                 }}
                             >
                                 {renderIcon(habit.icon, "w-6 h-6")}

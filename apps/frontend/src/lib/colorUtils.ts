@@ -128,7 +128,7 @@ function interpolateColors(
 
 
 
-export function mapValueToCSSrgb(
+export function mapValueToCSSrgba(
     value: number,
     minValue: number = 0,
     maxValue: number = 1,

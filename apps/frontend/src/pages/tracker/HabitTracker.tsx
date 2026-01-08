@@ -5,12 +5,12 @@ import {
 } from 'lucide-react';
 import { useTracker } from '@/hooks/use-tracker';
 import { formatDate, getCalendarDates } from './utils';
-import { Heatmap } from './Heatmap';
 import { Stats } from './Stats';
 import { DayLog } from './DetailsPanel';
-import { mapValueToColor, mapValueToCSSrgb } from '@/lib/colorUtils';
+import { mapValueToColor, mapValueToCSSrgba } from '@/lib/colorUtils';
 import { Button } from '@/components/ui/button';
 import { ColorStop } from "@trackbit/types";
+import { Heatmap } from '@/components/Heatmap';
 
 
 // Helper function to map habit icon string to Lucide component
