@@ -82,7 +82,7 @@ interface StatCardProps {
   trend?: string;
 }
 
-const StatCard = ({ title, value = 0, icon, trend }: StatCardProps) => (
+export const StatCard = ({ title, value = 0, icon, trend }: StatCardProps) => (
   <div className="bg-card text-card-foreground p-6 rounded-xl border shadow-sm flex flex-col gap-4">
     <div className="flex items-center justify-between">
       <span className="text-muted-foreground text-sm font-medium">{title}</span>

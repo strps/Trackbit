@@ -3,7 +3,7 @@
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { mapValueToCSSrgba } from "../lib/colorUtils";
 import { ColorStop } from "@trackbit/types";
-import React, { useMemo, useEffect, useRef } from "react";
+import React, { useMemo, useEffect, useRef, ReactHTMLElement } from "react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -214,21 +214,8 @@ export const Heatmap = ({
                     )}
 
                     {showLegend && (
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span>Less</span>
-                            {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
-                                const val = minValue + ratio * (maxValue - minValue);
-                                return (
-                                    <div key={ratio} className={dateCellBaseClassName}>
-                                        <div
-                                            className="w-full h-full rounded-[25%]"
-                                            style={{ backgroundColor: getColorForValue(val) }}
-                                        />
-                                    </div>
-                                );
-                            })}
-                            <span>More</span>
-                        </div>
+                        <GradientPreview stops={colorStops} showLabel />
+
                     )}
                 </div>
             )}
@@ -312,8 +299,7 @@ interface DateCellProps {
     renderTooltipContent?: (date: string, value: number) => React.ReactNode;
 }
 
-export const dateCellBaseClassName =
-    "w-3 h-3 rounded-[25%] border border-border shadow-sm bg-muted/25";
+
 
 export const DateCell = ({
     color,
@@ -332,7 +318,7 @@ export const DateCell = ({
     return (
         <Tooltip delayDuration={600}>
             <TooltipTrigger asChild>
-                <div
+                <BaseCell
                     className={cn(
                         dateCellBaseClassName,
                         isSelected && "z-10 scale-125 shadow-md ring-1 ring-primary border-primary",
@@ -342,11 +328,68 @@ export const DateCell = ({
                     onClick={onClick}
                     role="gridcell"
                     aria-label={`${dateStr}, ${value} units`}
+                    color={color}
                 >
-                    <div className="w-full h-full rounded-[25%]" style={{ backgroundColor: color }} />
-                </div>
+                </BaseCell>
             </TooltipTrigger>
             <TooltipContent>{tooltipContent}</TooltipContent>
         </Tooltip>
     );
 };
+
+type CellSize = 'sm' | 'md' | 'lg';
+
+
+interface BaseCellProps extends React.HTMLProps<HTMLDivElement> {
+    color: string;
+    cellSize?: CellSize;
+}
+
+export const dateCellBaseClassName =
+    "w-3 h-3 rounded-[25%] border border-border shadow-sm bg-muted/25";
+
+export const BaseCell = ({ color, cellSize, className, ...restProps }: BaseCellProps) => {
+
+    const size = {
+        sm: 'w-3 h-3',
+        md: 'w-4 h-4',
+        lg: 'w-5 h-5',
+    }
+
+    return (
+        <div
+            className={cn(
+                `${size[cellSize || 'sm']} rounded-[25%] border border-border shadow-sm bg-muted/25 hover:scale-125 hover:z-20 hover:shadow-md cursor-pointer transition-all`,
+                className
+            )}
+            {...restProps}
+        >
+            <div className="w-full h-full rounded-[25%]" style={{ backgroundColor: color }} />
+        </div>
+    )
+}
+
+interface GradientPreviewProps {
+    stops: ColorStop[];
+    showLabel?: boolean;
+    cellSize?: CellSize;
+    className?: string;
+}
+
+
+export const GradientPreview = ({ stops, showLabel, cellSize, className }: GradientPreviewProps) => {
+
+    return (
+        <div
+            className={cn("flex gap-2 items-center text-xs text-muted-foreground", className)}
+        >
+            {showLabel && <span>Less</span>}
+            <BaseCell cellSize={cellSize} color={mapValueToCSSrgba(0, 0, 1, stops)} />
+            <BaseCell cellSize={cellSize} color={mapValueToCSSrgba(0.25, 0, 1, stops)} />
+            <BaseCell cellSize={cellSize} color={mapValueToCSSrgba(0.50, 0, 1, stops)} />
+            <BaseCell cellSize={cellSize} color={mapValueToCSSrgba(0.75, 0, 1, stops)} />
+            <BaseCell cellSize={cellSize} color={mapValueToCSSrgba(1, 0, 1, stops)} />
+            {showLabel && <span>More</span>}
+        </div>
+    )
+}
