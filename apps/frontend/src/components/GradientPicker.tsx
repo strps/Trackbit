@@ -26,7 +26,7 @@ export function GradientPicker({ value, onChange }: GradientPickerProps) {
         onChange?.(newStops)
     };
 
-    const [selected, setSelected] = useState<number | null>(null);
+    const [selected, setSelected] = useState<number | null>(0);
     const [dragging, setDragging] = useState<number | null>(null);
 
     useEffect(() => {

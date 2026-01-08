@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, BookOpen, Briefcase, Code, Coffee, Droplet, Dumbbell, Heart, Home, Moon, Music, Star, Sun, XCircle } from "lucide-react";
+import { AlertTriangle, BookOpen, Briefcase, Code, Coffee, Droplet, Dumbbell, Heart, Home, Moon, Music, Star, Sun, Trees, XCircle } from "lucide-react";
 
 export const ICONS = [
     { id: 'book', icon: BookOpen, label: 'Read' },
@@ -16,6 +16,7 @@ export const ICONS = [
     { id: 'home', icon: Home, label: 'Chores' },
     { id: 'star', icon: Star, label: 'Focus' },
     { id: 'heart', icon: Heart, label: 'Wellness' },
+    { id: 'trees', icon: Trees, label: 'Nature' },
 ];
 
 interface IconSelectorProps {

@@ -6,6 +6,7 @@ import { BigButton } from '@/components/BigButton';
 import { ColorStop } from "@trackbit/types";
 import { Field, FieldProps, InputProps } from '@/components/Fields/FieldBase';
 import { CollapsibleSection } from '@/components/Collapsible';
+import { BaseCell, GradientPreview } from '@/components/Heatmap';
 
 
 type Preset = {
@@ -94,63 +95,6 @@ export const ColorThemeField = ({
 }: ColorScaleFieldProps) => {
 
     //TODO: We migth order the stops before saving or rendering, so we don't have to use the ordered version of color gradient utilities. 
-
-
-
-
-    const GradientPreview = ({ stops }: { stops: ColorStop[] }) => {
-        return (
-            <div
-                className="flex gap-2"
-            >
-                <div style={{
-                    backgroundColor: mapValueToCSSrgba(0, 0, 1, stops),
-                    width: 20,
-                    height: 20,
-                    borderRadius: '25%'
-
-                }}
-                    className="border border-border"
-                />
-                <div style={{
-                    backgroundColor: mapValueToCSSrgba(0.25, 0, 1, stops),
-                    width: 20,
-                    height: 20,
-                    borderRadius: '25%',
-                }}
-                    className="border border-border"
-                />
-                <div style={{
-                    backgroundColor: mapValueToCSSrgba(0.50, 0, 1, stops),
-                    width: 20,
-                    height: 20,
-                    borderRadius: '25%',
-                }}
-                    className="border border-border"
-                />
-                <div style={{
-                    backgroundColor: mapValueToCSSrgba(0.75, 0, 1, stops),
-                    width: 20,
-                    height: 20,
-                    borderRadius: '25%',
-                }}
-                    className="border border-border"
-                />
-                <div style={{
-                    backgroundColor: mapValueToCSSrgba(1, 0, 1, stops),
-                    width: 20,
-                    height: 20,
-                    borderRadius: '25%',
-                }}
-                    className="border border-border"
-                />
-
-            </div>
-        )
-    }
-
-
-
     return (
         <Field
             label={labelColorTheme}
@@ -175,7 +119,7 @@ export const ColorThemeField = ({
                                         isSelected={isActive}
                                         className='flex flex-col justify-center items-center'
                                     >
-                                        <GradientPreview stops={preset.stops} />
+                                        <GradientPreview stops={preset.stops} cellSize='lg' />
 
                                         <div className="text-left">
                                             <span className="block text-sm font-bold text-foreground">
@@ -205,7 +149,7 @@ export const ColorThemeField = ({
                                                         isOpen={isActive}
                                                         headerContent={
                                                             <div className='flex flex-col gap-4 items-center w-full'>
-                                                                <GradientPreview stops={field.value} />
+                                                                <GradientPreview stops={field.value} cellSize='lg' />
 
                                                                 <div className="text-left">
                                                                     <span className="block text-sm font-bold text-foreground">
@@ -239,3 +183,7 @@ export const ColorThemeField = ({
         </Field>
     );
 };
+
+
+
+

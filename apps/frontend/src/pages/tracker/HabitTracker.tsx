@@ -87,7 +87,8 @@ const HabitTracker = () => {
 
         <Heatmap
           weeks={weeks}
-          todayStr={todayStr}
+          today={todayStr}
+
         />
 
         <DayLog
