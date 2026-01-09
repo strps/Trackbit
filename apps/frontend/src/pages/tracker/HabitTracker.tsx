@@ -89,7 +89,6 @@ const HabitTracker = () => {
         <Heatmap
           getRating={getRating}
           maxValue={currentHabit?.dailyGoal}
-          today={todayStr}
           selectedDate={selectedDay}
           onDateSelect={setSelectedDay}
           colorStops={currentHabit?.colorStops}

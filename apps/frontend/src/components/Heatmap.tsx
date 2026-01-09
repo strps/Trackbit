@@ -14,6 +14,7 @@ import {
     subWeeks,
     eachWeekOfInterval,
 } from "date-fns";
+import { Button } from "./ui/button";
 
 interface HeatmapProps {
     // data?: Record<string, { rating: number }>;
@@ -76,7 +77,7 @@ export const Heatmap = ({
 
         );
         return weekStarts.map((weekStartDate) =>
-            Array.from({ length: 7 }, (_, i) => addDays(weekStartDate, i + 1))
+            Array.from({ length: 7 }, (_, i) => addDays(weekStartDate, i))
         );
     }, [propWeeks, today, numWeeks, weekStart]);
 
@@ -135,22 +136,29 @@ export const Heatmap = ({
     };
 
     useEffect(() => {
-        if (selectedDate && scrollRef.current) {
+        const scrollArea: HTMLDivElement | null | undefined = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]')
+        if (selectedDate && scrollArea) {
             const weekIndex = weeks.findIndex((week) =>
                 week.some((d) => format(d, "yyyy-MM-dd") === selectedDate)
             );
             if (weekIndex !== -1) {
                 const cellWidth = 16;
-                scrollRef.current.scrollLeft = weekIndex * cellWidth - scrollRef.current.offsetWidth / 2;
+                scrollArea.scrollTo({
+                    top: 0,
+                    left: weekIndex * cellWidth - scrollArea.offsetWidth / 2,
+                    behavior: 'smooth'
+                });
             }
         }
     }, [selectedDate, weeks]);
 
     const displayDate = selectedDate
-        ? format(new Date(selectedDate), "EEEE, MMMM do")
+        ? format(new Date(selectedDate + "T00:00:00"), "EEEE, MMMM do")
         : "Select a date";
 
+
     const isTodaySelected = selectedDate === today;
+
 
     if (weeks.length === 0) {
         return <div className="p-4 text-center text-muted-foreground">No data available</div>;
@@ -159,7 +167,7 @@ export const Heatmap = ({
     return (
         <div className={cn("rounded-xl shadow-lg border border-border overflow-hidden flex flex-col", className)}>
             {showHeader && (
-                <div className="p-6 pb-2 border-b flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="p-6 pb-2 border-b flex flex-wrap justify-between items-start md:items-center gap-4">
                     <div>
                         <h2 className="text-lg font-bold flex items-center gap-2">
                             <CalendarDays className="w-5 h-5 text-slate-400" />
@@ -195,9 +203,9 @@ export const Heatmap = ({
             )}
 
             {/* Full grid container */}
-            <div className="p-4 flex justify-center">
+            <ScrollArea className="py-4 px-12 mb-4 h-41" ref={scrollRef}>
                 <div
-                    className="grid gap-1"
+                    className="grid gap-1 w-max m-auto"
                     style={{
                         gridTemplateColumns: `min-content repeat(${weeks.length}, minmax(0, 0.75em))`,
                         gridTemplateRows: "auto  repeat(7, minmax(0, 0.75em))",
@@ -212,25 +220,34 @@ export const Heatmap = ({
                     {monthGroups.map((group, i) => (
                         <div
                             key={group.label + i}
-                            className="text-[10px] font-bold text-muted-foreground text-center pb-"
+                            className="text-[10px] font-bold text-muted-foreground pb-"
                             style={{
                                 gridColumn: `${group.startIndex + 2} / span ${group.span}`,
+                                gridRow: "1",
                             }}
                         >
                             {group.label}
                         </div>
                     ))}
 
+                    {/* Weekday labels overlay */}
+                    <div
+                        className="bg-linear-to-r from-background from-50% to-transparent w-full h-full sticky left-0"
+                        style={{ gridRow: "1 / 9", gridColumn: 1 }}
+                    >
+                        <div />
+                    </div>
                     {/* Weekday labels – fixed left column */}
                     {weekDaysLabels.map((label, dayIdx) => (
                         <div
                             key={label}
-                            className="text-[10px] font-bold text-muted-foreground text-right pr-2 flex items-center justify-end"
+                            className="sticky left-0 text-[10px] font-bold text-muted-foreground text-right pr-2 flex items-center justify-end"
                             style={{ gridRow: dayIdx + 2, gridColumn: 1 }}
                         >
                             {label}
                         </div>
                     ))}
+                    {/* Day cells */}
                     {weeks.map((week, weekIdx) =>
                         week.map((date, dayIdx) => {
                             const dateStr = format(date, "yyyy-MM-dd");
@@ -240,7 +257,7 @@ export const Heatmap = ({
                             const isFuture = isAfter(date, addDays(new Date(today), 1));
 
                             if (isFuture && !showFutureDays) {
-                                return <div key={dateStr} className="w-3 h-3" />;
+                                return
                             }
 
                             const color = getColorForValue(value);
@@ -270,7 +287,8 @@ export const Heatmap = ({
                     )}
 
                 </div>
-            </div>
+                <ScrollBar orientation="horizontal" />
+            </ScrollArea>
         </div>
     );
 };
