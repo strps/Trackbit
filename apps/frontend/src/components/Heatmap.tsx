@@ -1,9 +1,9 @@
-// components/Heatmap.tsx (or wherever you place it)
+// components/Heatmap.tsx (updated with full grid alignment for weekday labels)
 
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { mapValueToCSSrgba } from "../lib/colorUtils";
 import { ColorStop } from "@trackbit/types";
-import React, { useMemo, useEffect, useRef, ReactHTMLElement } from "react";
+import React, { useMemo, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -13,52 +13,35 @@ import {
     isAfter,
     subWeeks,
     eachWeekOfInterval,
-    getDay,
 } from "date-fns";
 
 interface HeatmapProps {
-    /** Map of date strings (YYYY-MM-DD) to numeric values */
-    data?: Record<string, number>;
-    /** Minimum value for color scaling */
+    // data?: Record<string, { rating: number }>;
+    getRating?: (date: string) => number;
     minValue?: number;
-    /** Maximum value for color scaling (e.g., daily goal) */
     maxValue?: number;
-    /** Gradient stops for coloring */
     colorStops?: ColorStop[];
-    /** Currently selected date (YYYY-MM-DD) */
     selectedDate?: string;
-    /** Callback when a date cell is selected */
     onDateSelect?: (date: string) => void;
-    /** Today's date (YYYY-MM-DD); defaults to current date */
     today?: string;
-    /** Number of weeks to display */
     numWeeks?: number;
-    /** First day of the week */
-    weekStart?: "Sun" | "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat";
-    /** Show navigation controls */
+    weekStart?: 0 | 1 | 2 | 3 | 4 | 5 | 6;
     showNavigation?: boolean;
-    /** Show color legend */
     showLegend?: boolean;
-    /** Show header section */
     showHeader?: boolean;
-    /** Header title */
     title?: string;
-    /** Pre-computed weeks array (overrides internal calculation) */
     weeks?: Date[][];
-    /** Whether to render future days (grayed or hidden) */
     showFutureDays?: boolean;
-    /** Custom cell renderer */
     renderCell?: (props: DateCellProps) => React.ReactNode;
-    /** Custom tooltip content renderer */
     renderTooltipContent?: (date: string, value: number) => React.ReactNode;
-    /** Classname */
     className?: string;
 }
 
 const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export const Heatmap = ({
-    data = {},
+    // data = {},
+    getRating,
     minValue = 0,
     maxValue = 1,
     colorStops = [
@@ -69,7 +52,7 @@ export const Heatmap = ({
     onDateSelect,
     today = format(new Date(), "yyyy-MM-dd"),
     numWeeks = 52,
-    weekStart = "Mon",
+    weekStart = 1,
     showNavigation = true,
     showLegend = true,
     showHeader = true,
@@ -82,32 +65,27 @@ export const Heatmap = ({
 }: HeatmapProps) => {
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    // Compute weeks if not provided via prop
     const computedWeeks = useMemo<Date[][]>(() => {
         if (propWeeks) return propWeeks;
 
         const endDate = new Date(today);
         const startDate = subWeeks(endDate, numWeeks - 1);
-
         const weekStarts = eachWeekOfInterval(
             { start: startDate, end: endDate },
-            { weekStartsOn: weekDays.indexOf(weekStart) as 0 | 1 | 2 | 3 | 4 | 5 | 6 }
-        );
+            { weekStartsOn: weekStart },
 
+        );
         return weekStarts.map((weekStartDate) =>
-            Array.from({ length: 7 }, (_, i) => addDays(weekStartDate, i))
+            Array.from({ length: 7 }, (_, i) => addDays(weekStartDate, i + 1))
         );
     }, [propWeeks, today, numWeeks, weekStart]);
 
     const weeks = computedWeeks;
 
-    // Rotate weekday labels according to weekStart
     const weekDaysLabels = useMemo(() => {
-        const startIdx = weekDays.indexOf(weekStart);
-        return [...weekDays.slice(startIdx), ...weekDays.slice(0, startIdx)];
+        return [...weekDays.slice(weekStart), ...weekDays.slice(0, weekStart)];
     }, [weekStart]);
 
-    // Group weeks by month for spanning month labels
     const monthGroups = useMemo(() => {
         const groups: { label: string; span: number; startIndex: number }[] = [];
         let currentMonth = "";
@@ -134,7 +112,7 @@ export const Heatmap = ({
     }, [weeks]);
 
     const getValue = (dateStr: string): number => {
-        const raw = data[dateStr] ?? 0;
+        const raw = getRating ? getRating(dateStr) : 0;
         return Math.max(minValue, Math.min(maxValue, raw));
     };
 
@@ -156,14 +134,13 @@ export const Heatmap = ({
         onDateSelect(newDateStr);
     };
 
-    // Auto-scroll to selected week
     useEffect(() => {
         if (selectedDate && scrollRef.current) {
             const weekIndex = weeks.findIndex((week) =>
                 week.some((d) => format(d, "yyyy-MM-dd") === selectedDate)
             );
             if (weekIndex !== -1) {
-                const cellWidth = 16; // w-3 (12px) + gap-1 (4px)
+                const cellWidth = 16;
                 scrollRef.current.scrollLeft = weekIndex * cellWidth - scrollRef.current.offsetWidth / 2;
             }
         }
@@ -213,82 +190,92 @@ export const Heatmap = ({
                         </div>
                     )}
 
-                    {showLegend && (
-                        <GradientPreview stops={colorStops} showLabel />
-
-                    )}
+                    {showLegend && <GradientPreview stops={colorStops} showLabel />}
                 </div>
             )}
 
-            <div className="w-full grid grid-cols-[auto_1fr] gap-2 p-4" role="grid" aria-label="Heatmap calendar">
-                {/* Weekday labels */}
-                <div className="flex flex-col shrink-0 justify-end gap-1.5 pt-6 pb-0.5 pr-2 text-[10px] font-bold text-muted-foreground leading-3">
-                    {weekDaysLabels.map((label) => (
-                        <span key={label} className="h-3">
-                            {label}
-                        </span>
+            {/* Full grid container */}
+            <div className="p-4 flex justify-center">
+                <div
+                    className="grid gap-1"
+                    style={{
+                        gridTemplateColumns: `min-content repeat(${weeks.length}, minmax(0, 0.75em))`,
+                        gridTemplateRows: "auto  repeat(7, minmax(0, 0.75em))",
+                    }}
+                    role="grid"
+                    aria-label="Heatmap calendar"
+                >
+                    {/* Empty top-left corner */}
+                    <div />
+
+                    {/* Month labels row – spanning across weeks */}
+                    {monthGroups.map((group, i) => (
+                        <div
+                            key={group.label + i}
+                            className="text-[10px] font-bold text-muted-foreground text-center pb-"
+                            style={{
+                                gridColumn: `${group.startIndex + 2} / span ${group.span}`,
+                            }}
+                        >
+                            {group.label}
+                        </div>
                     ))}
-                </div>
 
-                <ScrollArea className="min-w-0">
-                    <div ref={scrollRef}>
-                        {/* Month labels with spanning */}
-                        <div className="grid grid-cols-[repeat(auto-fit,minmax(0,1fr))] gap-1 mb-2 h-4">
-                            {monthGroups.map((group) => (
+                    {/* Weekday labels – fixed left column */}
+                    {weekDaysLabels.map((label, dayIdx) => (
+                        <div
+                            key={label}
+                            className="text-[10px] font-bold text-muted-foreground text-right pr-2 flex items-center justify-end"
+                            style={{ gridRow: dayIdx + 2, gridColumn: 1 }}
+                        >
+                            {label}
+                        </div>
+                    ))}
+                    {weeks.map((week, weekIdx) =>
+                        week.map((date, dayIdx) => {
+                            const dateStr = format(date, "yyyy-MM-dd");
+                            const value = getValue(dateStr);
+                            const isSelected = selectedDate === dateStr;
+                            const isToday = dateStr === today;
+                            const isFuture = isAfter(date, new Date(today));
+
+                            if (isFuture && !showFutureDays) {
+                                return <div key={dateStr} className="w-3 h-3" />;
+                            }
+
+                            const color = getColorForValue(value);
+
+                            const cellProps: DateCellProps = {
+                                color,
+                                value,
+                                isSelected,
+                                isToday,
+                                onClick: () => onDateSelect?.(dateStr),
+                                dateStr,
+                                renderTooltipContent,
+                            };
+
+                            return (
                                 <div
-                                    key={group.label}
-                                    className="text-[10px] font-bold text-muted-foreground"
-                                    style={{ gridColumn: `${group.startIndex + 1} / span ${group.span}` }}
+                                    key={dateStr}
+                                    style={{
+                                        gridRow: dayIdx + 2,
+                                        gridColumn: weekIdx + 2,
+                                    }}
                                 >
-                                    {group.label}
+                                    {renderCell ? renderCell(cellProps) : <DateCell {...cellProps} />}
                                 </div>
-                            ))}
-                        </div>
+                            );
+                        })
+                    )}
 
-                        {/* Day cells */}
-                        <div className="flex gap-1">
-                            {weeks.map((week, weekIdx) => (
-                                <div key={weekIdx} className="flex flex-col gap-1">
-                                    {week.map((date) => {
-                                        const dateStr = format(date, "yyyy-MM-dd");
-                                        const value = getValue(dateStr);
-                                        const isSelected = selectedDate === dateStr;
-                                        const isToday = dateStr === today;
-                                        const isFuture = isAfter(date, new Date(today));
-
-                                        if (isFuture && !showFutureDays) {
-                                            return <div key={dateStr} className="w-3 h-3" />;
-                                        }
-
-                                        const color = getColorForValue(value);
-
-                                        const cellProps: DateCellProps = {
-                                            color,
-                                            value,
-                                            isSelected,
-                                            isToday,
-                                            onClick: () => onDateSelect?.(dateStr),
-                                            dateStr,
-                                            renderTooltipContent,
-                                        };
-
-                                        return renderCell ? (
-                                            <React.Fragment key={dateStr}>{renderCell(cellProps)}</React.Fragment>
-                                        ) : (
-                                            <DateCell key={dateStr} {...cellProps} />
-                                        );
-                                    })}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                    <ScrollBar orientation="horizontal" />
-                </ScrollArea>
+                </div>
             </div>
         </div>
     );
 };
 
+/* Rest of the component (DateCell, BaseCell, GradientPreview) remains unchanged */
 interface DateCellProps {
     color: string;
     value: number;
@@ -298,8 +285,6 @@ interface DateCellProps {
     dateStr: string;
     renderTooltipContent?: (date: string, value: number) => React.ReactNode;
 }
-
-
 
 export const DateCell = ({
     color,
@@ -320,7 +305,7 @@ export const DateCell = ({
             <TooltipTrigger asChild>
                 <BaseCell
                     className={cn(
-                        dateCellBaseClassName,
+                        baseCellClassName,
                         isSelected && "z-10 scale-125 shadow-md ring-1 ring-primary border-primary",
                         isToday && "ring-1 ring-primary z-10",
                         "hover:scale-125 hover:z-20 hover:shadow-md cursor-pointer transition-all"
@@ -329,8 +314,7 @@ export const DateCell = ({
                     role="gridcell"
                     aria-label={`${dateStr}, ${value} units`}
                     color={color}
-                >
-                </BaseCell>
+                />
             </TooltipTrigger>
             <TooltipContent>{tooltipContent}</TooltipContent>
         </Tooltip>
@@ -339,35 +323,33 @@ export const DateCell = ({
 
 type CellSize = 'sm' | 'md' | 'lg';
 
-
 interface BaseCellProps extends React.HTMLProps<HTMLDivElement> {
     color: string;
     cellSize?: CellSize;
 }
 
-export const dateCellBaseClassName =
+export const baseCellClassName =
     "w-3 h-3 rounded-[25%] border border-border shadow-sm bg-muted/25";
 
-export const BaseCell = ({ color, cellSize, className, ...restProps }: BaseCellProps) => {
-
+export const BaseCell = ({ color, cellSize = 'sm', className, ...restProps }: BaseCellProps) => {
     const size = {
         sm: 'w-3 h-3',
         md: 'w-4 h-4',
         lg: 'w-5 h-5',
-    }
+    };
 
     return (
         <div
             className={cn(
-                `${size[cellSize || 'sm']} rounded-[25%] border border-border shadow-sm bg-muted/25 hover:scale-125 hover:z-20 hover:shadow-md cursor-pointer transition-all`,
+                `${size[cellSize]} rounded-[25%] border border-border shadow-sm bg-muted/25`,
                 className
             )}
             {...restProps}
         >
             <div className="w-full h-full rounded-[25%]" style={{ backgroundColor: color }} />
         </div>
-    )
-}
+    );
+};
 
 interface GradientPreviewProps {
     stops: ColorStop[];
@@ -376,20 +358,14 @@ interface GradientPreviewProps {
     className?: string;
 }
 
-
-export const GradientPreview = ({ stops, showLabel, cellSize, className }: GradientPreviewProps) => {
-
-    return (
-        <div
-            className={cn("flex gap-2 items-center text-xs text-muted-foreground", className)}
-        >
-            {showLabel && <span>Less</span>}
-            <BaseCell cellSize={cellSize} color={mapValueToCSSrgba(0, 0, 1, stops)} />
-            <BaseCell cellSize={cellSize} color={mapValueToCSSrgba(0.25, 0, 1, stops)} />
-            <BaseCell cellSize={cellSize} color={mapValueToCSSrgba(0.50, 0, 1, stops)} />
-            <BaseCell cellSize={cellSize} color={mapValueToCSSrgba(0.75, 0, 1, stops)} />
-            <BaseCell cellSize={cellSize} color={mapValueToCSSrgba(1, 0, 1, stops)} />
-            {showLabel && <span>More</span>}
-        </div>
-    )
-}
+export const GradientPreview = ({ stops, showLabel, cellSize = 'sm', className }: GradientPreviewProps) => (
+    <div className={cn("flex gap-2 items-center text-xs text-muted-foreground", className)}>
+        {showLabel && <span>Less</span>}
+        <BaseCell cellSize={cellSize} color={mapValueToCSSrgba(0, 0, 1, stops)} />
+        <BaseCell cellSize={cellSize} color={mapValueToCSSrgba(0.25, 0, 1, stops)} />
+        <BaseCell cellSize={cellSize} color={mapValueToCSSrgba(0.50, 0, 1, stops)} />
+        <BaseCell cellSize={cellSize} color={mapValueToCSSrgba(0.75, 0, 1, stops)} />
+        <BaseCell cellSize={cellSize} color={mapValueToCSSrgba(1, 0, 1, stops)} />
+        {showLabel && <span>More</span>}
+    </div>
+);

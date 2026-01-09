@@ -28,23 +28,24 @@ const getHabitIcon = (iconName: string): React.ElementType => {
 
 const HabitTracker = () => {
 
-  const { habitsWithLogs, isLoading, setDay: setSelectedDay, selectedHabitId, currentHabit, setHabitId } = useTracker();
+  const { habitsWithLogs, isLoading, setDay: setSelectedDay, selectedDay, selectedHabitId, currentHabit, setHabitId } = useTracker();
 
   const todayStr = formatDate(new Date());
 
 
   const logsMap = currentHabit?.dayLogs;
 
-  const calendarDates = useMemo(() => getCalendarDates(), []);
-  const weeks = useMemo(() => {
-    const w: Date[][] = [];
-    let currentWeek: Date[] = [];
-    calendarDates.forEach((date) => {
-      currentWeek.push(date);
-      if (currentWeek.length === 7) { w.push(currentWeek); currentWeek = []; }
-    });
-    return w;
-  }, [calendarDates]);
+  const getRating = (date: string): number => {
+    if (!logsMap) return 0;
+    return currentHabit?.type === 'complex' ?
+      logsMap[date]?.exerciseSessions?.reduce(
+        (a, c) => a + (c.exerciseLogs?.length || 0)
+        , 0) || 0
+      :
+      logsMap[date]?.rating || 0;
+
+
+  }
 
   if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading Tracker Data...</div>;
 
@@ -73,7 +74,7 @@ const HabitTracker = () => {
                   key={id}
                   onClick={() => { setHabitId(id); setSelectedDay(formatDate(new Date())) }}
                   style={{ backgroundColor: getColorAtOne(habitsWithLogs[id].colorStops) }}
-                  className="gap-2"
+                  className={`gap-2 cursor-pointer ${(currentHabit?.id === habitsWithLogs[id].id) && 'ring-1 ring-primary'}`}
                 >
                   <IconComponent className="w-4 h-4" />
                   {habitsWithLogs[id].name}
@@ -86,9 +87,12 @@ const HabitTracker = () => {
         <Stats />
 
         <Heatmap
-          weeks={weeks}
+          getRating={getRating}
+          maxValue={currentHabit?.dailyGoal}
           today={todayStr}
-
+          selectedDate={selectedDay}
+          onDateSelect={setSelectedDay}
+          colorStops={currentHabit?.colorStops}
         />
 
         <DayLog
