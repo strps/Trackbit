@@ -1,5 +1,5 @@
 import { EmptyState } from "@/components/EmptyState";
-import { dateCellBaseClassName, GradientPreview, Heatmap } from "@/components/Heatmap";
+import { baseCellClassName, GradientPreview, Heatmap } from "@/components/Heatmap";
 import { ProgressCounter } from "@/components/ProgressCounter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
