@@ -72,7 +72,7 @@ export const Heatmap = ({
         const startDate = subWeeks(endDate, numWeeks - 1);
         const weekStarts = eachWeekOfInterval(
             { start: startDate, end: endDate },
-            { weekStartsOn: weekStart },
+            { weekStartsOn: weekStart, },
 
         );
         return weekStarts.map((weekStartDate) =>
@@ -237,7 +237,7 @@ export const Heatmap = ({
                             const value = getValue(dateStr);
                             const isSelected = selectedDate === dateStr;
                             const isToday = dateStr === today;
-                            const isFuture = isAfter(date, new Date(today));
+                            const isFuture = isAfter(date, addDays(new Date(today), 1));
 
                             if (isFuture && !showFutureDays) {
                                 return <div key={dateStr} className="w-3 h-3" />;
