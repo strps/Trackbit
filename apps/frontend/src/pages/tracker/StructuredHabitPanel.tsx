@@ -29,28 +29,16 @@ export const ExerciseSessionPanel = () => {
 
     return (
         <div className="flex flex-col h-full">
-            <div className="flex flex-col p-3">
-                {(!dayLog || exerciseSessions?.length === 0 || !exerciseSessions) ?
-                    // <div
-                    //     onClick={handleAddSession}
-                    //     className="bg-card text-muted-foreground flex flex-col gap-6 rounded-xl border-4 border-dashed p-6 shadow-lg justify-center items-center cursor-pointer"
-                    // >
-                    //     <div className="flex flex-col items-center justify-center gap-3">
-                    //         <p>No Session found Today</p>
-                    //         <PlusCircle size={"3em"} />
-                    //         <p>Press here to start a new session</p>
-                    //     </div>
-                    // </div>
-                    <EmptyState
-                        onClick={handleAddSession}
-                        title="No Sessions Today"
-                        description="Click here to start your first workout session"
-                    />
-                    :
+            {(!dayLog || exerciseSessions?.length === 0 || !exerciseSessions) ?
+                <EmptyState
+                    onClick={handleAddSession}
+                    title="No Sessions Found"
+                    description="Click here to start your first workout session"
+                />
+                :
 
-                    exerciseSessions.map((session, i) => <SessionCard key={i} session={session} index={i} />)
-                }
-            </div>
+                exerciseSessions.map((session, i) => <SessionCard key={i} session={session} index={i} />)
+            }
         </div>
     );
 };
@@ -63,15 +51,13 @@ interface SessionCardProps {
 const SessionCard = ({ session, index }: SessionCardProps) => {
     const { selectedSessionIndex, deleteSession } = useTracker()
     const exerciseLogs = session.exerciseLogs || []
-    // const isSelected = index === selectedSessionIndex; //TODO: we might use id instead of index.
-
     const [selectedExrciseLogIndex, setSelectedExrciseLogIndex] = useState<number | null>(null)
 
 
 
 
     return (
-        <div className="bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-lg">
+        <div className="bg-card text-card-foreground flex flex-col item gap-6 py-6 shadow-lg">
 
             <div className="flex justify-between items-center pb-4 px-4 border-b border-border ">
                 <div className="flex items-center gap-3">
@@ -284,16 +270,16 @@ const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: onEditTri
     return (
         <Collapsible
             open={isSelected}
-            className={`rounded-xl border border-border  shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300 ${isSelected && "ring ring-primary"}`}
+            className={`rounded-xl border border-border mt-1 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300 ${isSelected && "ring-2 ring-primary"}`}
         >
             {/* Card Header */}
             <CollapsibleTrigger className=" gap-y-3  justify-between items-center min-h-21  w-full">
                 {/* 1 */}
-                <div className="flex border-b justify-between w-full px-6 py-1">
+                <div className="flex border-b justify-between w-full px-6 py-1 bg-primary text-primary-foreground">
 
                     <div className="flex items-center">
 
-                        <h4 className="font-bold text-sm text-foreground">
+                        <h4 className="font-bold text-sm ">
                             {exercise?.name || 'Unknown Exercise'}
                         </h4>
                         <Button variant="ghost">
