@@ -222,7 +222,6 @@ const CreateExerciseForm = () => {
     });
 
     const handleSubmit = (data: z.infer<typeof createExerciseSchema>) => {
-        console.log(data);
         createExercise(data);
     };
 

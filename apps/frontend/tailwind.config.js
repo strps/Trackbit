@@ -38,8 +38,6 @@ export default {
             )
           `.replace(/\s+/g, ' ')
 
-          console.log(`.fade-${dirName}${fadeName} : ${gradient}`)
-
           utilities[`.fade-${dirName}${fadeName}`] = {
             maskImage: gradient,
             WebkitMaskImage: gradient,
@@ -53,41 +51,3 @@ export default {
 }
 
 
-// import plugin from 'tailwindcss/plugin'
-
-// export default {
-//   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
-//   plugins: [
-//     plugin(({ addUtilities }) => {
-//       const directions = {
-//         top: 'to top',
-//         bottom: 'to bottom',
-//         left: 'to left',
-//         right: 'to right',
-//       }
-
-//       const fractions = {
-//         '': ['0%', '100%'],
-//         '-1/4': ['25%', '100%'],
-//         '-1/3': ['33%', '100%'],
-//         '-1/2': ['50%', '100%'],
-//         '-2/3': ['66%', '100%'],
-//       }
-
-//       const utilities = {}
-
-//       for (const [dirName, dirValue] of Object.entries(directions)) {
-//         for (const [fracName, [solid, end]] of Object.entries(fractions)) {
-//           const gradient = `linear-gradient(${dirValue}, black ${solid}, transparent ${end})`
-//           console.log(`.fade-${dirName}${fracName} : ${gradient}`)
-//           utilities[`.fade-${dirName}${fracName}`] = {
-//             maskImage: gradient,
-//             WebkitMaskImage: gradient,
-//           }
-//         }
-//       }
-
-//       addUtilities(utilities)
-//     }),
-//   ],
-// }

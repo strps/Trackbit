@@ -111,8 +111,6 @@ export const auth = betterAuth({
             });
           }
 
-          console.log("inviteCode", inviteCode);
-
           const invite = await db.query.invites.findFirst({
             where: eq(invites.code, inviteCode),
           });
