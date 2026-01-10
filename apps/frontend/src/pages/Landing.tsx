@@ -43,7 +43,7 @@ export default function Landing() {
             </section>
 
             {/* Feature Highlights */}
-            <section className="py-20 bg-muted/50">
+            <section className="py-20">
                 <div className="container mx-auto px-6">
                     <h2 className="text-4xl font-bold text-center mb-12">Powerful Features for Real Progress</h2>
                     <div className="">
@@ -55,7 +55,7 @@ export default function Landing() {
                             className="mt-40"
                             backgroundComponent={
                                 <div className="w-full flex justify-center items-center perspective-normal ">
-                                    <Heatmap className="relative  right-24  z-200 fade-left-1/2 -rotate-y-10 shadow-black shadow-2xl" />
+                                    <Heatmap className="relative max-w-200 right-24  z-200 fade-left-1/2 -rotate-y-10 shadow-black shadow-2xl" />
                                 </div>
                             }
                         />
@@ -170,7 +170,7 @@ const FeatureShowcaseCard = ({
     return (
         <div className={cn("relative min-h-96 group transition-all duration-5000", className)}>
             {/* Background Image with subtle zoom on hover */}
-            <div className="relative transition-transform duration-1000 group-hover:scale-102">
+            <div className="relative transition-transform duration-1000 group-hover:scale-102 overflow-visible h-max">
                 {
                     background ?
                         background
@@ -231,8 +231,8 @@ const GradientProgresBackground = () => {
 
 
     return (
-        <div className="relative perspective-normal flex justify-center items-center h-full w-full fade-right-1/3 right-24 bottom-4 scale-110">
-            <div className="rotate-y-25 flex flex-col gap-2">
+        <div className="relative h-max perspective-normal overflow-visible flex justify-center items-center  w-full fade-right-1/3 right-24 bottom-4 scale-150">
+            <div className="rotate-y-25 flex flex-col gap-2 overflow-visible p-5">
                 <ProgressCounter
                     value={counterVal}
                     goal={5}
@@ -240,7 +240,7 @@ const GradientProgresBackground = () => {
                     onDecrement={() => setCounterVal(counterVal - 1)}
                     onIncrement={() => setCounterVal(counterVal + 1)}
                 />
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground overflow-visible">
                     <span>Less</span>
                     {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
                         const val = minValue + ratio * (maxValue - minValue);
@@ -282,7 +282,7 @@ const HybridTrackingBackground = () => {
 
     return (
         <div className="perspective-normal h-full w-full flex justify-end items-center">
-            <div className="-rotate-y-10 fade-left w-124 m-l-auto">
+            <div className="-rotate-y-10 fade-left-1/2 max-w-124 m-l-auto">
 
                 {/* Erxercise Habit */}
                 <div className="flex overflow-x-auto gap-2 p-2">
@@ -397,7 +397,7 @@ const HybridTrackingBackground = () => {
 const StatsBackground = () => {
     return (
         <div className="perspective-normal">
-            <div className="grid grid-cols-1 grid-row[1fr_1fr_1fr] items-stretch gap-4 p-6 rotate-y-10 fade-right">
+            <div className="relative grid grid-cols-1 grid-rows-3 max-w-150 gap-4 p-6 rotate-y-10 fade-right-1/2">
                 <StatCard
                     title="Total Completions"
                     value={242}
@@ -426,7 +426,7 @@ const CustomizationBackground = () => {
 
     return (
         <div className="perspective-normal flex justify-end items-center">
-            <div className="grid scale-150 gap-2 -rotate-y-10 fade-left relative right-4" style={{ gridTemplateColumns: `repeat(${jumpAt + 1}, min-content)` }}>
+            <div className="grid max-w scale-150 gap-2 -rotate-y-10 fade-left relative right-4" style={{ gridTemplateColumns: `repeat(${jumpAt + 1}, min-content)` }}>
                 {ICONS.map(({ id, icon: Icon }, i) => {
 
 

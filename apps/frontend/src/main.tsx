@@ -18,6 +18,7 @@ import SignUpPage from './pages/auth/SignUp';
 import ForgotPasswordPage from './pages/auth/ForgotPassword';
 import AuthLayout from './layouts/AuthLayout';
 import VerifyEmail from './pages/auth/VerifyEmail';
+import { Analytics } from './pages/Analitytics';
 
 const router = createBrowserRouter([
   {
@@ -37,11 +38,13 @@ const router = createBrowserRouter([
       { path: "dashboard", element: <HabitTracker /> },
       { path: "account-settings", element: <AccountSettings /> },
       { path: "exercises", element: <ExerciseLibrary /> },
+      { path: "analytics", element: <Analytics /> },
     ]
   },
   {
     path: "/",
     element: <AuthLayout />,
+    errorElement: <ErrorPage />,
     children: [
       { path: "signin", element: <SignInPage /> },
       { path: "signup", element: <SignUpPage /> },
@@ -52,7 +55,6 @@ const router = createBrowserRouter([
   {
     path: "/",
     element: <NotFound />,
-    errorElement: <ErrorPage />
   }
 ]);
 
