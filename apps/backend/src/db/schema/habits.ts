@@ -4,6 +4,7 @@ import { relations } from 'drizzle-orm';
 import { exerciseSessions } from './exercises.ts';
 import { ColorStop } from '@trackbit/types';
 
+
 export const habitTypeEnum = pgEnum('habit_type', ['simple', 'complex', 'negative', 'timed'])
 export const colorThemeEnum = pgEnum('color_scale', ["green", "blue", "orange", "purple", "rose", "fire", "custom"])
 
@@ -44,6 +45,9 @@ export const habitsRelations = relations(habits, ({ one, many }) => ({
 export const dayLogs = pgTable('day_logs',
 
   {
+    //TODO: add id, timestamp will be use instead of date 
+    // id: serial('id').primaryKey(),
+
     //Multi column primary key
     habitId: integer('habit_id').references(() => habits.id, { onDelete: 'cascade' }).notNull(),
     date: date('date', { mode: 'string' }).notNull(),
@@ -53,8 +57,10 @@ export const dayLogs = pgTable('day_logs',
 
     // Notes for the whole session "Felt tired today"
     notes: text('notes'),
-
-    createdAt: timestamp('created_at').defaultNow(),
+    // For calculating the positioning in heatmap and app
+    timeStamp: timestamp('time_stamp').defaultNow(),
+    //Internal Use
+    createdAt: timestamp('created_at').defaultNow().notNull(),
 
   },
 

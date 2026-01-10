@@ -2,7 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ExerciseWithLastPerformance, useExercises } from './use-exercises';
 import { create } from 'zustand';
 import { Habit, ExerciseSession, ExerciseLog, ExercisePerformance, Exercise } from "@trackbit/types";
-import { format } from 'date-fns';
+import { format, formatISO } from 'date-fns';
+import { getLocalDayWithCurrentTime, getUTCDateString } from '@/lib/dateUtilities';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -18,16 +19,18 @@ export type OptimisticExerciseSession = ExerciseSession & {
     exerciseLogs: OptimisticExerciseLog[];
 };
 
-interface EnhancedDayLog {
+interface EnhancedDayLog { //TODO: use trackbit types
     habitId: number;
     date: string;
+    createdAt?: string;
     exerciseSessions?: OptimisticExerciseSession[];
+    timeStamp?: string;
     rating?: number;
     notes?: string;
 }
-
+type DayLogs = Record<string, EnhancedDayLog>
 interface HabitWithLogs extends Habit {
-    dayLogs: Record<string, EnhancedDayLog>;
+    dayLogs: DayLogs
 }
 
 // --- Fetcher ---
@@ -38,13 +41,17 @@ const fetchHistory = async (): Promise<Record<number, HabitWithLogs>> => {
 
     const habitsObj: Record<number, HabitWithLogs> = {};
 
-    data.forEach((habit: Habit & { dayLogs?: any[] }) => {
-        const dayLogsMap: Record<string, EnhancedDayLog> = {};
+    data.forEach((habit: Habit & { dayLogs?: EnhancedDayLog[] }) => {
+        const dayLogsMap: DayLogs = {};
         if (habit.dayLogs) {
-            habit.dayLogs.forEach((dl: any) => {
-                dayLogsMap[dl.date] = {
+            habit.dayLogs.forEach((dl: EnhancedDayLog) => {
+
+                dayLogsMap[format(new Date(dl.timeStamp!), 'yyyy-MM-dd')] = {
+                    // dayLogsMap[dl.date] = {
+
                     habitId: dl.habitId,
                     date: dl.date,
+                    createdAt: dl.createdAt,
                     exerciseSessions: dl.exerciseSessions || [],
                     rating: dl.rating,
                     notes: dl.notes,
@@ -142,8 +149,6 @@ export function useTracker() {
         return data[selectedHabitId]?.dayLogs?.[selectedDay]?.exerciseSessions?.[selectedSessionIndex];
     };
 
-
-
     // --- Mutations ---
 
     // 0. Log Simple Habit
@@ -191,9 +196,20 @@ export function useTracker() {
     const createSession = useMutation({
         mutationFn: async () => {
             if (!selectedHabitId || !selectedDay) throw new Error('No context');
+
+
+            const timeStampDate = getLocalDayWithCurrentTime(selectedDay)
+            const timeStamp = timeStampDate.toISOString();
+            const date = getUTCDateString(timeStampDate)
+
+
             const res = await fetch(`${API_URL}/tracker/exercise-sessions`, {
                 method: 'POST',
-                body: JSON.stringify({ habitId: Number(selectedHabitId), date: selectedDay }),
+                body: JSON.stringify({
+                    habitId: Number(selectedHabitId),
+                    date,
+                    timeStamp
+                }),
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
             });
@@ -347,10 +363,6 @@ export function useTracker() {
         },
         onSettled: () => queryClient.invalidateQueries({ queryKey: ['habit-logs'] }),
     });
-
-
-
-
 
     //TODO: last reps should be define according to the last set but from the last day
     // Helper to get default reps/weight for an exercise\

@@ -3,6 +3,7 @@ import { Minus, Plus, CalendarSearch, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { mapValueToColorOrdered } from "@/lib/colorUtils"; // Adjust path as needed
 import { useTracker } from "@/hooks/use-tracker"
+import { getLocalDayWithCurrentTime, getUTCDateString } from "@/lib/dateUtilities";
 
 export const SimpleHabitPanel = () => {
 
@@ -13,6 +14,9 @@ export const SimpleHabitPanel = () => {
     const activeHabit = currentHabit
 
     const value = activeHabit?.dayLogs[selectedDay]?.rating || 0;
+
+    const date = getUTCDateString(getLocalDayWithCurrentTime(selectedDay))
+
 
     // 1. Calculate Progress
     const goal = activeHabit?.dailyGoal || 1;
@@ -40,11 +44,11 @@ export const SimpleHabitPanel = () => {
     }, [value]);
 
     const handleIncrement = () => {
-        logSimple({ habitId: Number(selectedHabitId), date: selectedDay, rating: Number(value + 1) })
+        logSimple({ habitId: Number(selectedHabitId), date, rating: Number(value + 1) })
     };
 
     const handleDecrement = () => {
-        logSimple({ habitId: Number(selectedHabitId), date: selectedDay, rating: Number(value - 1) })
+        logSimple({ habitId: Number(selectedHabitId), date, rating: Number(value - 1) })
     };
 
 

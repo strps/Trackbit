@@ -15,6 +15,7 @@ import {
     eachWeekOfInterval,
 } from "date-fns";
 import { Button } from "./ui/button";
+import { useTracker } from "@/hooks/use-tracker";
 
 interface HeatmapProps {
     // data?: Record<string, { rating: number }>;
@@ -164,6 +165,13 @@ export const Heatmap = ({
         return <div className="p-4 text-center text-muted-foreground">No data available</div>;
     }
 
+
+    const { currentHabit } = useTracker();
+
+    const logsMap = currentHabit?.dayLogs;
+
+
+
     return (
         <div className={cn("rounded-xl shadow-lg border border-border overflow-hidden flex flex-col", className)}>
             {showHeader && (
@@ -269,7 +277,6 @@ export const Heatmap = ({
                                 isSelected,
                                 isToday,
                                 onClick: () => {
-
                                     onDateSelect?.(dateStr)
                                 }
                                 ,
