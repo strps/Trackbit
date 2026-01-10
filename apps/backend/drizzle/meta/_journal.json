@@ -43,6 +43,13 @@
       "when": 1767307955173,
       "tag": "0004_hot_bromley",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1768086525662,
+      "tag": "0005_panoramic_captain_midlands",
+      "breakpoints": true
     }
   ]
 }

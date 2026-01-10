@@ -1,12 +1,13 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
-import { number, z } from 'zod'
+import { z } from 'zod'
 import db from "../db/db.js";
 import { dayLogs, exerciseLogs, exerciseSessions, exercisePerformances, habits } from "../db/schema/index.js"
 import { eq, and, inArray } from 'drizzle-orm'
 import { requireAuth } from '../middleware/auth.js'
 import { defineCrudSchemas } from '../lib/utilities/drizzle-crud-schemas.js';
 import { generateCrudRouter } from '../lib/utilities/crud-router-factory.js';
+
 
 type AuthEnv = {
     Variables: {
@@ -59,7 +60,6 @@ app.get('/history', async (c) => {
 
     return c.json(habitsWithLogs)
 })
-
 
 app.post(
     '/check',
@@ -121,6 +121,7 @@ const dayLogSchemas = defineCrudSchemas(dayLogs, {
         schema.extend({
             date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
             rating: z.number().min(0).max(5),
+            timeStamp: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/, 'Timestamp must be in ISO 8601 format').optional(),
         }),
 });
 //DayLogs Router
@@ -148,6 +149,10 @@ app.route('/day-logs', dayLogsRouter);
 
 const sessionSchemas = defineCrudSchemas(exerciseSessions, {
     omitFromCreateUpdate: ['id', 'createdAt'],
+    refine: (schema) =>
+        schema.extend({
+            timeStamp: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/, 'Timestamp must be in ISO 8601 format'),
+        }),
 
 });
 
@@ -169,7 +174,8 @@ const sessionRouter = generateCrudRouter({
     },
     beforeCreate: async (c, data) => {
         //Check day log exists  according with habitId and date, if not create it.
-
+        console.log("Checking if day log exists");
+        console.log(data);
         const dayLog = await db
             .select()
             .from(dayLogs)
@@ -185,7 +191,9 @@ const sessionRouter = generateCrudRouter({
                 .insert(dayLogs)
                 .values({
                     habitId: data.habitId,
-                    date: data.date
+                    date: data.date,
+                    timeStamp: data.timeStamp && new Date(data.timeStamp)
+
                 })
         }
 

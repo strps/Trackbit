@@ -40,8 +40,6 @@ const HabitTracker = () => {
         , 0) || 0
       :
       logsMap[date]?.rating || 0;
-
-
   }
 
   if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading Tracker Data...</div>;
