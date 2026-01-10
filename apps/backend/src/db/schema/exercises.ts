@@ -68,7 +68,7 @@ export const exerciseSessions = pgTable('exercise_sessions', {
 
     //Foreing key columns
     habitId: integer('habit_id').notNull(),
-    date: date('date', { mode: 'string' }).notNull(),
+    date: date('date', { mode: 'string' }).default('today').notNull(),
 
     createdAt: timestamp('created_at').defaultNow(),
 }, (table) => [
