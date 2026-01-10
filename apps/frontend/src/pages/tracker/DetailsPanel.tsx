@@ -4,6 +4,7 @@ import { SimpleHabitPanel } from "./SimpleHabitPanel";
 import { ExerciseSessionPanel } from "./StructuredHabitPanel";
 import { useTracker } from "@/hooks/use-tracker";
 import { formatDate } from "./utils";
+import { format } from "date-fns";
 
 export function DayLog() {
 
@@ -17,7 +18,7 @@ export function DayLog() {
                 <div className="p-6 border-b border-border flex justify-between items-center">
                     <div>
                         <h2 className="text-xl font-bold">
-                            {new Date(selectedDay).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                            {format(selectedDay + 'T00:00:00.000', "PPPP")}
                         </h2>
                     </div>
                     <div className="flex gap-3">
