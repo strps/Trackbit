@@ -66,6 +66,7 @@ export const Heatmap = ({
 }: HeatmapProps) => {
     const scrollRef = useRef<HTMLDivElement>(null);
 
+    console.log(selectedDate)
     const computedWeeks = useMemo<Date[][]>(() => {
         if (propWeeks) return propWeeks;
 
@@ -153,7 +154,7 @@ export const Heatmap = ({
     }, [selectedDate, weeks]);
 
     const displayDate = selectedDate
-        ? format(new Date(selectedDate + "T00:00:00"), "EEEE, MMMM do")
+        ? format(selectedDate + 'T00:00:00.000', "PPPP")
         : "Select a date";
 
 
@@ -250,7 +251,8 @@ export const Heatmap = ({
                     {/* Day cells */}
                     {weeks.map((week, weekIdx) =>
                         week.map((date, dayIdx) => {
-                            const dateStr = format(date, "yyyy-MM-dd");
+                            const dateStr = format(date.toUTCString(), "yyyy-MM-dd");
+
                             const value = getValue(dateStr);
                             const isSelected = selectedDate === dateStr;
                             const isToday = dateStr === today;
@@ -267,7 +269,14 @@ export const Heatmap = ({
                                 value,
                                 isSelected,
                                 isToday,
-                                onClick: () => onDateSelect?.(dateStr),
+                                onClick: () => {
+                                    // console.log(selectedDate)
+                                    // console.log(date.toUTCString())
+                                    // console.log(dateStr)
+                                    console.log(new Date())
+                                    onDateSelect?.(dateStr)
+                                }
+                                ,
                                 dateStr,
                                 renderTooltipContent,
                             };

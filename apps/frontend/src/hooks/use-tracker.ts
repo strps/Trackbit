@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ExerciseWithLastPerformance, useExercises } from './use-exercises';
 import { create } from 'zustand';
 import { Habit, ExerciseSession, ExerciseLog, ExercisePerformance, Exercise } from "@trackbit/types";
+import { format } from 'date-fns';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -68,7 +69,7 @@ interface UIState {
 
 export const useUIStore = create<UIState>((set) => ({
     selectedHabitId: undefined,
-    selectedDay: new Date().toISOString().split('T')[0],
+    selectedDay: format(new Date().toUTCString(), 'yyyy-MM-dd'),
     selectedSessionIndex: 0,
 
     selectHabitId: (id) => set({ selectedHabitId: id }),

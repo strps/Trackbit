@@ -30,9 +30,6 @@ const HabitTracker = () => {
 
   const { habitsWithLogs, isLoading, setDay: setSelectedDay, selectedDay, selectedHabitId, currentHabit, setHabitId } = useTracker();
 
-  const todayStr = formatDate(new Date());
-
-
   const logsMap = currentHabit?.dayLogs;
 
   const getRating = (date: string): number => {
