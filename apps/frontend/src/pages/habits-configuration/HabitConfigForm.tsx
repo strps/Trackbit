@@ -106,7 +106,6 @@ export const HabitConfigForm = ({
 
 
     const onSubmit = (data: z.infer<typeof formSchema>) => {
-        console.log(data);
         if (!data.id)
             createHabit(data as Habit);
         else

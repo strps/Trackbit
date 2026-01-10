@@ -149,7 +149,6 @@ export function useTracker() {
     // 0. Log Simple Habit
     const logSimple = useMutation({
         mutationFn: async (payload: { habitId: number; date: string; rating: number }) => {
-            console.log(payload)
             const res = await fetch(`${API_URL}/tracker/check`, {
                 method: 'POST',
                 body: JSON.stringify({
@@ -359,7 +358,6 @@ export function useTracker() {
         const exercise = exercises.find((e) => e.id === exerciseId);
 
         const number = exerciseLog?.exercisePerformances.length || 0;
-        console.log(exerciseLog?.exercisePerformances.length)
         return {
             reps: exercise?.lastPerformance?.reps,
             weight: exercise?.lastPerformance?.weight,
@@ -499,24 +497,6 @@ export function useTracker() {
         onSettled: () => queryClient.invalidateQueries({ queryKey: ['habit-logs'] }),
 
     });
-
-    //TODO: this is essential, we need ot update it the last rep or set
-    // 4c. Update only the virtual "last set" defaults (local only)
-    // const updateLastSetLocally = useMutation({
-    //     mutationFn: (payload: { exerciseId: number; reps: number; weight: number }) => {
-    //         // No server call — purely local update to useExercises cache
-    //         // Assuming useExercises exposes an update function; adjust as needed
-    //         // Example placeholder:
-    //         // exercisesStore.updateDefaults(payload.exerciseId, payload.reps, payload.weight);
-    //         return payload;
-    //     },
-    //     onMutate: (payload) => {
-    //         // Immediate local update — no cache rollback needed since it's not persisted
-    //         // Implement direct update to your exercises cache/store here
-    //         console.log('Updating local last set defaults:', payload);
-    //         // e.g., queryClient.setQueryData(['exercises'], (old) => updateExercise(old, payload));
-    //     },
-    // });
 
     // 5. Delete Set
     const deleteSet = useMutation({

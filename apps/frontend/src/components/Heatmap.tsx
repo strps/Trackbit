@@ -66,7 +66,6 @@ export const Heatmap = ({
 }: HeatmapProps) => {
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    console.log(selectedDate)
     const computedWeeks = useMemo<Date[][]>(() => {
         if (propWeeks) return propWeeks;
 
@@ -270,10 +269,7 @@ export const Heatmap = ({
                                 isSelected,
                                 isToday,
                                 onClick: () => {
-                                    // console.log(selectedDate)
-                                    // console.log(date.toUTCString())
-                                    // console.log(dateStr)
-                                    console.log(new Date())
+
                                     onDateSelect?.(dateStr)
                                 }
                                 ,

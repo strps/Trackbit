@@ -431,8 +431,7 @@ const CustomizationBackground = () => {
 
 
                     const jump = (i + 1) % jumpAt === 0
-                    console.log(`index: ${i} ((i+1) % jumpAt) = ${i % jumpAt}} jump: ${jump}`)
-                    console.log('          (i / jumpAt) = ' + (i / jumpAt))
+
 
                     const gradientPreviews = Object.values(GRADIENT_PRESETS).map((e, i) => {
                         return (

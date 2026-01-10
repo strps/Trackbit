@@ -83,7 +83,6 @@ app.put(
         const user = c.get('user')
         const id = Number(c.req.param('id'))
 
-        console.log(c.req.valid('json'))
 
         const updates = c.req.valid('json')
 
