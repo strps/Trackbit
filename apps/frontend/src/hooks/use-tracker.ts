@@ -439,8 +439,7 @@ export function useTracker() {
     // 4b. Update an existing persisted set
     const updateSet = useMutation({
         mutationFn: async (exercisePerformance: OptimisticExercisePerformance) => {
-
-            if (!exercisePerformance.id) throw new Error('Cannot update set without ID');
+            if (!exercisePerformance.id) throw new Error('[UseTracker]Cannot update set without ID');
             const payload = {
                 id: Number(exercisePerformance.id),
                 number: exercisePerformance.number,

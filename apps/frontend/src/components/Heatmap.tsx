@@ -130,7 +130,7 @@ export const Heatmap = ({
 
     const handleDateChange = (offset: number) => {
         if (!selectedDate || !onDateSelect) return;
-        const newDate = addDays(new Date(selectedDate), offset);
+        const newDate = addDays(new Date(selectedDate + 'T00:00:00.000'), offset);
         const newDateStr = format(newDate, "yyyy-MM-dd");
         if (!showFutureDays && isAfter(newDate, new Date(today))) return;
         onDateSelect(newDateStr);

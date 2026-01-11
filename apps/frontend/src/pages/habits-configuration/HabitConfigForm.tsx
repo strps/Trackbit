@@ -208,7 +208,7 @@ export const HabitConfigForm = ({
                     <div className="h-px bg-slate-100 dark:bg-slate-700" />
 
                     {/* Appearance Section */}
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                    <div className="grid grid-cols-1 gap-8">
 
                         {/* Icon */}
                         <Field
