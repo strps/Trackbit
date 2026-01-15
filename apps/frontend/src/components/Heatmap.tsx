@@ -213,7 +213,7 @@ export const Heatmap = ({
             {/* Full grid container */}
             <ScrollArea className="py-4 px-12 mb-4 h-41" ref={scrollRef}>
                 <div
-                    className="grid gap-1 w-max m-auto"
+                    className="grid gap-1 w-max m-auto px-1"
                     style={{
                         gridTemplateColumns: `min-content repeat(${weeks.length}, minmax(0, 0.75em))`,
                         gridTemplateRows: "auto  repeat(7, minmax(0, 0.75em))",
