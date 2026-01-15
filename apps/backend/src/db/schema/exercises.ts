@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm";
 import { boolean, date, foreignKey, integer, numeric, pgTable, primaryKey, real, serial, text, timestamp, unique } from "drizzle-orm/pg-core";
-import { dayLogs } from "./habits.ts";
-import { user } from "./user.ts";
+import { dayLogs } from "./habits";
+import { user } from "./user";
 
 //Exercises
 export const exercises = pgTable('exercises', {

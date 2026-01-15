@@ -106,16 +106,3 @@ We are currently in the **Beta Phase**. Upcoming milestones include:
 * \[ \] **Social Features:** Optional leaderboards for accountability.  
 * \[ \] **Export:** JSON/CSV export for user data sovereignty.
 
-## **🤝 Contributing**
-
-Contributions are welcome\! Please read our [Contributing Guide](https://www.google.com/search?q=CONTRIBUTING.md) to get started.
-
-1. Fork the project  
-2. Create your feature branch (git checkout \-b feature/AmazingFeature)  
-3. Commit your changes (git commit \-m 'Add some AmazingFeature')  
-4. Push to the branch (git push origin feature/AmazingFeature)  
-5. Open a Pull Request
-
-## **📄 License**
-
-Distributed under the MIT License. See LICENSE for more information.

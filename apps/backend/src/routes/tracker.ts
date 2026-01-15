@@ -3,7 +3,7 @@ import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import db from "../db/db.js";
 import { dayLogs, exerciseLogs, exerciseSessions, exercisePerformances, habits } from "../db/schema/index.js"
-import { eq, and, inArray } from 'drizzle-orm'
+import { eq, and, inArray, sql, gte, lte, desc, asc } from 'drizzle-orm'
 import { requireAuth } from '../middleware/auth.js'
 import { defineCrudSchemas } from '../lib/utilities/drizzle-crud-schemas.js';
 import { generateCrudRouter } from '../lib/utilities/crud-router-factory.js';
@@ -23,43 +23,60 @@ app.use('*', requireAuth)
 //--- HISTORY ROUTE ---
 //============================================================================================
 
-// Zod Schemas for DayLogs
-// GET /api/tracker/history - Fetch all logs for the user (for Heatmap)
 app.get('/history', async (c) => {
-    const user = c.get('user')
+    const user = c.get('user');
 
-    // 1. Get all user's habit IDs
-    const userHabits = await db.select({ id: habits.id }).from(habits).where(eq(habits.userId, user.id))
+    // Query params
+    const start = c.req.query('start');       // 'YYYY-MM-DD'
+    const end = c.req.query('end');
+    const tz = c.req.query('tz') || 'America/Costa_Rica'; // Later: from user profile
 
-    if (userHabits.length === 0) return c.json([])
+    // Define the local day expression once (safe interpolation)
+    const localDayExpr = sql<string>`("time_stamp" AT TIME ZONE ${tz})::date`;
 
+    // Optional range filter on the derived local day
+    let dayLogWhere;
+    if (start || end) {
+        const conditions = [];
+        if (start) conditions.push(gte(localDayExpr, start));
+        if (end) conditions.push(lte(localDayExpr, end));
+        dayLogWhere = and(...conditions);
+    }
 
     const habitsWithLogs = await db.query.habits.findMany({
-        where: (habits) => eq(habits.userId, user.id),
+        where: eq(habits.userId, user.id),
         with: {
             dayLogs: {
+                where: dayLogWhere,
+                // Order using the expression directly (no alias needed here)
+                orderBy: desc(localDayExpr),
+                // Add localDay to each dayLog object for frontend heatmap use
+                extras: {
+                    localDay: localDayExpr.as('local_day'),
+                },
                 with: {
                     exerciseSessions: {
                         with: {
                             exerciseLogs: {
                                 with: {
-                                    exercisePerformances:
-                                    // true,
-                                    {
-                                        orderBy: (exercisePerformances, { asc }) => asc(exercisePerformances.createdAt),
+                                    exercisePerformances: {
+                                        orderBy: asc(exercisePerformances.createdAt),
                                     },
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        orderBy: asc(habits.createdAt),
+    });
 
-    })
+    return c.json(habitsWithLogs.length > 0 ? habitsWithLogs : []);
+});
 
-    return c.json(habitsWithLogs)
-})
+
+
 
 app.post(
     '/check',
@@ -69,11 +86,12 @@ app.post(
             habitId: z.number(),
             date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // YYYY-MM-DD
             rating: z.number(),
-        })
+            timeStamp: z.string()//.regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/), // ISO 8601 timestamp
+        }).strict()
     ),
     //TODO: check for user id in habit in oreder to make sure the user can only update own.
     async (c) => {
-        const { habitId, date, rating } = c.req.valid('json');
+        const { habitId, date, rating, timeStamp } = c.req.valid('json');
 
         // Check if log exists
         const existing = await db.query.dayLogs.findFirst({
@@ -97,7 +115,7 @@ app.post(
             });
         } else {
             // Insert new log
-            await db.insert(dayLogs).values({ habitId, date, rating });
+            await db.insert(dayLogs).values({ habitId, date, rating, timeStamp: new Date(timeStamp) });
 
             return c.json({
                 success: true,
@@ -121,8 +139,7 @@ const dayLogSchemas = defineCrudSchemas(dayLogs, {
         schema.extend({
             date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
             rating: z.number().min(0).max(5),
-            timeStamp: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/, 'Timestamp must be in ISO 8601 format').optional(),
-        }),
+        }).strict(),
 });
 //DayLogs Router
 
@@ -151,7 +168,7 @@ const sessionSchemas = defineCrudSchemas(exerciseSessions, {
     omitFromCreateUpdate: ['id', 'createdAt'],
     refine: (schema) =>
         schema.extend({
-            timeStamp: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/, 'Timestamp must be in ISO 8601 format'),
+            timeStamp: z.string()//.regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/, 'Timestamp must be in ISO 8601 format'),
         }),
 
 });
@@ -161,6 +178,7 @@ const sessionRouter = generateCrudRouter({
     schemas: sessionSchemas,
     primaryKeyFields: ['id'],
     // Enforce ownership: session belongs to a dayLog of a habit owned by the user
+
     ownershipCheck: async (user, record) => {
 
         const habit = await db
@@ -181,7 +199,7 @@ const sessionRouter = generateCrudRouter({
             .from(dayLogs)
             .where(and(
                 eq(dayLogs.habitId, data.habitId),
-                eq(dayLogs.date, data.date)
+                eq(dayLogs.date, data.date!)
             ))
             .limit(1);
 
