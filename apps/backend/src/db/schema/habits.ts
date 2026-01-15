@@ -1,8 +1,9 @@
 import { pgTable, serial, text, integer, timestamp, date, jsonb, primaryKey, pgEnum } from 'drizzle-orm/pg-core';
-import { user } from './user.ts';
+import { user } from './user';
 import { relations } from 'drizzle-orm';
-import { exerciseSessions } from './exercises.ts';
+import { exerciseSessions } from './exercises';
 import { ColorStop } from '@trackbit/types';
+
 
 
 export const habitTypeEnum = pgEnum('habit_type', ['simple', 'complex', 'negative', 'timed'])
@@ -43,25 +44,13 @@ export const habitsRelations = relations(habits, ({ one, many }) => ({
 
 //dayLogs
 export const dayLogs = pgTable('day_logs',
-
   {
-    //TODO: add id, timestamp will be use instead of date 
-    // id: serial('id').primaryKey(),
-
-    //Multi column primary key
+    date: date('date', { mode: 'string', }).notNull(),
     habitId: integer('habit_id').references(() => habits.id, { onDelete: 'cascade' }).notNull(),
-    date: date('date', { mode: 'string' }).notNull(),
-
-    // Overall rating of the workout (optional)
     rating: integer('rating'),
-
-    // Notes for the whole session "Felt tired today"
     notes: text('notes'),
-    // For calculating the positioning in heatmap and app
-    timeStamp: timestamp('time_stamp').defaultNow(),
-    //Internal Use
+    timeStamp: timestamp('time_stamp', { withTimezone: true }).defaultNow().notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
-
   },
 
   (table) => [primaryKey({ columns: [table.habitId, table.date] })]

@@ -2,8 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ExerciseWithLastPerformance, useExercises } from './use-exercises';
 import { create } from 'zustand';
 import { Habit, ExerciseSession, ExerciseLog, ExercisePerformance, Exercise } from "@trackbit/types";
-import { format, formatISO } from 'date-fns';
-import { getLocalDayWithCurrentTime, getUTCDateString } from '@/lib/dateUtilities';
+import { DateTime } from 'luxon';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -27,6 +26,7 @@ interface EnhancedDayLog { //TODO: use trackbit types
     timeStamp?: string;
     rating?: number;
     notes?: string;
+    localDay?: string;
 }
 type DayLogs = Record<string, EnhancedDayLog>
 interface HabitWithLogs extends Habit {
@@ -35,7 +35,12 @@ interface HabitWithLogs extends Habit {
 
 // --- Fetcher ---
 const fetchHistory = async (): Promise<Record<number, HabitWithLogs>> => {
-    const res = await fetch(`${API_URL}/tracker/history`, { credentials: 'include' });
+    const res = await fetch(
+        `${API_URL}/tracker/history?tz=${Intl.DateTimeFormat().resolvedOptions().timeZone}`,
+        {
+            credentials: 'include',
+        }
+    );
     if (!res.ok) throw new Error('Failed to fetch history');
     const data = await res.json();
 
@@ -46,15 +51,14 @@ const fetchHistory = async (): Promise<Record<number, HabitWithLogs>> => {
         if (habit.dayLogs) {
             habit.dayLogs.forEach((dl: EnhancedDayLog) => {
 
-                dayLogsMap[format(new Date(dl.timeStamp!), 'yyyy-MM-dd')] = {
-                    // dayLogsMap[dl.date] = {
-
+                dayLogsMap[dl.localDay!] = {
                     habitId: dl.habitId,
                     date: dl.date,
                     createdAt: dl.createdAt,
                     exerciseSessions: dl.exerciseSessions || [],
                     rating: dl.rating,
                     notes: dl.notes,
+                    localDay: dl.localDay,
                 };
             });
         }
@@ -76,7 +80,7 @@ interface UIState {
 
 export const useUIStore = create<UIState>((set) => ({
     selectedHabitId: undefined,
-    selectedDay: format(new Date().toUTCString(), 'yyyy-MM-dd'),
+    selectedDay: DateTime.now().toISODate(),
     selectedSessionIndex: 0,
 
     selectHabitId: (id) => set({ selectedHabitId: id }),
@@ -153,13 +157,27 @@ export function useTracker() {
 
     // 0. Log Simple Habit
     const logSimple = useMutation({
-        mutationFn: async (payload: { habitId: number; date: string; rating: number }) => {
+        mutationFn: async (payload: { rating: number }) => {
+
+            const date = DateTime.fromISO(selectedDay).toUTC().toISODate()
+
+            const timeStamp = DateTime.fromISO(date!)
+                .setZone('local')                    // Ensures local zone (browser's time zone)
+                .set({
+                    hour: DateTime.local().hour,
+                    minute: DateTime.local().minute,
+                    second: DateTime.local().second,
+                    millisecond: 0                       // Optional: reset ms for cleanliness
+                }).toISO();
+
+            console.log(timeStamp)
             const res = await fetch(`${API_URL}/tracker/check`, {
                 method: 'POST',
                 body: JSON.stringify({
-                    habitId: payload.habitId,
-                    date: payload.date,
+                    habitId: Number(selectedHabitId),
+                    date: date,
                     rating: Number(payload.rating),
+                    timeStamp
                 }),
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -169,17 +187,18 @@ export function useTracker() {
         onMutate: async (newItem) => {
             await queryClient.cancelQueries({ queryKey: ['habit-logs'] });
             const previousData = queryClient.getQueryData(['habit-logs']);
+            const date = DateTime.fromISO(selectedDay).toUTC().toISODate()
             updateCache((newData) => {
-                const habit = newData[newItem.habitId];
+                const habit = newData[selectedHabitId!];
                 if (habit) {
-                    if (!habit.dayLogs[newItem.date]) {
-                        habit.dayLogs[newItem.date] = {
-                            habitId: newItem.habitId,
-                            date: newItem.date,
+                    if (!habit.dayLogs[date!]) {
+                        habit.dayLogs[date!] = {
+                            habitId: selectedHabitId!,
+                            date: date!,
                             exerciseSessions: [],
                         };
                     }
-                    habit.dayLogs[newItem.date].rating = newItem.rating;
+                    habit.dayLogs[date!].rating = newItem.rating;
                 }
             });
             return { previousData };
@@ -192,15 +211,23 @@ export function useTracker() {
         onSettled: () => queryClient.invalidateQueries({ queryKey: ['habit-logs'] }),
     });
 
+
     // 1. Create Session
     const createSession = useMutation({
         mutationFn: async () => {
             if (!selectedHabitId || !selectedDay) throw new Error('No context');
 
 
-            const timeStampDate = getLocalDayWithCurrentTime(selectedDay)
-            const timeStamp = timeStampDate.toISOString();
-            const date = getUTCDateString(timeStampDate)
+            const date = DateTime.fromISO(selectedDay).toUTC().toISODate()
+            //TODO: doan and up could be its own functions as is use here ans in log simple 
+            const timeStamp = DateTime.fromISO(date!)
+                .setZone('local')                    // Ensures local zone (browser's time zone)
+                .set({
+                    hour: DateTime.local().hour,
+                    minute: DateTime.local().minute,
+                    second: DateTime.local().second,
+                    millisecond: 0                       // Optional: reset ms for cleanliness
+                }).toISO();
 
 
             const res = await fetch(`${API_URL}/tracker/exercise-sessions`, {

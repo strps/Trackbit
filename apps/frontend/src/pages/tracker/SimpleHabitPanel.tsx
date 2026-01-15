@@ -3,6 +3,7 @@ import { Minus, Plus, CalendarSearch, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { mapValueToColorOrdered } from "@/lib/colorUtils"; // Adjust path as needed
 import { useTracker } from "@/hooks/use-tracker"
+import { DateTime } from "luxon";
 import { getLocalDayWithCurrentTime, getUTCDateString } from "@/lib/dateUtilities";
 
 export const SimpleHabitPanel = () => {
@@ -14,9 +15,6 @@ export const SimpleHabitPanel = () => {
     const activeHabit = currentHabit
 
     const value = activeHabit?.dayLogs[selectedDay]?.rating || 0;
-
-    const date = getUTCDateString(getLocalDayWithCurrentTime(selectedDay))
-
 
     // 1. Calculate Progress
     const goal = activeHabit?.dailyGoal || 1;
@@ -44,11 +42,11 @@ export const SimpleHabitPanel = () => {
     }, [value]);
 
     const handleIncrement = () => {
-        logSimple({ habitId: Number(selectedHabitId), date, rating: Number(value + 1) })
+        logSimple({ rating: Number(value + 1) })
     };
 
     const handleDecrement = () => {
-        logSimple({ habitId: Number(selectedHabitId), date, rating: Number(value - 1) })
+        logSimple({ rating: Number(value - 1) })
     };
 
 
@@ -60,7 +58,6 @@ export const SimpleHabitPanel = () => {
                 {/* Left: Context Info */}
                 <div className="flex-1">
                     <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
-                        {new Date(selectedDay).toLocaleDateString(undefined, { weekday: 'long' })}
                         {isGoalMet && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 animate-in zoom-in">
                                 <Trophy className="w-3 h-3 mr-1" /> Goal Met

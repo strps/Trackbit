@@ -63,7 +63,7 @@ type CrudRouterOptions<
     overrides?: {
         list?: Handler;
         get?: Handler<any, any, { out: { param: PkParamOut } }>
-        create?: Handler<any, any, { out: { json: InferInsertModel<T> } }>
+        create?: Handler<any, any, { out: { json: any/*InferInsertModel<T>*/ } }>
         update?: Handler<any, any, { out: { param: PkParamOut; json: Partial<InferInsertModel<T>> } }>
         delete?: Handler<any, any, { out: { param: PkParamOut } }>
     };

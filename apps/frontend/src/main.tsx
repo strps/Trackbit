@@ -19,6 +19,7 @@ import ForgotPasswordPage from './pages/auth/ForgotPassword';
 import AuthLayout from './layouts/AuthLayout';
 import VerifyEmail from './pages/auth/VerifyEmail';
 import { Analytics } from './pages/Analitytics';
+import { Exp } from './pages/exp';
 
 const router = createBrowserRouter([
   {
@@ -26,7 +27,7 @@ const router = createBrowserRouter([
     element: <AppLayout isPublic />,
     children: [
       { index: true, element: <Landing /> }, // 'index' means this renders at "/"
-      { path: "vivero", element: <ViveroHomePage /> },
+      { path: "exp", element: <Exp /> },
     ],
   },
   {
