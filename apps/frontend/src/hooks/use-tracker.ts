@@ -3,6 +3,7 @@ import { ExerciseWithLastPerformance, useExercises } from './use-exercises';
 import { create } from 'zustand';
 import { Habit, ExerciseSession, ExerciseLog, ExercisePerformance, Exercise } from "@trackbit/types";
 import { DateTime } from 'luxon';
+import { GRADIENT_PRESETS } from '@/pages/habits-configuration/ColorThemeField';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -47,6 +48,13 @@ const fetchHistory = async (): Promise<Record<number, HabitWithLogs>> => {
     const habitsObj: Record<number, HabitWithLogs> = {};
 
     data.forEach((habit: Habit & { dayLogs?: EnhancedDayLog[] }) => {
+
+        const colorStops = habit.colorTheme === 'custom' ? habit.colorStops : GRADIENT_PRESETS[habit.colorTheme].stops;
+
+        console.log(habit.colorTheme)
+        console.log(colorStops)
+
+        //Map day logs for easier 
         const dayLogsMap: DayLogs = {};
         if (habit.dayLogs) {
             habit.dayLogs.forEach((dl: EnhancedDayLog) => {
@@ -62,7 +70,7 @@ const fetchHistory = async (): Promise<Record<number, HabitWithLogs>> => {
                 };
             });
         }
-        habitsObj[habit.id] = { ...habit, dayLogs: dayLogsMap };
+        habitsObj[habit.id] = { ...habit, dayLogs: dayLogsMap, colorStops };
     });
     return habitsObj;
 };
