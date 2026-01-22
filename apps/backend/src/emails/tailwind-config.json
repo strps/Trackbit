@@ -1,0 +1,10 @@
+{
+    "theme": {
+        "extend": {
+            "colors": {
+                "primary": "#007291",
+                "primary-foreground": "#FFFFFF"
+            }
+        }
+    }
+}
