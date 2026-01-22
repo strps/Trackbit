@@ -10,7 +10,7 @@ import {
 import { useTheme } from "@/providers/theme-provider"
 
 
-export function ModeToggle() {
+export function ThemeToggle() {
     const { setTheme } = useTheme()
 
     return (

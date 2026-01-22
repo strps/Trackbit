@@ -22,7 +22,7 @@ export const RangeFieldInput: React.FC<RangeFieldInputProps> = ({
     min = 0,
     max = 100,
     step = 1,
-    "aria-valid": ariaValid,
+    "aria-invalid": ariaInvalid,
 }: RangeFieldInputProps) => {
     const currentValue = Number(field.value ?? min);
 
@@ -54,7 +54,7 @@ export const RangeFieldInput: React.FC<RangeFieldInputProps> = ({
                 step={step}
                 value={sliderValue}
                 onValueChange={(vals) => field.onChange(vals[0])}
-                aria-invalid={!ariaValid}
+                aria-invalid={!ariaInvalid}
                 className="flex-1"
             />
             <Input
@@ -66,7 +66,7 @@ export const RangeFieldInput: React.FC<RangeFieldInputProps> = ({
                 onChange={handleInputChange}
                 onBlur={handleInputBlur}
                 className="w-12 py-1 text-center text-4xl font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none border-0 bg-transparent focus-visible:bg-transparent focus-visible:border-0 shadow-none focus-visible:shadow-none"
-                aria-invalid={!ariaValid}
+                aria-invalid={!ariaInvalid}
             />
         </div>
     );

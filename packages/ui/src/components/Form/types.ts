@@ -1,5 +1,6 @@
 import { UseFormReturn } from "react-hook-form";
 import { SelectOption } from "@/components/Fields/ChoiceListField";
+import { InputProps } from "../Fields/FieldBase";
 
 /**
  * Supported field types that map directly to existing specialized components.
@@ -11,7 +12,8 @@ export type FieldType =
     | "range"
     | "password"
     | "choice"
-    | "custom";
+    | "custom"
+    | 'file'
 
 /**
  * Base configuration shared across all field types.
@@ -37,6 +39,13 @@ interface StandardFieldConfig extends BaseFormFieldConfig {
     type: "text" | "number" | "textarea" | "password";
 }
 
+/* File field */
+export interface FileFieldConfig extends BaseFormFieldConfig {
+    type: "file";
+    multiple?: boolean;  // Allow multiple files if needed (default: false for single list file)
+    accept?: string;     // e.g., ".csv,.txt" to restrict file types
+}
+
 /* Range field – requires min/max/step */
 interface RangeFieldConfig extends BaseFormFieldConfig {
     type: "range";
@@ -46,7 +55,7 @@ interface RangeFieldConfig extends BaseFormFieldConfig {
 }
 
 /* Choice field (single or multi-select via ChoiceListField) */
-interface ChoiceFieldConfig<T = {}> extends BaseFormFieldConfig {
+export interface ChoiceFieldConfig<T = {}> extends BaseFormFieldConfig {
     type: "choice";
     mode?: "single" | "multi";
     options: SelectOption<T>[];
@@ -60,16 +69,7 @@ interface CustomFieldConfig extends BaseFormFieldConfig {
      * Custom component used as the `fieldInput` prop in Field.
      * It receives the full InputProps from the Controller render.
      */
-    customComponent: React.FC<{
-        id: string;
-        "aria-valid": boolean;
-        placeholder?: string;
-        field: any;
-        fieldState: any;
-        formState: any;
-        className?: string;
-        disabled?: boolean;
-    }>;
+    customComponent: React.FC<InputProps>;
 }
 
 /**
@@ -79,7 +79,8 @@ export type FormFieldConfig<T = {}> =
     | StandardFieldConfig
     | RangeFieldConfig
     | ChoiceFieldConfig<T>
-    | CustomFieldConfig;
+    | CustomFieldConfig
+    | FileFieldConfig;
 
 /**
  * Props for the DynamicForm component.

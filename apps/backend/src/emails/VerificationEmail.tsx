@@ -1,15 +1,15 @@
 import { Button, Container, Head, Heading, Hr, Html, Preview, Section, Text, Tailwind } from "@react-email/components";
-import * as React from "react";
-
 
 interface VerificationEmailProps {
     url: string;
     userName?: string;
 }
 
+const frontendBase = process.env.FRONT_URL
+
 export const VerificationEmail = ({ url, userName = "User" }: VerificationEmailProps) => {
 
-    const frontendBase = process.env.FRONT_URL
+
 
     const verificationUrl = new URL(url);
     verificationUrl.searchParams.delete("callbackURL");

@@ -7,10 +7,10 @@ import {
     CardFooter,
     CardHeader,
     CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+} from "@trackbit/uicard";
+import { Input } from "@trackbit/uiinput";
+import { Button } from "@trackbit/uibutton";
+import { Label } from "@trackbit/uilabel";
 import { useNavigate } from 'react-router-dom';
 import { authClient } from '@/lib/auth-client';
 

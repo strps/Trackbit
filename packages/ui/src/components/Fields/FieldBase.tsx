@@ -22,7 +22,7 @@ The className prop is forwarded only to the custom FieldInput, which is appropri
 
 export interface InputProps {
     id: string;
-    "aria-valid": boolean;
+    "aria-invalid": boolean;
     placeholder?: string;
     // react-hook-form field props
     field: ControllerRenderProps<FieldValues, string>;
@@ -60,7 +60,7 @@ export const Field = ({ name, label, form, placeholder, fieldInput: FieldInput, 
                     <FieldInput
                         placeholder={placeholder}
                         id={field.name}
-                        aria-valid={fieldState.invalid}
+                        aria-invalid={fieldState.invalid}
                         field={field}
                         fieldState={fieldState}
                         formState={formState}

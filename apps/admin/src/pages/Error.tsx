@@ -1,6 +1,6 @@
 import { useRouteError, isRouteErrorResponse, useNavigate } from "react-router-dom";
 import { AlertTriangle, Home, RotateCcw, ArrowLeft, FileQuestion, Bug } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@trackbit/ui";
 import {
     Card,
     CardContent,
@@ -8,9 +8,9 @@ import {
     CardFooter,
     CardHeader,
     CardTitle,
-} from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+} from "@trackbit/ui";
+import { Alert, AlertDescription, AlertTitle } from "@trackbit/ui";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@trackbit/ui";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 

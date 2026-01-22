@@ -5,4 +5,4 @@ export * from "./PasswordField"
 export * from "./RangeField"
 export * from "./TextAreaField"
 export * from "./TextField"
-
+export * from "./FileField"

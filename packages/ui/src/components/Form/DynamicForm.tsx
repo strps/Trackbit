@@ -1,5 +1,3 @@
-import React from "react";
-import { UseFormReturn } from "react-hook-form";
 import { Field } from "@/components/Fields/FieldBase";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -16,38 +14,16 @@ export function DynamicForm<TFieldValues extends Record<string, any> = any>({
     orientation: globalOrientation,
 }: DynamicFormProps<TFieldValues>) {
     const { formState } = form;
-
+    console.log(config)
+    console.log()
     return (
         <form onSubmit={form.handleSubmit(onSubmit)} className={cn("space-y-6", className)}>
             {config.map((fieldConfig: FormFieldConfig) => {
                 if (fieldConfig.hidden) return null;
 
-                const {
-                    name,
-                    label,
-                    placeholder,
-                    description,
-                    orientation,
-                    disabled,
-                    className: fieldClassName,
-                } = fieldConfig;
+                const field = getFieldInput(fieldConfig, form);
 
-                const fieldInput = getFieldInput(fieldConfig);
-
-                return (
-                    <Field
-                        key={name}
-                        name={name}
-                        form={form}
-                        label={label}
-                        placeholder={placeholder}
-                        description={description}
-                        orientation={orientation ?? globalOrientation}
-                        disabled={disabled || formState.isSubmitting}
-                        className={fieldClassName}
-                        fieldInput={fieldInput}
-                    />
-                );
+                return field
             })}
 
             <div className="flex justify-end pt-4">

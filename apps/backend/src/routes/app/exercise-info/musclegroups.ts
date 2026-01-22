@@ -1,7 +1,7 @@
 import z from "zod";
-import { muscleGroups } from "../../db/schema/index.js";
-import { generateCrudRouter } from "../../lib/utilities/crud-router-factory.js";
-import { defineCrudSchemas } from "../../lib/utilities/drizzle-crud-schemas.js";
+import { muscleGroups } from "../../../db/schema/index.js";
+import { generateCrudRouter } from "../../../lib/utilities/crud-router-factory.js";
+import { defineCrudSchemas } from "../../../lib/utilities/drizzle-crud-schemas.js";
 
 const muscleGroupRouter = generateCrudRouter({
     table: muscleGroups,

@@ -1,8 +1,8 @@
-import { generateCrudRouter } from '../../lib/utilities/crud-router-factory.js'; // Adjust path if necessary
-import { exerciseLogs, exercises, exercisePerformances, muscleGroups } from '../../db/schema/index.js';
-import { defineCrudSchemas } from '../../lib/utilities/drizzle-crud-schemas.js'; // Adjust path if necessary
+import { generateCrudRouter } from '../../../lib/utilities/crud-router-factory.js'; // Adjust path if necessary
+import { exerciseLogs, exercises, exercisePerformances, muscleGroups } from '../../../db/schema/index.js';
+import { defineCrudSchemas } from '../../../lib/utilities/drizzle-crud-schemas.js'; // Adjust path if necessary
 import { z } from 'zod';
-import db from "../../db/db.js";
+import db from "../../../db/db.js";
 import { eq, isNull, or, sql, and } from 'drizzle-orm';
 import { Context } from 'hono';
 

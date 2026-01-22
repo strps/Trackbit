@@ -6,7 +6,7 @@ import { Eye, EyeOff } from "lucide-react";
 
 // interface PasswordFieldInputProps extends InputProps {showPassword: boolean;}
 
-export const PasswordFieldInput: React.FC<InputProps> = ({ id, placeholder, "aria-valid": ariaValid, field, className }) => {
+export const PasswordFieldInput: React.FC<InputProps> = ({ id, placeholder, "aria-invalid": ariaValid, field, className }) => {
     const [showPassword, setShowPassword] = useState(false);
     return (
         <div className="relative">

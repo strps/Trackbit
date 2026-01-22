@@ -7,7 +7,7 @@ export const TextFieldInput: React.FC<InputProps> = (props: InputProps) => {
     const {
         id,
         placeholder,
-        "aria-valid": ariaValid,
+        "aria-invalid": ariaInvalid,
         field,
         fieldState,
         className,
@@ -16,7 +16,7 @@ export const TextFieldInput: React.FC<InputProps> = (props: InputProps) => {
         <Input
             id={id}
             placeholder={placeholder}
-            aria-invalid={ariaValid}
+            aria-invalid={ariaInvalid}
             className={className}
             {...field}
         />

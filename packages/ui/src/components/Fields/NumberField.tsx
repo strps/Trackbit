@@ -7,15 +7,14 @@ export const NumberFieldInput: React.FC<InputProps> = ({
     id,
     field,
     placeholder,
-    "aria-valid": ariaValid,
+    "aria-invalid": ariaValid,
 }: InputProps) => {
     return (
         <Input
             id={id}
             type="number"
             placeholder={placeholder}
-            aria-invalid={!ariaValid}
-
+            aria-invalid={ariaValid}
             {...field}
         />
     );

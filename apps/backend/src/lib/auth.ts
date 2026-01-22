@@ -1,8 +1,9 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { user } from "../db/schema/user.js";
-import { account, session, verification } from "../db/schema/auth.js";
-import { invites } from "../db/schema/invites.js";
+import { admin } from "better-auth/plugins"
+import { user } from "../db/schema/app/user.js";
+import { account, session, verification } from "../db/schema/app/auth.js";
+import { invites } from "../db/schema/app/invites.js";
 import { lt, gte, eq } from "drizzle-orm";
 import { getOAuthState, APIError } from "better-auth/api";  // Added APIError
 import { PasswordResetEmail } from "../emails/PasswordReset.js";
@@ -25,6 +26,12 @@ export const auth = betterAuth({
     }
   }),
 
+
+
+  plugins: [
+    admin()
+  ],
+
   // Trusted origins for cross-site requests
   trustedOrigins: process.env.ALLOWED_ORIGINS?.split(','),
   advanced: {
@@ -45,7 +52,6 @@ export const auth = betterAuth({
       });
     },
   },
-
   emailVerification: {
     sendOnSignUp: true,
     sendVerificationEmail: async ({ user, url }) => {
@@ -56,7 +62,6 @@ export const auth = betterAuth({
       });
     },
   },
-
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID!,

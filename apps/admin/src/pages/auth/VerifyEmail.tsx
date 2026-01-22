@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { authClient } from "@/lib/auth-client";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@trackbit/ui";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@trackbit/ui";
+import { Alert, AlertDescription, AlertTitle } from "@trackbit/ui";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { TextField } from "@/components/Fields/TextField";
+import { TextField } from "@trackbit/ui";
 
 type VerificationState = "loading" | "success" | "error" | "resending";
 

@@ -64,16 +64,11 @@ export const ChoiceListField = <T = {}>({
 }
 
 
-
-
-
-
-
 export const ChoiceListFieldInput = <T = {}>({
     id,
     field,
     fieldState,
-    "aria-valid": ariaValid,
+    "aria-invalid": ariaInvalid,
     options,
     optionComponent: OptionComponent,
     className,
@@ -111,7 +106,7 @@ export const ChoiceListFieldInput = <T = {}>({
         <div
             role={role}
             aria-labelledby={id}
-            aria-invalid={!ariaValid}
+            aria-invalid={!ariaInvalid}
             aria-multiselectable={isMulti ? "true" : undefined}
             className={cn("", className)}
         >

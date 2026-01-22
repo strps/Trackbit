@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Activity, ArrowLeft, Home, FileQuestion } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@trackbit/ui";
 
 export default function NotFound() {
     const navigate = useNavigate();

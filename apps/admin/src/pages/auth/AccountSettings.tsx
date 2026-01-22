@@ -1,6 +1,6 @@
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@trackbit/uibutton";
+import { Input } from "@trackbit/uiinput";
+import { Label } from "@trackbit/uilabel";
 import { authClient, signOut, useSession } from "@/lib/auth-client";
 import { Loader2, LogOut, User } from "lucide-react";
 import { ChangeEvent, useEffect, useState } from "react";

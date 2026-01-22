@@ -117,7 +117,6 @@ export function InvitationCodeForm() {
     ];
 
     const onSubmit = (data: any) => {
-        console.log("Form submitted:", data);
         // Later: Process single/multiple emails or parse uploaded file
         alert("Submission received! (Check console for data)");
     };

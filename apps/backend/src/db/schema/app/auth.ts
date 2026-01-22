@@ -9,7 +9,8 @@ export const session = pgTable("session", {
 	updatedAt: timestamp("updated_at").notNull(),
 	ipAddress: text("ip_address"),
 	userAgent: text("user_agent"),
-	userId: text("user_id").notNull().references(() => user.id)
+	userId: text("user_id").notNull().references(() => user.id),
+	impersonatedBy: text("impersonated_by").references(() => user.id),
 });
 
 export const account = pgTable("account", {

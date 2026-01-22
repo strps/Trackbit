@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 
 import {
-  Flame, Menu, X, Sun, Moon,
-  User, Settings, LogOut,
-  LayoutDashboard, ListTodo, BarChart3, CreditCard
+  Flame, Menu,
+
+  LayoutDashboard, ListTodo, BarChart3
 } from 'lucide-react';
 
 interface NavItem {
@@ -86,103 +86,11 @@ export const AppHeader: React.FC = () => {
 
 export default AppHeader;
 
-import { DropdownMenu, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuContent } from "./ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { useNavigate } from "react-router-dom";
-import { useTheme } from "@/providers/theme-provider";
-import { signOut, useSession } from "@/lib/auth-client";
+import { NavLink } from "react-router-dom";
+
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
+import { UserNav } from "./UserNav";
 
-const UserNav = () => {
-  const { data, isPending } = useSession();
-  const navigate = useNavigate();
-  const { theme, setTheme } = useTheme();
-
-  const user = data?.user;
-  const themes = ["light", "dark", "system"];
-
-  const onThemeChange = () => {
-    const selectedThemeIndex = themes.indexOf(theme);
-    const nextTheme = themes[(selectedThemeIndex + 1) % themes.length];
-    setTheme(nextTheme as "light" | "dark" | "system");
-  };
-
-  const handleLogout = async () => {
-    await signOut();
-    navigate('/');
-  };
-
-  if (isPending) {
-    return <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />;
-  }
-
-  if (!user) {
-    return (
-      <Button variant="outline" onClick={() => navigate('/signin')}>
-        Sign In
-      </Button>
-    );
-  }
-
-  const initials = user.name
-    ? user.name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase()
-    : "U";
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <Avatar className="h-8 w-8 border border-border">
-            <AvatarImage src={user.image || ""} alt={user.name} />
-            <AvatarFallback>{initials}</AvatarFallback>
-          </Avatar>
-        </Button>
-      </DropdownMenuTrigger>
-
-      <DropdownMenuContent className="w-56" align="end" forceMount>
-        <div className="flex items-center justify-start gap-2 p-2">
-          <div className="flex flex-col space-y-1 leading-none">
-            <p className="font-medium">{user.name}</p>
-            <p className="w-50 truncate text-xs text-muted-foreground">
-              {user.email}
-            </p>
-          </div>
-        </div>
-        <DropdownMenuSeparator />
-
-        <DropdownMenuItem onClick={() => navigate('/profile')}>
-          <User className="mr-2 h-4 w-4" />
-          <span>Profile</span>
-        </DropdownMenuItem>
-
-        <DropdownMenuItem onClick={() => navigate('/billing')}>
-          <CreditCard className="mr-2 h-4 w-4" />
-          <span>Billing</span>
-        </DropdownMenuItem>
-
-        <DropdownMenuItem onClick={() => navigate('/account-settings')}>
-          <Settings className="mr-2 h-4 w-4" />
-          <span>Settings</span>
-        </DropdownMenuItem>
-
-        <DropdownMenuItem onClick={onThemeChange}>
-          <div className="relative mr-2 h-4 w-4">
-            <Sun className="absolute h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          </div>
-          <span className="capitalize">Theme: {theme}</span>
-        </DropdownMenuItem>
-
-        <DropdownMenuSeparator />
-
-        <DropdownMenuItem onClick={handleLogout}>
-          <LogOut className="mr-2 h-4 w-4" />
-          <span>Log out</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-};
 
 const MobileNav = ({ items, isOpen, onClose }: { items: NavItem[]; isOpen: boolean; onClose: () => void }) => {
   return (

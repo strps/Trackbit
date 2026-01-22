@@ -29,7 +29,6 @@ export const TextAreaFieldInput: React.FC<TextAreaFieldInputProps> = ({
             placeholder={placeholder}
             {...field}
             disabled={disabled}
-            aria-invalid={!fieldState.invalid ? undefined : true}
             className={cn("resize-none", className)} // optional default styling; adjust as needed
             {...rest}
         />
