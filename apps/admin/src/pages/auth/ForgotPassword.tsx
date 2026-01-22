@@ -7,10 +7,10 @@ import {
     CardFooter,
     CardHeader,
     CardTitle,
-} from "@trackbit/uicard";
-import { Input } from "@trackbit/uiinput";
-import { Button } from "@trackbit/uibutton";
-import { Label } from "@trackbit/uilabel";
+} from "@trackbit/ui";
+import { Input } from "@trackbit/ui";
+import { Button } from "@trackbit/ui";
+import { Label } from "@trackbit/ui";
 import { useNavigate } from 'react-router-dom';
 import { authClient } from '@/lib/auth-client';
 

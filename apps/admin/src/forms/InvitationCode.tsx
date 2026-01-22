@@ -6,7 +6,6 @@ import {
     InputProps,
     Label,
     Input,
-    Textarea,
     RadioGroup,
     RadioGroupItem
 } from "@trackbit/ui";
@@ -20,7 +19,6 @@ const methodOptions = [
 // Custom radio group component for method selection
 const MethodChoiceCustom: React.FC<InputProps> = ({
     field,
-    placeholder,
     disabled,
     className,
 }) => {
