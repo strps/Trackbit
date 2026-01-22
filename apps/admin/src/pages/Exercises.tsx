@@ -234,30 +234,6 @@ export default function ExercisesPage() {
 
     return (
         <AdminPage title="Exercises" description="Manage system and user exercises." pageActions={actions}>
-            {/* <div className="flex flex-col gap-4">
-                <header className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight">Exercises</h1>
-                        <p className="text-muted-foreground">
-                            Manage system and user exercises.
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" className="gap-1">
-                            <File className="h-3.5 w-3.5" />
-                            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                                Export
-                            </span>
-                        </Button>
-                        <Button size="sm" className="gap-1">
-                            <PlusCircle className="h-3.5 w-3.5" />
-                            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                                Add Exercise
-                            </span>
-                        </Button>
-                    </div>
-                </header> */}
-
             <Tabs defaultValue="all">
                 <div className="flex items-center">
                     <TabsList>

@@ -25,12 +25,14 @@ interface DataTableProps<TData, TValue> {
     data: TData[];
     searchColumn?: string; // Optional column key for global search (e.g., "email")
     className?: string;
+    actions?: (table: import("@tanstack/react-table").Table<TData>) => React.ReactNode;
 }
 
 export function DataTable<TData, TValue>({
     columns,
     data,
     searchColumn,
+    actions,
     className,
 }: DataTableProps<TData, TValue>) {
     const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -59,7 +61,9 @@ export function DataTable<TData, TValue>({
 
     return (
         <div className={cn("w-full space-y-4", className)}>
-            <DataTableToolbar table={table} searchColumn={searchColumn} />
+            <DataTableToolbar table={table} searchColumn={searchColumn}>
+                {actions?.(table)}
+            </DataTableToolbar>
             <div className="overflow-hidden rounded-md border">
                 <Table>
                     <TableHeader>

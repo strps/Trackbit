@@ -51,8 +51,6 @@ const fetchHistory = async (): Promise<Record<number, HabitWithLogs>> => {
 
         const colorStops = habit.colorTheme === 'custom' ? habit.colorStops : GRADIENT_PRESETS[habit.colorTheme].stops;
 
-        console.log(habit.colorTheme)
-        console.log(colorStops)
 
         //Map day logs for easier 
         const dayLogsMap: DayLogs = {};
@@ -178,7 +176,6 @@ export function useTracker() {
                     millisecond: 0                       // Optional: reset ms for cleanliness
                 }).toISO();
 
-            console.log(timeStamp)
             const res = await fetch(`${API_URL}/tracker/check`, {
                 method: 'POST',
                 body: JSON.stringify({

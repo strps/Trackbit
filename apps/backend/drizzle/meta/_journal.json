@@ -57,6 +57,13 @@
       "when": 1768427830650,
       "tag": "0006_lame_lyja",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1769124786171,
+      "tag": "0007_brainy_nightmare",
+      "breakpoints": true
     }
   ]
 }

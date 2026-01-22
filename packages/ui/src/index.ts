@@ -23,6 +23,7 @@ export * from "@/components/ui/alert-dialog"
 export * from "@/components/ui/popover"
 export * from "@/components/ui/collapsible"
 export * from "@/components/ui/select"
+export * from "@/components/ui/dialog"
 
 //Own Components
 export * from "@/components/Sidebar"

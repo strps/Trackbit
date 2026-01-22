@@ -4,7 +4,7 @@ import { Hono } from 'hono'
 import { requireAdminAuth } from '../../middleware/require-admin-auth.js'
 import db from "../../db/db.js"
 import { invites } from "../../db/schema/app/invites"
-import { eq, name } from "drizzle-orm"
+import { eq, name, inArray } from "drizzle-orm"
 import { sendEmail } from '../../lib/email'
 import { TesterInvitationEmail } from '../../emails/TesterInvitation'
 import { jsx } from 'react/jsx-runtime'
@@ -101,6 +101,36 @@ app.post('/', async (c) => {
     } catch (error) {
         console.error('Error creating invites:', error)
         return c.json({ error: 'Failed to create invites' }, 500)
+    }
+})
+
+app.delete('/:id', async (c) => {
+    const id = parseInt(c.req.param('id'))
+    if (isNaN(id)) return c.json({ error: 'Invalid ID' }, 400)
+
+    try {
+        await db.delete(invites).where(eq(invites.id, id))
+        return c.json({ success: true })
+    } catch (error) {
+        console.error('Error deleting invite:', error)
+        return c.json({ error: 'Failed to delete invite' }, 500)
+    }
+})
+
+app.delete('/', async (c) => {
+    try {
+        const body = await c.req.json()
+        const ids = body.ids as number[]
+
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            return c.json({ error: 'No IDs provided' }, 400)
+        }
+
+        await db.delete(invites).where(inArray(invites.id, ids))
+        return c.json({ success: true })
+    } catch (error) {
+        console.error('Error deleting invites:', error)
+        return c.json({ error: 'Failed to delete invites' }, 500)
     }
 })
 

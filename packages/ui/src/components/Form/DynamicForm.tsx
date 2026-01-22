@@ -14,8 +14,6 @@ export function DynamicForm<TFieldValues extends Record<string, any> = any>({
     orientation: globalOrientation,
 }: DynamicFormProps<TFieldValues>) {
     const { formState } = form;
-    console.log(config)
-    console.log()
     return (
         <form onSubmit={form.handleSubmit(onSubmit)} className={cn("space-y-6", className)}>
             {config.map((fieldConfig: FormFieldConfig) => {

@@ -1,12 +1,14 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
-import db from "../db/db.js";
-import { dayLogs, exerciseLogs, exerciseSessions, exercisePerformances, habits } from "../db/schema/index.js"
 import { eq, and, inArray, sql, gte, lte, desc, asc } from 'drizzle-orm'
-import { requireAuth } from '../middleware/auth.js'
-import { defineCrudSchemas } from '../lib/utilities/drizzle-crud-schemas.js';
-import { generateCrudRouter } from '../lib/utilities/crud-router-factory.js';
+import { requireAuth } from '../../middleware/auth'
+import { dayLogs, exerciseLogs, exercisePerformances, exerciseSessions, habits } from '../../db/schema'
+import db from '../../db/db'
+import { defineCrudSchemas } from '../../lib/utilities/drizzle-crud-schemas'
+import { generateCrudRouter } from '../../lib/utilities/crud-router-factory'
+
+
 
 
 type AuthEnv = {
@@ -192,8 +194,6 @@ const sessionRouter = generateCrudRouter({
     },
     beforeCreate: async (c, data: any) => {
         //Check day log exists  according with habitId and date, if not create it.
-        console.log("Checking if day log exists");
-        console.log(data);
         const dayLog = await db
             .select()
             .from(dayLogs)

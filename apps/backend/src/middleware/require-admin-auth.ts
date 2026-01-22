@@ -9,12 +9,10 @@ type Env = {
 }
 
 export const requireAdminAuth = createMiddleware<Env>(async (c, next) => {
-    console.log(c.req.raw.headers);
     const session = await auth.api.getSession({
         headers: (c.req.raw as any).headers
     })
 
-    console.log("Admin auth middleware - session:", session);
     // Check if session exists and if the role is 'admin'
     if (!session || session.user.role !== 'admin') {
         //TODO: Log unauthorized access attempt

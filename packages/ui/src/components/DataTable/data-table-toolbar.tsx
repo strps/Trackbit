@@ -5,9 +5,10 @@ import { DataTableViewOptions } from "./data-table-view-options";
 interface DataTableToolbarProps<TData> {
     table: Table<TData>;
     searchColumn?: string;
+    children?: React.ReactNode;
 }
 
-export function DataTableToolbar<TData>({ table, searchColumn }: DataTableToolbarProps<TData>) {
+export function DataTableToolbar<TData>({ table, searchColumn, children }: DataTableToolbarProps<TData>) {
     const searchKey = searchColumn ?? "global";
 
     return (
@@ -21,6 +22,7 @@ export function DataTableToolbar<TData>({ table, searchColumn }: DataTableToolba
                         className="h-9 w-[150px] lg:w-[300px]"
                     />
                 )}
+                {children}
             </div>
             <DataTableViewOptions table={table} />
         </div>

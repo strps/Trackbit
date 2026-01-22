@@ -235,7 +235,7 @@ export default function UsersPage() {
                     ["all", "admin", "user", "guest"].map((tab) => (
                         <TabsContent key={tab} value={tab}>
                             <Card>
-                                <CardContent className="p-0">
+                                <CardContent className="py-0 px-2">
                                     <DataTable
                                         columns={columns}
                                         data={tab === "all" ? users : users.filter((user) => user.role === tab)}

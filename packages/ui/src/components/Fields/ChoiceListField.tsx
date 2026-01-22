@@ -60,15 +60,18 @@ export const ChoiceListField = <T = {}>({
                 />
             )}
         />
-    )
-}
+    );
+};
 
+/**
+ * Internal input component that renders the list of options.
+ */
 
 export const ChoiceListFieldInput = <T = {}>({
     id,
     field,
     fieldState,
-    "aria-invalid": ariaInvalid,
+    "aria-invalid": ariaValid,
     options,
     optionComponent: OptionComponent,
     className,
@@ -106,7 +109,7 @@ export const ChoiceListFieldInput = <T = {}>({
         <div
             role={role}
             aria-labelledby={id}
-            aria-invalid={!ariaInvalid}
+            aria-invalid={!ariaValid}
             aria-multiselectable={isMulti ? "true" : undefined}
             className={cn("", className)}
         >
