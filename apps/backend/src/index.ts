@@ -20,6 +20,12 @@ app.use('*', logger())
 
 // 2. Auth Route (Better-Auth)
 // Hono handles the raw request mapping easily
+app.use('/api/auth/*', cors({
+    origin: [process.env.FRONT_URL || 'http://localhost:5173', process.env.ADMIN_URL || 'http://localhost:5173'],
+    credentials: true,
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+}))
 app.all('/api/auth/*', async (c) => {
     return auth.handler(c.req.raw)
 })
