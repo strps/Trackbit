@@ -17,12 +17,6 @@ console.log('Starting Backend Server...')
 console.log('Allowed Origins:', process.env.ALLOWED_ORIGINS)
 // 1. Global Middleware
 app.use('*', logger())
-app.use('*', cors({
-    origin: process.env.ALLOWED_ORIGINS!.split(','),
-    credentials: true,
-    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowHeaders: ['Content-Type', 'Authorization'],
-}))
 
 // 2. Auth Route (Better-Auth)
 // Hono handles the raw request mapping easily
@@ -31,11 +25,27 @@ app.all('/api/auth/*', async (c) => {
 })
 
 // 3. Application Routes
+app.use('/api/*', cors({
+    origin: process.env.FRONT_URL || 'http://localhost:5173',
+    credentials: true,
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+}))
+
 app.route('/api/habits', habitRoutes)
 app.route('/api/tracker', trackerRoutes)
 app.route('/api/exercise-info', exerciseInfoRoutes)
 app.route('/api/config', configRoutes)
-app.route('/api/invitations', inviteRoutes)
+
+// Admin Routes
+app.use('/admin/*', cors({
+    origin: process.env.ADMIN_URL || 'http://localhost:5173',
+    credentials: true,
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+}))
+
+app.route('/admin/invitations', inviteRoutes)
 
 // 4. Health Check
 app.get('/health', (c) => c.json({ status: 'ok', time: new Date().toISOString() }))
