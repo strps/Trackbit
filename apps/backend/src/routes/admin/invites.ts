@@ -87,7 +87,7 @@ app.post('/', async (c) => {
                     to: invite.email!,
                     subject: 'Your Trackbit Invitation Code',
                     react: jsx(TesterInvitationEmail, {
-                        invitationUrl: `${process.env.APP_URL}/signup?invite=true&code=${invite.code}`,
+                        invitationUrl: `${process.env.FRONT_URL}/signup?invite=true&code=${invite.code}`,
                         name: invite.email!.split('@')[0]
                     }
                     ),
