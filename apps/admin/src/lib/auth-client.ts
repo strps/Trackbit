@@ -2,7 +2,7 @@ import { createAuthClient } from "better-auth/react"
 import { adminClient, inferAdditionalFields } from "better-auth/client/plugins";
 
 export const authClient = createAuthClient({
-    baseURL: `${import.meta.env.VITE_API_URL}/auth`, // Your Fastify Backend URL
+    baseURL: `${import.meta.env.VITE_API_URL}/api/auth`, // Your Fastify Backend URL
     plugins: [
         adminClient(),
         inferAdditionalFields({
