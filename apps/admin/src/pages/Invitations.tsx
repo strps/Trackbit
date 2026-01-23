@@ -69,7 +69,7 @@ function useInvites() {
     const { data: invites = [], isLoading } = useQuery<Invite[]>({
         queryKey: ["invites"],
         queryFn: async () => {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/invitations`, {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/admin/invitations`, {
                 credentials: "include",
             });
             if (!res.ok) {
@@ -81,7 +81,7 @@ function useInvites() {
 
     const mutation = useMutation({
         mutationFn: async (formData: FormData) => {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/invitations`, {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/admin/invitations`, {
                 method: "POST",
                 body: formData,
                 credentials: "include",
@@ -98,7 +98,7 @@ function useInvites() {
 
     const deleteMutation = useMutation({
         mutationFn: async (id: number) => {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/invitations/${id}`, {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/admin/invitations/${id}`, {
                 method: "DELETE",
                 credentials: "include",
             });
@@ -112,7 +112,7 @@ function useInvites() {
 
     const deleteBatchMutation = useMutation({
         mutationFn: async (ids: number[]) => {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/invitations`, {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/admin/invitations`, {
                 method: "DELETE",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ ids }),
