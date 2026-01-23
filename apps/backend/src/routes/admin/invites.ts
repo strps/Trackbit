@@ -86,7 +86,11 @@ app.post('/', async (c) => {
                 const emailResult = await sendEmail({
                     to: invite.email!,
                     subject: 'Your Trackbit Invitation Code',
-                    react: jsx(TesterInvitationEmail, { invitationsCode: invite.code, name: invite.email!.split('@')[0] }),
+                    react: jsx(TesterInvitationEmail, {
+                        invitationUrl: `${process.env.APP_URL}/signup?invite=true&code=${invite.code}`,
+                        name: invite.email!.split('@')[0]
+                    }
+                    ),
                 });
                 if (!emailResult.success) {
                     console.error(`Failed to send email to ${invite.email}: ${emailResult.error}`);
