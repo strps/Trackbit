@@ -71,7 +71,7 @@ app.get('/history', async (c) => {
                 },
             },
         },
-        orderBy: asc(habits.createdAt),
+        orderBy: [asc(habits.order), asc(habits.createdAt)],
     });
 
     return c.json(habitsWithLogs.length > 0 ? habitsWithLogs : []);

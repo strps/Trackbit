@@ -20,7 +20,9 @@ app.get('/ui', async (c) => {
         isBetaUser: true,
 
         primaryNav: [
-            { title: "Dashboard", href: "/dashboard", icon: "LayoutDashboard", active: true },
+            { title: "Tracker", href: "/tracker", icon: "Flame", active: true },
+            { title: "Dashboard", href: "/dashboard", icon: "LayoutDashboard" },
+            { title: "Sessions", href: "/sessions", icon: "Dumbbell" },
             { title: "Habits", href: "/habits", icon: "ListTodo" },
             { title: "Library", href: "/exercises", icon: "Dumbbell" },
             { title: "Analytics", href: "/analytics", icon: "BarChart3" },

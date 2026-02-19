@@ -1,14 +1,15 @@
-import { CalendarSearch, NotebookPen } from "lucide-react";
+import { CalendarSearch, NotebookPen, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SimpleHabitPanel } from "./SimpleHabitPanel";
-import { ExerciseSessionPanel } from "./StructuredHabitPanel";
 import { useTracker } from "@/hooks/use-tracker";
 import { formatDate } from "./utils";
 import { format } from "date-fns";
+import { useNavigate } from "react-router-dom";
 
 export function DayLog() {
 
     const { selectedDay, setDay, currentHabit } = useTracker()
+    const navigate = useNavigate()
 
     return (
 
@@ -43,7 +44,15 @@ export function DayLog() {
 
                 {
                     currentHabit.type === 'complex' ?
-                        <ExerciseSessionPanel />
+                        <div className="p-8 text-center space-y-4">
+                            <p className="text-muted-foreground">
+                                Exercise session logging has moved to its own dedicated page.
+                            </p>
+                            <Button onClick={() => navigate('/sessions')} className="gap-2">
+                                <ExternalLink className="w-4 h-4" />
+                                Go to Exercise Sessions
+                            </Button>
+                        </div>
                         :
                         <SimpleHabitPanel />
 

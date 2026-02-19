@@ -15,6 +15,7 @@ export interface Habit {
     icon: string;
     weeklyGoal: number;
     dailyGoal: number;
+    order: number;
     createdAt: string | null;
 }
 

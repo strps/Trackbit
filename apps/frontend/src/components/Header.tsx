@@ -5,7 +5,7 @@ import { NavLink } from "react-router-dom";
 import {
   Flame, Menu, X, Sun, Moon,
   User, Settings, LogOut,
-  LayoutDashboard, ListTodo, BarChart3, CreditCard
+  LayoutDashboard, ListTodo, BarChart3, Dumbbell, CreditCard
 } from 'lucide-react';
 
 interface NavItem {
@@ -15,10 +15,11 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { title: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
-  { title: "Habits", to: "/habits", icon: ListTodo },
+  { title: "Tracker", to: "/tracker", icon: Flame },
+  { title: "Sessions", to: "/sessions", icon: Dumbbell },
   { title: "Analytics", to: "/analytics", icon: BarChart3 },
-  { title: "Exercises", to: "/exercises", icon: BarChart3 },
+  { title: "Habits", to: "/habits", icon: ListTodo },
+  { title: "Exercises", to: "/exercises", icon: Dumbbell },
 ];
 
 export const AppHeader: React.FC = () => {

@@ -163,9 +163,12 @@ export function useTracker() {
 
     // 0. Log Simple Habit
     const logSimple = useMutation({
-        mutationFn: async (payload: { rating: number }) => {
+        mutationFn: async (payload: { rating: number; habitId?: number; day?: string }) => {
 
-            const date = DateTime.fromISO(selectedDay).toUTC().toISODate()
+            const effectiveDay = payload.day || selectedDay;
+            const effectiveHabitId = payload.habitId || selectedHabitId;
+
+            const date = DateTime.fromISO(effectiveDay).toUTC().toISODate()
 
             const timeStamp = DateTime.fromISO(date!)
                 .setZone('local')                    // Ensures local zone (browser's time zone)
@@ -179,7 +182,7 @@ export function useTracker() {
             const res = await fetch(`${API_URL}/tracker/check`, {
                 method: 'POST',
                 body: JSON.stringify({
-                    habitId: Number(selectedHabitId),
+                    habitId: Number(effectiveHabitId),
                     date: date,
                     rating: Number(payload.rating),
                     timeStamp
@@ -192,13 +195,17 @@ export function useTracker() {
         onMutate: async (newItem) => {
             await queryClient.cancelQueries({ queryKey: ['habit-logs'] });
             const previousData = queryClient.getQueryData(['habit-logs']);
-            const date = DateTime.fromISO(selectedDay).toUTC().toISODate()
+
+            const effectiveDay = newItem.day || selectedDay;
+            const effectiveHabitId = newItem.habitId || selectedHabitId;
+
+            const date = DateTime.fromISO(effectiveDay).toUTC().toISODate()
             updateCache((newData) => {
-                const habit = newData[selectedHabitId!];
+                const habit = newData[effectiveHabitId!];
                 if (habit) {
                     if (!habit.dayLogs[date!]) {
                         habit.dayLogs[date!] = {
-                            habitId: selectedHabitId!,
+                            habitId: effectiveHabitId!,
                             date: date!,
                             exerciseSessions: [],
                         };

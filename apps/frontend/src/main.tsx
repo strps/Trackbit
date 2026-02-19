@@ -4,6 +4,8 @@ import HabitConfig from './pages/habits-configuration/HabitsConfig'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import AppLayout from './layouts/AppLayout';
 import HabitTracker from './pages/tracker/HabitTracker';
+import TrackerHome from './pages/tracker/TrackerHome';
+import ExerciseSessionsPage from './pages/sessions/ExerciseSessionsPage';
 import AccountSettings from './pages/auth/AccountSettings';
 import { ThemeProvider } from './providers/theme-provider';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -36,7 +38,9 @@ const router = createBrowserRouter([
     errorElement: <ErrorPage />,
     children: [
       { path: "habits", element: <HabitConfig /> },
+      { path: "tracker", element: <TrackerHome /> },
       { path: "dashboard", element: <HabitTracker /> },
+      { path: "sessions", element: <ExerciseSessionsPage /> },
       { path: "account-settings", element: <AccountSettings /> },
       { path: "exercises", element: <ExerciseLibrary /> },
       { path: "analytics", element: <Analytics /> },

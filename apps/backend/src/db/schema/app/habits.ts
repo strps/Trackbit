@@ -30,6 +30,7 @@ export const habits = pgTable('habits', {
 
   weeklyGoal: integer('weekly_goal').notNull().default(5).notNull(),
   dailyGoal: integer('daily_goal').notNull().default(1).notNull(),
+  order: integer('sort_order').notNull().default(0),
 
   createdAt: timestamp('created_at').defaultNow(),
 });

@@ -25,7 +25,7 @@ app.get('/', async (c) => {
     const result = await db.select()
         .from(habits)
         .where(eq(habits.userId, user.id))
-        .orderBy(desc(habits.createdAt))
+        .orderBy(habits.order, desc(habits.createdAt))
 
     return c.json(result)
 })
@@ -46,6 +46,7 @@ app.post(
             color: z.tuple([z.number(), z.number(), z.number(), z.number()])
         })).optional(),
         icon: z.string().default('star'),
+        order: z.number().int().min(0).default(0),
     })),
     async (c) => {
         const user = c.get('user')
@@ -75,6 +76,7 @@ app.put(
         })).optional(),
         icon: z.string().optional(),
         type: z.enum(['simple', 'complex', 'negative']).optional(),
+        order: z.number().int().min(0).optional(),
     }).strict()),
     async (c) => {
 

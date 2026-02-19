@@ -1,13 +1,12 @@
 import { useMemo } from 'react';
 import {
-  Flame, Trophy, Activity, Dumbbell,
-  Book as MenuBook, Code, Star, Droplet
+  Flame, Activity, Dumbbell,
+  Book as MenuBook, Code, Star, Droplet, Trophy
 } from 'lucide-react';
 import { useTracker } from '@/hooks/use-tracker';
-import { formatDate, getCalendarDates } from './utils';
-import { Stats } from './Stats';
+import { formatDate } from './utils';
 import { DayLog } from './DetailsPanel';
-import { mapValueToColor, mapValueToCSSrgba } from '@/lib/colorUtils';
+import { mapValueToColor } from '@/lib/colorUtils';
 import { Button } from '@/components/ui/button';
 import { ColorStop } from "@trackbit/types";
 import { Heatmap } from '@/components/Heatmap';
@@ -78,8 +77,6 @@ const HabitTracker = () => {
             })}
           </div>
         </div>
-
-        <Stats />
 
         <Heatmap
           getRating={getRating}
