@@ -22,6 +22,7 @@ import AuthLayout from './layouts/AuthLayout';
 import VerifyEmail from './pages/auth/VerifyEmail';
 import { Analytics } from './pages/Analitytics';
 import { Exp } from './pages/exp';
+import { Toaster } from './components/ui/sonner';
 
 const router = createBrowserRouter([
   {
@@ -80,6 +81,7 @@ createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <RouterProvider router={router} />
+        <Toaster />
       </ThemeProvider>
     </QueryClientProvider>
   </StrictMode>,

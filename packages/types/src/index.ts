@@ -10,6 +10,7 @@ export interface Habit {
     name: string;
     description: string | null;
     type: 'count' | 'complex' | 'negative' | 'timed' | 'check';
+    isAntiHabit: boolean;
     colorTheme: 'green' | 'blue' | 'orange' | 'purple' | 'rose' | 'fire' | 'custom';
     colorStops: ColorStop[];
     icon: string;

@@ -45,6 +45,23 @@ const updateHabit = async (habit: Habit) => {
   return res.json();
 };
 
+interface ReorderItem {
+  id: number;
+  order: number;
+  isAntiHabit: boolean;
+}
+
+const reorderHabits = async (items: ReorderItem[]) => {
+  const res = await fetch(`${API_URL}/reorder`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ items }),
+  });
+  if (!res.ok) throw new Error('Failed to reorder habits');
+  return res.json();
+};
+
 // --- Custom Hook ---
 
 export function useHabits() {
@@ -135,12 +152,41 @@ export function useHabits() {
     },
   });
 
+  // Reorder with Optimistic Update
+  const reorderMutation = useMutation({
+    mutationFn: reorderHabits,
+    onMutate: async (items) => {
+      await queryClient.cancelQueries({ queryKey: ['habits'] });
+      const previousHabits = queryClient.getQueryData<Habit[]>(['habits']);
+
+      // Apply optimistic reorder
+      queryClient.setQueryData(['habits'], (old: Habit[] = []) => {
+        const itemMap = new Map(items.map(i => [i.id, i]));
+        return old.map(h => {
+          const update = itemMap.get(h.id);
+          return update ? { ...h, order: update.order, isAntiHabit: update.isAntiHabit } : h;
+        });
+      });
+
+      return { previousHabits };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousHabits) {
+        queryClient.setQueryData(['habits'], context.previousHabits);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['habits'] });
+    },
+  });
+
   return {
     habits: habitsQuery.data ?? [],
     isLoading: habitsQuery.isLoading,
     isError: habitsQuery.isError,
     createHabit: createMutation.mutate,
     deleteHabit: deleteMutation.mutate,
-    updateHabit: updateMutation.mutate
+    updateHabit: updateMutation.mutate,
+    reorderHabits: reorderMutation.mutate,
   };
 }

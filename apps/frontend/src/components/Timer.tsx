@@ -142,6 +142,7 @@ interface UncontrolledTimerProps {
     initialMilliseconds?: number;
     isEditable?: boolean;
     onChange?: (ms: number) => void;
+    onStart?: () => void;
     onStop?: (finalMs: number) => void;
     showControls?: boolean;
 }
@@ -150,12 +151,18 @@ export const Timer = ({
     initialMilliseconds = 0,
     isEditable = false,
     onChange,
+    onStart,
     onStop,
     showControls = true,
 }: UncontrolledTimerProps) => {
     const [milliseconds, setMilliseconds] = useState(initialMilliseconds);
     const [isRunning, setIsRunning] = useState(false);
     const intervalRef = useRef<any | null>(null);
+    const onStopRef = useRef(onStop);
+    const onStartRef = useRef(onStart);
+
+    useEffect(() => { onStopRef.current = onStop; }, [onStop]);
+    useEffect(() => { onStartRef.current = onStart; }, [onStart]);
 
     useEffect(() => {
         setMilliseconds(initialMilliseconds);
@@ -174,13 +181,25 @@ export const Timer = ({
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
                 intervalRef.current = null;
-                onStop?.(milliseconds);
             }
         }
         return () => {
             if (intervalRef.current) clearInterval(intervalRef.current);
         };
-    }, [isRunning, milliseconds, onChange, onStop]);
+    }, [isRunning, onChange]);
+
+    const handleToggle = () => {
+        setIsRunning((prev) => {
+            if (prev) {
+                // Stopping — fire onStop with current ms
+                // Use a microtask so state has settled
+                setTimeout(() => onStopRef.current?.(milliseconds), 0);
+            } else {
+                onStartRef.current?.();
+            }
+            return !prev;
+        });
+    };
 
     return (
         <TimerDisplay
@@ -189,7 +208,7 @@ export const Timer = ({
             isEditable={isEditable}
             onMillisecondsChange={setMilliseconds}
             showControls={showControls}
-            onToggle={() => setIsRunning((prev) => !prev)}
+            onToggle={handleToggle}
         />
     );
 };

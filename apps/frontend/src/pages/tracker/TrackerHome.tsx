@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
     Activity, Dumbbell, Book as MenuBook, Code,
     Star, Droplet, Trophy, Flame, Minus, Plus, ArrowRight,
-    ChevronLeft, ChevronRight, CalendarSearch, Check
+    ChevronLeft, ChevronRight, CalendarSearch, Check, ShieldAlert
 } from 'lucide-react';
 import { useTracker } from '@/hooks/use-tracker';
 import { mapValueToColor, mapValueToColorOrdered } from '@/lib/colorUtils';
@@ -34,7 +34,23 @@ const getColorAtOne = (colorStops: ColorStop[]) => {
 // -------------------------------------------------------------------
 // Tiered progress badge: Bronze → Silver → Gold
 // -------------------------------------------------------------------
-const ProgressBadge = ({ progress }: { progress: number }) => {
+const ProgressBadge = ({ progress, isAntiHabit }: { progress: number; isAntiHabit?: boolean }) => {
+    // Anti-habit: show "Avoided" when no progress (success state)
+    if (isAntiHabit) {
+        if (progress <= 0) {
+            return (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                    <ShieldAlert className="w-3 h-3 mr-0.5" /> Avoided
+                </span>
+            );
+        }
+        return (
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                <ShieldAlert className="w-3 h-3 mr-0.5" /> Slipped
+            </span>
+        );
+    }
+
     if (progress <= 0) return null;
 
     if (progress >= 1) {
@@ -63,19 +79,34 @@ const ProgressBadge = ({ progress }: { progress: number }) => {
 // -------------------------------------------------------------------
 // Streak badge
 // -------------------------------------------------------------------
-const computeStreak = (dayLogs: Record<string, { rating?: number; exerciseSessions?: unknown[] }>, fromDate: string, type: string): number => {
+const computeStreak = (dayLogs: Record<string, { rating?: number; exerciseSessions?: unknown[] }>, fromDate: string, type: string, isAntiHabit?: boolean): number => {
     let streak = 0;
     let cursor = new Date(fromDate + 'T00:00:00.000');
+    const maxDays = 365; // safety cap
 
-    while (true) {
+    while (streak < maxDays) {
         const dateStr = format(cursor, 'yyyy-MM-dd');
         const log = dayLogs[dateStr];
 
-        const isCompleted = type === 'complex'
-            ? (log?.exerciseSessions as unknown[] | undefined)?.length! > 0
-            : (log?.rating ?? 0) > 0;
+        if (isAntiHabit) {
+            // Anti-habit: streak counts days with no data or 0
+            // But only count days that are within tracking range (log exists with 0, or day is between first and last log)
+            const hasAnyLogs = Object.keys(dayLogs).length > 0;
+            if (!hasAnyLogs) break;
 
-        if (!isCompleted) break;
+            // Stop counting if we've gone past the earliest log date
+            const earliestDate = Object.keys(dayLogs).sort()[0];
+            if (dateStr < earliestDate) break;
+
+            const wasAvoided = !log || (log.rating ?? 0) === 0;
+            if (!wasAvoided) break;
+        } else {
+            const isCompleted = type === 'complex'
+                ? (log?.exerciseSessions as unknown[] | undefined)?.length! > 0
+                : (log?.rating ?? 0) > 0;
+            if (!isCompleted) break;
+        }
+
         streak++;
         cursor = subDays(cursor, 1);
     }
@@ -110,6 +141,9 @@ const TrackerHome = () => {
         });
     }, [habitsWithLogs]);
 
+    const regularHabits = useMemo(() => sortedHabits.filter(h => !h.isAntiHabit), [sortedHabits]);
+    const antiHabits = useMemo(() => sortedHabits.filter(h => h.isAntiHabit), [sortedHabits]);
+
     if (isLoading) {
         return <div className="p-8 text-center text-muted-foreground">Loading habits...</div>;
     }
@@ -127,6 +161,78 @@ const TrackerHome = () => {
 
     const goToSessions = (habitId: number) => {
         navigate(`/sessions?habitId=${habitId}&date=${selectedDay}`);
+    };
+
+    const renderHabitRow = (habit: typeof sortedHabits[number]) => {
+        const IconComponent = getHabitIcon(habit.icon);
+        const accentColor = getColorAtOne(habit.colorStops);
+        const streak = computeStreak(habit.dayLogs ?? {}, selectedDay, habit.type, habit.isAntiHabit);
+
+        if (habit.type === 'complex') {
+            const sessions = habit.dayLogs?.[selectedDay]?.exerciseSessions ?? [];
+            const sessionsCount = sessions.length;
+            return (
+                <ComplexHabitRow
+                    key={habit.id}
+                    name={habit.name}
+                    icon={<IconComponent className="w-5 h-5 text-white" />}
+                    accentColor={accentColor}
+                    sessionsCount={sessionsCount}
+                    sessions={sessions}
+                    streak={streak}
+                    onNavigate={() => goToSessions(habit.id)}
+                />
+            );
+        }
+
+        if (habit.type === 'timed') {
+            return (
+                <TimedHabitRow
+                    key={habit.id}
+                    name={habit.name}
+                    icon={<IconComponent className="w-5 h-5 text-white" />}
+                    accentColor={accentColor}
+                    dailyGoal={habit.dailyGoal}
+                    value={habit.dayLogs?.[selectedDay]?.rating || 0}
+                    streak={streak}
+                    isAntiHabit={habit.isAntiHabit}
+                    onLog={(ms) => logSimple({ rating: ms, habitId: habit.id, day: selectedDay })}
+                />
+            );
+        }
+
+        if (habit.type === 'check') {
+            const checked = (habit.dayLogs?.[selectedDay]?.rating || 0) >= 1;
+            return (
+                <CheckHabitRow
+                    key={habit.id}
+                    name={habit.name}
+                    icon={<IconComponent className="w-5 h-5 text-white" />}
+                    accentColor={accentColor}
+                    checked={checked}
+                    streak={streak}
+                    isAntiHabit={habit.isAntiHabit}
+                    onToggle={() => logSimple({ rating: checked ? 0 : 1, habitId: habit.id, day: selectedDay })}
+                />
+            );
+        }
+
+        // Count habit → inline counter
+        return (
+            <SimpleHabitRow
+                key={habit.id}
+                habitId={habit.id}
+                name={habit.name}
+                icon={<IconComponent className="w-5 h-5 text-white" />}
+                accentColor={accentColor}
+                colorStops={habit.colorStops}
+                dailyGoal={habit.dailyGoal}
+                value={habit.dayLogs?.[selectedDay]?.rating || 0}
+                streak={streak}
+                isAntiHabit={habit.isAntiHabit}
+                onLog={(rating) => logSimple({ rating, habitId: habit.id, day: selectedDay })}
+            />
+        );
     };
 
     return (
@@ -172,77 +278,23 @@ const TrackerHome = () => {
                     </div>
                 </div>
 
+                {/* Habits */}
                 <div className="grid grid-cols-1 gap-3">
-                    {sortedHabits.map((habit) => {
-                        const IconComponent = getHabitIcon(habit.icon);
-                        const accentColor = getColorAtOne(habit.colorStops);
-
-                        const streak = computeStreak(habit.dayLogs ?? {}, selectedDay, habit.type);
-
-                        if (habit.type === 'complex') {
-                            const sessions = habit.dayLogs?.[selectedDay]?.exerciseSessions ?? [];
-                            const sessionsCount = sessions.length;
-                            return (
-                                <ComplexHabitRow
-                                    key={habit.id}
-                                    name={habit.name}
-                                    icon={<IconComponent className="w-5 h-5 text-white" />}
-                                    accentColor={accentColor}
-                                    sessionsCount={sessionsCount}
-                                    sessions={sessions}
-                                    streak={streak}
-                                    onNavigate={() => goToSessions(habit.id)}
-                                />
-                            );
-                        }
-
-                        if (habit.type === 'timed') {
-                            return (
-                                <TimedHabitRow
-                                    key={habit.id}
-                                    name={habit.name}
-                                    icon={<IconComponent className="w-5 h-5 text-white" />}
-                                    accentColor={accentColor}
-                                    dailyGoal={habit.dailyGoal}
-                                    value={habit.dayLogs?.[selectedDay]?.rating || 0}
-                                    streak={streak}
-                                    onLog={(ms) => logSimple({ rating: ms, habitId: habit.id, day: selectedDay })}
-                                />
-                            );
-                        }
-
-                        if (habit.type === 'check') {
-                            const checked = (habit.dayLogs?.[selectedDay]?.rating || 0) >= 1;
-                            return (
-                                <CheckHabitRow
-                                    key={habit.id}
-                                    name={habit.name}
-                                    icon={<IconComponent className="w-5 h-5 text-white" />}
-                                    accentColor={accentColor}
-                                    checked={checked}
-                                    streak={streak}
-                                    onToggle={() => logSimple({ rating: checked ? 0 : 1, habitId: habit.id, day: selectedDay })}
-                                />
-                            );
-                        }
-
-                        // Simple / negative habit → inline counter
-                        return (
-                            <SimpleHabitRow
-                                key={habit.id}
-                                habitId={habit.id}
-                                name={habit.name}
-                                icon={<IconComponent className="w-5 h-5 text-white" />}
-                                accentColor={accentColor}
-                                colorStops={habit.colorStops}
-                                dailyGoal={habit.dailyGoal}
-                                value={habit.dayLogs?.[selectedDay]?.rating || 0}
-                                streak={streak}
-                                onLog={(rating) => logSimple({ rating, habitId: habit.id, day: selectedDay })}
-                            />
-                        );
-                    })}
+                    {regularHabits.map((habit) => renderHabitRow(habit))}
                 </div>
+
+                {/* Anti-Habits */}
+                {antiHabits.length > 0 && (
+                    <div className="space-y-3">
+                        <h2 className="text-lg font-semibold text-destructive flex items-center gap-2">
+                            <ShieldAlert className="w-5 h-5" />
+                            Anti-Habits
+                        </h2>
+                        <div className="grid grid-cols-1 gap-3">
+                            {antiHabits.map((habit) => renderHabitRow(habit))}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -337,6 +389,7 @@ interface CheckHabitRowProps {
     accentColor: string;
     checked: boolean;
     streak: number;
+    isAntiHabit?: boolean;
     onToggle: () => void;
 }
 
@@ -346,21 +399,28 @@ const CheckHabitRow = ({
     accentColor,
     checked,
     streak,
+    isAntiHabit,
     onToggle,
 }: CheckHabitRowProps) => {
+    // Anti-habit: inactive (grayed) when NOT checked (success = avoided)
+    const inactive = isAntiHabit ? !checked : !checked;
+    const subtitle = isAntiHabit
+        ? (checked ? 'Slipped' : 'Avoided')
+        : (checked ? 'Completed' : 'Not yet');
+
     return (
         <HabitRow
             accentColor={accentColor}
             icon={icon}
-            inactive={!checked}
+            inactive={inactive}
             name={name}
             badges={
                 <>
-                    <ProgressBadge progress={checked ? 1 : 0} />
+                    <ProgressBadge progress={checked ? 1 : 0} isAntiHabit={isAntiHabit} />
                     <StreakBadge streak={streak} />
                 </>
             }
-            subtitle={checked ? 'Completed' : 'Not yet'}
+            subtitle={subtitle}
             right={
                 <button
                     onClick={onToggle}
@@ -400,6 +460,7 @@ interface TimedHabitRowProps {
     dailyGoal: number;
     value: number; // stored as milliseconds
     streak: number;
+    isAntiHabit?: boolean;
     onLog: (ms: number) => void;
 }
 
@@ -416,30 +477,39 @@ const TimedHabitRow = ({
     dailyGoal,
     value,
     streak,
+    isAntiHabit,
     onLog,
 }: TimedHabitRowProps) => {
+    const [isTimerRunning, setIsTimerRunning] = useState(false);
+
     // dailyGoal is in minutes for timed habits, value is in ms
     const goalMs = (dailyGoal || 1) * 60000;
     const timedProgress = Math.min(value / goalMs, 1);
+    // Active as soon as the timer is running OR there's already logged time
+    const inactive = isAntiHabit ? (value === 0 && !isTimerRunning) : (value === 0 && !isTimerRunning);
 
     return (
         <HabitRow
             accentColor={accentColor}
             icon={icon}
-            inactive={value === 0}
+            inactive={inactive}
             name={name}
             badges={
                 <>
-                    <ProgressBadge progress={timedProgress} />
+                    <ProgressBadge progress={timedProgress} isAntiHabit={isAntiHabit} />
                     <StreakBadge streak={streak} />
                 </>
             }
-            subtitle={`${formatMs(value)} / ${dailyGoal || 1}m`}
+            subtitle={isAntiHabit && value === 0 && !isTimerRunning ? 'Avoided' : `${formatMs(value)} / ${dailyGoal || 1}m`}
             right={
                 <Timer
                     initialMilliseconds={value}
                     showControls
-                    onStop={(finalMs) => onLog(finalMs)}
+                    onStart={() => setIsTimerRunning(true)}
+                    onStop={(finalMs) => {
+                        setIsTimerRunning(false);
+                        onLog(finalMs);
+                    }}
                 />
             }
         />
@@ -458,6 +528,7 @@ interface SimpleHabitRowProps {
     dailyGoal: number;
     value: number;
     streak: number;
+    isAntiHabit?: boolean;
     onLog: (rating: number) => void;
     className?: string;
 }
@@ -470,6 +541,7 @@ const SimpleHabitRow = ({
     dailyGoal,
     value,
     streak,
+    isAntiHabit,
     onLog,
     className,
 }: SimpleHabitRowProps) => {
@@ -500,11 +572,14 @@ const SimpleHabitRow = ({
             name={name}
             badges={
                 <>
-                    <ProgressBadge progress={progress} />
+                    <ProgressBadge progress={progress} isAntiHabit={isAntiHabit} />
                     <StreakBadge streak={streak} />
                 </>
             }
-            subtitle={`${value} / ${goal} completed`}
+            subtitle={isAntiHabit
+                ? (value === 0 ? 'Avoided' : `${value} / ${goal} slips`)
+                : `${value} / ${goal} completed`
+            }
             right={
                 <div className="flex items-center gap-2 shrink-0">
                     <Button

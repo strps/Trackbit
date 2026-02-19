@@ -6,7 +6,7 @@ import { HabitConfigForm } from './HabitConfigForm';
 import { Habit } from "@trackbit/types";
 
 const HabitConfig = () => {
-    const { habits, isLoading, createHabit, updateHabit, deleteHabit } = useHabits();
+    const { habits, isLoading, createHabit, updateHabit, deleteHabit, reorderHabits } = useHabits();
 
     const [isEditing, setIsEditing] = useState(false);
     const [activeHabitId, setActiveHabitId] = useState<number | null | undefined>(undefined);
@@ -58,6 +58,7 @@ const HabitConfig = () => {
                     editHabit={editHabit}
                     handleDelete={handleDelete}
                     startNewHabit={startNewHabit}
+                    onReorder={reorderHabits}
                 />
 
                 <HabitConfigForm

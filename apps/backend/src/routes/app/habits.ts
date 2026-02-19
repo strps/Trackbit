@@ -37,6 +37,7 @@ app.post(
         name: z.string().min(1),
         description: z.string().optional(),
         type: z.enum(['count', 'complex', 'negative', 'timed', 'check']).default('count'),
+        isAntiHabit: z.boolean().default(false),
         weeklyGoal: z.number().int().min(1).max(7).default(5),
         dailyGoal: z.number().default(1),
         colorTheme: z.enum(['green', 'blue', 'orange', 'purple', 'rose', 'fire', 'custom']).optional(),
@@ -76,6 +77,7 @@ app.put(
         })).optional(),
         icon: z.string().optional(),
         type: z.enum(['count', 'complex', 'negative', 'timed', 'check']).optional(),
+        isAntiHabit: z.boolean().optional(),
         order: z.number().int().min(0).optional(),
     }).strict()),
     async (c) => {
@@ -98,6 +100,33 @@ app.put(
         }
 
         return c.json(result[0])
+    }
+)
+
+// PATCH /api/habits/reorder — Batch update order + isAntiHabit
+app.patch(
+    '/reorder',
+    zValidator('json', z.object({
+        items: z.array(z.object({
+            id: z.number(),
+            order: z.number().int().min(0),
+            isAntiHabit: z.boolean(),
+        }))
+    })),
+    async (c) => {
+        const user = c.get('user')
+        const { items } = c.req.valid('json')
+
+        const results = await Promise.all(
+            items.map(item =>
+                db.update(habits)
+                    .set({ order: item.order, isAntiHabit: item.isAntiHabit })
+                    .where(and(eq(habits.id, item.id), eq(habits.userId, user.id)))
+                    .returning()
+            )
+        )
+
+        return c.json({ success: true, updated: results.flat() })
     }
 )
 

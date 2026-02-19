@@ -1,7 +1,8 @@
 import { GRADIENT_PRESETS, ColorThemeField } from "@/pages/habits-configuration/ColorThemeField";
 import { IconSelector } from "./IconField";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Layout, List, Save, XCircle } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { CheckCircle, Layout, List, Save, ShieldAlert, XCircle } from "lucide-react";
 import { z } from "zod";
 import { BigButton } from "@/components/BigButton";
 import { useForm } from "react-hook-form";
@@ -40,12 +41,6 @@ const TRACKING_TYPES = [
         description: 'Log sets, reps, weights, time, or distance (e.g., Gym).',
         icon: List
     },
-    {
-        id: 'negative',
-        label: 'Negative Habit',
-        description: 'Track bad habits to reduce or avoid (e.g., Smoking, Junk Food).',
-        icon: XCircle
-    }
 ];
 
 const formSchema = z.object({
@@ -59,6 +54,7 @@ const formSchema = z.object({
     description: z.string().optional().nullable(),
     type: z.enum(["count", "complex", "negative", "timed", "check"]).optional(),
     icon: z.string().optional(),
+    isAntiHabit: z.boolean(),
     //color theme enum
     colorTheme: z.enum(["green", "blue", "orange", "purple", "rose", "fire", "custom"]),
     colorStops: z.array(
@@ -69,16 +65,17 @@ const formSchema = z.object({
     ),
     dailyGoal: z.number().min(0).max(100),
     weeklyGoal: z.number().min(1).max(7),
-    order: z.number().int().min(0).default(0),
+    order: z.number().int().min(0),
 });
 
 const defaultValues = {
     name: "",
     description: undefined as string | undefined,
-    type: "simple" as const,
+    type: "count" as const,
     colorTheme: "green",
     colorStops: GRADIENT_PRESETS.custom.stops,
     icon: "star",
+    isAntiHabit: false,
     dailyGoal: 5,
     weeklyGoal: 7,
     order: 0,
@@ -218,6 +215,28 @@ export const HabitConfigForm = ({
                             )}
                         />
                     </div>
+
+                    {/* Anti-Habit Toggle - only for count, check, timed */}
+                    {(['count', 'check', 'timed'] as const).includes(form.watch('type') as any) && (
+                        <Field
+                            name="isAntiHabit"
+                            label=""
+                            form={form}
+                            fieldInput={({ field }) => (
+                                <label className="flex items-center gap-3 cursor-pointer p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors">
+                                    <ShieldAlert className={`w-5 h-5 ${field.value ? 'text-destructive' : 'text-muted-foreground'}`} />
+                                    <div className="flex-1">
+                                        <div className="font-bold text-sm">Anti-Habit</div>
+                                        <div className="text-xs text-muted-foreground">Mark as a bad habit you want to reduce or avoid (e.g., Smoking, Junk Food).</div>
+                                    </div>
+                                    <Switch
+                                        checked={!!field.value}
+                                        onCheckedChange={field.onChange}
+                                    />
+                                </label>
+                            )}
+                        />
+                    )}
 
                     <div className="h-px bg-slate-100 dark:bg-slate-700" />
 
