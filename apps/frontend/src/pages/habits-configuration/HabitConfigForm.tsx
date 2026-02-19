@@ -17,9 +17,21 @@ import { Field } from "@/components/Fields/FieldBase";
 
 const TRACKING_TYPES = [
     {
-        id: 'simple',
-        label: 'Simple Completion',
-        description: 'Track daily checks or counts (e.g., Read 30 mins).',
+        id: 'count',
+        label: 'Count',
+        description: 'Track daily counts (e.g., glasses of water, pages read).',
+        icon: CheckCircle
+    },
+    {
+        id: 'check',
+        label: 'Check',
+        description: 'Simple yes/no daily completion (e.g., meditated, journaled).',
+        icon: CheckCircle
+    },
+    {
+        id: 'timed',
+        label: 'Timed',
+        description: 'Track duration or time spent (e.g., 30 min reading).',
         icon: CheckCircle
     },
     {
@@ -45,7 +57,7 @@ const formSchema = z.object({
 
 
     description: z.string().optional().nullable(),
-    type: z.enum(["simple", "complex", "negative"]).optional(),
+    type: z.enum(["count", "complex", "negative", "timed", "check"]).optional(),
     icon: z.string().optional(),
     //color theme enum
     colorTheme: z.enum(["green", "blue", "orange", "purple", "rose", "fire", "custom"]),

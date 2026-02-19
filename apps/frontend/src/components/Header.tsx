@@ -16,10 +16,12 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { title: "Tracker", to: "/tracker", icon: Flame },
-  { title: "Sessions", to: "/sessions", icon: Dumbbell },
-  { title: "Analytics", to: "/analytics", icon: BarChart3 },
-  { title: "Habits", to: "/habits", icon: ListTodo },
-  { title: "Exercises", to: "/exercises", icon: Dumbbell },
+  { title: "Stats", to: "/stats", icon: BarChart3 },
+];
+
+const configNavItems: NavItem[] = [
+  { title: "Habits", to: "/config/habits", icon: ListTodo },
+  { title: "Exercises", to: "/config/exercises", icon: Dumbbell },
 ];
 
 export const AppHeader: React.FC = () => {
@@ -88,7 +90,7 @@ export const AppHeader: React.FC = () => {
 
 export default AppHeader;
 
-import { DropdownMenu, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuContent } from "./ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuContent, DropdownMenuLabel } from "./ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "@/providers/theme-provider";
@@ -150,22 +152,17 @@ const UserNav = () => {
             </p>
           </div>
         </div>
+
+
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem onClick={() => navigate('/profile')}>
+        <DropdownMenuLabel className="text-muted-foreground">My Account</DropdownMenuLabel>
+
+        <DropdownMenuItem onClick={() => navigate('/account-settings')}>
           <User className="mr-2 h-4 w-4" />
           <span>Profile</span>
         </DropdownMenuItem>
 
-        <DropdownMenuItem onClick={() => navigate('/billing')}>
-          <CreditCard className="mr-2 h-4 w-4" />
-          <span>Billing</span>
-        </DropdownMenuItem>
-
-        <DropdownMenuItem onClick={() => navigate('/account-settings')}>
-          <Settings className="mr-2 h-4 w-4" />
-          <span>Settings</span>
-        </DropdownMenuItem>
 
         <DropdownMenuItem onClick={onThemeChange}>
           <div className="relative mr-2 h-4 w-4">
@@ -175,12 +172,26 @@ const UserNav = () => {
           <span className="capitalize">Theme: {theme}</span>
         </DropdownMenuItem>
 
-        <DropdownMenuSeparator />
-
         <DropdownMenuItem onClick={handleLogout}>
           <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>
         </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+
+        <DropdownMenuLabel className="text-muted-foreground">Configuration</DropdownMenuLabel>
+        {configNavItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <DropdownMenuItem key={item.to} onClick={() => navigate(item.to)}>
+              <Icon className="mr-2 h-4 w-4" />
+              <span>{item.title}</span>
+            </DropdownMenuItem>
+          );
+        })}
+
+
+
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -198,9 +209,6 @@ const MobileNav = ({ items, isOpen, onClose }: { items: NavItem[]; isOpen: boole
               </div>
               <span>Trackbit</span>
             </SheetTitle>
-            {/* <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="h-5 w-5" />
-            </Button> */}
           </div>
         </SheetHeader>
 

@@ -22,10 +22,9 @@ app.get('/ui', async (c) => {
         primaryNav: [
             { title: "Tracker", href: "/tracker", icon: "Flame", active: true },
             { title: "Dashboard", href: "/dashboard", icon: "LayoutDashboard" },
-            { title: "Sessions", href: "/sessions", icon: "Dumbbell" },
-            { title: "Habits", href: "/habits", icon: "ListTodo" },
-            { title: "Library", href: "/exercises", icon: "Dumbbell" },
-            { title: "Analytics", href: "/analytics", icon: "BarChart3" },
+            { title: "Habits", href: "/config/habits", icon: "ListTodo" },
+            { title: "Library", href: "/config/exercises", icon: "Dumbbell" },
+            { title: "Stats", href: "/stats", icon: "BarChart3" },
             // Example conditional logic
             // ...(user.email === "admin@example.com" ? [{ title: "Admin", href: "/admin", icon: "Shield" }] : []),
         ],

@@ -6,7 +6,7 @@ import { ColorStop } from '@trackbit/types';
 
 
 
-export const habitTypeEnum = pgEnum('habit_type', ['simple', 'complex', 'negative', 'timed'])
+export const habitTypeEnum = pgEnum('habit_type', ['count', 'complex', 'negative', 'timed', 'check'])
 export const colorThemeEnum = pgEnum('color_scale', ["green", "blue", "orange", "purple", "rose", "fire", "custom"])
 
 //Habits
@@ -15,8 +15,8 @@ export const habits = pgTable('habits', {
   userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }).notNull(),
   name: text('name').notNull(),
   description: text('description'),
-  // 'simple', 'complex', 'negative'
-  type: habitTypeEnum('type').notNull().default('simple').notNull(),
+  // 'count', 'complex', 'negative', 'timed', 'check'
+  type: habitTypeEnum('type').notNull().default('count').notNull(),
 
   colorTheme: colorThemeEnum('color_theme').notNull().default('green').notNull(),
   // Defaults to a simple Green gradient

@@ -9,7 +9,7 @@ export interface Habit {
     userId: string;
     name: string;
     description: string | null;
-    type: 'simple' | 'complex' | 'negative';
+    type: 'count' | 'complex' | 'negative' | 'timed' | 'check';
     colorTheme: 'green' | 'blue' | 'orange' | 'purple' | 'rose' | 'fire' | 'custom';
     colorStops: ColorStop[];
     icon: string;

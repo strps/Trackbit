@@ -36,7 +36,7 @@ app.post(
     zValidator('json', z.object({
         name: z.string().min(1),
         description: z.string().optional(),
-        type: z.enum(['simple', 'complex', 'negative']).default('simple'),
+        type: z.enum(['count', 'complex', 'negative', 'timed', 'check']).default('count'),
         weeklyGoal: z.number().int().min(1).max(7).default(5),
         dailyGoal: z.number().default(1),
         colorTheme: z.enum(['green', 'blue', 'orange', 'purple', 'rose', 'fire', 'custom']).optional(),
@@ -75,7 +75,7 @@ app.put(
             color: z.tuple([z.number(), z.number(), z.number(), z.number()])
         })).optional(),
         icon: z.string().optional(),
-        type: z.enum(['simple', 'complex', 'negative']).optional(),
+        type: z.enum(['count', 'complex', 'negative', 'timed', 'check']).optional(),
         order: z.number().int().min(0).optional(),
     }).strict()),
     async (c) => {

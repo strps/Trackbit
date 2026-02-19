@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import {
     Dumbbell, Activity, Book as MenuBook, Code,
     Star, Droplet, Trophy, ChevronLeft, ChevronRight, CalendarSearch
@@ -10,6 +10,7 @@ import { mapValueToColor } from '@/lib/colorUtils';
 import { ColorStop } from '@trackbit/types';
 import { formatDate } from '../tracker/utils';
 import { format, addDays, isAfter } from 'date-fns';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 
 const getHabitIcon = (iconName: string): React.ElementType => {
     switch (iconName) {
@@ -29,6 +30,8 @@ const getColorAtOne = (colorStops: ColorStop[]) => {
 };
 
 const ExerciseSessionsPage = () => {
+    const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = useNavigate();
     const {
         complexHabits,
         currentHabit,
@@ -40,10 +43,25 @@ const ExerciseSessionsPage = () => {
 
     const today = formatDate(new Date());
 
+    // Sync URL params → store on mount and whenever params change
+    useEffect(() => {
+        const paramHabitId = searchParams.get('habitId');
+        const paramDate = searchParams.get('date');
+        if (paramHabitId) setHabitId(Number(paramHabitId));
+        if (paramDate) setDay(paramDate);
+    }, [searchParams]);
+
+    const setParams = (habitId?: number, date?: string) => {
+        const next = new URLSearchParams(searchParams);
+        if (habitId !== undefined) next.set('habitId', String(habitId));
+        if (date !== undefined) next.set('date', date);
+        setSearchParams(next, { replace: true });
+    };
+
     const handleDateChange = (offset: number) => {
         const newDate = addDays(new Date(selectedDay + 'T00:00:00.000'), offset);
         if (isAfter(newDate, new Date())) return;
-        setDay(format(newDate, 'yyyy-MM-dd'));
+        setParams(undefined, format(newDate, 'yyyy-MM-dd'));
     };
 
     if (isLoading) {
@@ -79,7 +97,7 @@ const ExerciseSessionsPage = () => {
                             return (
                                 <Button
                                     key={habit.id}
-                                    onClick={() => { setHabitId(habit.id); setDay(today); }}
+                                    onClick={() => setParams(habit.id, today)}
                                     style={{ backgroundColor: getColorAtOne(habit.colorStops) }}
                                     className={`gap-2 cursor-pointer ${currentHabit?.id === habit.id && 'ring-1 ring-primary'}`}
                                 >
@@ -120,7 +138,7 @@ const ExerciseSessionsPage = () => {
                             </div>
                             <Button
                                 disabled={selectedDay === today}
-                                onClick={() => setDay(today)}
+                                onClick={() => setParams(undefined, today)}
                                 variant="outline"
                             >
                                 Today

@@ -32,6 +32,7 @@ export * from "@/components/UserNav"
 export * from "@/components/Form"
 export * from "@/components/Fields"
 export * from "@/components/DataTable"
+export * from "@/components/Timer"
 
 //Admin Components
 export * from "@/components/Admin/AdminPage"

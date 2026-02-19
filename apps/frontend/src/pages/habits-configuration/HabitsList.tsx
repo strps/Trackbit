@@ -51,7 +51,7 @@ export const HabitList = ({ habits, activeHabitId, editHabit, startNewHabit }: H
                                 <h3 className="font-bold text-lg truncate">{habit.name}</h3>
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                     <Badge variant="secondary">
-                                        {habit.type === 'complex' ? 'Structured' : habit.type === 'negative' ? 'Negative' : 'Simple'}
+                                        {habit.type === 'complex' ? 'Structured' : habit.type === 'negative' ? 'Negative' : habit.type === 'timed' ? 'Timed' : habit.type === 'check' ? 'Check' : 'Count'}
                                     </Badge>
                                     <span>•</span>
                                     <span>{`Daily ${habit.type === 'negative' ? 'Limit:' : 'Goal:'}`} {habit.weeklyGoal}/d</span>

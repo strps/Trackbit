@@ -37,13 +37,13 @@ const router = createBrowserRouter([
     element: <AppLayout />,
     errorElement: <ErrorPage />,
     children: [
-      { path: "habits", element: <HabitConfig /> },
       { path: "tracker", element: <TrackerHome /> },
       { path: "dashboard", element: <HabitTracker /> },
       { path: "sessions", element: <ExerciseSessionsPage /> },
       { path: "account-settings", element: <AccountSettings /> },
-      { path: "exercises", element: <ExerciseLibrary /> },
-      { path: "analytics", element: <Analytics /> },
+      { path: "stats", element: <Analytics /> },
+      { path: "config/habits", element: <HabitConfig /> },
+      { path: "config/exercises", element: <ExerciseLibrary /> },
     ]
   },
   {

@@ -1,35 +1,17 @@
-import { useMemo } from "react";
-import {
-    BarChart3, Activity, Dumbbell, Book as MenuBook,
-    Code, Star, Droplet, Trophy
-} from "lucide-react";
+import { useMemo, useState } from "react";
+import { BarChart3, Eye, EyeOff, SlidersHorizontal } from "lucide-react";
 import { Stats } from "./tracker/Stats";
 import { Heatmap } from "@/components/Heatmap";
 import { useTracker } from "@/hooks/use-tracker";
-import { mapValueToColor } from "@/lib/colorUtils";
-import { ColorStop } from "@trackbit/types";
-import { Button } from "@/components/ui/button";
 import { formatDate } from "./tracker/utils";
-
-const getHabitIcon = (iconName: string): React.ElementType => {
-    switch (iconName) {
-        case 'dumbbell': return Dumbbell;
-        case 'code': return Code;
-        case 'book': return MenuBook;
-        case 'star': return Star;
-        case 'water': return Droplet;
-        case 'alert': return Trophy;
-        default: return Activity;
-    }
-};
-
-const getColorAtOne = (colorStops: ColorStop[]) => {
-    const [r, g, b] = mapValueToColor(1, 0, 1, colorStops);
-    return `rgb(${r}, ${g}, ${b})`;
-};
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
 export const Analytics = () => {
     const { habitsWithLogs, isLoading, currentHabit, selectedDay, setDay, setHabitId } = useTracker();
+    const [showHeatmap, setShowHeatmap] = useState(true);
+    const [showFilters, setShowFilters] = useState(false);
 
     const sortedHabits = useMemo(() => {
         return Object.values(habitsWithLogs).sort((a, b) => {
@@ -55,32 +37,52 @@ export const Analytics = () => {
     return (
         <div className="min-h-screen bg-background text-foreground p-4 md:p-8 font-sans">
             <div className="max-w-6xl mx-auto space-y-8">
-                <div className="flex flex-col md:flex-row justify-between gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
                         <BarChart3 className="w-8 h-8 text-blue-500" />
-                        Analytics
+                        Stats
                     </h1>
-                    <div className="flex overflow-x-auto gap-2 pb-2">
-                        {sortedHabits.map((habit) => {
-                            const IconComponent = getHabitIcon(habit.icon);
-                            return (
-                                <Button
-                                    key={habit.id}
-                                    onClick={() => { setHabitId(habit.id); setDay(formatDate(new Date())); }}
-                                    style={{ backgroundColor: getColorAtOne(habit.colorStops) }}
-                                    className={`gap-2 cursor-pointer ${currentHabit?.id === habit.id && 'ring-1 ring-primary'}`}
-                                >
-                                    <IconComponent className="w-4 h-4" />
-                                    {habit.name}
-                                </Button>
-                            );
-                        })}
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                            <Label htmlFor="habit-select" className="text-sm text-muted-foreground whitespace-nowrap">Habit</Label>
+                            <Select
+                                value={currentHabit ? String(currentHabit.id) : ""}
+                                onValueChange={(val) => { setHabitId(Number(val)); setDay(formatDate(new Date())); }}
+                            >
+                                <SelectTrigger id="habit-select" className="w-48">
+                                    <SelectValue placeholder="Select a habit…" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {sortedHabits.map((habit) => (
+                                        <SelectItem key={habit.id} value={String(habit.id)}>
+                                            {habit.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setShowHeatmap(v => !v)}
+                            aria-label={showHeatmap ? 'Hide heatmap' : 'Show heatmap'}
+                        >
+                            {showHeatmap ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                        </Button>
+                        <Button
+                            variant={showFilters ? 'secondary' : 'outline'}
+                            size="icon"
+                            onClick={() => setShowFilters(v => !v)}
+                            aria-label="Toggle filters"
+                        >
+                            <SlidersHorizontal className="w-4 h-4" />
+                        </Button>
                     </div>
                 </div>
 
                 <Stats />
 
-                {currentHabit && (
+                {currentHabit && showHeatmap && (
                     <Heatmap
                         getRating={getRating}
                         maxValue={currentHabit.dailyGoal}
