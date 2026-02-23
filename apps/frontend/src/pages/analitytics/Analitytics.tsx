@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { BarChart3, Eye, EyeOff, SlidersHorizontal } from "lucide-react";
-import { Stats } from "./tracker/Stats";
+import { Stats } from "./Stats";
 import { Heatmap } from "@/components/Heatmap";
-import { useTracker } from "@/hooks/use-tracker";
-import { formatDate } from "./tracker/utils";
+import { useTracker } from "@/pages/tracker/use-tracker";
+import { formatDate } from "../tracker/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";

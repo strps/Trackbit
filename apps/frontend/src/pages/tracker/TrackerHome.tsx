@@ -5,7 +5,7 @@ import {
     Star, Droplet, Trophy, Flame, Minus, Plus, ArrowRight,
     ChevronLeft, ChevronRight, CalendarSearch, Check, ShieldAlert
 } from 'lucide-react';
-import { useTracker } from '@/hooks/use-tracker';
+import { useTracker } from './use-tracker';
 import { mapValueToColor, mapValueToColorOrdered } from '@/lib/colorUtils';
 import { ColorStop } from '@trackbit/types';
 import { formatDate } from './utils';

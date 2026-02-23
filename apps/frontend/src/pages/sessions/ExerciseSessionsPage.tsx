@@ -1,45 +1,44 @@
-import { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import {
-    Dumbbell, Activity, Book as MenuBook, Code,
-    Star, Droplet, Trophy, ChevronLeft, ChevronRight, CalendarSearch
+    Dumbbell, ChevronLeft, ChevronRight, CalendarSearch,
+    MoreVertical, Plus, Trash2, Search, Hash, Scale, Info,
+    Play, Pause, SquarePen, Clock, MapPin, ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useExerciseSessions } from '@/hooks/use-exercise-sessions';
-import { ExerciseSessionPanel } from '../tracker/StructuredHabitPanel';
-import { mapValueToColor } from '@/lib/colorUtils';
-import { ColorStop } from '@trackbit/types';
-import { formatDate } from '../tracker/utils';
+import { useExerciseSessions } from './use-exercise-sessions';
+import { PerformanceCard, FlexibilityHoldCard, formatDuration } from './StructuredHabitPanel';
+import { useExercises } from '@/hooks/use-exercises';
+import { OptimisticExerciseSession, OptimisticExercisePerformance, useTracker, OptimisticExerciseLog } from '@/pages/tracker/use-tracker';
+import { formatDate } from '@/pages/tracker/utils';
 import { format, addDays, isAfter } from 'date-fns';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
+import { NumericStepper } from '@/components/NumericStepper';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Label } from '@/components/ui/label';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { EmptyState } from '@/components/EmptyState';
+import { Timer } from '@/components/Timer';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Exercise } from '@trackbit/types';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
-const getHabitIcon = (iconName: string): React.ElementType => {
-    switch (iconName) {
-        case 'dumbbell': return Dumbbell;
-        case 'code': return Code;
-        case 'book': return MenuBook;
-        case 'star': return Star;
-        case 'water': return Droplet;
-        case 'alert': return Trophy;
-        default: return Activity;
-    }
-};
-
-const getColorAtOne = (colorStops: ColorStop[]) => {
-    const [r, g, b] = mapValueToColor(1, 0, 1, colorStops);
-    return `rgb(${r}, ${g}, ${b})`;
-};
+// =============================================================================
+// Page
+// =============================================================================
 
 const ExerciseSessionsPage = () => {
     const [searchParams, setSearchParams] = useSearchParams();
-    const navigate = useNavigate();
     const {
-        complexHabits,
         currentHabit,
         selectedDay,
         setHabitId,
         setDay,
         isLoading,
     } = useExerciseSessions();
+
+    const { createSession, currentDayLog: dayLog } = useTracker();
 
     const today = formatDate(new Date());
 
@@ -51,9 +50,8 @@ const ExerciseSessionsPage = () => {
         if (paramDate) setDay(paramDate);
     }, [searchParams]);
 
-    const setParams = (habitId?: number, date?: string) => {
+    const setParams = (date?: string) => {
         const next = new URLSearchParams(searchParams);
-        if (habitId !== undefined) next.set('habitId', String(habitId));
         if (date !== undefined) next.set('date', date);
         setSearchParams(next, { replace: true });
     };
@@ -61,93 +59,85 @@ const ExerciseSessionsPage = () => {
     const handleDateChange = (offset: number) => {
         const newDate = addDays(new Date(selectedDay + 'T00:00:00.000'), offset);
         if (isAfter(newDate, new Date())) return;
-        setParams(undefined, format(newDate, 'yyyy-MM-dd'));
+        setParams(format(newDate, 'yyyy-MM-dd'));
     };
 
     if (isLoading) {
         return <div className="p-8 text-center text-muted-foreground">Loading sessions...</div>;
     }
 
-    if (complexHabits.length === 0) {
+    if (!currentHabit) {
         return (
             <div className="flex h-screen items-center justify-center flex-col gap-4">
                 <div className="p-6 bg-muted rounded-full">
                     <Dumbbell className="w-8 h-8 text-muted-foreground" />
                 </div>
                 <p className="text-muted-foreground">
-                    No workout habits found. Create a "Structured Session" habit in Settings.
+                    No workout habit selected. Navigate here from the Tracker.
                 </p>
             </div>
         );
     }
 
+    const exerciseSessions = dayLog?.exerciseSessions;
+
     return (
         <div className="min-h-screen bg-background text-foreground p-4 md:p-8 font-sans">
-            <div className="max-w-6xl mx-auto space-y-8">
+            <div className="max-w-6xl mx-auto space-y-6">
 
-                {/* Header */}
-                <div className="flex flex-col md:flex-row justify-between gap-4">
+                {/* Header: habit name + date navigator */}
+                <div className="flex flex-col sm:flex-row justify-between gap-4">
                     <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
                         <Dumbbell className="w-8 h-8 text-primary" />
-                        Exercise Sessions
+                        {currentHabit.name}
                     </h1>
-                    <div className="flex overflow-x-auto gap-2 pb-2">
-                        {complexHabits.map((habit) => {
-                            const IconComponent = getHabitIcon(habit.icon);
-                            return (
-                                <Button
-                                    key={habit.id}
-                                    onClick={() => setParams(habit.id, today)}
-                                    style={{ backgroundColor: getColorAtOne(habit.colorStops) }}
-                                    className={`gap-2 cursor-pointer ${currentHabit?.id === habit.id && 'ring-1 ring-primary'}`}
-                                >
-                                    <IconComponent className="w-4 h-4" />
-                                    {habit.name}
-                                </Button>
-                            );
-                        })}
+                    <div className="flex items-center gap-3">
+                        <div className="flex border h-10 items-center justify-between gap-2 border-border rounded-md overflow-hidden shadow-sm">
+                            <button
+                                onClick={() => handleDateChange(-1)}
+                                className="h-full aspect-square flex items-center justify-center border-r hover:bg-muted transition-colors"
+                                aria-label="Previous day"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                            </button>
+                            <p className="text-sm text-muted-foreground font-medium px-3 whitespace-nowrap">
+                                {selectedDay === today ? 'Today' : format(selectedDay + 'T00:00:00.000', 'PPP')}
+                            </p>
+                            <button
+                                onClick={() => handleDateChange(1)}
+                                disabled={selectedDay === today}
+                                className="h-full aspect-square flex items-center justify-center border-l hover:bg-muted transition-colors disabled:opacity-30"
+                                aria-label="Next day"
+                            >
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
+                        </div>
+                        {selectedDay !== today && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setParams(today)}
+                                className="gap-1"
+                            >
+                                Today
+                                <CalendarSearch className="w-4 h-4" />
+                            </Button>
+                        )}
                     </div>
                 </div>
 
-                {/* Day detail */}
-                {selectedDay && currentHabit && (
-                    <div className="bg-background rounded-xl shadow-lg border border-border overflow-hidden">
-                        {/* Date navigator */}
-                        <div className="p-6 border-b border-border flex justify-between items-center">
-                            <div className="flex items-center gap-3">
-                                <div className="flex border h-10 w-64 items-center justify-between gap-2 border-border rounded-md overflow-hidden shadow-sm">
-                                    <button
-                                        onClick={() => handleDateChange(-1)}
-                                        className="h-full aspect-square flex items-center justify-center border-r hover:bg-muted transition-colors"
-                                        aria-label="Previous day"
-                                    >
-                                        <ChevronLeft className="w-4 h-4" />
-                                    </button>
-                                    <p className="text-sm text-muted-foreground font-medium">
-                                        {format(selectedDay + 'T00:00:00.000', 'PPPP')}
-                                    </p>
-                                    <button
-                                        onClick={() => handleDateChange(1)}
-                                        disabled={selectedDay === today}
-                                        className="h-full aspect-square flex items-center justify-center border-l hover:bg-muted transition-colors disabled:opacity-30"
-                                        aria-label="Next day"
-                                    >
-                                        <ChevronRight className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </div>
-                            <Button
-                                disabled={selectedDay === today}
-                                onClick={() => setParams(undefined, today)}
-                                variant="outline"
-                            >
-                                Today
-                                <CalendarSearch className="w-5 h-5 ml-2" />
-                            </Button>
-                        </div>
-
-                        {/* Session panel */}
-                        <ExerciseSessionPanel />
+                {/* Session content */}
+                {(!dayLog || !exerciseSessions || exerciseSessions.length === 0) ? (
+                    <EmptyState
+                        onClick={() => createSession()}
+                        title="No Sessions Found"
+                        description="Click here to start your first workout session"
+                    />
+                ) : (
+                    <div className="space-y-6">
+                        {exerciseSessions.map((session, i) => (
+                            <SessionCard key={i} session={session} index={i} />
+                        ))}
                     </div>
                 )}
             </div>
@@ -156,3 +146,363 @@ const ExerciseSessionsPage = () => {
 };
 
 export default ExerciseSessionsPage;
+
+// =============================================================================
+// Session Card
+// =============================================================================
+
+interface SessionCardProps {
+    session: OptimisticExerciseSession;
+    index: number;
+}
+
+const SessionCard = ({ session, index }: SessionCardProps) => {
+    const { deleteSession } = useTracker();
+    const exerciseLogs = session.exerciseLogs || [];
+    const [selectedExerciseLogIndex, setSelectedExerciseLogIndex] = useState<number | null>(null);
+
+    return (
+        <div className="bg-card text-card-foreground flex flex-col item gap-6 py-6 shadow-lg">
+            <div className="flex justify-between items-center pb-4 px-4 border-b border-border">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                        <Dumbbell className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-sm text-foreground">Workout Session</h3>
+                        <div className="flex items-center gap-2 h-4">
+                            <span className="text-xs text-muted-foreground" />
+                        </div>
+                    </div>
+                </div>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                            <MoreVertical className="w-5 h-5 text-muted-foreground" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuItem onSelect={() => deleteSession(session.id)}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+
+            <div className="overflow-y-auto px-4 space-y-4">
+                {exerciseLogs.length === 0 ? (
+                    <EmptyState
+                        title="Empty Session"
+                        description="Add your first exercise to start tracking."
+                    />
+                ) : (
+                    exerciseLogs.map((exerciseLog, i) => (
+                        <ExerciseLogCard
+                            key={i}
+                            exerciseLog={exerciseLog}
+                            index={i}
+                            isSelected={i === selectedExerciseLogIndex}
+                            setEditing={setSelectedExerciseLogIndex}
+                        />
+                    ))
+                )}
+
+                <div className="flex justify-end">
+                    <AddExercisePicker setEditing={() => setSelectedExerciseLogIndex(exerciseLogs.length)} />
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// =============================================================================
+// Exercise Log Card
+// =============================================================================
+
+interface ExerciseLogCardProps {
+    exerciseLog: OptimisticExerciseLog;
+    isSelected: boolean;
+    index: number;
+    setEditing: (index: number | null) => void;
+}
+
+const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: onEditTrigger }: ExerciseLogCardProps) => {
+    const { exercises } = useExercises();
+    const { deleteSet, newSet, updateSet, removeExerciseLog } = useTracker();
+    const exercise = exercises.find(e => e.id === exerciseLog.exerciseId);
+    const [selectedPerformanceId, setSelectedPerformanceId] = useState<number | null>(null);
+
+    const cardContents: any = {
+        strength: {
+            content: (
+                <div className="flex overflow-x-auto gap-2 p-2">
+                    {exerciseLog.exercisePerformances.map((e: OptimisticExercisePerformance, i: number) => (
+                        <PerformanceCard
+                            key={i}
+                            category="strength"
+                            performance={e}
+                            index={i}
+                            onUpdate={updateSet}
+                            isSelected={selectedPerformanceId === e.id}
+                            onHeaderClick={() => setSelectedPerformanceId(e.id)}
+                        />
+                    ))}
+                    <EmptyState
+                        description="New Set"
+                        onClick={() => newSet({ exerciseLog })}
+                        className="w-26 py-0"
+                        icon={Play}
+                    />
+                </div>
+            ),
+            legend: (
+                <div className="text-[12px] font-bold text-muted-foreground uppercase">
+                    <div className="flex items-end gap-x-4">
+                        <div className="flex flex-col gap-1 items-end">
+                            <div className="flex items-center gap-1"><Hash className="w-3 h-3" /> Reps</div>
+                            <div className="flex items-center gap-1"><Scale className="w-3 h-3" /> Weight (kg)</div>
+                        </div>
+                        <div className="flex gap-2 text-foreground font-medium">
+                            {exerciseLog.exercisePerformances.map((_: any, i: number) => (
+                                <div key={i} className="flex flex-col gap-1 text-center">
+                                    <span className="text-muted-foreground text-[9px]">Set {i + 1}</span>
+                                    <span>{exerciseLog.exercisePerformances[i].reps || '-'}</span>
+                                    <span>{exerciseLog.exercisePerformances[i].weight || '-'}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            ),
+        },
+        cardio: {
+            content: (
+                <div className="flex overflow-x-auto gap-2 p-2">
+                    {exerciseLog.exercisePerformances.map((e: OptimisticExercisePerformance, i: number) => (
+                        <PerformanceCard
+                            key={i}
+                            category="cardio"
+                            performance={e}
+                            index={i}
+                            onUpdate={updateSet}
+                            isSelected={selectedPerformanceId === e.id}
+                            onHeaderClick={() => setSelectedPerformanceId(e.id)}
+                        />
+                    ))}
+                    <EmptyState
+                        description="New Lap"
+                        onClick={() => newSet({ exerciseLog })}
+                        className="w-26 py-0"
+                        icon={Play}
+                    />
+                </div>
+            ),
+            legend: (
+                <div className="text-[12px] font-bold text-muted-foreground uppercase">
+                    <div className="flex items-end gap-x-4">
+                        <div className="flex flex-col gap-1 items-end">
+                            <div className="flex items-center gap-1"><Clock className="w-3 h-3" /> Time</div>
+                            <div className="flex items-center gap-1"><MapPin className="w-3 h-3" /> Distance (km)</div>
+                        </div>
+                        <div className="flex gap-2 text-foreground font-medium">
+                            {exerciseLog.exercisePerformances.map((_: any, i: number) => (
+                                <div key={i} className="flex flex-col gap-1 text-center">
+                                    <span className="text-muted-foreground text-[9px]">Lap {i + 1}</span>
+                                    <span>{formatDuration(exerciseLog.exercisePerformances[i].duration)}</span>
+                                    <span>{exerciseLog.exercisePerformances[i].distance ?? '-'}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            ),
+        },
+        flexibility: {
+            content: <FlexibilityHoldCard exerciseLog={exerciseLog} />,
+            legend: (
+                <div className="text-[10px] font-bold text-muted-foreground uppercase">
+                    <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        <span>Duration: {formatDuration(exerciseLog.duration ?? exerciseLog.exercisePerformances[0]?.duration ?? 0)}</span>
+                    </div>
+                </div>
+            ),
+        },
+    };
+
+    return (
+        <Collapsible
+            open={isSelected}
+            className={`rounded-xl border border-border mt-1 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300 ${isSelected && "ring-2 ring-primary"}`}
+        >
+            <CollapsibleTrigger className="gap-y-3 justify-between items-center min-h-21 w-full" asChild>
+                <>
+                    <div className="flex border-b justify-between w-full px-6 py-1">
+                        <div className="flex items-center">
+                            <h4 className="font-bold text-sm">
+                                {exercise?.name || 'Unknown Exercise'}
+                            </h4>
+                            <Button variant="ghost"><Info /></Button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {isSelected && (
+                                <Button onClick={() => onEditTrigger(null)}>Finish</Button>
+                            )}
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon-lg" className="h-8 w-8 self-start text-muted-foreground hover:text-foreground">
+                                        <MoreVertical className="w-4 h-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent>
+                                    {isSelected ? (
+                                        <DropdownMenuItem onSelect={() => onEditTrigger(null)}>
+                                            <SquarePen className="mr-2 h-4 w-4" />
+                                            Finish Editing
+                                        </DropdownMenuItem>
+                                    ) : (
+                                        <DropdownMenuItem onSelect={() => onEditTrigger(index)}>
+                                            <SquarePen className="mr-2 h-4 w-4" />
+                                            Edit Exercise
+                                        </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuItem onSelect={() => removeExerciseLog(exerciseLog.id)}>
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Delete Exercise
+                                    </DropdownMenuItem>
+                                    {isSelected && (
+                                        <>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem
+                                                onSelect={() => selectedPerformanceId && deleteSet(selectedPerformanceId)}
+                                                disabled={!selectedPerformanceId}
+                                            >
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                Delete Selected {exercise?.category === 'strength' ? 'Set' : exercise?.category === 'cardio' ? 'Lap' : 'Set'}
+                                            </DropdownMenuItem>
+                                        </>
+                                    )}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
+                    </div>
+                    <div className="py-4 px-6">
+                        {cardContents[exercise?.category || 'strength'].legend}
+                    </div>
+                </>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="p-4 border-t border-border -order-1">
+                {cardContents[exercise?.category || 'strength'].content}
+            </CollapsibleContent>
+        </Collapsible>
+    );
+};
+
+// =============================================================================
+// Exercise Picker
+// =============================================================================
+
+const AddExercisePicker = ({ setEditing }: { setEditing: () => void }) => {
+    const { exercises } = useExercises();
+    const { addExerciseLog } = useTracker();
+
+    const [open, setOpen] = useState(false);
+    const [search, setSearch] = useState('');
+    const [selected, setSelected] = useState(0);
+
+    const handleAddExerciseLog = (exerciseId: number) => {
+        addExerciseLog(exerciseId);
+        setEditing();
+        setOpen(false);
+        setSearch('');
+    };
+
+    const filtered = useMemo(
+        () => exercises.filter((e: any) => e.name.toLowerCase().includes(search.toLowerCase())),
+        [exercises, search],
+    );
+
+    return (
+        <div className="w-min flex items-stretch rounded-l-xl rounded-r-[3rem] border-2 border-primary bg-card p-4 shadow-sm">
+            <div className="flex items-center gap-4">
+                <div className="flex flex-col gap-2">
+                    <Label className="text-xs text-muted-foreground ml-2">Recommended:</Label>
+                    <Popover open={open} onOpenChange={setOpen}>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" className="w-48 justify-between">
+                                <span className="truncate">
+                                    {exercises.length > 0 ? exercises[selected].name : 'Select exercise'}
+                                </span>
+                                <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-72 p-0" align="start" sideOffset={5} onOpenAutoFocus={(e) => e.preventDefault()}>
+                            <div className="border-b border-border p-3">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Search exercises..."
+                                        className="pl-10 bg-background"
+                                        value={search}
+                                        onChange={(e) => setSearch(e.target.value)}
+                                        autoFocus
+                                    />
+                                </div>
+                            </div>
+                            <ScrollArea className="h-72">
+                                <div className="p-2 flex flex-col gap-1">
+                                    {filtered.length === 0 ? (
+                                        <div className="py-8 text-center">
+                                            <p className="text-sm text-muted-foreground">No exercises found.</p>
+                                            <Button variant="link" size="sm" className="mt-2">
+                                                + Create "{search}"
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        filtered.map((ex: Exercise) => {
+                                            const isTheSelected = ex.id === exercises[selected].id;
+                                            return (
+                                                <button
+                                                    key={ex.id}
+                                                    onClick={() => {
+                                                        handleAddExerciseLog(ex.id);
+                                                        if (isTheSelected) setSelected((prev) => (prev + 1) % exercises.length);
+                                                    }}
+                                                    className={`w-full flex items-center justify-between rounded-md px-3 py-2.5 text-left text-sm hover:bg-accent transition-colors ${isTheSelected && 'ring ring-primary'}`}
+                                                >
+                                                    <div className="flex flex-col">
+                                                        <span className="font-medium">{ex.name}</span>
+                                                        <span className="text-xs text-muted-foreground uppercase">{ex.category}</span>
+                                                    </div>
+                                                    <Plus className="h-4 w-4 text-muted-foreground transition-opacity" />
+                                                </button>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            </ScrollArea>
+                        </PopoverContent>
+                    </Popover>
+                </div>
+
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button
+                            onClick={() => {
+                                handleAddExerciseLog(exercises[selected].id);
+                                setSelected((prev) => (prev + 1) % exercises.length);
+                            }}
+                            className="flex justify-center items-center w-15 h-15 rounded-full aspect-square"
+                        >
+                            <Play className="w-full" />
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>Add Recommended Exercise</p>
+                    </TooltipContent>
+                </Tooltip>
+            </div>
+        </div>
+    );
+};

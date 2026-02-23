@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ExerciseWithLastPerformance, useExercises } from './use-exercises';
+import { ExerciseWithLastPerformance, useExercises } from '@/hooks/use-exercises';
 import { create } from 'zustand';
 import { Habit, ExerciseSession, ExerciseLog, ExercisePerformance, Exercise } from "@trackbit/types";
 import { DateTime } from 'luxon';

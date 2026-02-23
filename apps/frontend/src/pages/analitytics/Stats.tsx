@@ -1,5 +1,5 @@
 import { BarChart3, CheckCircle2, Flame } from "lucide-react";
-import { useTracker } from "@/hooks/use-tracker";
+import { useTracker } from "../tracker/use-tracker";
 import { format, differenceInDays, startOfDay, subDays } from "date-fns";
 
 export const Stats = () => {

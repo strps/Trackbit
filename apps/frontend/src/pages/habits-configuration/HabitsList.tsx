@@ -1,11 +1,18 @@
 import { Plus, GripVertical, ShieldAlert } from "lucide-react"
 import { ICONS } from "./IconField";
-import { mapValueToCSSrgba } from "@/lib/colorUtils";
+import { GRADIENT_PRESETS } from "./ColorThemeField";
+import { mapValueToColor } from "@/lib/colorUtils";
 import { Badge } from "@/components/ui/badge";
 import { BigButton } from "@/components/BigButton";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import { toast } from "sonner";
 import type { Habit } from "@trackbit/types";
+
+const getColorAtOne = (habit: Habit) => {
+    const stops = habit.colorTheme === 'custom' ? habit.colorStops : GRADIENT_PRESETS[habit.colorTheme]?.stops ?? habit.colorStops;
+    const [r, g, b] = mapValueToColor(1, 0, 1, stops);
+    return `rgb(${r}, ${g}, ${b})`;
+};
 
 interface HabitListProps {
     habits: Habit[];
@@ -107,7 +114,7 @@ export const HabitList = ({ habits, activeHabitId, editHabit, startNewHabit, onR
                             <div
                                 className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm shrink-0"
                                 style={{
-                                    backgroundColor: mapValueToCSSrgba(1, 0, 1, habit.colorStops)
+                                    backgroundColor: getColorAtOne(habit)
                                 }}
                             >
                                 {renderIcon(habit.icon, "w-6 h-6")}

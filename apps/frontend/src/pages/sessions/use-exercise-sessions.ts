@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useTracker } from './use-tracker';
+import { useTracker } from '@/pages/tracker/use-tracker';
 
 /**
  * Convenience hook that wraps useTracker and exposes only

@@ -9,7 +9,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import { Habit } from "@trackbit/types"
-import { useHabits } from "@/hooks/use-habits";
+import { useHabits } from "./use-habits";
 import { TextField } from "@/components/Fields/TextField";
 import { RangeField } from "@/components/Fields/RangeField";
 import { Field } from "@/components/Fields/FieldBase";

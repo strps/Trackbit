@@ -15,7 +15,7 @@ import {
     eachWeekOfInterval,
 } from "date-fns";
 import { Button } from "./ui/button";
-import { useTracker } from "@/hooks/use-tracker";
+import { useTracker } from "@/pages/tracker/use-tracker";
 
 interface HeatmapProps {
     // data?: Record<string, { rating: number }>;
