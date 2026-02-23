@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Play, Pause } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NumericStepper } from "../../components/NumericStepper";
-import { OptimisticExercisePerformance, useTracker, OptimisticExerciseLog } from "@/pages/tracker/use-tracker";
+import { OptimisticExercisePerformance, OptimisticExerciseLog } from "@/pages/tracker/use-tracker";
+import { useExerciseSessions } from "@/pages/sessions/use-exercise-sessions";
 import { Timer } from "@/components/Timer";
 
 // =============================================================================
@@ -158,7 +159,7 @@ interface FlexibilityHoldCardProps {
 }
 
 export const FlexibilityHoldCard = ({ exerciseLog }: FlexibilityHoldCardProps) => {
-    const { updateSet } = useTracker();
+    const { updateSet } = useExerciseSessions();
     const performance = exerciseLog.exercisePerformances[0];
 
     if (!performance) {

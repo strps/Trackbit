@@ -1,34 +1,21 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { BarChart3, Eye, EyeOff, SlidersHorizontal } from "lucide-react";
 import { Stats } from "./Stats";
 import { Heatmap } from "@/components/Heatmap";
-import { useTracker } from "@/pages/tracker/use-tracker";
+import { useAnalytics } from "./use-analytics";
 import { formatDate } from "../tracker/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
 export const Analytics = () => {
-    const { habitsWithLogs, isLoading, currentHabit, selectedDay, setDay, setHabitId } = useTracker();
+    const {
+        sortedHabits, currentHabit, isLoading,
+        selectedDay, setDay, setHabitId,
+        getRating, stats,
+    } = useAnalytics();
     const [showHeatmap, setShowHeatmap] = useState(true);
     const [showFilters, setShowFilters] = useState(false);
-
-    const sortedHabits = useMemo(() => {
-        return Object.values(habitsWithLogs).sort((a, b) => {
-            const orderDiff = (a.order ?? 0) - (b.order ?? 0);
-            return orderDiff !== 0 ? orderDiff : a.id - b.id;
-        });
-    }, [habitsWithLogs]);
-
-    const logsMap = currentHabit?.dayLogs;
-
-    const getRating = (date: string): number => {
-        if (!logsMap) return 0;
-        return currentHabit?.type === 'complex'
-            ? logsMap[date]?.exerciseSessions?.reduce(
-                (a, c) => a + (c.exerciseLogs?.length || 0), 0) || 0
-            : logsMap[date]?.rating || 0;
-    };
 
     if (isLoading) {
         return <div className="p-8 text-center text-muted-foreground">Loading analytics...</div>;
@@ -80,7 +67,7 @@ export const Analytics = () => {
                     </div>
                 </div>
 
-                <Stats />
+                <Stats stats={stats} />
 
                 {currentHabit && showHeatmap && (
                     <Heatmap

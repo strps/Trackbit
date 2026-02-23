@@ -21,12 +21,9 @@ const HabitConfig = () => {
         setIsEditing(true);
     };
 
-    const handleDelete = (id: number, e: React.MouseEvent<HTMLButtonElement>) => {
-        e.stopPropagation();
-        if (window.confirm('Delete habit?')) {
-            deleteHabit(Number(id));
-            if (activeHabitId === id) cancelEdit();
-        }
+    const handleDelete = (id: number) => {
+        deleteHabit(Number(id));
+        if (activeHabitId === id) cancelEdit();
     }
 
     const cancelEdit = () => {
@@ -64,6 +61,7 @@ const HabitConfig = () => {
                 <HabitConfigForm
                     isEditing={isEditing}
                     habit={habits.find(e => e.id === activeHabitId)}
+                    onDelete={handleDelete}
                 />
             </div>
         </div>

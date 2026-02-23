@@ -8,7 +8,7 @@ import {
 import { useTracker } from './use-tracker';
 import { mapValueToColor, mapValueToColorOrdered } from '@/lib/colorUtils';
 import { ColorStop } from '@trackbit/types';
-import { formatDate } from './utils';
+import { formatDate, computeStreak } from './utils';
 import { Button } from '@/components/ui/button';
 import { Timer } from '@/components/Timer';
 import { format, addDays, subDays, isAfter } from 'date-fns';
@@ -74,43 +74,6 @@ const ProgressBadge = ({ progress, isAntiHabit }: { progress: number; isAntiHabi
             <Trophy className="w-3 h-3 mr-0.5" /> Started
         </span>
     );
-};
-
-// -------------------------------------------------------------------
-// Streak badge
-// -------------------------------------------------------------------
-const computeStreak = (dayLogs: Record<string, { rating?: number; exerciseSessions?: unknown[] }>, fromDate: string, type: string, isAntiHabit?: boolean): number => {
-    let streak = 0;
-    let cursor = new Date(fromDate + 'T00:00:00.000');
-    const maxDays = 365; // safety cap
-
-    while (streak < maxDays) {
-        const dateStr = format(cursor, 'yyyy-MM-dd');
-        const log = dayLogs[dateStr];
-
-        if (isAntiHabit) {
-            // Anti-habit: streak counts days with no data or 0
-            // But only count days that are within tracking range (log exists with 0, or day is between first and last log)
-            const hasAnyLogs = Object.keys(dayLogs).length > 0;
-            if (!hasAnyLogs) break;
-
-            // Stop counting if we've gone past the earliest log date
-            const earliestDate = Object.keys(dayLogs).sort()[0];
-            if (dateStr < earliestDate) break;
-
-            const wasAvoided = !log || (log.rating ?? 0) === 0;
-            if (!wasAvoided) break;
-        } else {
-            const isCompleted = type === 'complex'
-                ? (log?.exerciseSessions as unknown[] | undefined)?.length! > 0
-                : (log?.rating ?? 0) > 0;
-            if (!isCompleted) break;
-        }
-
-        streak++;
-        cursor = subDays(cursor, 1);
-    }
-    return streak;
 };
 
 const StreakBadge = ({ streak }: { streak: number }) => {

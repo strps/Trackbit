@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useExerciseSessions } from './use-exercise-sessions';
 import { PerformanceCard, FlexibilityHoldCard, formatDuration } from './StructuredHabitPanel';
 import { useExercises } from '@/hooks/use-exercises';
-import { OptimisticExerciseSession, OptimisticExercisePerformance, useTracker, OptimisticExerciseLog } from '@/pages/tracker/use-tracker';
+import { OptimisticExerciseSession, OptimisticExercisePerformance, OptimisticExerciseLog } from '@/pages/tracker/use-tracker';
 import { formatDate } from '@/pages/tracker/utils';
 import { format, addDays, isAfter } from 'date-fns';
 import { useSearchParams } from 'react-router-dom';
@@ -36,9 +36,9 @@ const ExerciseSessionsPage = () => {
         setHabitId,
         setDay,
         isLoading,
+        createSession,
+        currentDayLog: dayLog,
     } = useExerciseSessions();
-
-    const { createSession, currentDayLog: dayLog } = useTracker();
 
     const today = formatDate(new Date());
 
@@ -129,7 +129,7 @@ const ExerciseSessionsPage = () => {
                 {/* Session content */}
                 {(!dayLog || !exerciseSessions || exerciseSessions.length === 0) ? (
                     <EmptyState
-                        onClick={() => createSession()}
+                        onClick={() => createSession({})}
                         title="No Sessions Found"
                         description="Click here to start your first workout session"
                     />
@@ -157,7 +157,7 @@ interface SessionCardProps {
 }
 
 const SessionCard = ({ session, index }: SessionCardProps) => {
-    const { deleteSession } = useTracker();
+    const { deleteSession, addExerciseLog } = useExerciseSessions();
     const exerciseLogs = session.exerciseLogs || [];
     const [selectedExerciseLogIndex, setSelectedExerciseLogIndex] = useState<number | null>(null);
 
@@ -209,7 +209,7 @@ const SessionCard = ({ session, index }: SessionCardProps) => {
                 )}
 
                 <div className="flex justify-end">
-                    <AddExercisePicker setEditing={() => setSelectedExerciseLogIndex(exerciseLogs.length)} />
+                    <AddExercisePicker sessionId={session.id} setEditing={() => setSelectedExerciseLogIndex(exerciseLogs.length)} />
                 </div>
             </div>
         </div>
@@ -229,7 +229,7 @@ interface ExerciseLogCardProps {
 
 const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: onEditTrigger }: ExerciseLogCardProps) => {
     const { exercises } = useExercises();
-    const { deleteSet, newSet, updateSet, removeExerciseLog } = useTracker();
+    const { deleteSet, newSet, updateSet, removeExerciseLog } = useExerciseSessions();
     const exercise = exercises.find(e => e.id === exerciseLog.exerciseId);
     const [selectedPerformanceId, setSelectedPerformanceId] = useState<number | null>(null);
 
@@ -403,16 +403,16 @@ const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: onEditTri
 // Exercise Picker
 // =============================================================================
 
-const AddExercisePicker = ({ setEditing }: { setEditing: () => void }) => {
+const AddExercisePicker = ({ sessionId, setEditing }: { sessionId: number; setEditing: () => void }) => {
     const { exercises } = useExercises();
-    const { addExerciseLog } = useTracker();
+    const { addExerciseLog } = useExerciseSessions();
 
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [selected, setSelected] = useState(0);
 
     const handleAddExerciseLog = (exerciseId: number) => {
-        addExerciseLog(exerciseId);
+        addExerciseLog({ exerciseSessionId: sessionId, exerciseId });
         setEditing();
         setOpen(false);
         setSearch('');

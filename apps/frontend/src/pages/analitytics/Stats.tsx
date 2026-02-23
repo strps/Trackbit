@@ -1,56 +1,12 @@
 import { BarChart3, CheckCircle2, Flame } from "lucide-react";
-import { useTracker } from "../tracker/use-tracker";
-import { format, differenceInDays, startOfDay, subDays } from "date-fns";
+import type { AnalyticsStats } from "./use-analytics";
 
-export const Stats = () => {
-  const { habitsWithLogs, selectedHabitId } = useTracker();
+interface StatsProps {
+  stats: AnalyticsStats;
+}
 
-  const habit = selectedHabitId ? habitsWithLogs[selectedHabitId] : undefined;
-  const dayLogs = habit?.dayLogs ?? {};
-
-  const loggedDates = Object.keys(dayLogs).sort().reverse(); // newest first
-
-  // 1. Total Completions
-  const totalCompletions = loggedDates.filter((date) => {
-    const log = dayLogs[date];
-    // Completed if rating exists (simple habit) OR has exercise sessions
-    return log.rating !== undefined || (log.exerciseSessions && log.exerciseSessions.length > 0);
-  }).length;
-
-  // 2. Current Streak
-  let currentStreak = 0;
-  if (loggedDates.length > 0) {
-    const today = format(new Date(), "yyyy-MM-dd");
-    let expectedDate = startOfDay(new Date());
-
-    while (true) {
-      const dateStr = format(expectedDate, "yyyy-MM-dd");
-      const log = dayLogs[dateStr];
-      const isCompleted =
-        log?.rating !== undefined || (log?.exerciseSessions && log.exerciseSessions.length > 0);
-
-      if (isCompleted) {
-        currentStreak++;
-        expectedDate = subDays(expectedDate, 1);
-      } else {
-        break;
-      }
-    }
-  }
-
-  // 3. Goal Frequency (percentage of days logged)
-  let goalFrequency = "0%";
-  if (habit && loggedDates.length > 0) {
-    // Use habit.createdAt if available; otherwise fall back to earliest log
-    const startDateStr = loggedDates[loggedDates.length - 1]; // oldest
-    const startDate = new Date(startDateStr);
-    const endDate = new Date(); // today
-
-    const totalDays = differenceInDays(endDate, startDate) + 1;
-    const completedDays = totalCompletions;
-
-    goalFrequency = totalDays > 0 ? `${Math.round((completedDays / totalDays) * 100)}%` : "0%";
-  }
+export const Stats = ({ stats }: StatsProps) => {
+  const { totalCompletions, currentStreak, goalFrequency } = stats;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -1,4 +1,46 @@
+import { format, subDays } from 'date-fns';
+
 export const formatDate = (date: Date) => date.toISOString().split('T')[0];
+
+/**
+ * Compute a streak (consecutive days) backwards from `fromDate`.
+ * Works for regular habits, complex/session habits, and anti-habits.
+ */
+export const computeStreak = (
+    dayLogs: Record<string, { rating?: number; exerciseSessions?: unknown[] }>,
+    fromDate: string,
+    type: string,
+    isAntiHabit?: boolean,
+): number => {
+    let streak = 0;
+    let cursor = new Date(fromDate + 'T00:00:00.000');
+    const maxDays = 365; // safety cap
+
+    while (streak < maxDays) {
+        const dateStr = format(cursor, 'yyyy-MM-dd');
+        const log = dayLogs[dateStr];
+
+        if (isAntiHabit) {
+            const hasAnyLogs = Object.keys(dayLogs).length > 0;
+            if (!hasAnyLogs) break;
+
+            const earliestDate = Object.keys(dayLogs).sort()[0];
+            if (dateStr < earliestDate) break;
+
+            const wasAvoided = !log || (log.rating ?? 0) === 0;
+            if (!wasAvoided) break;
+        } else {
+            const isCompleted = type === 'complex'
+                ? (log?.exerciseSessions as unknown[] | undefined)?.length! > 0
+                : (log?.rating ?? 0) > 0;
+            if (!isCompleted) break;
+        }
+
+        streak++;
+        cursor = subDays(cursor, 1);
+    }
+    return streak;
+};
 
 export const getIntensityColor = (value: number, baseColor = 'emerald') => {
     if (value === 0) return 'bg-slate-100 dark:bg-slate-800';

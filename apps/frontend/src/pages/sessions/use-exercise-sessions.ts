@@ -1,63 +1,448 @@
 import { useMemo } from 'react';
-import { useTracker } from '@/pages/tracker/use-tracker';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { DateTime } from 'luxon';
+import {
+    useTracker,
+    useUIStore,
+    HabitWithLogs,
+    OptimisticExerciseSession,
+    OptimisticExerciseLog,
+    OptimisticExercisePerformance,
+} from '@/pages/tracker/use-tracker';
 
-/**
- * Convenience hook that wraps useTracker and exposes only
- * exercise-session-related state & mutations.
- *
- * It also provides a filtered list of "complex" habits (the ones
- * that use structured exercise sessions) sorted by order.
- */
+const API_URL = import.meta.env.VITE_API_URL;
+
+const makeUpdateCache =
+    (queryClient: ReturnType<typeof useQueryClient>) =>
+        (updater: (data: Record<number, HabitWithLogs>) => void) => {
+            queryClient.setQueryData(
+                ['habit-logs'],
+                (old: Record<number, HabitWithLogs> | undefined) => {
+                    if (!old) return {};
+                    const newData = structuredClone(old);
+                    updater(newData);
+                    return newData;
+                },
+            );
+        };
+
 export function useExerciseSessions() {
+    const queryClient = useQueryClient();
+    const updateCache = makeUpdateCache(queryClient);
+
+    const { habitsWithLogs, isLoading } = useTracker();
     const {
-        habitsWithLogs,
-        currentHabit,
         selectedHabitId,
         selectedDay,
         selectedSessionIndex,
-        setHabitId,
-        setDay,
-        setSessionIndex,
-        currentDayLog,
-        currentSessionIndex,
-        isLoading,
-        createSession,
-        deleteSession,
-        addExerciseLog,
-        removeExerciseLog,
-        newSet,
-        updateSet,
-        deleteSet,
-    } = useTracker();
+        selectHabitId: setHabitId,
+        selectDay: setDay,
+        selectSessionIndex: setSessionIndex,
+    } = useUIStore();
 
-    // Only complex habits have exercise sessions
-    const complexHabits = useMemo(() => {
-        return Object.values(habitsWithLogs)
-            .filter((h) => h.type === 'complex')
-            .sort((a, b) => {
-                const orderDiff = (a.order ?? 0) - (b.order ?? 0);
-                return orderDiff !== 0 ? orderDiff : a.id - b.id;
+    // --- Derived state ---
+    const currentHabit = selectedHabitId ? habitsWithLogs[selectedHabitId] : undefined;
+    const currentDayLog = currentHabit?.dayLogs[selectedDay];
+    const currentSessionIndex = selectedSessionIndex;
+
+    const complexHabits = useMemo(
+        () =>
+            Object.values(habitsWithLogs)
+                .filter((h) => h.type === 'complex')
+                .sort((a, b) => {
+                    const diff = (a.order ?? 0) - (b.order ?? 0);
+                    return diff !== 0 ? diff : a.id - b.id;
+                }),
+        [habitsWithLogs],
+    );
+
+    // --- 1. Create Session ---
+    const createSessionMutation = useMutation({
+        mutationFn: async (payload?: { habitId?: number; day?: string }) => {
+            const effectiveHabitId = payload?.habitId ?? selectedHabitId;
+            const effectiveDay = payload?.day ?? selectedDay;
+            const date = DateTime.fromISO(effectiveDay).toUTC().toISODate();
+            const res = await fetch(`${API_URL}/tracker/exercise-sessions`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    habitId: effectiveHabitId,
+                    date,
+                    timeStamp: DateTime.now().toISO(),
+                }),
             });
-    }, [habitsWithLogs]);
+            if (!res.ok) throw new Error('Failed to create session');
+            return res.json();
+        },
+        onMutate: async (payload) => {
+            await queryClient.cancelQueries({ queryKey: ['habit-logs'] });
+            const previousData = queryClient.getQueryData(['habit-logs']);
+            const effectiveHabitId = payload?.habitId ?? selectedHabitId;
+            const effectiveDay = payload?.day ?? selectedDay;
+            const date = DateTime.fromISO(effectiveDay).toUTC().toISODate()!;
+            updateCache((newData) => {
+                const habit = newData[effectiveHabitId!];
+                if (!habit) return;
+                if (!habit.dayLogs[date]) {
+                    habit.dayLogs[date] = { habitId: effectiveHabitId!, date, exerciseSessions: [] };
+                }
+                const tempSession: OptimisticExerciseSession = {
+                    id: -Date.now(),
+                    habitId: effectiveHabitId!,
+                    date,
+                    createdAt: new Date().toISOString(),
+                    exerciseLogs: [],
+                };
+                habit.dayLogs[date].exerciseSessions!.push(tempSession);
+            });
+            return { previousData };
+        },
+        onSuccess: (serverSession, payload) => {
+            // Replace temp session with real server record
+            const effectiveHabitId = payload?.habitId ?? selectedHabitId;
+            const effectiveDay = payload?.day ?? selectedDay;
+            const date = DateTime.fromISO(effectiveDay).toUTC().toISODate()!;
+            updateCache((newData) => {
+                const habit = newData[effectiveHabitId!];
+                if (!habit) return;
+                const sessions = habit.dayLogs[date]?.exerciseSessions;
+                if (!sessions) return;
+                const tempIdx = sessions.findIndex((s) => s.id < 0);
+                if (tempIdx !== -1) {
+                    sessions[tempIdx] = { ...sessions[tempIdx], id: serverSession.id };
+                }
+            });
+        },
+        onError: (_err, _vars, context) => {
+            if (context?.previousData) queryClient.setQueryData(['habit-logs'], context.previousData);
+        },
+    });
+
+    // --- 2. Delete Session ---
+    const deleteSessionMutation = useMutation({
+        mutationFn: async (sessionId: number) => {
+            const res = await fetch(`${API_URL}/tracker/exercise-sessions/${sessionId}`, {
+                method: 'DELETE',
+                credentials: 'include',
+            });
+            if (!res.ok) throw new Error('Failed to delete session');
+            return res.json();
+        },
+        onMutate: async (sessionId) => {
+            await queryClient.cancelQueries({ queryKey: ['habit-logs'] });
+            const previousData = queryClient.getQueryData(['habit-logs']);
+            updateCache((newData) => {
+                for (const habit of Object.values(newData)) {
+                    for (const dayLog of Object.values(habit.dayLogs)) {
+                        if (dayLog.exerciseSessions) {
+                            dayLog.exerciseSessions = dayLog.exerciseSessions.filter(
+                                (s) => s.id !== sessionId,
+                            );
+                        }
+                    }
+                }
+            });
+            return { previousData };
+        },
+        onError: (_err, _vars, context) => {
+            if (context?.previousData) queryClient.setQueryData(['habit-logs'], context.previousData);
+        },
+    });
+
+    // --- 3. Add Exercise Log ---
+    const addExerciseLogMutation = useMutation({
+        mutationFn: async (payload: { exerciseSessionId: number; exerciseId: number }) => {
+            const res = await fetch(`${API_URL}/tracker/exercise-logs`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(payload),
+            });
+            if (!res.ok) throw new Error('Failed to add exercise log');
+            return res.json();
+        },
+        onMutate: async (payload) => {
+            await queryClient.cancelQueries({ queryKey: ['habit-logs'] });
+            const previousData = queryClient.getQueryData(['habit-logs']);
+            updateCache((newData) => {
+                for (const habit of Object.values(newData)) {
+                    for (const dayLog of Object.values(habit.dayLogs)) {
+                        const session = dayLog.exerciseSessions?.find(
+                            (s) => s.id === payload.exerciseSessionId,
+                        );
+                        if (session) {
+                            const tempLog: OptimisticExerciseLog = {
+                                id: -Date.now(),
+                                exerciseId: payload.exerciseId,
+                                exerciseSessionId: payload.exerciseSessionId,
+                                createdAt: null,
+                                distance: null,
+                                duration: null,
+                                distanceUnit: null,
+                                weightUnit: null,
+                                tempId: `temp-${Date.now()}`,
+                                exercisePerformances: [
+                                    {
+                                        id: -Date.now(),
+                                        exerciseLogId: -1,
+                                        reps: 0,
+                                        weight: 0,
+                                        number: 1,
+                                        duration: null,
+                                        distance: null,
+                                        createdAt: null,
+                                        rpe: null,
+                                    },
+                                ],
+                            };
+                            session.exerciseLogs.push(tempLog);
+                        }
+                    }
+                }
+            });
+            return { previousData };
+        },
+        onSuccess: (serverLog, payload) => {
+            // Replace temp log with real server record
+            updateCache((newData) => {
+                for (const habit of Object.values(newData)) {
+                    for (const dayLog of Object.values(habit.dayLogs)) {
+                        const session = dayLog.exerciseSessions?.find(
+                            (s) => s.id === payload.exerciseSessionId,
+                        );
+                        if (session) {
+                            const tempIdx = session.exerciseLogs.findIndex((l) => l.id < 0);
+                            if (tempIdx !== -1) {
+                                session.exerciseLogs[tempIdx] = {
+                                    ...session.exerciseLogs[tempIdx],
+                                    id: serverLog.id,
+                                };
+                            }
+                        }
+                    }
+                }
+            });
+        },
+        onError: (_err, _vars, context) => {
+            if (context?.previousData) queryClient.setQueryData(['habit-logs'], context.previousData);
+        },
+    });
+
+    // --- 4. Remove Exercise Log ---
+    const removeExerciseLogMutation = useMutation({
+        mutationFn: async (logId: number) => {
+            const res = await fetch(`${API_URL}/tracker/exercise-logs/${logId}`, {
+                method: 'DELETE',
+                credentials: 'include',
+            });
+            if (!res.ok) throw new Error('Failed to remove exercise log');
+            return res.json();
+        },
+        onMutate: async (logId) => {
+            await queryClient.cancelQueries({ queryKey: ['habit-logs'] });
+            const previousData = queryClient.getQueryData(['habit-logs']);
+            updateCache((newData) => {
+                for (const habit of Object.values(newData)) {
+                    for (const dayLog of Object.values(habit.dayLogs)) {
+                        for (const session of dayLog.exerciseSessions ?? []) {
+                            session.exerciseLogs = session.exerciseLogs.filter((l) => l.id !== logId);
+                        }
+                    }
+                }
+            });
+            return { previousData };
+        },
+        onError: (_err, _vars, context) => {
+            if (context?.previousData) queryClient.setQueryData(['habit-logs'], context.previousData);
+        },
+    });
+
+    // --- 5. New Set ---
+    const newSetMutation = useMutation({
+        mutationFn: async (payload: { exerciseLog: OptimisticExerciseLog }) => {
+            const perfs = payload.exerciseLog.exercisePerformances ?? [];
+            const lastPerf = perfs[perfs.length - 1];
+            const number = perfs.length + 1;
+            const res = await fetch(`${API_URL}/tracker/exercise-performances`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    exerciseLogId: payload.exerciseLog.id,
+                    reps: lastPerf?.reps ?? 0,
+                    weight: lastPerf?.weight ?? 0,
+                    duration: lastPerf?.duration ?? null,
+                    distance: lastPerf?.distance ?? null,
+                    rpe: lastPerf?.rpe ?? null,
+                    number,
+                }),
+            });
+            if (!res.ok) throw new Error('Failed to create set');
+            return res.json();
+        },
+        onMutate: async (payload) => {
+            await queryClient.cancelQueries({ queryKey: ['habit-logs'] });
+            const previousData = queryClient.getQueryData(['habit-logs']);
+            const perfs = payload.exerciseLog.exercisePerformances ?? [];
+            const lastPerf = perfs[perfs.length - 1];
+            const number = perfs.length + 1;
+            updateCache((newData) => {
+                for (const habit of Object.values(newData)) {
+                    for (const dayLog of Object.values(habit.dayLogs)) {
+                        for (const session of dayLog.exerciseSessions ?? []) {
+                            const log = session.exerciseLogs.find(
+                                (l) => l.id === payload.exerciseLog.id,
+                            );
+                            if (log) {
+                                const tempSet: OptimisticExercisePerformance = {
+                                    id: -Date.now(),
+                                    exerciseLogId: payload.exerciseLog.id,
+                                    reps: lastPerf?.reps ?? 0,
+                                    weight: lastPerf?.weight ?? 0,
+                                    number,
+                                    duration: lastPerf?.duration ?? null,
+                                    distance: lastPerf?.distance ?? null,
+                                    createdAt: null,
+                                    rpe: lastPerf?.rpe ?? null,
+                                    tempId: `temp-${Date.now()}`,
+                                };
+                                log.exercisePerformances.push(tempSet);
+                            }
+                        }
+                    }
+                }
+            });
+            return { previousData };
+        },
+        onSuccess: (serverSet, payload) => {
+            // Replace temp set with real server record
+            updateCache((newData) => {
+                for (const habit of Object.values(newData)) {
+                    for (const dayLog of Object.values(habit.dayLogs)) {
+                        for (const session of dayLog.exerciseSessions ?? []) {
+                            const log = session.exerciseLogs.find(
+                                (l) => l.id === payload.exerciseLog.id,
+                            );
+                            if (log) {
+                                const tempIdx = log.exercisePerformances.findIndex((p) => p.id < 0);
+                                if (tempIdx !== -1) {
+                                    log.exercisePerformances[tempIdx] = {
+                                        ...log.exercisePerformances[tempIdx],
+                                        id: serverSet.id,
+                                        tempId: undefined,
+                                    };
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        },
+        onError: (_err, _vars, context) => {
+            if (context?.previousData) queryClient.setQueryData(['habit-logs'], context.previousData);
+        },
+    });
+
+    // --- 6. Update Set ---
+    const updateSetMutation = useMutation({
+        mutationFn: async (payload: Partial<OptimisticExercisePerformance> & { id: number }) => {
+            const { id, tempId: _tempId, createdAt: _ca, exerciseLogId: _eli, ...rest } = payload;
+            // Skip API call for optimistic temp records (negative IDs)
+            if (id < 0) return;
+            const res = await fetch(`${API_URL}/tracker/exercise-performances/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(rest),
+            });
+            if (!res.ok) throw new Error('Failed to update set');
+            return res.json();
+        },
+        onMutate: async (payload) => {
+            await queryClient.cancelQueries({ queryKey: ['habit-logs'] });
+            const previousData = queryClient.getQueryData(['habit-logs']);
+            updateCache((newData) => {
+                for (const habit of Object.values(newData)) {
+                    for (const dayLog of Object.values(habit.dayLogs)) {
+                        for (const session of dayLog.exerciseSessions ?? []) {
+                            for (const log of session.exerciseLogs) {
+                                const idx = log.exercisePerformances.findIndex(
+                                    (p) => p.id === payload.id,
+                                );
+                                if (idx !== -1) {
+                                    log.exercisePerformances[idx] = {
+                                        ...log.exercisePerformances[idx],
+                                        ...payload,
+                                    };
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            return { previousData };
+        },
+        onError: (_err, _vars, context) => {
+            if (context?.previousData) queryClient.setQueryData(['habit-logs'], context.previousData);
+        },
+    });
+
+    // --- 7. Delete Set ---
+    const deleteSetMutation = useMutation({
+        mutationFn: async (setId: number) => {
+            const res = await fetch(`${API_URL}/tracker/exercise-performances/${setId}`, {
+                method: 'DELETE',
+                credentials: 'include',
+            });
+            if (!res.ok) throw new Error('Failed to delete set');
+            return res.json();
+        },
+        onMutate: async (setId) => {
+            await queryClient.cancelQueries({ queryKey: ['habit-logs'] });
+            const previousData = queryClient.getQueryData(['habit-logs']);
+            updateCache((newData) => {
+                for (const habit of Object.values(newData)) {
+                    for (const dayLog of Object.values(habit.dayLogs)) {
+                        for (const session of dayLog.exerciseSessions ?? []) {
+                            for (const log of session.exerciseLogs) {
+                                log.exercisePerformances = log.exercisePerformances.filter(
+                                    (p) => p.id !== setId,
+                                );
+                            }
+                        }
+                    }
+                }
+            });
+            return { previousData };
+        },
+        onError: (_err, _vars, context) => {
+            if (context?.previousData) queryClient.setQueryData(['habit-logs'], context.previousData);
+        },
+    });
 
     return {
+        // Data
+        habitsWithLogs,
         complexHabits,
         currentHabit,
+        currentDayLog,
+        isLoading,
+        // UI state
         selectedHabitId,
         selectedDay,
         selectedSessionIndex,
+        currentSessionIndex,
         setHabitId,
         setDay,
         setSessionIndex,
-        currentDayLog,
-        currentSessionIndex,
-        isLoading,
-        createSession,
-        deleteSession,
-        addExerciseLog,
-        removeExerciseLog,
-        newSet,
-        updateSet,
-        deleteSet,
+        // Mutations
+        createSession: createSessionMutation.mutate,
+        deleteSession: deleteSessionMutation.mutate,
+        addExerciseLog: addExerciseLogMutation.mutate,
+        removeExerciseLog: removeExerciseLogMutation.mutate,
+        newSet: newSetMutation.mutate,
+        updateSet: updateSetMutation.mutate,
+        deleteSet: deleteSetMutation.mutate,
     };
 }

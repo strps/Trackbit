@@ -7,12 +7,14 @@ export interface Habit {
     userId: string;
     name: string;
     description: string | null;
-    type: 'simple' | 'complex' | 'negative';
+    type: 'count' | 'complex' | 'negative' | 'timed' | 'check';
+    isAntiHabit: boolean;
     colorTheme: 'green' | 'blue' | 'orange' | 'purple' | 'rose' | 'fire' | 'custom';
     colorStops: ColorStop[];
     icon: string;
     weeklyGoal: number;
     dailyGoal: number;
+    order: number;
     createdAt: string | null;
 }
 export interface Exercise {

@@ -2,7 +2,18 @@ import { GRADIENT_PRESETS, ColorThemeField } from "@/pages/habits-configuration/
 import { IconSelector } from "./IconField";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { CheckCircle, Layout, List, Save, ShieldAlert, XCircle } from "lucide-react";
+import { CheckCircle, Layout, List, Save, ShieldAlert, Trash2, XCircle } from "lucide-react";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { z } from "zod";
 import { BigButton } from "@/components/BigButton";
 import { useForm } from "react-hook-form";
@@ -85,11 +96,13 @@ const defaultValues = {
 interface HabitConfigProps {
     isEditing: boolean;
     habit?: Habit | null;
+    onDelete?: (id: number) => void;
 }
 
 export const HabitConfigForm = ({
     isEditing,
-    habit
+    habit,
+    onDelete
 }: HabitConfigProps) => {
 
     const { createHabit, updateHabit } = useHabits();
@@ -141,6 +154,32 @@ export const HabitConfigForm = ({
                         <p className="text-sm text-slate-500">Define how you want to track this routine.</p>
                     </div>
                     <div className="flex gap-2">
+                        {habit && onDelete && (
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button type="button" variant="destructive" className="flex items-center gap-2">
+                                        <Trash2 className="w-4 h-4" /> Delete
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Delete "{habit.name}"?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This will permanently delete this habit and all its tracked data. This action cannot be undone.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                            className="bg-destructive text-white hover:bg-destructive/90"
+                                            onClick={() => onDelete(habit.id)}
+                                        >
+                                            Delete
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        )}
                         <Button type="button" onClick={resetForm}>Cancel</Button>
                         <Button type="submit" className="flex items-center gap-2">
                             <Save className="w-4 h-4" /> Save

@@ -15,7 +15,6 @@ import {
     eachWeekOfInterval,
 } from "date-fns";
 import { Button } from "./ui/button";
-import { useTracker } from "@/pages/tracker/use-tracker";
 
 interface HeatmapProps {
     // data?: Record<string, { rating: number }>;
@@ -164,12 +163,6 @@ export const Heatmap = ({
     if (weeks.length === 0) {
         return <div className="p-4 text-center text-muted-foreground">No data available</div>;
     }
-
-
-    const { currentHabit } = useTracker();
-
-    const logsMap = currentHabit?.dayLogs;
-
 
 
     return (
