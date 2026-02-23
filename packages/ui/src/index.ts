@@ -26,6 +26,7 @@ export * from "@/components/ui/select"
 export * from "@/components/ui/dialog"
 
 //Own Components
+export * from "@/components/RpeSelector"
 export * from "@/components/Sidebar"
 export * from "@/components/ThemeToggle"
 export * from "@/components/UserNav"

@@ -5,6 +5,7 @@ import { NumericStepper } from "../../components/NumericStepper";
 import { OptimisticExercisePerformance, OptimisticExerciseLog } from "@/pages/tracker/use-tracker";
 import { useExerciseSessions } from "@/pages/sessions/use-exercise-sessions";
 import { Timer } from "@/components/Timer";
+import { RpeSelector } from "@/components/RpeSelector";
 
 // =============================================================================
 // Shared helpers & components re-exported for use across pages (e.g. Landing)
@@ -125,6 +126,11 @@ export const PerformanceCard = ({
                             min={0}
                             aria-label={`Weight for ${headerLabel.toLowerCase()} ${index + 1}`}
                         />
+                        <RpeSelector
+                            compact
+                            value={performance.rpe ?? null}
+                            onChange={(val) => onUpdate({ ...performance, rpe: val })}
+                        />
                     </>
                 )}
                 {category === "cardio" && (
@@ -137,6 +143,11 @@ export const PerformanceCard = ({
                             step={0.1}
                             min={0}
                             aria-label={`Distance for lap ${index + 1}`}
+                        />
+                        <RpeSelector
+                            compact
+                            value={performance.rpe ?? null}
+                            onChange={(val) => onUpdate({ ...performance, rpe: val })}
                         />
                     </>
                 )}
@@ -185,20 +196,11 @@ export const FlexibilityHoldCard = ({ exerciseLog }: FlexibilityHoldCardProps) =
                 />
             </div>
             <div className="flex flex-col items-center gap-3 w-full max-w-xs">
-                <p className="text-sm text-muted-foreground">Perceived Intensity</p>
-                <div className="flex gap-2">
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((level) => (
-                        <Button
-                            key={level}
-                            variant={performance.rpe === level ? "default" : "outline"}
-                            size="sm"
-                            className="w-10 h-10 rounded-full"
-                            onClick={() => handleUpdate({ rpe: level })}
-                        >
-                            {level}
-                        </Button>
-                    ))}
-                </div>
+                <RpeSelector
+                    label="Perceived Intensity"
+                    value={performance.rpe ?? null}
+                    onChange={(val) => handleUpdate({ rpe: val })}
+                />
             </div>
         </div>
     );

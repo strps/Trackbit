@@ -23,6 +23,24 @@ import { Timer } from '@/components/Timer';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Exercise } from '@trackbit/types';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { RPE_LABELS } from '@/components/RpeSelector';
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+const getAvgRpe = (performances: OptimisticExercisePerformance[]): number | null => {
+    const values = performances.map(p => p.rpe).filter((v): v is number => v != null);
+    if (values.length === 0) return null;
+    return Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+};
+
+const rpeColor = (rpe: number) => {
+    if (rpe <= 3) return 'text-emerald-500';
+    if (rpe <= 6) return 'text-amber-400';
+    if (rpe <= 8) return 'text-orange-500';
+    return 'text-red-500';
+};
 
 // =============================================================================
 // Page
@@ -256,25 +274,35 @@ const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: onEditTri
                     />
                 </div>
             ),
-            legend: (
-                <div className="text-[12px] font-bold text-muted-foreground uppercase">
-                    <div className="flex items-end gap-x-4">
-                        <div className="flex flex-col gap-1 items-end">
-                            <div className="flex items-center gap-1"><Hash className="w-3 h-3" /> Reps</div>
-                            <div className="flex items-center gap-1"><Scale className="w-3 h-3" /> Weight (kg)</div>
-                        </div>
-                        <div className="flex gap-2 text-foreground font-medium">
-                            {exerciseLog.exercisePerformances.map((_: any, i: number) => (
-                                <div key={i} className="flex flex-col gap-1 text-center">
-                                    <span className="text-muted-foreground text-[9px]">Set {i + 1}</span>
-                                    <span>{exerciseLog.exercisePerformances[i].reps || '-'}</span>
-                                    <span>{exerciseLog.exercisePerformances[i].weight || '-'}</span>
+            legend: (() => {
+                const avgRpe = getAvgRpe(exerciseLog.exercisePerformances);
+                return (
+                    <div className="text-[12px] font-bold text-muted-foreground uppercase">
+                        <div className="flex items-end gap-x-4">
+                            <div className="flex flex-col gap-1 items-end">
+                                <div className="flex items-center gap-1"><Hash className="w-3 h-3" /> Reps</div>
+                                <div className="flex items-center gap-1"><Scale className="w-3 h-3" /> Weight (kg)</div>
+                            </div>
+                            <div className="flex gap-2 text-foreground font-medium">
+                                {exerciseLog.exercisePerformances.map((_: any, i: number) => (
+                                    <div key={i} className="flex flex-col gap-1 text-center">
+                                        <span className="text-muted-foreground text-[9px]">Set {i + 1}</span>
+                                        <span>{exerciseLog.exercisePerformances[i].reps || '-'}</span>
+                                        <span>{exerciseLog.exercisePerformances[i].weight || '-'}</span>
+                                    </div>
+                                ))}
+                            </div>
+                            {avgRpe != null && (
+                                <div className={`ml-auto flex flex-col items-end normal-case ${rpeColor(avgRpe)}`}>
+                                    <span className="text-[9px] text-muted-foreground uppercase">Avg RPE</span>
+                                    <span className="text-base font-bold leading-none">{avgRpe}</span>
+                                    <span className="text-[9px] font-normal italic normal-case opacity-80">{RPE_LABELS[avgRpe]}</span>
                                 </div>
-                            ))}
+                            )}
                         </div>
                     </div>
-                </div>
-            ),
+                );
+            })(),
         },
         cardio: {
             content: (
@@ -298,36 +326,59 @@ const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: onEditTri
                     />
                 </div>
             ),
-            legend: (
-                <div className="text-[12px] font-bold text-muted-foreground uppercase">
-                    <div className="flex items-end gap-x-4">
-                        <div className="flex flex-col gap-1 items-end">
-                            <div className="flex items-center gap-1"><Clock className="w-3 h-3" /> Time</div>
-                            <div className="flex items-center gap-1"><MapPin className="w-3 h-3" /> Distance (km)</div>
-                        </div>
-                        <div className="flex gap-2 text-foreground font-medium">
-                            {exerciseLog.exercisePerformances.map((_: any, i: number) => (
-                                <div key={i} className="flex flex-col gap-1 text-center">
-                                    <span className="text-muted-foreground text-[9px]">Lap {i + 1}</span>
-                                    <span>{formatDuration(exerciseLog.exercisePerformances[i].duration)}</span>
-                                    <span>{exerciseLog.exercisePerformances[i].distance ?? '-'}</span>
+            legend: (() => {
+                const avgRpe = getAvgRpe(exerciseLog.exercisePerformances);
+                return (
+                    <div className="text-[12px] font-bold text-muted-foreground uppercase">
+                        <div className="flex items-end gap-x-4">
+                            <div className="flex flex-col gap-1 items-end">
+                                <div className="flex items-center gap-1"><Clock className="w-3 h-3" /> Time</div>
+                                <div className="flex items-center gap-1"><MapPin className="w-3 h-3" /> Distance (km)</div>
+                            </div>
+                            <div className="flex gap-2 text-foreground font-medium">
+                                {exerciseLog.exercisePerformances.map((_: any, i: number) => (
+                                    <div key={i} className="flex flex-col gap-1 text-center">
+                                        <span className="text-muted-foreground text-[9px]">Lap {i + 1}</span>
+                                        <span>{formatDuration(exerciseLog.exercisePerformances[i].duration)}</span>
+                                        <span>{exerciseLog.exercisePerformances[i].distance ?? '-'}</span>
+                                    </div>
+                                ))}
+                            </div>
+                            {avgRpe != null && (
+                                <div className={`ml-auto flex flex-col items-end normal-case ${rpeColor(avgRpe)}`}>
+                                    <span className="text-[9px] text-muted-foreground uppercase">Avg RPE</span>
+                                    <span className="text-base font-bold leading-none">{avgRpe}</span>
+                                    <span className="text-[9px] font-normal italic normal-case opacity-80">{RPE_LABELS[avgRpe]}</span>
                                 </div>
-                            ))}
+                            )}
                         </div>
                     </div>
-                </div>
-            ),
+                );
+            })(),
         },
         flexibility: {
             content: <FlexibilityHoldCard exerciseLog={exerciseLog} />,
-            legend: (
-                <div className="text-[10px] font-bold text-muted-foreground uppercase">
-                    <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4" />
-                        <span>Duration: {formatDuration(exerciseLog.duration ?? exerciseLog.exercisePerformances[0]?.duration ?? 0)}</span>
+            legend: (() => {
+                const perf = exerciseLog.exercisePerformances[0];
+                const rpe = perf?.rpe ?? null;
+                return (
+                    <div className="text-[10px] font-bold text-muted-foreground uppercase">
+                        <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-2">
+                                <Clock className="w-4 h-4" />
+                                <span>Duration: {formatDuration(exerciseLog.duration ?? perf?.duration ?? 0)}</span>
+                            </div>
+                            {rpe != null && (
+                                <div className={`flex flex-col items-end normal-case ${rpeColor(rpe)}`}>
+                                    <span className="text-[9px] text-muted-foreground uppercase">RPE</span>
+                                    <span className="text-base font-bold leading-none">{rpe}</span>
+                                    <span className="text-[9px] font-normal italic opacity-80">{RPE_LABELS[rpe]}</span>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
-            ),
+                );
+            })(),
         },
     };
 
