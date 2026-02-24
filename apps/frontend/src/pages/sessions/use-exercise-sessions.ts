@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { DateTime } from 'luxon';
 import {
     useTracker,
     useUIStore,
@@ -32,17 +31,26 @@ export function useExerciseSessions() {
 
     const { habitsWithLogs, isLoading } = useTracker();
     const {
-        selectedHabitId,
-        selectedDay,
+        selectedLogId,
         selectedSessionIndex,
-        selectHabitId: setHabitId,
-        selectDay: setDay,
+        selectLogId: setLogId,
         selectSessionIndex: setSessionIndex,
     } = useUIStore();
 
     // --- Derived state ---
-    const currentHabit = selectedHabitId ? habitsWithLogs[selectedHabitId] : undefined;
-    const currentDayLog = currentHabit?.dayLogs[selectedDay];
+    // Find day log and parent habit by logId (scanning all habits)
+    const { currentHabit, currentDayLog } = useMemo(() => {
+        if (selectedLogId != null) {
+            for (const habit of Object.values(habitsWithLogs)) {
+                for (const dl of Object.values(habit.dayLogs)) {
+                    if (dl.id === selectedLogId) {
+                        return { currentHabit: habit, currentDayLog: dl };
+                    }
+                }
+            }
+        }
+        return { currentHabit: undefined, currentDayLog: undefined };
+    }, [habitsWithLogs, selectedLogId]);
     const currentSessionIndex = selectedSessionIndex;
 
     const complexHabits = useMemo(
@@ -58,63 +66,23 @@ export function useExerciseSessions() {
 
     // --- 1. Create Session ---
     const createSessionMutation = useMutation({
-        mutationFn: async (payload?: { habitId?: number; day?: string }) => {
-            const effectiveHabitId = payload?.habitId ?? selectedHabitId;
-            const effectiveDay = payload?.day ?? selectedDay;
-            const date = DateTime.fromISO(effectiveDay).toUTC().toISODate();
+        mutationFn: async (payload?: { dayLogId?: number }) => {
+            const dayLogId = payload?.dayLogId ?? currentDayLog?.id;
+            if (!dayLogId) throw new Error('No dayLogId available');
+
             const res = await fetch(`${API_URL}/tracker/exercise-sessions`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({
-                    habitId: effectiveHabitId,
-                    date,
-                    timeStamp: DateTime.now().toISO(),
-                }),
+                body: JSON.stringify({ dayLogId }),
             });
             if (!res.ok) throw new Error('Failed to create session');
             return res.json();
         },
-        onMutate: async (payload) => {
-            await queryClient.cancelQueries({ queryKey: ['habit-logs'] });
-            const previousData = queryClient.getQueryData(['habit-logs']);
-            const effectiveHabitId = payload?.habitId ?? selectedHabitId;
-            const effectiveDay = payload?.day ?? selectedDay;
-            const date = DateTime.fromISO(effectiveDay).toUTC().toISODate()!;
-            updateCache((newData) => {
-                const habit = newData[effectiveHabitId!];
-                if (!habit) return;
-                if (!habit.dayLogs[date]) {
-                    habit.dayLogs[date] = { habitId: effectiveHabitId!, date, exerciseSessions: [] };
-                }
-                const tempSession: OptimisticExerciseSession = {
-                    id: -Date.now(),
-                    habitId: effectiveHabitId!,
-                    date,
-                    createdAt: new Date().toISOString(),
-                    exerciseLogs: [],
-                };
-                habit.dayLogs[date].exerciseSessions!.push(tempSession);
-            });
-            return { previousData };
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['habit-logs'] });
         },
-        onSuccess: (serverSession, payload) => {
-            // Replace temp session with real server record
-            const effectiveHabitId = payload?.habitId ?? selectedHabitId;
-            const effectiveDay = payload?.day ?? selectedDay;
-            const date = DateTime.fromISO(effectiveDay).toUTC().toISODate()!;
-            updateCache((newData) => {
-                const habit = newData[effectiveHabitId!];
-                if (!habit) return;
-                const sessions = habit.dayLogs[date]?.exerciseSessions;
-                if (!sessions) return;
-                const tempIdx = sessions.findIndex((s) => s.id < 0);
-                if (tempIdx !== -1) {
-                    sessions[tempIdx] = { ...sessions[tempIdx], id: serverSession.id };
-                }
-            });
-        },
-        onError: (_err, _vars, context) => {
+        onError: (_err, _vars, context: any) => {
             if (context?.previousData) queryClient.setQueryData(['habit-logs'], context.previousData);
         },
     });
@@ -151,13 +119,26 @@ export function useExerciseSessions() {
     });
 
     // --- 3. Add Exercise Log ---
+    type AddExerciseLogPayload = {
+        exerciseSessionId: number;
+        exerciseId: number;
+        lastPerformance?: {
+            id: number | null;
+            weight: number | null;
+            reps: number | null;
+            distance: number | null;
+            duration: number | null;
+            createdAt: string | null;
+        };
+    };
     const addExerciseLogMutation = useMutation({
-        mutationFn: async (payload: { exerciseSessionId: number; exerciseId: number }) => {
+        mutationFn: async (payload: AddExerciseLogPayload) => {
+            const { lastPerformance: _lp, ...serverPayload } = payload;
             const res = await fetch(`${API_URL}/tracker/exercise-logs`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify(payload),
+                body: JSON.stringify(serverPayload),
             });
             if (!res.ok) throw new Error('Failed to add exercise log');
             return res.json();
@@ -165,6 +146,8 @@ export function useExerciseSessions() {
         onMutate: async (payload) => {
             await queryClient.cancelQueries({ queryKey: ['habit-logs'] });
             const previousData = queryClient.getQueryData(['habit-logs']);
+            // Seed first performance with lastPerformance values when available
+            const lp = payload.lastPerformance?.id != null ? payload.lastPerformance : null;
             updateCache((newData) => {
                 for (const habit of Object.values(newData)) {
                     for (const dayLog of Object.values(habit.dayLogs)) {
@@ -186,11 +169,11 @@ export function useExerciseSessions() {
                                     {
                                         id: -Date.now(),
                                         exerciseLogId: -1,
-                                        reps: 0,
-                                        weight: 0,
+                                        reps: lp?.reps ?? null,
+                                        weight: lp?.weight ?? null,
                                         number: 1,
-                                        duration: null,
-                                        distance: null,
+                                        duration: lp?.duration ?? null,
+                                        distance: lp?.distance != null ? String(lp.distance) : null,
                                         createdAt: null,
                                         rpe: null,
                                     },
@@ -270,8 +253,8 @@ export function useExerciseSessions() {
                 credentials: 'include',
                 body: JSON.stringify({
                     exerciseLogId: payload.exerciseLog.id,
-                    reps: lastPerf?.reps ?? 0,
-                    weight: lastPerf?.weight ?? 0,
+                    reps: lastPerf?.reps ?? null,
+                    weight: lastPerf?.weight ?? null,
                     duration: lastPerf?.duration ?? null,
                     distance: lastPerf?.distance ?? null,
                     rpe: lastPerf?.rpe ?? null,
@@ -298,8 +281,8 @@ export function useExerciseSessions() {
                                 const tempSet: OptimisticExercisePerformance = {
                                     id: -Date.now(),
                                     exerciseLogId: payload.exerciseLog.id,
-                                    reps: lastPerf?.reps ?? 0,
-                                    weight: lastPerf?.weight ?? 0,
+                                    reps: lastPerf?.reps ?? null,
+                                    weight: lastPerf?.weight ?? null,
                                     number,
                                     duration: lastPerf?.duration ?? null,
                                     distance: lastPerf?.distance ?? null,
@@ -429,12 +412,9 @@ export function useExerciseSessions() {
         currentDayLog,
         isLoading,
         // UI state
-        selectedHabitId,
-        selectedDay,
         selectedSessionIndex,
         currentSessionIndex,
-        setHabitId,
-        setDay,
+        setLogId,
         setSessionIndex,
         // Mutations
         createSession: createSessionMutation.mutate,

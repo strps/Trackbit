@@ -19,6 +19,7 @@ export type OptimisticExerciseSession = ExerciseSession & {
 };
 
 interface EnhancedDayLog { //TODO: use trackbit types
+    id?: number;
     habitId: number;
     date: string;
     createdAt?: string;
@@ -57,6 +58,7 @@ const fetchHistory = async (): Promise<Record<number, HabitWithLogs>> => {
             habit.dayLogs.forEach((dl: EnhancedDayLog) => {
 
                 dayLogsMap[dl.localDay!] = {
+                    id: dl.id,
                     habitId: dl.habitId,
                     date: dl.date,
                     createdAt: dl.createdAt,
@@ -76,22 +78,26 @@ const fetchHistory = async (): Promise<Record<number, HabitWithLogs>> => {
 
 interface UIState {
     selectedHabitId?: number;
+    selectedLogId?: number;
     selectedDay: string;
     selectedSessionIndex: number;
     selectHabitId: (id?: number) => void;
+    selectLogId: (id?: number) => void;
     selectDay: (day: string) => void;
     selectSessionIndex: (i: number) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
     selectedHabitId: undefined,
+    selectedLogId: undefined,
     selectedDay: DateTime.now().toISODate(),
     selectedSessionIndex: 0,
 
     selectHabitId: (id) => set({ selectedHabitId: id }),
+    selectLogId: (id) => set({ selectedLogId: id }),
     selectDay: (day) => set({ selectedDay: day }),
     selectSessionIndex: (i) => set({ selectedSessionIndex: i }),
-}));
+}))
 
 export function useTracker() {
     const { selectedHabitId, selectedDay } = useUIStore();
@@ -125,22 +131,20 @@ export function useTracker() {
             const effectiveDay = payload.day || selectedDay;
             const effectiveHabitId = payload.habitId || selectedHabitId;
 
-            const date = DateTime.fromISO(effectiveDay).toUTC().toISODate()
-
-            const timeStamp = DateTime.fromISO(date!)
-                .setZone('local')                    // Ensures local zone (browser's time zone)
+            const timeStamp = DateTime.fromISO(effectiveDay)
+                .setZone('local')
                 .set({
                     hour: DateTime.local().hour,
                     minute: DateTime.local().minute,
                     second: DateTime.local().second,
-                    millisecond: 0                       // Optional: reset ms for cleanliness
+                    millisecond: 0
                 }).toISO();
 
-            const res = await fetch(`${API_URL}/tracker/check`, {
+            const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            const res = await fetch(`${API_URL}/tracker/check?tz=${tz}`, {
                 method: 'POST',
                 body: JSON.stringify({
                     habitId: Number(effectiveHabitId),
-                    date: date,
                     rating: Number(payload.rating),
                     timeStamp
                 }),
@@ -156,18 +160,17 @@ export function useTracker() {
             const effectiveDay = newItem.day || selectedDay;
             const effectiveHabitId = newItem.habitId || selectedHabitId;
 
-            const date = DateTime.fromISO(effectiveDay).toUTC().toISODate()
             updateCache((newData) => {
                 const habit = newData[effectiveHabitId!];
                 if (habit) {
-                    if (!habit.dayLogs[date!]) {
-                        habit.dayLogs[date!] = {
+                    if (!habit.dayLogs[effectiveDay]) {
+                        habit.dayLogs[effectiveDay] = {
                             habitId: effectiveHabitId!,
-                            date: date!,
+                            date: effectiveDay,
                             exerciseSessions: [],
                         };
                     }
-                    habit.dayLogs[date!].rating = newItem.rating;
+                    habit.dayLogs[effectiveDay].rating = newItem.rating;
                 }
             });
             return { previousData };

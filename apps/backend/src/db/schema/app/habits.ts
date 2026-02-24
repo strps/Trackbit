@@ -48,15 +48,13 @@ export const habitsRelations = relations(habits, ({ one, many }) => ({
 //dayLogs
 export const dayLogs = pgTable('day_logs',
   {
-    date: date('date', { mode: 'string', }).notNull(),
+    id: serial('id').primaryKey(),
     habitId: integer('habit_id').references(() => habits.id, { onDelete: 'cascade' }).notNull(),
     rating: integer('rating'),
     notes: text('notes'),
     timeStamp: timestamp('time_stamp', { withTimezone: true }).defaultNow().notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
-
-  (table) => [primaryKey({ columns: [table.habitId, table.date] })]
 );
 
 export const habitLogsRelations = relations(dayLogs, ({ one, many }) => ({

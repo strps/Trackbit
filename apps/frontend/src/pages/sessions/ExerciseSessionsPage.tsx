@@ -1,6 +1,6 @@
 import React, { useMemo, useEffect, useState } from 'react';
 import {
-    Dumbbell, ChevronLeft, ChevronRight, CalendarSearch,
+    Dumbbell,
     MoreVertical, Plus, Trash2, Search, Hash, Scale, Info,
     Play, Pause, SquarePen, Clock, MapPin, ChevronDown
 } from 'lucide-react';
@@ -9,8 +9,6 @@ import { useExerciseSessions } from './use-exercise-sessions';
 import { PerformanceCard, FlexibilityHoldCard, formatDuration } from './StructuredHabitPanel';
 import { useExercises } from '@/hooks/use-exercises';
 import { OptimisticExerciseSession, OptimisticExercisePerformance, OptimisticExerciseLog } from '@/pages/tracker/use-tracker';
-import { formatDate } from '@/pages/tracker/utils';
-import { format, addDays, isAfter } from 'date-fns';
 import { useSearchParams } from 'react-router-dom';
 import { NumericStepper } from '@/components/NumericStepper';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -47,38 +45,20 @@ const rpeColor = (rpe: number) => {
 // =============================================================================
 
 const ExerciseSessionsPage = () => {
-    const [searchParams, setSearchParams] = useSearchParams();
+    const [searchParams] = useSearchParams();
     const {
         currentHabit,
-        selectedDay,
-        setHabitId,
-        setDay,
+        setLogId,
         isLoading,
         createSession,
         currentDayLog: dayLog,
     } = useExerciseSessions();
 
-    const today = formatDate(new Date());
-
-    // Sync URL params → store on mount and whenever params change
+    // Sync logId from URL → store
     useEffect(() => {
-        const paramHabitId = searchParams.get('habitId');
-        const paramDate = searchParams.get('date');
-        if (paramHabitId) setHabitId(Number(paramHabitId));
-        if (paramDate) setDay(paramDate);
+        const paramLogId = searchParams.get('logId');
+        if (paramLogId) setLogId(Number(paramLogId));
     }, [searchParams]);
-
-    const setParams = (date?: string) => {
-        const next = new URLSearchParams(searchParams);
-        if (date !== undefined) next.set('date', date);
-        setSearchParams(next, { replace: true });
-    };
-
-    const handleDateChange = (offset: number) => {
-        const newDate = addDays(new Date(selectedDay + 'T00:00:00.000'), offset);
-        if (isAfter(newDate, new Date())) return;
-        setParams(format(newDate, 'yyyy-MM-dd'));
-    };
 
     if (isLoading) {
         return <div className="p-8 text-center text-muted-foreground">Loading sessions...</div>;
@@ -103,45 +83,12 @@ const ExerciseSessionsPage = () => {
         <div className="min-h-screen bg-background text-foreground p-4 md:p-8 font-sans">
             <div className="max-w-6xl mx-auto space-y-6">
 
-                {/* Header: habit name + date navigator */}
+                {/* Header */}
                 <div className="flex flex-col sm:flex-row justify-between gap-4">
                     <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
                         <Dumbbell className="w-8 h-8 text-primary" />
                         {currentHabit.name}
                     </h1>
-                    <div className="flex items-center gap-3">
-                        <div className="flex border h-10 items-center justify-between gap-2 border-border rounded-md overflow-hidden shadow-sm">
-                            <button
-                                onClick={() => handleDateChange(-1)}
-                                className="h-full aspect-square flex items-center justify-center border-r hover:bg-muted transition-colors"
-                                aria-label="Previous day"
-                            >
-                                <ChevronLeft className="w-4 h-4" />
-                            </button>
-                            <p className="text-sm text-muted-foreground font-medium px-3 whitespace-nowrap">
-                                {selectedDay === today ? 'Today' : format(selectedDay + 'T00:00:00.000', 'PPP')}
-                            </p>
-                            <button
-                                onClick={() => handleDateChange(1)}
-                                disabled={selectedDay === today}
-                                className="h-full aspect-square flex items-center justify-center border-l hover:bg-muted transition-colors disabled:opacity-30"
-                                aria-label="Next day"
-                            >
-                                <ChevronRight className="w-4 h-4" />
-                            </button>
-                        </div>
-                        {selectedDay !== today && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setParams(today)}
-                                className="gap-1"
-                            >
-                                Today
-                                <CalendarSearch className="w-4 h-4" />
-                            </Button>
-                        )}
-                    </div>
                 </div>
 
                 {/* Session content */}
@@ -463,7 +410,12 @@ const AddExercisePicker = ({ sessionId, setEditing }: { sessionId: number; setEd
     const [selected, setSelected] = useState(0);
 
     const handleAddExerciseLog = (exerciseId: number) => {
-        addExerciseLog({ exerciseSessionId: sessionId, exerciseId });
+        const exercise = exercises.find((e: any) => e.id === exerciseId);
+        addExerciseLog({
+            exerciseSessionId: sessionId,
+            exerciseId,
+            lastPerformance: exercise?.lastPerformance,
+        });
         setEditing();
         setOpen(false);
         setSearch('');

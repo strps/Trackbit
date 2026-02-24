@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { boolean, date, foreignKey, integer, numeric, pgTable, primaryKey, real, serial, text, timestamp, unique } from "drizzle-orm/pg-core";
+import { boolean, foreignKey, integer, numeric, pgTable, primaryKey, real, serial, text, timestamp, unique } from "drizzle-orm/pg-core";
 import { dayLogs } from "./habits";
 import { user } from "./user";
 
@@ -65,24 +65,14 @@ export const exerciseMuscleGroupRelations = relations(exerciseMuscleGroup, ({ on
 //Exercise Sessions
 export const exerciseSessions = pgTable('exercise_sessions', {
     id: serial('id').primaryKey(),
-
-    //Foreing key columns
-    habitId: integer('habit_id').notNull(),
-    date: date('date', { mode: 'string' }).default('today').notNull(),
-
+    dayLogId: integer('day_log_id').references(() => dayLogs.id, { onDelete: 'cascade' }).notNull(),
     createdAt: timestamp('created_at').defaultNow(),
-}, (table) => [
-    foreignKey({
-        columns: [table.habitId, table.date],
-        foreignColumns: [dayLogs.habitId, dayLogs.date],
-    }).onDelete('cascade'),
-]
-);
+});
 
 export const exerciseSessionRelations = relations(exerciseSessions, ({ one, many }) => ({
     log: one(dayLogs, {
-        fields: [exerciseSessions.habitId, exerciseSessions.date],
-        references: [dayLogs.habitId, dayLogs.date],
+        fields: [exerciseSessions.dayLogId],
+        references: [dayLogs.id],
     }),
     exerciseLogs: many(exerciseLogs),
 }));

@@ -1,5 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Habit } from "@trackbit/types"
+import { GRADIENT_PRESETS } from '@/pages/habits-configuration/ColorThemeField';
+import type { HabitWithLogs } from '@/pages/tracker/use-tracker';
+
+const resolveColorStops = (habit: Habit | Omit<Habit, 'id' | 'createdAt'>) =>
+  habit.colorTheme === 'custom'
+    ? habit.colorStops
+    : GRADIENT_PRESETS[habit.colorTheme]?.stops ?? [];
 
 const API_URL = `${import.meta.env.VITE_API_URL}/habits`;
 
@@ -79,14 +86,9 @@ export function useHabits() {
   const createMutation = useMutation({
     mutationFn: createHabit,
     onMutate: async (newHabit) => {
-      // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['habits'] });
-
-      // Snapshot previous value
       const previousHabits = queryClient.getQueryData<Habit[]>(['habits']);
 
-      // Optimistically update to the new value
-      // We create a fake temp ID just for the UI render
       queryClient.setQueryData(['habits'], (old: Omit<Habit, 'createdAt'>[] = []) => [
         ...old,
         { ...newHabit, id: Math.random() },
@@ -94,14 +96,25 @@ export function useHabits() {
 
       return { previousHabits };
     },
+    onSuccess: (serverHabit: Habit) => {
+      // Insert the new habit into the tracker cache
+      queryClient.setQueryData(['habit-logs'], (old: Record<number, HabitWithLogs> | undefined) => {
+        if (!old) return old;
+        const updated = structuredClone(old);
+        updated[serverHabit.id] = {
+          ...serverHabit,
+          colorStops: resolveColorStops(serverHabit),
+          dayLogs: {},
+        };
+        return updated;
+      });
+    },
     onError: (_err, _newHabit, context) => {
-      // Rollback on error
       if (context?.previousHabits) {
         queryClient.setQueryData(['habits'], context.previousHabits);
       }
     },
     onSettled: () => {
-      // Refetch after error or success to ensure sync
       queryClient.invalidateQueries({ queryKey: ['habits'] });
     },
   });
@@ -112,16 +125,28 @@ export function useHabits() {
     onMutate: async (habitId) => {
       await queryClient.cancelQueries({ queryKey: ['habits'] });
       const previousHabits = queryClient.getQueryData<Habit[]>(['habits']);
+      const previousLogs = queryClient.getQueryData<Record<number, HabitWithLogs>>(['habit-logs']);
 
       queryClient.setQueryData(['habits'], (old: Habit[] = []) =>
         old.filter(h => h.id !== habitId)
       );
 
-      return { previousHabits };
+      // Remove from tracker cache
+      queryClient.setQueryData(['habit-logs'], (old: Record<number, HabitWithLogs> | undefined) => {
+        if (!old) return old;
+        const updated = structuredClone(old);
+        delete updated[habitId];
+        return updated;
+      });
+
+      return { previousHabits, previousLogs };
     },
     onError: (_err, _id, context) => {
       if (context?.previousHabits) {
         queryClient.setQueryData(['habits'], context.previousHabits);
+      }
+      if (context?.previousLogs) {
+        queryClient.setQueryData(['habit-logs'], context.previousLogs);
       }
     },
     onSettled: () => {
@@ -135,16 +160,33 @@ export function useHabits() {
     onMutate: async (updatedHabit) => {
       await queryClient.cancelQueries({ queryKey: ['habits'] });
       const previousHabits = queryClient.getQueryData<Habit[]>(['habits']);
+      const previousLogs = queryClient.getQueryData<Record<number, HabitWithLogs>>(['habit-logs']);
 
       queryClient.setQueryData(['habits'], (old: Habit[] = []) =>
         old.map(h => h.id === updatedHabit.id ? updatedHabit : h)
       );
 
-      return { previousHabits };
+      // Update habit properties in tracker cache, preserving dayLogs
+      queryClient.setQueryData(['habit-logs'], (old: Record<number, HabitWithLogs> | undefined) => {
+        if (!old || !old[updatedHabit.id]) return old;
+        const updated = structuredClone(old);
+        updated[updatedHabit.id] = {
+          ...updated[updatedHabit.id],
+          ...updatedHabit,
+          colorStops: resolveColorStops(updatedHabit),
+          dayLogs: updated[updatedHabit.id].dayLogs,
+        };
+        return updated;
+      });
+
+      return { previousHabits, previousLogs };
     },
     onError: (_err, _vars, context) => {
       if (context?.previousHabits) {
         queryClient.setQueryData(['habits'], context.previousHabits);
+      }
+      if (context?.previousLogs) {
+        queryClient.setQueryData(['habit-logs'], context.previousLogs);
       }
     },
     onSettled: () => {
@@ -158,6 +200,7 @@ export function useHabits() {
     onMutate: async (items) => {
       await queryClient.cancelQueries({ queryKey: ['habits'] });
       const previousHabits = queryClient.getQueryData<Habit[]>(['habits']);
+      const previousLogs = queryClient.getQueryData<Record<number, HabitWithLogs>>(['habit-logs']);
 
       // Apply optimistic reorder
       queryClient.setQueryData(['habits'], (old: Habit[] = []) => {
@@ -168,11 +211,29 @@ export function useHabits() {
         });
       });
 
-      return { previousHabits };
+      // Apply reorder to tracker cache
+      queryClient.setQueryData(['habit-logs'], (old: Record<number, HabitWithLogs> | undefined) => {
+        if (!old) return old;
+        const updated = structuredClone(old);
+        const itemMap = new Map(items.map(i => [i.id, i]));
+        for (const [id, habit] of Object.entries(updated)) {
+          const update = itemMap.get(Number(id));
+          if (update) {
+            habit.order = update.order;
+            habit.isAntiHabit = update.isAntiHabit;
+          }
+        }
+        return updated;
+      });
+
+      return { previousHabits, previousLogs };
     },
     onError: (_err, _vars, context) => {
       if (context?.previousHabits) {
         queryClient.setQueryData(['habits'], context.previousHabits);
+      }
+      if (context?.previousLogs) {
+        queryClient.setQueryData(['habit-logs'], context.previousLogs);
       }
     },
     onSettled: () => {

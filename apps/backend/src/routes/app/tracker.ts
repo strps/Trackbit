@@ -86,43 +86,54 @@ app.post(
         'json',
         z.object({
             habitId: z.number(),
-            date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // YYYY-MM-DD
             rating: z.number(),
-            timeStamp: z.string()//.regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/), // ISO 8601 timestamp
+            timeStamp: z.string(),
         }).strict()
     ),
-    //TODO: check for user id in habit in oreder to make sure the user can only update own.
+    //TODO: check for user id in habit in order to make sure the user can only update own.
     async (c) => {
-        const { habitId, date, rating, timeStamp } = c.req.valid('json');
+        const { habitId, rating, timeStamp } = c.req.valid('json');
+        const tz = c.req.query('tz') || 'America/Costa_Rica';
 
-        // Check if log exists
-        const existing = await db.query.dayLogs.findFirst({
-            where: (logs) =>
-                and(eq(logs.habitId, habitId), eq(logs.date, date)),
-        });
+        // Derive the local day from the provided timestamp
+        const localDayExpr = sql<string>`(${timeStamp}::timestamptz AT TIME ZONE ${tz})::date`;
 
-        if (existing) {
-            // Update using composite key
+        // Check if log exists for this habit on the same local day
+        const existing = await db
+            .select({ id: dayLogs.id })
+            .from(dayLogs)
+            .where(
+                and(
+                    eq(dayLogs.habitId, habitId),
+                    sql`(${dayLogs.timeStamp} AT TIME ZONE ${tz})::date = ${localDayExpr}`
+                )
+            )
+            .limit(1);
+
+        if (existing.length > 0) {
+            // Update existing
             await db
                 .update(dayLogs)
                 .set({ rating })
-                .where(
-                    and(eq(dayLogs.habitId, habitId), eq(dayLogs.date, date))
-                );
+                .where(eq(dayLogs.id, existing[0].id));
 
             return c.json({
                 success: true,
+                id: existing[0].id,
                 habitId,
-                date,
             });
         } else {
             // Insert new log
-            await db.insert(dayLogs).values({ habitId, date, rating, timeStamp: new Date(timeStamp) });
+            const [newLog] = await db.insert(dayLogs).values({
+                habitId,
+                rating,
+                timeStamp: new Date(timeStamp),
+            }).returning({ id: dayLogs.id });
 
             return c.json({
                 success: true,
+                id: newLog.id,
                 habitId,
-                date,
             });
         }
     }
@@ -136,12 +147,11 @@ app.post(
 
 // Zod Schemas for DayLogs
 const dayLogSchemas = defineCrudSchemas(dayLogs, {
-    omitFromCreateUpdate: ['createdAt'],
+    omitFromCreateUpdate: ['id', 'createdAt'],
     refine: (schema) =>
         schema.extend({
-            date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
-            rating: z.number().min(0).max(5),
-        }).strict(),
+            timeStamp: z.coerce.date(),
+        }),
 });
 //DayLogs Router
 
@@ -149,7 +159,7 @@ const dayLogSchemas = defineCrudSchemas(dayLogs, {
 const dayLogsRouter = generateCrudRouter({
     table: dayLogs,
     schemas: dayLogSchemas,
-    primaryKeyFields: ['habitId', 'date'], // Composite PK
+    primaryKeyFields: ['id'],
     // Enforce ownership: log belongs to a habit owned by the user
     ownershipCheck: async (user, log) => {
         const habit = await db.query.habits.findFirst({
@@ -168,11 +178,6 @@ app.route('/day-logs', dayLogsRouter);
 
 const sessionSchemas = defineCrudSchemas(exerciseSessions, {
     omitFromCreateUpdate: ['id', 'createdAt'],
-    refine: (schema) =>
-        schema.extend({
-            timeStamp: z.string()//.regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/, 'Timestamp must be in ISO 8601 format'),
-        }),
-
 });
 
 const sessionRouter = generateCrudRouter({
@@ -182,40 +187,21 @@ const sessionRouter = generateCrudRouter({
     // Enforce ownership: session belongs to a dayLog of a habit owned by the user
 
     ownershipCheck: async (user, record) => {
+        const dayLog = await db
+            .select()
+            .from(dayLogs)
+            .where(eq(dayLogs.id, record.dayLogId))
+            .limit(1);
+
+        if (dayLog.length === 0) return false;
 
         const habit = await db
             .select()
             .from(habits)
-            .where(eq(habits.id, record.habitId))
+            .where(eq(habits.id, dayLog[0].habitId))
             .limit(1);
-
 
         return habit.length > 0 && habit[0].userId === user.id;
-    },
-    beforeCreate: async (c, data: any) => {
-        //Check day log exists  according with habitId and date, if not create it.
-        const dayLog = await db
-            .select()
-            .from(dayLogs)
-            .where(and(
-                eq(dayLogs.habitId, data.habitId),
-                eq(dayLogs.date, data.date!)
-            ))
-            .limit(1);
-
-        if (dayLog.length === 0) {
-            console.log("Day log does not exist for, creating new one");
-            await db
-                .insert(dayLogs)
-                .values({
-                    habitId: data.habitId,
-                    date: data.date,
-                    timeStamp: data.timeStamp && new Date(data.timeStamp)
-
-                })
-        }
-
-        return data;
     },
 });
 
@@ -255,10 +241,18 @@ const exerciseLogsRouter = generateCrudRouter({
 
         if (session.length === 0) return false;
 
+        const dayLog = await db
+            .select()
+            .from(dayLogs)
+            .where(eq(dayLogs.id, session[0].dayLogId))
+            .limit(1);
+
+        if (dayLog.length === 0) return false;
+
         const habit = await db
             .select()
             .from(habits)
-            .where(eq(habits.id, session[0].habitId))
+            .where(eq(habits.id, dayLog[0].habitId))
             .limit(1);
 
         return habit.length > 0 && habit[0].userId === user.id;
@@ -337,10 +331,18 @@ const exercisePerformancesRouter = generateCrudRouter({
 
         if (session.length === 0) return false;
 
+        const dayLog = await db
+            .select()
+            .from(dayLogs)
+            .where(eq(dayLogs.id, session[0].dayLogId))
+            .limit(1);
+
+        if (dayLog.length === 0) return false;
+
         const habit = await db
             .select()
             .from(habits)
-            .where(eq(habits.id, session[0].habitId))
+            .where(eq(habits.id, dayLog[0].habitId))
             .limit(1);
 
 

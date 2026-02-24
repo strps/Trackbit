@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
     Activity, Dumbbell, Book as MenuBook, Code,
     Star, Droplet, Trophy, Flame, Minus, Plus, ArrowRight,
@@ -88,6 +89,7 @@ const StreakBadge = ({ streak }: { streak: number }) => {
 const TrackerHome = () => {
     const { habitsWithLogs, isLoading, logSimple } = useTracker();
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const today = formatDate(new Date());
     const [selectedDay, setSelectedDay] = useState(today);
 
@@ -122,8 +124,47 @@ const TrackerHome = () => {
         );
     }
 
-    const goToSessions = (habitId: number) => {
-        navigate(`/sessions?habitId=${habitId}&date=${selectedDay}`);
+    const goToSessions = async (habitId: number) => {
+        const dayLog = habitsWithLogs[habitId]?.dayLogs?.[selectedDay];
+        if (dayLog?.id) {
+            navigate(`/sessions?logId=${dayLog.id}`);
+            return;
+        }
+        // No dayLog for this date — create one, then navigate with its logId
+        try {
+            const timeStamp = new Date().toISOString();
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/tracker/day-logs`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ habitId, timeStamp }),
+            });
+            if (!res.ok) throw new Error('Failed to create day log');
+            const newDayLog = await res.json();
+            // Insert the new dayLog into the cache so the sessions page can find it
+            queryClient.setQueryData(['habit-logs'], (old: Record<number, any> | undefined) => {
+                if (!old) return old;
+                const updated = structuredClone(old);
+                const habit = updated[habitId];
+                if (habit) {
+                    habit.dayLogs[selectedDay] = {
+                        id: newDayLog.id,
+                        habitId,
+                        date: selectedDay,
+                        localDay: selectedDay,
+                        timeStamp: newDayLog.timeStamp ?? timeStamp,
+                        createdAt: newDayLog.createdAt,
+                        rating: newDayLog.rating ?? undefined,
+                        notes: newDayLog.notes ?? undefined,
+                        exerciseSessions: [],
+                    };
+                }
+                return updated;
+            });
+            navigate(`/sessions?logId=${newDayLog.id}`);
+        } catch (err) {
+            console.error('Failed to create day log:', err);
+        }
     };
 
     const renderHabitRow = (habit: typeof sortedHabits[number]) => {

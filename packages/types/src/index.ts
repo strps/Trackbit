@@ -33,8 +33,7 @@ export interface Exercise {
 
 export interface ExerciseSession {
     id: number;
-    habitId: number;
-    date: string;
+    dayLogId: number;
     createdAt: string | null;
 }
 
