@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
     Dumbbell, Search, Plus,
     Activity, User, Globe, Check,
-    Timer, Hash, Ruler, Scale
+    Timer, Hash, Ruler, Scale, MoreVertical, Trash2, Pencil
 } from 'lucide-react';
 import { useExercises } from '../hooks/use-exercises';
 import { Button } from '@/components/ui/button';
@@ -14,13 +14,20 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { ChoiceListField, SelectListOptionComponentProps, SelectOption } from '@/components/Fields/ChoiceListField';
 import { TextField } from '@/components/Fields/TextField';
 import { TextAreaField } from '@/components/Fields/TextAreaField';
+import {
+    Dialog, DialogContent, DialogHeader, DialogTitle
+} from '@/components/ui/dialog';
+import {
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
 
 const ExerciseLibrary = () => {
-    const { exercises, isLoading } = useExercises();
+    const { exercises, isLoading, deleteExercise } = useExercises();
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState<'all' | 'custom' | 'system'>('all');
 
     const [isFormOpen, setIsFormOpen] = useState(false);
+    const [editingExercise, setEditingExercise] = useState<typeof exercises[number] | null>(null);
 
     const filteredExercises = exercises.filter(ex => {
         const matchesSearch = ex.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -51,20 +58,38 @@ const ExerciseLibrary = () => {
                         </p>
                     </div>
                     <Button
-                        onClick={() => setIsFormOpen(!isFormOpen)}
+                        onClick={() => setIsFormOpen(true)}
                         className="font-bold"
                         size="lg"
                     >
-                        {isFormOpen ? 'Cancel' : (
-                            <>
-                                <Plus className="w-4 h-4 mr-2" /> Add Custom Exercise
-                            </>
-                        )}
+                        <Plus className="w-4 h-4 mr-2" /> Add Custom Exercise
                     </Button>
                 </div>
 
-                {/* Add Form (Expanded) */}
-                {isFormOpen && <CreateExerciseForm />}
+                {/* Add Exercise Dialog */}
+                <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle>Create New Exercise</DialogTitle>
+                        </DialogHeader>
+                        <CreateExerciseForm onSuccess={() => setIsFormOpen(false)} />
+                    </DialogContent>
+                </Dialog>
+
+                {/* Edit Exercise Dialog */}
+                <Dialog open={!!editingExercise} onOpenChange={(open) => { if (!open) setEditingExercise(null); }}>
+                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle>Edit Exercise</DialogTitle>
+                        </DialogHeader>
+                        {editingExercise && (
+                            <CreateExerciseForm
+                                exercise={editingExercise}
+                                onSuccess={() => setEditingExercise(null)}
+                            />
+                        )}
+                    </DialogContent>
+                </Dialog>
 
                 {/* Filters & Search */}
                 <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-border">
@@ -106,15 +131,39 @@ const ExerciseLibrary = () => {
                                     <Badge variant="secondary" className={config.color}>
                                         {config.label}
                                     </Badge>
-                                    {exercise.userId ? (
-                                        <Badge variant="outline" className="flex items-center gap-1">
-                                            <User className="w-3 h-3" /> Mine
-                                        </Badge>
-                                    ) : (
-                                        <Badge variant="outline" className="flex items-center gap-1 text-muted-foreground">
-                                            <Globe className="w-3 h-3" /> System
-                                        </Badge>
-                                    )}
+                                    <div className="flex items-center gap-1">
+                                        {exercise.userId ? (
+                                            <>
+                                                <Badge variant="outline" className="flex items-center gap-1">
+                                                    <User className="w-3 h-3" /> Mine
+                                                </Badge>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-7 w-7">
+                                                            <MoreVertical className="w-4 h-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem
+                                                            onClick={() => setEditingExercise(exercise)}
+                                                        >
+                                                            <Pencil className="w-4 h-4 mr-2" /> Edit
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem
+                                                            className="text-destructive focus:text-destructive"
+                                                            onClick={() => deleteExercise(exercise.id)}
+                                                        >
+                                                            <Trash2 className="w-4 h-4 mr-2" /> Delete
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </>
+                                        ) : (
+                                            <Badge variant="outline" className="flex items-center gap-1 text-muted-foreground">
+                                                <Globe className="w-3 h-3" /> System
+                                            </Badge>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <h3 className="font-bold text-lg mb-1">{exercise.name}</h3>
@@ -206,31 +255,41 @@ const createExerciseSchema = z.object({
 
 });
 
-const CreateExerciseForm = () => {
+type ExerciseFormProps = {
+    onSuccess: () => void;
+    exercise?: { id: number; name: string; category: string; };
+};
 
-    const { createExercise, isCreating, muscleGroups } = useExercises();
+const CreateExerciseForm = ({ onSuccess, exercise }: ExerciseFormProps) => {
 
+    const { createExercise, isCreating, updateExercise, isUpdating, muscleGroups } = useExercises();
+    const isEditMode = !!exercise;
 
     const form = useForm({
         defaultValues: {
-            name: '',
-            category: 'strength',
-            muscleGroups: [],
+            name: exercise?.name ?? '',
+            category: (exercise?.category ?? 'strength') as 'strength' | 'cardio' | 'flexibility',
+            muscleGroups: [] as number[],
             description: ''
         },
         resolver: zodResolver(createExerciseSchema)
     });
 
-    const handleSubmit = (data: z.infer<typeof createExerciseSchema>) => {
-        createExercise(data);
+    const handleSubmit = async (data: z.infer<typeof createExerciseSchema>) => {
+        if (isEditMode) {
+            await updateExercise({ id: exercise.id, ...data });
+        } else {
+            await createExercise(data);
+        }
+        form.reset();
+        onSuccess();
     };
 
     const options = muscleGroups.map(m => ({ value: m.id, label: m.name }));
 
 
     return (
-        <div className="p-6 bg-card rounded-xl border border-border shadow-sm">
-            <h3 className="font-bold text-lg mb-6">Create New Exercise</h3>
+        <div className="pt-4">
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
 
                 {/* Name & Target */}
@@ -330,11 +389,11 @@ const CreateExerciseForm = () => {
 
 
                 <Button
-                    // disabled={isCreating}
                     type="submit"
                     className="w-full"
+                    disabled={isCreating || isUpdating}
                 >
-                    {isCreating ? 'Saving...' : 'Save to Library'}
+                    {isCreating || isUpdating ? 'Saving...' : isEditMode ? 'Update Exercise' : 'Save to Library'}
                 </Button>
             </form>
         </div>

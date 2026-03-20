@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
     Activity, Dumbbell, Book as MenuBook, Code,
@@ -9,11 +9,12 @@ import {
 import { useTracker } from './use-tracker';
 import { mapValueToColor, mapValueToColorOrdered } from '@/lib/colorUtils';
 import { ColorStop } from '@trackbit/types';
-import { formatDate, computeStreak } from './utils';
+import { computeStreak } from './utils';
 import { Button } from '@/components/ui/button';
 import { Timer } from '@/components/Timer';
 import { format, addDays, subDays, isAfter } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { DateTime } from 'luxon';
 
 const getHabitIcon = (iconName: string): React.ElementType => {
     switch (iconName) {
@@ -90,8 +91,18 @@ const TrackerHome = () => {
     const { habitsWithLogs, isLoading, logSimple } = useTracker();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const today = formatDate(new Date());
-    const [selectedDay, setSelectedDay] = useState(today);
+    const today = DateTime.now().toISODate();
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    const [selectedDay, setSelectedDay] = useState(searchParams.get('date') ?? today);
+    const [timeZone, setTimeZone] = useState(searchParams.get('time_zone') ?? Intl.DateTimeFormat().resolvedOptions().timeZone);
+    console.log('Current time zone:', timeZone);
+    useEffect(() => {
+        setSearchParams({ date: selectedDay, timezone: timeZone });
+    }, [selectedDay]);
+    useEffect(() => {
+        setSearchParams({ date: selectedDay, timezone: timeZone });
+    }, [timeZone]);
 
     const handleDateChange = (offset: number) => {
         const newDate = addDays(new Date(selectedDay + 'T00:00:00.000'), offset);

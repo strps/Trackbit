@@ -26,7 +26,7 @@ export default function SignInPage() {
                 password: formData.password,
                 // inviteCode: formData.inviteCode || undefined, // Optional if not required for sign-in
             }, {
-                onSuccess: () => navigate('/dashboard'),
+                onSuccess: () => navigate('/tracker'),
                 onError: (ctx) => setError(ctx.error.message),
             });
         } catch (err: any) {

@@ -1,108 +1,147 @@
-# **trackbit**
+# trackbit
 
 A hybrid habit tracker and workout logger for the modern web.
 
-**trackbit** is an intelligent tracking application that bridges the gap between simple habit checkboxes (like "Did I read today?") and complex activity logging (like "Bench Press: 3 sets of 10 @ 80kg"). It features a seamless dashboard with GitHub-style heatmaps, real-time optimistic UI updates, and deep analytics.
+**trackbit** bridges the gap between simple habit checkboxes (_"Did I read today?"_) and complex activity logging (_"Bench Press: 3×10 @ 80 kg"_). It features GitHub-style heatmaps, real-time optimistic UI, and deep analytics — all in a single unified interface.
 
-## **✨ Key Features**
+## Key Features
 
-* **Hybrid Data Model:** Track simple binary habits alongside complex, data-rich activities (workouts, reading sessions, hydration) in a single unified interface.  
-* **Interactive Heatmaps:** Visualize consistency with dynamic, gradient-based activity logs.  
-* **Optimistic UI:** Instant feedback on interactions using TanStack Query, ensuring a snappy feel even on slow networks.  
-* **Exercise Library:** A built-in database of exercises with support for custom user creations.  
-* **Gradient Progress:** Visual intensity tracking based on daily goals (e.g., color intensity increases as you approach your target).  
-* **Secure Authentication:** Powered by **Better-Auth** with support for email/password and session management.
+- **Hybrid Data Model** — Track binary habits alongside data-rich activities (workouts, reading, hydration).
+- **Interactive Heatmaps** — GitHub-style gradient visualizations for consistency tracking.
+- **Optimistic UI** — Instant feedback via TanStack Query, snappy even on slow networks.
+- **Exercise Library** — Built-in exercise database with support for custom creations.
+- **Gradient Progress** — Color intensity increases as you approach daily targets.
+- **Secure Auth** — Email/password authentication powered by Better-Auth.
+- **Admin Dashboard** — Separate admin app with invitation management and data oversight.
+- **E-Invoicing** — Costa Rican Hacienda v4.4 compliance via dedicated client package.
 
-## **🛠️ Tech Stack**
+## Tech Stack
 
-### **Frontend**
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 19, Vite, TypeScript |
+| State & Data | TanStack Query (React Query) |
+| Styling | Tailwind CSS, Shadcn UI, Radix UI |
+| Backend | Hono (Node.js) |
+| Database | PostgreSQL + Drizzle ORM |
+| Auth | Better-Auth |
+| Validation | Zod |
+| Email | React-Email + Resend |
+| Monorepo | pnpm workspaces + Turborepo |
+| Deployment | Vercel |
 
-* **Framework:** React 18 \+ Vite  
-* **Language:** TypeScript  
-* **State/Data Fetching:** TanStack Query (React Query)  
-* **Styling:** Tailwind CSS \+ Shadcn UI  
-* **Icons:** Lucide React
+## Project Structure
 
-### **Backend**
-
-* **Runtime:** Node.js  
-* **Framework:** Fastify  
-* **Database ORM:** Drizzle ORM  
-* **Database:** PostgreSQL  
-* **Validation:** Zod  
-* **Authentication:** Better-Auth
-
-## **🚀 Getting Started**
-
-### **Prerequisites**
-
-* Node.js (v18+)  
-* pnpm (recommended) or npm  
-* PostgreSQL database (Local or Cloud)
-
-### **Installation**
-
-1. **Clone the repository**  
-   git clone \[https://github.com/yourusername/trackbit.git\](https://github.com/yourusername/trackbit.git)  
-   cd trackbit
-
-2. Install Dependencies  
-   Since this is a monorepo-style structure (or separated folders), install dependencies for both.  
-   \# Root (if using workspaces) or separate folders  
-   cd frontend && pnpm install  
-   cd ../backend && pnpm install
-
-3. Environment Setup  
-   Create a .env file in the backend directory:  
-   DATABASE\_URL="postgresql://user:password@localhost:5432/trackbit\_db"  
-   BETTER\_AUTH\_SECRET="your\_generated\_secret\_here"  
-   PORT=3000
-
-4. Database Migration  
-   Initialize your database schema using Drizzle Kit.  
-   cd backend  
-   pnpm db:generate  
-   pnpm db:migrate
-
-### **Running the Project**
-
-**1\. Start the Backend API**
-
-cd backend  
-pnpm dev  
-\# Server running at http://localhost:3000
-
-**2\. Start the Frontend Client**
-
-cd frontend  
-pnpm dev  
-\# App running at http://localhost:5173
-
-## **📂 Project Structure**
-
-trackbit/  
-├── backend/  
-│   ├── src/  
-│   │   ├── db/              \# Drizzle schema & connection  
-│   │   ├── modules/         \# Feature-based API routes (habits, logs, auth)  
-│   │   ├── plugins/         \# Fastify plugins (CORS, JWT)  
-│   │   └── app.ts           \# App entry point  
-│   └── drizzle/             \# SQL migrations  
-├── frontend/  
-│   ├── src/  
-│   │   ├── components/      \# Reusable UI components  
-│   │   ├── hooks/           \# Custom React hooks (useHabits, useLogs)  
-│   │   ├── pages/           \# Main route views (Tracker, Library, Settings)  
-│   │   └── types/           \# Shared TypeScript interfaces  
-│   └── index.html  
+```
+trackbit/
+├── apps/
+│   ├── frontend/              # Consumer-facing habit tracker (React + Vite)
+│   ├── backend/               # REST API server (Hono + PostgreSQL)
+│   └── admin/                 # Admin dashboard (React + Vite)
+├── packages/
+│   ├── ui/                    # Shared UI components (Shadcn-based)
+│   ├── types/                 # Shared TypeScript type definitions
+│   └── hacienda-client/       # Costa Rican e-invoicing client (v4.4)
+├── docs/                      # Project planning & documentation
+├── pnpm-workspace.yaml
+├── tsconfig.base.json
 └── README.md
+```
 
-## **🗺️ Roadmap**
+## Getting Started
 
-We are currently in the **Beta Phase**. Upcoming milestones include:
+### Prerequisites
 
-* \[ \] **Data Analysis:** Correlation engines to find patterns between habits.  
-* \[ \] **Mobile Polish:** Enhanced touch support for mobile browsers.  
-* \[ \] **Social Features:** Optional leaderboards for accountability.  
-* \[ \] **Export:** JSON/CSV export for user data sovereignty.
+- Node.js v18+
+- pnpm v10+
+- PostgreSQL (local or cloud)
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/trackbit.git
+cd trackbit
+
+# Install all dependencies (monorepo-aware)
+pnpm install
+```
+
+### Environment Setup
+
+Create `.env` in `apps/backend/`:
+
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/trackbit_db"
+BETTER_AUTH_SECRET="your_generated_secret_here"
+PORT=3000
+```
+
+### Database Setup
+
+```bash
+# Generate and apply migrations
+pnpm --filter backend db:generate
+pnpm --filter backend db:migrate
+```
+
+### Development
+
+```bash
+# Start all apps concurrently
+pnpm dev
+
+# Or start individually
+pnpm dev:frontend     # http://localhost:5173
+pnpm dev:backend      # http://localhost:3000
+```
+
+### Database Commands
+
+```bash
+pnpm --filter backend db:generate   # Generate Drizzle migrations
+pnpm --filter backend db:migrate    # Apply migrations
+pnpm --filter backend db:push       # Push schema directly to DB
+pnpm --filter backend db:studio     # Launch Drizzle Studio GUI
+pnpm --filter backend db:pull       # Pull existing schema from DB
+```
+
+### Building
+
+```bash
+pnpm build            # Build all packages and apps
+pnpm lint:all         # Lint all workspaces
+```
+
+## API Overview
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /health` | Health check |
+| `/api/auth/*` | Authentication (Better-Auth) |
+| `/api/habits` | Habit CRUD |
+| `/api/tracker` | Activity tracking & logging |
+| `/api/exercise-info` | Exercise library |
+| `/api/config` | App configuration |
+| `/admin/invitations` | Invitation management (admin) |
+
+## Roadmap
+
+See [docs/ROADMAP.md](docs/ROADMAP.md) for the full roadmap. Current priorities:
+
+- [ ] Data analysis — correlation engines to find patterns between habits
+- [ ] Mobile polish — enhanced touch support for mobile browsers
+- [ ] Social features — optional leaderboards for accountability
+- [ ] Export — JSON/CSV export for data sovereignty
+- [ ] Hacienda v4.4 — complete e-invoicing integration
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [ROADMAP.md](docs/ROADMAP.md) | Long-term vision and milestones |
+| [TODO.md](docs/TODO.md) | Current high-priority tasks |
+| [BACKLOG.md](docs/BACKLOG.md) | Future enhancements |
+| [TASKS.md](docs/TASKS.md) | Detailed task breakdowns |
+| [AGENTS.md](AGENTS.md) | AI agent instructions for this codebase |
 

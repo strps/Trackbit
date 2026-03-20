@@ -36,6 +36,26 @@ const createExercise = async (newExercise: { name: string; category: string; mus
     return res.json();
 };
 
+const deleteExercise = async (id: number) => {
+    const res = await fetch(`${API_URL}/exercises/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+    });
+    if (!res.ok) throw new Error('Failed to delete exercise');
+    return res.json();
+};
+
+const updateExercise = async ({ id, ...data }: { id: number; name: string; category: string; muscleGroups?: number[]; description?: string }) => {
+    const res = await fetch(`${API_URL}/exercises/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to update exercise');
+    return res.json();
+};
+
 export function useExercises() {
     const queryClient = useQueryClient();
 
@@ -52,6 +72,20 @@ export function useExercises() {
 
     const createMutation = useMutation({
         mutationFn: createExercise,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['exercises'] });
+        },
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: deleteExercise,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['exercises'] });
+        },
+    });
+
+    const updateMutation = useMutation({
+        mutationFn: updateExercise,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['exercises'] });
         },
@@ -85,6 +119,10 @@ export function useExercises() {
         isLoading: query.isLoading,
         createExercise: createMutation.mutateAsync,
         isCreating: createMutation.isPending,
+        deleteExercise: deleteMutation.mutate,
+        isDeleting: deleteMutation.isPending,
+        updateExercise: updateMutation.mutateAsync,
+        isUpdating: updateMutation.isPending,
         updateLastSetLocally: updateLastSetLocally.mutate,
     };
 }

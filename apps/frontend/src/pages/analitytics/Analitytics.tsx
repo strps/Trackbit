@@ -3,10 +3,10 @@ import { BarChart3, Eye, EyeOff, SlidersHorizontal } from "lucide-react";
 import { Stats } from "./Stats";
 import { Heatmap } from "@/components/Heatmap";
 import { useAnalytics } from "./use-analytics";
-import { formatDate } from "../tracker/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { DateTime } from "luxon";
 
 export const Analytics = () => {
     const {
@@ -34,7 +34,7 @@ export const Analytics = () => {
                             <Label htmlFor="habit-select" className="text-sm text-muted-foreground whitespace-nowrap">Habit</Label>
                             <Select
                                 value={currentHabit ? String(currentHabit.id) : ""}
-                                onValueChange={(val) => { setHabitId(Number(val)); setDay(formatDate(new Date())); }}
+                                onValueChange={(val) => { setHabitId(Number(val)); setDay(DateTime.now().toISODate()); }}
                             >
                                 <SelectTrigger id="habit-select" className="w-48">
                                     <SelectValue placeholder="Select a habit…" />
