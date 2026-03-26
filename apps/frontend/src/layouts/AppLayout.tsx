@@ -1,5 +1,5 @@
-import Header from "@/components/Header";
-import { useSession } from "@/lib/auth-client";
+import Header from "@/shared/components/Header";
+import { useSession } from "@/shared/lib/auth-client";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 
 interface AppLayoutProps {

@@ -78,7 +78,7 @@ const exerciseRouter = generateCrudRouter({
                 )
                 .where(or(isNull(exercises.userId), eq(exercises.userId, user.id)));
 
-
+            console.log('Fetched exercises with last performance:', result);
             return c.json(result)
         },
     },
