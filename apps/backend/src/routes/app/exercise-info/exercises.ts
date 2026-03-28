@@ -42,6 +42,7 @@ const exerciseRouter = generateCrudRouter({
                     duration: sql<number | null>`es.duration_miliseconds`.as('durationMilliSeconds'),
                     createdAt: sql<string | null>`es.created_at`.as('createdAt'),
                     rowNumber: sql<number>`row_number() over (partition by el.exercise_id order by es.created_at desc)`.as('row_number'),
+                    rpe: sql<number | null>`es.rpe`.as('rpe'),
                 })
                     .from(sql`${exerciseLogs} el`)
                     .leftJoin(sql`${exercisePerformances} es`, sql`es.exercise_log_id = el.id`)
@@ -65,6 +66,7 @@ const exerciseRouter = generateCrudRouter({
                         distance: latestSetSubquery.distance,
                         duration: latestSetSubquery.duration,
                         createdAt: latestSetSubquery.createdAt,
+                        rpe: latestSetSubquery.rpe,
                     }
 
                 })

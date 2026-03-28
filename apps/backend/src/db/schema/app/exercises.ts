@@ -108,7 +108,7 @@ export const exerciseLogRelations = relations(exerciseLogs, ({ one, many }) => (
 }));
 
 
-//Exercise Sets 
+//Exercise Performances 
 export const exercisePerformances = pgTable('exercise_performances', {
     id: serial('id').primaryKey(),
     exerciseLogId: integer('exercise_log_id').references(() => exerciseLogs.id, { onDelete: 'cascade' }).notNull(),
@@ -119,7 +119,7 @@ export const exercisePerformances = pgTable('exercise_performances', {
     reps: integer('reps'), // For strength/bodyweight
     weight: real('weight'), // Use real/decimal for 22.5kg
     duration: integer('duration_miliseconds'), // For timed sets or laps Miliseconds
-    distance: numeric('distance'),         // meters/km, for laps
+    distance: numeric('distance', { mode: "number" }),         // meters/km, for laps
 
     // pace: numeric('pace'),                 // Optional derived: min/km
     rpe: integer('rpe'),// Rate of Perceived Exertion (1-10)

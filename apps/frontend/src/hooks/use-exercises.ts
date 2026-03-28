@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Exercise, } from '@trackbit/types';
+import type { Exercise } from '@trackbit/types';
+
 const API_URL = `${import.meta.env.VITE_API_URL}/exercise-info`;
 
 export interface ExerciseWithLastPerformance extends Exercise {
@@ -9,6 +10,7 @@ export interface ExerciseWithLastPerformance extends Exercise {
         reps: number | null;
         distance: number | null;
         duration: number | null;
+        rpe?: number | null;
         createdAt: string;
     };
 }
@@ -23,7 +25,7 @@ const fetchMuscleGroups = async (): Promise<{ name: string; id: number }[]> => {
     const res = await fetch(`${API_URL}/muscle-groups`, { credentials: 'include' });
     if (!res.ok) throw new Error('Failed to fetch muscle groups');
     return res.json();
-}
+};
 
 const createExercise = async (newExercise: { name: string; category: string; muscleGroups?: number[] }) => {
     const res = await fetch(`${API_URL}/exercises`, {
@@ -69,49 +71,40 @@ export function useExercises() {
         queryFn: fetchMuscleGroups,
     });
 
-
     const createMutation = useMutation({
         mutationFn: createExercise,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['exercises'] });
-        },
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['exercises'] }),
     });
 
     const deleteMutation = useMutation({
         mutationFn: deleteExercise,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['exercises'] });
-        },
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['exercises'] }),
     });
 
     const updateMutation = useMutation({
         mutationFn: updateExercise,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['exercises'] });
-        },
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['exercises'] }),
     });
 
-    // New: Local update for last set defaults
-    const updateLastSetLocally = useMutation({
-        mutationFn: async ({ exerciseId, reps, weight }: { exerciseId: number; reps: number; weight: number }) => {
-            // No server call — immediate cache update only
+    // Local-only optimistic update for last performance (used by activity-tracker)
+    const updateLastPerformance = useMutation({
+        mutationFn: async ({
+            exerciseId,
+            lastPerformance,
+        }: {
+            exerciseId: number;
+            lastPerformance: ExerciseWithLastPerformance['lastPerformance'];
+        }) => {
             queryClient.setQueryData<ExerciseWithLastPerformance[]>(['exercises'], (old = []) => {
                 return old.map((ex) =>
                     ex.id === exerciseId
-                        ? {
-                            ...ex,
-                            lastSetReps: reps,
-                            lastSetWeight: weight,
-                            // Optionally update lastSetCreatedAt if needed
-                        }
+                        ? { ...ex, lastPerformance }
                         : ex
                 );
             });
-            return { exerciseId, reps, weight };
+            return { exerciseId, lastPerformance };
         },
     });
-
-
 
     return {
         exercises: query.data ?? [],
@@ -123,6 +116,6 @@ export function useExercises() {
         isDeleting: deleteMutation.isPending,
         updateExercise: updateMutation.mutateAsync,
         isUpdating: updateMutation.isPending,
-        updateLastSetLocally: updateLastSetLocally.mutate,
+        updateLastPerformance: updateLastPerformance.mutate,
     };
 }

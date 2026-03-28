@@ -55,7 +55,7 @@ export interface ExercisePerformance {
     reps: number | null;
     weight: number | null;
     duration: number | null;
-    distance: string | null;
+    distance: number | null;
     createdAt: string | null;
     rpe: number | null;
 }

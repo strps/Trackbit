@@ -3,35 +3,10 @@ import { Play, Pause } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { NumericStepper } from "@/shared/components/NumericStepper";
 import { OptimisticExercisePerformance, OptimisticExerciseLog } from "@/features/tracker/use-tracker";
-import { useExerciseSessions } from "@/features/activity-tracker/use-exercise-sessions";
 import { Timer } from "@/shared/components/Timer";
 import { RpeSelector } from "@/shared/components/RpeSelector";
+import { useActivityTracker } from "../api/useActivityTracker";
 
-// =============================================================================
-// Shared helpers & components re-exported for use across pages (e.g. Landing)
-// =============================================================================
-
-/**
- * Formats a duration in seconds to a string.
- * - Less than 1 hour: "mm:ss" (e.g., "5:23")
- * - 1 hour or more: "h:mm:ss" (e.g., "1:05:23")
- */
-export const formatDuration = (seconds: number | null | undefined): string => {
-    if (seconds == null || isNaN(seconds)) return "-";
-    const secs = Math.floor(seconds);
-    const minutes = Math.floor(secs / 60);
-    const remainingSeconds = secs % 60;
-    if (minutes >= 60) {
-        const hours = Math.floor(minutes / 60);
-        const remainingMinutes = minutes % 60;
-        return `${hours}:${remainingMinutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`;
-    }
-    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
-};
-
-// =============================================================================
-// Performance Card
-// =============================================================================
 
 interface PerformanceCardProps {
     performance: OptimisticExercisePerformance;
@@ -137,8 +112,8 @@ export const PerformanceCard = ({
                     <>
                         {formatTime(milliseconds)}
                         <NumericStepper
-                            value={Number(performance.distance) ?? null}
-                            onChange={(val) => onUpdate({ ...performance, distance: val ? String(val) : null })}
+                            value={performance.distance ?? null}
+                            onChange={(val) => onUpdate({ ...performance, distance: val })}
                             placeholder="—"
                             step={0.1}
                             min={0}
@@ -170,7 +145,7 @@ interface FlexibilityHoldCardProps {
 }
 
 export const FlexibilityHoldCard = ({ exerciseLog }: FlexibilityHoldCardProps) => {
-    const { updateSet } = useExerciseSessions();
+    const { updatePerformance: updateSet } = useActivityTracker();
     const performance = exerciseLog.exercisePerformances[0];
 
     if (!performance) {

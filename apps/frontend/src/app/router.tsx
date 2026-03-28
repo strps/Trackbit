@@ -11,7 +11,7 @@ import ErrorPage from "@/features/errors/Error";
 import ExerciseLibrary from "@/features/exercise-library/ExerciseLibrary";
 import HabitConfig from "@/features/habits-configuration/HabitsConfig";
 import Landing from "@/features/public/Landing";
-import ExerciseSessionsPage from "@/features/activity-tracker/ExerciseSessionsPage";
+import ActivityTracker from "@/features/activity-tracker/ActivityTracker";
 import TrackerHome from "@/features/tracker/TrackerHome";
 import { QueryClient } from "@tanstack/react-query";
 import { createBrowserRouter } from "react-router-dom";
@@ -30,7 +30,7 @@ export const router = createBrowserRouter([
         errorElement: <ErrorPage />,
         children: [
             { path: "tracker", element: <TrackerHome /> },
-            { path: "sessions", element: <ExerciseSessionsPage /> },
+            { path: "sessions", element: <ActivityTracker /> },
             { path: "account-settings", element: <AccountSettings /> },
             { path: "stats", element: <Analytics /> },
             { path: "config/habits", element: <HabitConfig /> },

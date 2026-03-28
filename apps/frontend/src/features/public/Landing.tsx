@@ -1,13 +1,12 @@
 import { EmptyState } from "@/shared/components/EmptyState";
-import { baseCellClassName, GradientPreview, Heatmap } from "@/shared/components/Heatmap";
+import { GradientPreview, Heatmap } from "@/shared/components/Heatmap";
 import { ProgressCounter } from "@/shared/components/ProgressCounter";
 import { Button } from "@/shared/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { mapValueToCSSrgba } from "@/shared/utils/colorUtils";
 import { ArrowRight, BarChart3, Dumbbell, Flame, Palette, Zap, CheckCircle2, Calendar, Settings, Trophy, Play } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { PerformanceCard } from "../activity-tracker/StructuredHabitPanel";
+import { PerformanceCard } from "../activity-tracker/components/StructuredHabitPanel";
 import { StatCard } from "../analitytics/Stats";
 import { ICONS } from "../habits-configuration/IconField";
 import { GRADIENT_PRESETS } from "../habits-configuration/ColorThemeField";
@@ -270,7 +269,7 @@ const HybridTrackingBackground = () => {
 
     const performanceData = {
         createdAt: '',
-        distance: '100',
+        distance: 100,
         duration: 3600,
         exerciseLogId: 1,
         id: 1,
