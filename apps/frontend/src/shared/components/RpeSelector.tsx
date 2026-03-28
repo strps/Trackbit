@@ -78,14 +78,15 @@ const RpeTooltip = ({ level, x, showLabel }: TooltipProps) => {
         animate(scope.current, { scale: [1, 0.8, 1] }, { duration: 0.15 });
     }, [level]);
 
+    const color = getRpeColor(level);
 
     return (
         <motion.div
-            className="absolute bottom-[calc(100%+8px)] z-10 pointer-events-none
+            className="absolute bottom-[calc(100%+24px)] z-10 pointer-events-none
                    bg-popover border border-border rounded-md px-2 py-1
                    flex flex-col items-center gap-0.5 whitespace-nowrap shadow-sm
                    w-9"
-            style={{ left: 0, translateX: "-50%", backgroundColor: getRpeColor(level) }}
+            style={{ left: 0, translateX: "-50%", backgroundColor: color }}
             ref={scope}
             initial={{ x, scale: 0.1, opacity: 0 }}
             animate={{ x, opacity: 1 }}
@@ -121,10 +122,17 @@ const RpeTooltip = ({ level, x, showLabel }: TooltipProps) => {
                 </motion.span>
             )}
             {/* Arrow */}
-            <span
-                className="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-border z-0"
-            // style={{ borderTopColor: "hsl(var(--border))" }}
-            />
+
+            <svg
+                className="absolute top-full left-1/2 -translate-x-1/2 z-0"
+                width="30"
+                height="20"
+                viewBox="0 0 30 30"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+            >
+                <polygon points="0,0 30,0 15,30" fill={color} />
+            </svg>
         </motion.div>
     );
 }
@@ -250,7 +258,7 @@ export const RpeSelector = ({
     const activeLevel = tooltip?.level ?? value;
 
     return (
-        <div className={cn("flex flex-col gap-1 w-full", className)}>
+        <div className={cn("relative flex flex-col gap-1 w-full", className)}>
 
 
             <div className="flex items-center justify-between">
@@ -308,7 +316,18 @@ export const RpeSelector = ({
                     onTouchEnd={onTouchEnd}
                 />
             </div>
-
+            {/* Interaction overlay */}
+            <div
+                className="absolute inset-0 z-10"
+                style={{ touchAction: "none" }}
+                onMouseDown={onMouseDown}
+                onMouseMove={onMouseMove}
+                onMouseUp={onMouseUp}
+                onMouseLeave={onMouseLeave}
+                onTouchStart={onTouchStart}
+                onTouchMove={onTouchMove}
+                onTouchEnd={onTouchEnd}
+            />
             {!compact && (
                 <p className="text-xs text-muted-foreground/60 italic text-right leading-none h-3">
                     {value != null ? RPE_LABELS[value] : ""}
