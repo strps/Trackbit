@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useExercises } from '@/hooks/use-exercises';
-import { PerformanceCard, FlexibilityHoldCard } from './StructuredHabitPanel';
+import { PerformanceCard } from './PerformanceCard';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/shared/components/ui/collapsible';
 import { Button } from '@/shared/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/shared/components/ui/dropdown-menu';
@@ -10,6 +10,8 @@ import { RPE_LABELS } from '@/shared/components/RpeSelector';
 import { OptimisticExerciseLog, OptimisticExercisePerformance } from '@/features/tracker/use-tracker';
 import { formatDuration, getAvgRpe, rpeColor } from '../utils';
 import { useActivityTracker } from '../api/useActivityTracker';
+import { Timer } from '@/shared/components/Timer';
+import { RpeSelector } from '@/shared/components/RpeSelector';
 
 export interface ExerciseLogCardProps {
     exerciseLog: OptimisticExerciseLog;
@@ -220,5 +222,51 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
                 {cardContents[exercise?.category || 'strength'].content}
             </CollapsibleContent>
         </Collapsible>
+    );
+};
+
+
+// =============================================================================
+// Flexibility Hold Card
+// =============================================================================
+
+interface FlexibilityHoldCardProps {
+    exerciseLog: OptimisticExerciseLog;
+}
+
+export const FlexibilityHoldCard = ({ exerciseLog }: FlexibilityHoldCardProps) => {
+    const { updatePerformance: updateSet } = useActivityTracker();
+    const performance = exerciseLog.exercisePerformances[0];
+
+    if (!performance) {
+        return (
+            <div className="flex items-center justify-center py-8 text-muted-foreground">
+                No hold recorded yet.
+            </div>
+        );
+    }
+
+    const handleUpdate = (updates: Partial<OptimisticExercisePerformance>) => {
+        updateSet({ ...performance, ...updates });
+    };
+
+    return (
+        <div className="flex flex-col items-center gap-6 py-8 px-4">
+            <div className="text-center">
+                <p className="text-sm text-muted-foreground">Duration</p>
+                <Timer
+                    initialMilliseconds={performance.duration ?? 0}
+                    showControls={true}
+                    onStop={(finalMs) => handleUpdate({ duration: finalMs })}
+                />
+            </div>
+            <div className="flex flex-col items-center gap-3 w-full max-w-xs">
+                <RpeSelector
+                    label="Perceived Intensity"
+                    value={performance.rpe ?? null}
+                    onChange={(val) => handleUpdate({ rpe: val })}
+                />
+            </div>
+        </div>
     );
 };

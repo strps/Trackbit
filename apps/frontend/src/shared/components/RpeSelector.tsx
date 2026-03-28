@@ -1,19 +1,8 @@
-import React, { useState } from "react";
+import React, { useRef, useState, useCallback, useEffect } from "react";
+import { motion, AnimatePresence, useAnimationControls, useAnimate } from "motion/react";
 import { cn } from "@/shared/utils/utils";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 
-// RPE colour zones: 1-3 green, 4-6 amber, 7-8 orange, 9-10 red
-const getRpeZone = (level: number) => {
-    if (level <= 3) return { pip: "bg-emerald-500 border-emerald-500", btn: "bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-500" };
-    if (level <= 6) return { pip: "bg-amber-400 border-amber-400", btn: "bg-amber-400 hover:bg-amber-500 text-white border-amber-400" };
-    if (level <= 8) return { pip: "bg-orange-500 border-orange-500", btn: "bg-orange-500 hover:bg-orange-600 text-white border-orange-500" };
-    return { pip: "bg-red-500 border-red-500", btn: "bg-red-500 hover:bg-red-600 text-white border-red-500" };
-};
-
-const getPipColor = (position: number, filled: boolean) => {
-    if (!filled) return "bg-muted border-border";
-    return getRpeZone(position).pip;
-};
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 export const RPE_LABELS: Record<number, string> = {
     1: "Very Easy",
@@ -28,163 +17,301 @@ export const RPE_LABELS: Record<number, string> = {
     10: "Max Effort",
 };
 
-// ── Shared pip bar (read-only display, also used as popover trigger) ──────────
-interface PipBarProps {
-    value: number | null;
-    hovered: number | null;
-    onHover: (v: number | null) => void;
-    onPipClick: (v: number) => void;
-}
-
-const PipBar = ({ value, hovered, onHover, onPipClick }: PipBarProps) => {
-    const activeLevel = hovered ?? value;
-    return (
-        <div
-            className="flex gap-0.5 w-full"
-            onMouseLeave={() => onHover(null)}
-            role="slider"
-            aria-valuemin={1}
-            aria-valuemax={10}
-            aria-valuenow={value ?? undefined}
-        >
-            {Array.from({ length: 10 }, (_, i) => {
-                const pip = i + 1;
-                const isFilled = activeLevel != null && pip <= activeLevel;
-                return (
-                    <button
-                        key={pip}
-                        type="button"
-                        title={`RPE ${pip} – ${RPE_LABELS[pip]}`}
-                        aria-label={`RPE ${pip}`}
-                        onMouseEnter={() => onHover(pip)}
-                        onClick={() => onPipClick(pip)}
-                        className={cn(
-                            "flex-1 h-2 rounded-full border transition-all duration-100 cursor-pointer hover:scale-y-150",
-                            getPipColor(pip, isFilled),
-                        )}
-                    />
-                );
-            })}
-        </div>
-    );
+const getRpeColor = (level: number): string => {
+    if (level <= 3) return "#10b981";
+    if (level <= 6) return "#f59e0b";
+    if (level <= 8) return "#f97316";
+    return "#ef4444";
 };
 
-// ── Popover grid: 2 rows × 5 columns of large touch-friendly buttons ─────────
-interface RpePopoverGridProps {
-    value: number | null;
-    onChange: (v: number | null) => void;
-    onClose: () => void;
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const levelFromX = (clientX: number, rect: DOMRect): number => {
+    const x = Math.max(0, Math.min(clientX - rect.left, rect.width - 1));
+    return Math.ceil((x / rect.width) * 10) || 1;
+};
+
+/** Returns the x position of the center of pip `level` within the container. */
+const pipCenterX = (level: number, rect: DOMRect): number => {
+    const pipWidth = rect.width / 10;
+    return (level - 1) * pipWidth + pipWidth / 2;
+};
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+interface PipTrackProps {
+    active: number | null;
 }
 
-const RpePopoverGrid = ({ value, onChange, onClose }: RpePopoverGridProps) => (
-    <div className="flex flex-col gap-2 p-1">
-        <p className="text-xs text-center text-muted-foreground font-medium px-1">Rate of Perceived Exertion</p>
-        <div className="grid grid-cols-5 gap-1.5">
-            {Array.from({ length: 10 }, (_, i) => {
-                const level = i + 1;
-                const zone = getRpeZone(level);
-                const isActive = value === level;
-                return (
-                    <button
-                        key={level}
-                        type="button"
-                        aria-label={`RPE ${level}`}
-                        title={RPE_LABELS[level]}
-                        onClick={() => {
-                            onChange(isActive ? null : level);
-                            onClose();
+const PipTrack = ({ active }: PipTrackProps) => (
+    <>
+        {Array.from({ length: 10 }, (_, i) => {
+            const pip = i + 1;
+            const filled = active != null && pip <= active;
+            return (
+                <div
+                    key={pip}
+                    className="h-full flex items-center justify-center"
+                >
+                    <div
+                        className="w-[calc(100%-2px)] h-full border border-border rounded transition-colors duration-75"
+                        style={{
+                            background: filled ? getRpeColor(pip) : undefined,
                         }}
-                        className={cn(
-                            "flex flex-col items-center justify-center rounded-lg w-12 h-12 border-2 transition-all duration-100 font-bold text-base",
-                            isActive
-                                ? zone.btn + " ring-2 ring-offset-1 ring-current scale-105"
-                                : "bg-muted/40 border-border text-foreground hover:border-current " + zone.btn.replace("text-white", ""),
-                        )}
-                    >
-                        {level}
-                    </button>
-                );
-            })}
-        </div>
-        {value != null && (
-            <p className="text-xs text-center text-muted-foreground italic">{RPE_LABELS[value]}</p>
-        )}
-    </div>
+                    />
+                </div>
+            );
+        })}
+    </>
 );
 
+interface TooltipProps {
+    level: number;
+    x: number;
+    showLabel: boolean;
+}
+
+const RpeTooltip = ({ level, x, showLabel }: TooltipProps) => {
+    const [scope, animate] = useAnimate();
+
+    useEffect(() => {
+        animate(scope.current, { scale: [1, 0.8, 1] }, { duration: 0.15 });
+    }, [level]);
+
+
+    return (
+        <motion.div
+            className="absolute bottom-[calc(100%+8px)] z-10 pointer-events-none
+                   bg-popover border border-border rounded-md px-2 py-1
+                   flex flex-col items-center gap-0.5 whitespace-nowrap shadow-sm
+                   w-9"
+            style={{ left: 0, translateX: "-50%", backgroundColor: getRpeColor(level) }}
+            ref={scope}
+            initial={{ x, scale: 0.1, opacity: 0 }}
+            animate={{ x, opacity: 1 }}
+            exit={{
+                opacity: 0,
+                scale: 0.5,
+            }}
+            transition={
+                {
+                    x: { type: "spring", stiffness: 500, damping: 35, mass: 0.5 },
+                    default: { duration: 0.15 },
+                }
+            }
+        >
+            <motion.span
+                key={level}
+                className="tabular-nums text-xl text-foreground font-bold"
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: "spring", stiffness: 500, damping: 35, mass: 0.5 }}
+            >
+                {level}
+            </motion.span>
+            {showLabel && (
+                <motion.span
+                    key={`label-${level}`}
+                    className="text-[10px] text-muted-foreground"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 35, mass: 0.5 }}
+                >
+                    {RPE_LABELS[level]}
+                </motion.span>
+            )}
+            {/* Arrow */}
+            <span
+                className="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-border z-0"
+            // style={{ borderTopColor: "hsl(var(--border))" }}
+            />
+        </motion.div>
+    );
+}
 // ── Public component ──────────────────────────────────────────────────────────
 
 interface RpeSelectorProps {
     value: number | null;
     onChange: (value: number | null) => void;
     className?: string;
-    label?: string;
-    /** Compact mode: hides the label row and description text, suitable for tight spaces */
+    /** When true, hides label row and description text. Tooltip shows number only. */
     compact?: boolean;
+    label?: string;
 }
 
 export const RpeSelector = ({
     value,
     onChange,
     className,
-    label = "RPE",
     compact = false,
+    label = "RPE",
 }: RpeSelectorProps) => {
-    const [hovered, setHovered] = useState<number | null>(null);
-    const [popoverOpen, setPopoverOpen] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [dragging, setDragging] = useState(false);
+    const [dragStartLevel, setDragStartLevel] = useState<number | null>(null);
+    const [tooltip, setTooltip] = useState<{ level: number; x: number } | null>(null);
 
-    const activeLevel = hovered ?? value;
+    const getRect = () => containerRef.current?.getBoundingClientRect() ?? null;
 
-    const pipBar = (
-        <PipBar
-            value={value}
-            hovered={hovered}
-            onHover={setHovered}
-            onPipClick={(pip) => onChange(value === pip ? null : pip)}
-        />
-    );
+    const showTooltip = useCallback((level: number) => {
+        const rect = getRect();
+        if (!rect) return;
+        setTooltip({ level, x: pipCenterX(level, rect) });
+    }, []);
+
+    const hideTooltip = useCallback(() => setTooltip(null), []);
+
+    // ── Mouse ──────────────────────────────────────────────────────────────────
+
+    const onMouseDown = (e: React.MouseEvent) => {
+        const rect = getRect();
+        if (!rect) return;
+        const level = levelFromX(e.clientX, rect);
+        setDragging(true);
+        setDragStartLevel(level);
+        showTooltip(level);
+    };
+
+    const onMouseMove = (e: React.MouseEvent) => {
+        if (!dragging) return;
+        const rect = getRect();
+        if (!rect) return;
+        const level = levelFromX(e.clientX, rect);
+        showTooltip(level);
+    };
+
+    const onMouseUp = (e: React.MouseEvent) => {
+        if (!dragging) return;
+        const rect = getRect();
+        if (!rect) return;
+        const level = levelFromX(e.clientX, rect);
+        onChange(value === level && level === dragStartLevel ? null : level);
+        setDragging(false);
+        setDragStartLevel(null);
+        hideTooltip();
+    };
+
+    const onMouseLeave = () => {
+        if (dragging) return;
+        hideTooltip();
+    };
+
+    // Global mouseup so releasing outside the bar still commits
+    const onDocumentMouseUp = useCallback((e: MouseEvent) => {
+        if (!dragging) return;
+        const rect = getRect();
+        if (rect) {
+            const level = levelFromX(e.clientX, rect);
+            onChange(value === level && level === dragStartLevel ? null : level);
+        }
+        setDragging(false);
+        setDragStartLevel(null);
+        hideTooltip();
+    }, [dragging, dragStartLevel, value, onChange, hideTooltip]);
+
+    React.useEffect(() => {
+        document.addEventListener("mouseup", onDocumentMouseUp);
+        return () => document.removeEventListener("mouseup", onDocumentMouseUp);
+    }, [onDocumentMouseUp]);
+
+    // ── Touch ──────────────────────────────────────────────────────────────────
+
+    const onTouchStart = (e: React.TouchEvent) => {
+        e.preventDefault();
+        const rect = getRect();
+        if (!rect) return;
+        const level = levelFromX(e.touches[0].clientX, rect);
+        setDragging(true);
+        setDragStartLevel(level);
+        showTooltip(level);
+    };
+
+    const onTouchMove = (e: React.TouchEvent) => {
+        e.preventDefault();
+        const rect = getRect();
+        if (!rect) return;
+        const level = levelFromX(e.touches[0].clientX, rect);
+        showTooltip(level);
+    };
+
+    const onTouchEnd = (e: React.TouchEvent) => {
+        e.preventDefault();
+        const rect = getRect();
+        if (!rect) return;
+        const level = levelFromX(e.changedTouches[0].clientX, rect);
+        onChange(value === level && level === dragStartLevel ? null : level);
+        setDragging(false);
+        setDragStartLevel(null);
+        hideTooltip();
+    };
+
+    // ── Render ─────────────────────────────────────────────────────────────────
+
+    const activeLevel = tooltip?.level ?? value;
 
     return (
         <div className={cn("flex flex-col gap-1 w-full", className)}>
-            {!compact && (
-                <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground font-medium">{label}</span>
-                    {activeLevel != null ? (
-                        <span className="text-xs text-muted-foreground tabular-nums">
-                            {activeLevel}
-                            <span className="ml-1 opacity-60">/ 10</span>
-                        </span>
-                    ) : (
-                        <span className="text-xs text-muted-foreground/50">—</span>
-                    )}
+
+
+            <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground font-medium">{label}</span>
+                {value != null ? (
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                        {value}
+                        <span className="ml-1 opacity-60">/ 10</span>
+                    </span>
+                ) : (
+                    <span className="text-xs text-muted-foreground/50">—</span>
+                )}
+            </div>
+
+            {/* Track + overlay */}
+            <div
+                ref={containerRef}
+                className="relative grid h-2 cursor-pointer select-none overflow-visible rounded-md"
+                style={{ gridTemplateColumns: "repeat(10, 1fr)" }}
+                role="slider"
+                aria-valuemin={1}
+                aria-valuemax={10}
+                aria-valuenow={value ?? undefined}
+                aria-label={label}
+            >
+                {/* Pip track */}
+                <div
+                    className="absolute h-2 inset-0 grid"
+                    style={{ gridTemplateColumns: "repeat(10, 1fr)" }}
+                >
+                    <PipTrack active={activeLevel} />
                 </div>
-            )}
 
-            {/* Desktop: interact directly on the pip bar; mobile: popover on tap */}
-            <div className="hidden sm:block">{pipBar}</div>
+                {/* Animated tooltip */}
+                <AnimatePresence>
+                    {tooltip && (
+                        <RpeTooltip
+                            level={tooltip.level}
+                            x={tooltip.x}
+                            showLabel={!compact}
+                        />
+                    )}
+                </AnimatePresence>
 
-            <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-                <PopoverTrigger asChild>
-                    <div className="sm:hidden cursor-pointer" aria-label="Open RPE selector">
-                        {pipBar}
-                    </div>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-2" side="top" align="center">
-                    <RpePopoverGrid
-                        value={value}
-                        onChange={onChange}
-                        onClose={() => setPopoverOpen(false)}
-                    />
-                </PopoverContent>
-            </Popover>
+                {/* Interaction overlay */}
+                <div
+                    className="absolute inset-0 z-10"
+                    style={{ touchAction: "none" }}
+                    onMouseDown={onMouseDown}
+                    onMouseMove={onMouseMove}
+                    onMouseUp={onMouseUp}
+                    onMouseLeave={onMouseLeave}
+                    onTouchStart={onTouchStart}
+                    onTouchMove={onTouchMove}
+                    onTouchEnd={onTouchEnd}
+                />
+            </div>
 
-            {compact ? (
-                <p className="text-[10px] text-muted-foreground/60 text-center leading-none h-3">
-                    {activeLevel != null ? `RPE ${activeLevel}` : <span className="italic">RPE —</span>}
-                </p>
-            ) : (
+            {!compact && (
                 <p className="text-xs text-muted-foreground/60 italic text-right leading-none h-3">
-                    {activeLevel != null ? RPE_LABELS[activeLevel] : ""}
+                    {value != null ? RPE_LABELS[value] : ""}
                 </p>
             )}
         </div>

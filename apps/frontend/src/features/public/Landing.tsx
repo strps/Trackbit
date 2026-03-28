@@ -6,7 +6,7 @@ import { mapValueToCSSrgba } from "@/shared/utils/colorUtils";
 import { ArrowRight, BarChart3, Dumbbell, Flame, Palette, Zap, CheckCircle2, Calendar, Settings, Trophy, Play } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { PerformanceCard } from "../activity-tracker/components/StructuredHabitPanel";
+import { PerformanceCard } from "../activity-tracker/components/PerformanceCard";
 import { StatCard } from "../analitytics/Stats";
 import { ICONS } from "../habits-configuration/IconField";
 import { GRADIENT_PRESETS } from "../habits-configuration/ColorThemeField";

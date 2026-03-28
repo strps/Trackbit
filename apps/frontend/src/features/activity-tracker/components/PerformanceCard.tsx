@@ -59,7 +59,7 @@ export const PerformanceCard = ({
 
     return (
         <div
-            className={`flex flex-col shrink-0 w-26 items-center border border-border rounded-lg overflow-hidden bg-card ${isSelected ? "ring ring-primary shadow-lg" : ""}`}
+            className={`flex flex-col shrink-0 w-26 items-center border border-border rounded-lg bg-card ${isSelected ? "ring ring-primary shadow-lg" : ""}`}
         >
             <div
                 onClick={onHeaderClick}
@@ -131,51 +131,6 @@ export const PerformanceCard = ({
                         Flexibility tracking to be implemented
                     </div>
                 )}
-            </div>
-        </div>
-    );
-};
-
-// =============================================================================
-// Flexibility Hold Card
-// =============================================================================
-
-interface FlexibilityHoldCardProps {
-    exerciseLog: OptimisticExerciseLog;
-}
-
-export const FlexibilityHoldCard = ({ exerciseLog }: FlexibilityHoldCardProps) => {
-    const { updatePerformance: updateSet } = useActivityTracker();
-    const performance = exerciseLog.exercisePerformances[0];
-
-    if (!performance) {
-        return (
-            <div className="flex items-center justify-center py-8 text-muted-foreground">
-                No hold recorded yet.
-            </div>
-        );
-    }
-
-    const handleUpdate = (updates: Partial<OptimisticExercisePerformance>) => {
-        updateSet({ ...performance, ...updates });
-    };
-
-    return (
-        <div className="flex flex-col items-center gap-6 py-8 px-4">
-            <div className="text-center">
-                <p className="text-sm text-muted-foreground">Duration</p>
-                <Timer
-                    initialMilliseconds={performance.duration ?? 0}
-                    showControls={true}
-                    onStop={(finalMs) => handleUpdate({ duration: finalMs })}
-                />
-            </div>
-            <div className="flex flex-col items-center gap-3 w-full max-w-xs">
-                <RpeSelector
-                    label="Perceived Intensity"
-                    value={performance.rpe ?? null}
-                    onChange={(val) => handleUpdate({ rpe: val })}
-                />
             </div>
         </div>
     );
