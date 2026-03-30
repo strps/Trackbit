@@ -2,7 +2,11 @@ import { useState } from "react";
 import { BarChart3, Eye, EyeOff, SlidersHorizontal } from "lucide-react";
 import { Stats } from "./Stats";
 import { Heatmap } from "@/shared/components/Heatmap";
-import { useAnalytics } from "./use-analytics";
+import { ExerciseChart } from "./components/ExerciseChart";
+import { VolumeChart } from "./components/VolumeChart";
+import { MuscleChart } from "./components/MuscleChart";
+import { useAnalytics } from "./hooks/use-analytics";
+import { useExercises } from "@/hooks/use-exercises";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
 import { Label } from "@/shared/components/ui/label";
 import { Button } from "@/shared/components/ui/button";
@@ -14,6 +18,7 @@ export const Analytics = () => {
         selectedDay, setDay, setHabitId,
         getRating, stats,
     } = useAnalytics();
+    const { exercises } = useExercises();
     const [showHeatmap, setShowHeatmap] = useState(true);
     const [showFilters, setShowFilters] = useState(false);
 
@@ -76,6 +81,27 @@ export const Analytics = () => {
                         selectedDate={selectedDay}
                         onDateSelect={setDay}
                         colorStops={currentHabit.colorStops}
+                    />
+                )}
+
+                {currentHabit?.type === 'complex' && (
+                    <ExerciseChart
+                        habit={currentHabit}
+                        exercises={exercises}
+                    />
+                )}
+
+                {currentHabit?.type === 'complex' && (
+                    <VolumeChart
+                        habit={currentHabit}
+                        exercises={exercises}
+                    />
+                )}
+
+                {currentHabit?.type === 'complex' && (
+                    <MuscleChart
+                        habit={currentHabit}
+                        exercises={exercises}
                     />
                 )}
             </div>

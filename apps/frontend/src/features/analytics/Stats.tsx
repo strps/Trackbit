@@ -1,5 +1,5 @@
 import { BarChart3, CheckCircle2, Flame } from "lucide-react";
-import type { AnalyticsStats } from "./use-analytics";
+import type { AnalyticsStats } from "./hooks/use-analytics";
 
 interface StatsProps {
   stats: AnalyticsStats;

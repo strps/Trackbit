@@ -7,7 +7,7 @@ import { ArrowRight, BarChart3, Dumbbell, Flame, Palette, Zap, CheckCircle2, Cal
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { PerformanceCard } from "../activity-tracker/components/PerformanceCard";
-import { StatCard } from "../analitytics/Stats";
+import { StatCard } from "../analytics/Stats";
 import { ICONS } from "../habits-configuration/IconField";
 import { GRADIENT_PRESETS } from "../habits-configuration/ColorThemeField";
 import { ColorStop } from "@trackbit/types";

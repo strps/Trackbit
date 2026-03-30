@@ -1,7 +1,7 @@
 import AppLayout from "@/layouts/AppLayout";
 import AuthLayout from "@/layouts/AuthLayout";
 import NotFound from "@/features/errors/404";
-import { Analytics } from "@/features/analitytics/Analitytics";
+import { Analytics } from "@/features/analytics/Analytics";
 import AccountSettings from "@/features/auth/AccountSettings";
 import ForgotPasswordPage from "@/features/auth/ForgotPassword";
 import SignInPage from "@/features/auth/SignIn";
