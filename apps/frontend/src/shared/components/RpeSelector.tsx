@@ -83,7 +83,7 @@ const RpeTooltip = ({ level, x, showLabel }: TooltipProps) => {
     return (
         <motion.div
             className="absolute bottom-[calc(100%+24px)] z-10 pointer-events-none
-                   bg-popover border border-border rounded-md px-2 py-1
+                   bg-popover rounded-md px-2 py-1
                    flex flex-col items-center gap-0.5 whitespace-nowrap shadow-sm
                    w-9"
             style={{ left: 0, translateX: "-50%", backgroundColor: color }}

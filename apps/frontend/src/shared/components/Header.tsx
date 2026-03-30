@@ -48,10 +48,7 @@ export const AppHeader: React.FC = () => {
 
         {/* Logo */}
         <div className="mr-8 flex items-center gap-2 font-bold text-xl tracking-tight">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary transition-colors">
-            <Flame className="h-5 w-5 text-primary-foreground fill-current" />
-          </div>
-          <span className="hidden sm:inline-block text-foreground">Trackbit</span>
+          <LogoNameLeft className="h-12" />
         </div>
 
         {/* Desktop Navigation */}
@@ -96,6 +93,7 @@ import { useNavigate } from "react-router-dom";
 import { useTheme } from "@/providers/theme-provider";
 import { signOut, useSession } from "@/shared/lib/auth-client";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
+import { LogoNameLeft } from "./Logo";
 
 const UserNav = () => {
   const { data, isPending } = useSession();
