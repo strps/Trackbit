@@ -1,9 +1,9 @@
+import { mapValueToColor } from '@/shared/utils/colorUtils';
+import { ColorStop } from '@trackbit/types';
 import { format, subDays } from 'date-fns';
 import { DateArg } from 'date-fns';
+import { Activity, Book, Code, Droplet, Dumbbell, Star, Trophy } from 'lucide-react';
 import { DateTime } from 'luxon';
-
-// export const formatDate = (date: Date) => date.toISOString().split('T')[0];
-
 
 
 /**
@@ -78,4 +78,21 @@ export const getCalendarDates = () => {
         current.setDate(current.getDate() + 1);
     }
     return dates;
+};
+
+export const getHabitIcon = (iconName: string): React.ElementType => {
+    switch (iconName) {
+        case 'dumbbell': return Dumbbell;
+        case 'code': return Code;
+        case 'book': return Book;
+        case 'star': return Star;
+        case 'water': return Droplet;
+        case 'alert': return Trophy;
+        default: return Activity;
+    }
+};
+
+export const getColorAtOne = (colorStops: ColorStop[]) => {
+    const [r, g, b] = mapValueToColor(1, 0, 1, colorStops);
+    return `rgb(${r}, ${g}, ${b})`;
 };

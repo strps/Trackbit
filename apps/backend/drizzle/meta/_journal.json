@@ -78,6 +78,20 @@
       "when": 1771951703156,
       "tag": "0009_previous_adam_destine",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1771951703160,
+      "tag": "0010_loving_abomination",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1771951703164,
+      "tag": "0011_stealthy_lyja",
+      "breakpoints": true
     }
   ]
 }

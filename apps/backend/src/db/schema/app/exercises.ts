@@ -28,34 +28,59 @@ export const exercisesRelations = relations(exercises, ({ many }) => ({
 //========================================================
 
 //Muscle Groups
-export const muscleGroups = pgTable('muscle_groups', {
+export const muscleGroups: any = pgTable('muscle_groups', {
     id: serial('id').primaryKey(),
-    name: text('name').notNull().unique(), // e.g., 'chest', 'back', 'quadriceps'
+    name: text('name').notNull(),                    // Display name: "Chest", "Upper Chest"
+    slug: text('slug').notNull().unique(),           // URL-friendly: "chest", "upper-chest"
+
+    // Hierarchy
+    parentId: integer('parent_id')
+        .references(() => muscleGroups.id, { onDelete: 'set null' }),
+
+    // Metadata
+    level: integer('level').notNull().default(1),    // 1 = Major, 2 = Subdivision, 3+ = Deep
     description: text('description'),
+    displayOrder: integer('display_order').default(0),
+    // isActive: boolean('is_active').default(true),
+
+    createdAt: timestamp('created_at').defaultNow(),
 });
 
-export const exerciseMuscleGroup = pgTable('exercise_muscle_group', {
-    exerciseId: integer('exercise_id').references(() => exercises.id, { onDelete: 'cascade' }).notNull(),
-    muscleGroupId: integer('muscle_group_id').references(() => muscleGroups.id, { onDelete: 'cascade' }).notNull(),
+export const exerciseMuscleGroups = pgTable('exercise_muscle_groups', {
+    exerciseId: integer('exercise_id')
+        .references(() => exercises.id, { onDelete: 'cascade' })
+        .notNull(),
+
+    muscleGroupId: integer('muscle_group_id')
+        .references(() => muscleGroups.id, { onDelete: 'cascade' })
+        .notNull(),
+
+    // Targeting details
+    role: text('role').notNull().default('secondary'), // 'primary' | 'secondary'
+    contribution: integer('contribution').default(100), // 0–100 (optional weighting)
+
 }, (table) => [
-    foreignKey({
-        columns: [table.exerciseId],
-        foreignColumns: [exercises.id],
-    }),
-    foreignKey({
-        columns: [table.muscleGroupId],
-        foreignColumns: [muscleGroups.id],
-    }),
     primaryKey({ columns: [table.exerciseId, table.muscleGroupId] }),
 ]);
 
-export const exerciseMuscleGroupRelations = relations(exerciseMuscleGroup, ({ one }) => ({
+export const muscleGroupsRelations = relations(muscleGroups, ({ one, many }) => ({
+    parent: one(muscleGroups, {
+        fields: [muscleGroups.parentId],
+        references: [muscleGroups.id],
+    }),
+    children: many(muscleGroups, {
+        relationName: 'children',
+    }),
+    exerciseLinks: many(exerciseMuscleGroups),
+}));
+
+export const exerciseMuscleGroupsRelations = relations(exerciseMuscleGroups, ({ one }) => ({
     exercise: one(exercises, {
-        fields: [exerciseMuscleGroup.exerciseId],
+        fields: [exerciseMuscleGroups.exerciseId],
         references: [exercises.id],
     }),
     muscleGroup: one(muscleGroups, {
-        fields: [exerciseMuscleGroup.muscleGroupId],
+        fields: [exerciseMuscleGroups.muscleGroupId],
         references: [muscleGroups.id],
     }),
 }));
