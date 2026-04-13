@@ -2,6 +2,14 @@ import { pgTable, serial, text, timestamp, integer, boolean } from "drizzle-orm/
 import { user } from "./user";
 import { relations } from "drizzle-orm";
 
+export const appSettings = pgTable("app_settings", {
+    id: serial("id").primaryKey(),
+    googleLoginEnabled: boolean("google_login_enabled").notNull().default(true),
+    githubLoginEnabled: boolean("github_login_enabled").notNull().default(true),
+    passwordLoginEnabled: boolean("password_login_enabled").notNull().default(true),
+    updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const invites = pgTable("invites", {
     id: serial("id").primaryKey(),
     code: text("code").notNull().unique(), // e.g., crypto-random 12-char string

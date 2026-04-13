@@ -90,7 +90,14 @@
       "idx": 11,
       "version": "7",
       "when": 1771951703164,
-      "tag": "0011_stealthy_lyja",
+      "tag": "0011_seeding_muscle_groups",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1776278400000,
+      "tag": "0012_add_app_settings",
       "breakpoints": true
     }
   ]

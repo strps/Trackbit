@@ -7,9 +7,11 @@ import { Label } from "@/shared/components/ui/label";
 import { useNavigate } from 'react-router-dom';
 import { authClient } from '@/shared/lib/auth-client';
 import { GoogleIcon, GithubIcon } from './Icons'
+import { useAuthSettings } from '@/hooks/use-auth-settings'
 
 export default function SignInPage() {
     const navigate = useNavigate();
+    const { data: authSettings } = useAuthSettings();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showPassword, setShowPassword] = useState(false);
@@ -78,23 +80,29 @@ export default function SignInPage() {
                             </Button>
                         </form>
 
-                        <div className="mt-6">
-                            <div className="relative">
-                                <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-                                <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">Or continue with</span></div>
-                            </div>
+                        {(authSettings?.googleLoginEnabled || authSettings?.githubLoginEnabled) && (
+                            <div className="mt-6">
+                                <div className="relative">
+                                    <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+                                    <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">Or continue with</span></div>
+                                </div>
 
-                            <div className="mt-6 grid grid-cols-2 gap-4">
-                                <Button variant="outline" onClick={() => handleSocial('google')} disabled={isLoading}>
-                                    <GoogleIcon />
-                                    Google
-                                </Button>
-                                <Button variant="outline" onClick={() => handleSocial('github')} disabled={isLoading}>
-                                    <GithubIcon />
-                                    GitHub
-                                </Button>
+                                <div className={`mt-6 grid gap-4 ${authSettings?.googleLoginEnabled && authSettings?.githubLoginEnabled ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                                    {authSettings?.googleLoginEnabled && (
+                                        <Button variant="outline" onClick={() => handleSocial('google')} disabled={isLoading}>
+                                            <GoogleIcon />
+                                            Google
+                                        </Button>
+                                    )}
+                                    {authSettings?.githubLoginEnabled && (
+                                        <Button variant="outline" onClick={() => handleSocial('github')} disabled={isLoading}>
+                                            <GithubIcon />
+                                            GitHub
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </CardContent>
                     <CardFooter className="flex flex-col space-y-4">
                         <Button variant="link" onClick={() => navigate('/forgot')}>Forgot password?</Button>

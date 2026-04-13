@@ -3,7 +3,7 @@
 import { Hono } from 'hono'
 import { requireAdminAuth } from '../../middleware/require-admin-auth.js'
 import db from "../../db/db.js"
-import { invites } from "../../db/schema/app/invites"
+import { invites } from "../../db/schema/app/settings.js"
 import { eq, name, inArray } from "drizzle-orm"
 import { sendEmail } from '../../lib/email'
 import { TesterInvitationEmail } from '../../emails/TesterInvitation'

@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { GoogleIcon, GithubIcon } from './Icons';
 import { TextField } from '@/shared/components/Fields/TextField';
 import { PasswordField } from '@/shared/components/Fields/PasswordField';
+import { useAuthSettings } from '@/hooks/use-auth-settings';
 
 const signUpSchema = z.object({
     name: z.string().min(1, "Full name is required"),
@@ -34,6 +35,7 @@ export default function SignUpPage() {
     const [isLoading, setIsLoading] = React.useState(false);
     const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
     const [error, setError] = React.useState<string | null>(null);
+    const { data: authSettings } = useAuthSettings();
 
     const form: UseFormReturn<SignUpFormData> = useForm<SignUpFormData>({
         resolver: zodResolver(signUpSchema),
@@ -148,21 +150,27 @@ export default function SignUpPage() {
                             </Button>
                         </form>
 
-                        <div className="mt-6">
-                            <div className="relative">
-                                <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-                                <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">Or continue with</span></div>
-                            </div>
+                        {(authSettings?.googleLoginEnabled || authSettings?.githubLoginEnabled) && (
+                            <div className="mt-6">
+                                <div className="relative">
+                                    <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+                                    <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">Or continue with</span></div>
+                                </div>
 
-                            <div className="mt-6 grid grid-cols-2 gap-4">
-                                <Button variant="outline" onClick={() => handleSocial('google')} disabled={isLoading}>
-                                    <GoogleIcon /> Google
-                                </Button>
-                                <Button variant="outline" onClick={() => handleSocial('github')} disabled={isLoading}>
-                                    <GithubIcon /> GitHub
-                                </Button>
+                                <div className={`mt-6 grid gap-4 ${authSettings?.googleLoginEnabled && authSettings?.githubLoginEnabled ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                                    {authSettings?.googleLoginEnabled && (
+                                        <Button variant="outline" onClick={() => handleSocial('google')} disabled={isLoading}>
+                                            <GoogleIcon /> Google
+                                        </Button>
+                                    )}
+                                    {authSettings?.githubLoginEnabled && (
+                                        <Button variant="outline" onClick={() => handleSocial('github')} disabled={isLoading}>
+                                            <GithubIcon /> GitHub
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </CardContent>
                     <CardFooter>
                         <p className="text-center text-sm text-muted-foreground w-full">

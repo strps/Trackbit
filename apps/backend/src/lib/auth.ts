@@ -3,7 +3,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin } from "better-auth/plugins"
 import { user } from "../db/schema/app/user.js";
 import { account, session, verification } from "../db/schema/app/auth.js";
-import { invites } from "../db/schema/app/invites.js";
+import { invites } from "../db/schema/app/settings.js";
 import { lt, gte, eq } from "drizzle-orm";
 import { getOAuthState, APIError } from "better-auth/api";  // Added APIError
 import { PasswordResetEmail } from "../emails/PasswordReset.js";

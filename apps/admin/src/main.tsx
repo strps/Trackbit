@@ -4,15 +4,15 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { ThemeProvider } from '@trackbit/ui';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import './index.css'
-import { Home } from './pages/Home';
-import { InvitationPage } from './pages/Invitations';
-import NotFound from './pages/404';
+import { Home } from './features/auth/Home';
+import { InvitationPage } from './features/invitations/Invitations';
+import NotFound from './features/errors/404';
 import AdminLayout from './layouts/AdminLayout';
-import UsersPage from './pages/Users';
-import ExercisesPage from './pages/Exercises';
+import UsersPage from './features/users/Users';
+import ExercisesPage from './features/exercises/Exercises';
 import AuthLayout from './layouts/AuthLayout';
-import Dashboard from './pages/Dashboard';
-import SettingsPage from './pages/Settings';
+import Dashboard from './features/dashboard/Dashboard';
+import SettingsPage from './features/settings/Settings';
 
 
 const router = createBrowserRouter([
