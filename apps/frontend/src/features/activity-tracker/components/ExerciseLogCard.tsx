@@ -114,7 +114,7 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
                                 {exerciseLog.exercisePerformances.map((_: any, i: number) => (
                                     <div key={i} className="flex flex-col gap-1 text-center">
                                         <span className="text-muted-foreground text-[9px]">Lap {i + 1}</span>
-                                        <span>{formatDuration(exerciseLog.exercisePerformances[i].duration)}</span>
+                                        <span>{formatDuration((exerciseLog.exercisePerformances[i].duration ?? 0) / 1000)}</span>
                                         <span>{exerciseLog.exercisePerformances[i].distance ?? '-'}</span>
                                     </div>
                                 ))}
@@ -141,7 +141,7 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
                         <div className="flex items-center justify-between gap-4">
                             <div className="flex items-center gap-2">
                                 <Clock className="w-4 h-4" />
-                                <span>Duration: {formatDuration(exerciseLog.duration ?? perf?.duration ?? 0)}</span>
+                                <span>Duration: {formatDuration((exerciseLog.duration ?? perf?.duration ?? 0) / 1000)}</span>
                             </div>
                             {rpe != null && (
                                 <div className={`flex flex-col items-end normal-case ${rpeColor(rpe)}`}>

@@ -1,11 +1,13 @@
 // -------------------------------------------------------------------
 // Timed habit row
 
-import { Timer } from "@/shared/components/Timer";
+import { ControlledTimer } from "@/shared/components/Timer";
+import { Button } from "@/shared/components/ui/button";
 import { BaseHabitRow } from "./BaseHabitRow";
 import { ProgressBadge } from "./ProgressBadge";
 import { StreakBadge } from "./StreakBadge";
 import { useState } from "react";
+import { Pause, Play } from "lucide-react";
 
 // -------------------------------------------------------------------
 interface TimedHabitRowProps {
@@ -35,13 +37,22 @@ export const TimedHabitRow = ({
     isAntiHabit,
     onLog,
 }: TimedHabitRowProps) => {
-    const [isTimerRunning, setIsTimerRunning] = useState(false);
+    const [isRunning, setIsRunning] = useState(false);
+    const [localMs, setLocalMs] = useState(value);
 
     // dailyGoal is in minutes for timed habits, value is in ms
     const goalMs = (dailyGoal || 1) * 60000;
-    const timedProgress = Math.min(value / goalMs, 1);
-    // Active as soon as the timer is running OR there's already logged time
-    const inactive = isAntiHabit ? (value === 0 && !isTimerRunning) : (value === 0 && !isTimerRunning);
+    const timedProgress = Math.min(localMs / goalMs, 1);
+    const inactive = localMs === 0 && !isRunning;
+
+    const handleToggle = () => {
+        if (isRunning) {
+            setIsRunning(false);
+            // onLog is called by ControlledTimer's onStop
+        } else {
+            setIsRunning(true);
+        }
+    };
 
     return (
         <BaseHabitRow
@@ -55,17 +66,24 @@ export const TimedHabitRow = ({
                     <StreakBadge streak={streak} />
                 </>
             }
-            subtitle={isAntiHabit && value === 0 && !isTimerRunning ? 'Avoided' : `${formatMs(value)} / ${dailyGoal || 1}m`}
+            subtitle={isAntiHabit && localMs === 0 && !isRunning ? 'Avoided' : `${formatMs(localMs)} / ${dailyGoal || 1}m`}
             right={
-                <Timer
-                    initialMilliseconds={value}
-                    showControls
-                    onStart={() => setIsTimerRunning(true)}
-                    onStop={(finalMs) => {
-                        setIsTimerRunning(false);
-                        onLog(finalMs);
-                    }}
-                />
+                <div className="flex items-center gap-2 shrink-0">
+                    <ControlledTimer
+                        milliseconds={localMs}
+                        isRunning={isRunning}
+                        isEditable
+                        showControls={false}
+                        onMillisecondsChange={setLocalMs}
+                        onStop={onLog}
+                    />
+                    <Button variant="outline" size="icon" onClick={handleToggle} className="shrink-0">
+                        {isRunning
+                            ? <Pause className="w-4 h-4" />
+                            : <Play className={"w-4 h-4 " + (localMs > 0 ? "text-foreground" : "text-muted-foreground")} />
+                        }
+                    </Button>
+                </div>
             }
         />
     );

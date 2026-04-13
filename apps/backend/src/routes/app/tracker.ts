@@ -7,6 +7,7 @@ import { dayLogs, exerciseLogs, exercisePerformances, exerciseSessions, habits }
 import db from '../../db/db'
 import { defineCrudSchemas } from '../../lib/utilities/drizzle-crud-schemas'
 import { generateCrudRouter } from '../../lib/utilities/crud-router-factory'
+import { ExercisePerformance } from '@trackbit/types'
 
 
 
@@ -271,26 +272,24 @@ const exerciseLogsRouter = generateCrudRouter({
 
                 const newLogId = logRes[0].id;
 
-                // 2. Prepare Sets
-                // If sets provided, use them. If not, create 1 default empty set.
-                const setsToInsert = (body.exercisePerformances && body.exercisePerformances.length > 0)
-                    ? body.exercisePerformances
-                    : [{ reps: 0, weight: 0 }];
-
-                // 3. Insert Sets
-                const setRes = await tx.insert(exercisePerformances).values(
-                    setsToInsert.map((s: { reps: number, weight: number, number: number }) => ({
-                        exerciseLogId: newLogId,
-                        number: s.number,
-                        reps: s.reps,
-                        weight: s.weight,
-                    }))
-                ).returning();
+                // If sets provided, use them. If not, do not insert any set.
+                let setRes: ExercisePerformance[] = [];
+                if ((body.exercisePerformances && body.exercisePerformances.length > 0)) {
+                    console.log('Inserting provided sets:', body.exercisePerformances);
+                    setRes = await tx.insert(exercisePerformances).values(
+                        body.exercisePerformances.map((s: { reps: number, weight: number, number: number }) => ({
+                            exerciseLogId: newLogId,
+                            number: s.number,
+                            reps: s.reps,
+                            weight: s.weight,
+                        }))
+                    ).returning();
+                }
 
                 // 4. Return combined structure
                 return c.json({
                     ...logRes[0],
-                    sets: setRes
+                    sets: setRes,
                 });
             });
         },

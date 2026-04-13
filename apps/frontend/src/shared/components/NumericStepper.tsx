@@ -21,8 +21,10 @@ export const NumericStepper = ({
     "aria-label": ariaLabel,
     className,
 }: NumericStepperProps) => {
-    const increment = () => onChange((value ?? 0) + step);
-    const decrement = () => onChange(Math.max(min, (value ?? 0) - step));
+    const decimals = (step.toString().split(".")[1] ?? "").length;
+    const round = (n: number) => parseFloat(n.toFixed(decimals));
+    const increment = () => onChange(round((value ?? 0) + step));
+    const decrement = () => onChange(round(Math.max(min, (value ?? 0) - step)));
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const raw = e.target.value;

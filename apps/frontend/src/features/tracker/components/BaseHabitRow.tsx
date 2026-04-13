@@ -23,7 +23,7 @@ export const BaseHabitRow = ({ accentColor, icon, name, badges, subtitle, right,
         <div className="absolute top-0 left-0 bottom-0 w-12 rounded-l-xl flex justify-center items-center" style={{ backgroundColor: accentColor }}>
             {icon}
             <div className="absolute left-[calc(100%-0.5rem)] h-full flex flex-col justify-between items-start py-2">
-                {badges && <div className="flex flex-col gap-1">{badges}</div>}
+                {badges && <div className="flex flex-col gap-1 items-start">{badges}</div>}
             </div>
         </div>
         <div className="flex items-center justify-between gap-4 h-full">

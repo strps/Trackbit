@@ -116,7 +116,10 @@ export function useTracker() {
     const updateCache = (updater: (data: Record<number, HabitWithLogs>) => void) => {
         queryClient.setQueryData(['habit-logs'], (old: Record<number, HabitWithLogs> | undefined) => {
             if (!old) return {};
-            const newData = structuredClone(old);
+            // Shallow-copy the top-level record so that unchanged habit objects
+            // keep their reference — this allows React.memo on row components to
+            // skip re-renders for habits that weren't touched.
+            const newData = { ...old };
             updater(newData);
             return newData;
         });
@@ -163,14 +166,20 @@ export function useTracker() {
             updateCache((newData) => {
                 const habit = newData[effectiveHabitId!];
                 if (habit) {
-                    if (!habit.dayLogs[effectiveDay]) {
-                        habit.dayLogs[effectiveDay] = {
-                            habitId: effectiveHabitId!,
-                            date: effectiveDay,
-                            exerciseSessions: [],
-                        };
-                    }
-                    habit.dayLogs[effectiveDay].rating = newItem.rating;
+                    // Create a new object only for this habit so other habits
+                    // keep their reference and their memoized rows don't re-render.
+                    const existingDayLog = habit.dayLogs[effectiveDay] ?? {
+                        habitId: effectiveHabitId!,
+                        date: effectiveDay,
+                        exerciseSessions: [],
+                    };
+                    newData[effectiveHabitId!] = {
+                        ...habit,
+                        dayLogs: {
+                            ...habit.dayLogs,
+                            [effectiveDay]: { ...existingDayLog, rating: newItem.rating },
+                        },
+                    };
                 }
             });
             return { previousData };

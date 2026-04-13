@@ -60,8 +60,8 @@ export const CheckHabitRow = ({
                         className={cn(
                             'transition-all duration-300 ease-out',
                             checked
-                                ? 'w-7 h-7 text-foreground opacity-100 scale-100'
-                                : 'w-6 h-6 text-muted-foreground/40 opacity-100 scale-90'
+                                ? 'w-8 h-8 text-foreground scale-100'
+                                : 'w-6 h-6 text-muted-foreground  scale-90'
                         )}
                         strokeWidth={checked ? 3.5 : 2}
                     />

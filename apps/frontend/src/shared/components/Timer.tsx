@@ -16,6 +16,7 @@ interface TimerDisplayProps {
     isRunning: boolean;
     isEditable?: boolean;                 // New: whether to show inline inputs
     onMillisecondsChange?: (ms: number) => void; // Called when user edits manually
+    onCommit?: () => void;                // Called when user finishes editing (blur/Enter)
     showControls?: boolean;
     onToggle?: () => void;
     disabledControls?: boolean;
@@ -26,6 +27,7 @@ export const TimerDisplay = ({
     isRunning,
     isEditable = false,
     onMillisecondsChange,
+    onCommit,
     showControls = true,
     onToggle,
     disabledControls = false,
@@ -52,7 +54,7 @@ export const TimerDisplay = ({
     };
 
     const inputClass =
-        "w-10 text-center bg-transparent border-none outline-none focus:outline-none " +
+        "text-center bg-transparent border-none outline-none focus:outline-none " +
         commonTextClass +
         " [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none " +
         "focus:underline focus:underline-offset-4 focus:decoration-primary/50";
@@ -63,16 +65,21 @@ export const TimerDisplay = ({
                 <input
                     type="number"
                     min="0"
+                    name="minutes"
                     value={minutes}
                     onChange={(e) => {
                         const val = Math.max(0, parseInt(e.target.value) || 0);
                         handlePartChange("minutes", val);
                     }}
+                    onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                    onBlur={() => onCommit?.()}
                     className={inputClass}
+                    style={{ width: `${Math.max(2, minutes.toString().length)}ch` }}
                 />
                 <span className={commonTextClass}>:</span>
                 <input
                     type="number"
+                    name="seconds"
                     min="0"
                     max="59"
                     value={seconds}
@@ -80,11 +87,15 @@ export const TimerDisplay = ({
                         const val = Math.min(59, Math.max(0, parseInt(e.target.value) || 0));
                         handlePartChange("seconds", val);
                     }}
+                    onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                    onBlur={() => onCommit?.()}
                     className={inputClass}
+                    style={{ width: "2ch" }}
                 />
                 <span className={commonTextClass}>.</span>
                 <input
                     type="number"
+                    name="centiseconds"
                     min="0"
                     max="99"
                     value={centiseconds}
@@ -92,7 +103,10 @@ export const TimerDisplay = ({
                         const val = Math.min(99, Math.max(0, parseInt(e.target.value) || 0));
                         handlePartChange("centiseconds", val);
                     }}
+                    onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                    onBlur={() => onCommit?.()}
                     className={inputClass}
+                    style={{ width: "2ch" }}
                 />
                 {showControls && (
                     <Button
@@ -160,9 +174,11 @@ export const Timer = ({
     const intervalRef = useRef<any | null>(null);
     const onStopRef = useRef(onStop);
     const onStartRef = useRef(onStart);
+    const millisecondsRef = useRef(milliseconds);
 
     useEffect(() => { onStopRef.current = onStop; }, [onStop]);
     useEffect(() => { onStartRef.current = onStart; }, [onStart]);
+    useEffect(() => { millisecondsRef.current = milliseconds; }, [milliseconds]);
 
     useEffect(() => {
         setMilliseconds(initialMilliseconds);
@@ -172,11 +188,11 @@ export const Timer = ({
         if (isRunning) {
             intervalRef.current = setInterval(() => {
                 setMilliseconds((prev) => {
-                    const next = prev + 100;
+                    const next = prev + 10;
                     onChange?.(next);
                     return next;
                 });
-            }, 100);
+            }, 10);
         } else {
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
@@ -201,12 +217,19 @@ export const Timer = ({
         });
     };
 
+    const handleCommit = () => {
+        if (!isRunning) {
+            onStopRef.current?.(millisecondsRef.current);
+        }
+    };
+
     return (
         <TimerDisplay
             milliseconds={milliseconds}
             isRunning={isRunning}
             isEditable={isEditable}
             onMillisecondsChange={setMilliseconds}
+            onCommit={handleCommit}
             showControls={showControls}
             onToggle={handleToggle}
         />
@@ -244,8 +267,8 @@ export const ControlledTimer = ({
     useEffect(() => {
         if (isRunning && !wasRunning.current) {
             intervalRef.current = setInterval(() => {
-                onMillisecondsChange(millisecondsRef.current + 100);
-            }, 100);
+                onMillisecondsChange(millisecondsRef.current + 10);
+            }, 10);
         } else if (!isRunning && wasRunning.current) {
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);

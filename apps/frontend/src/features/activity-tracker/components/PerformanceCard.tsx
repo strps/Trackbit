@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Play, Pause } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { NumericStepper } from "@/shared/components/NumericStepper";
 import { OptimisticExercisePerformance, OptimisticExerciseLog } from "@/features/tracker/use-tracker";
-import { Timer } from "@/shared/components/Timer";
+import { TimerDisplay } from "@/shared/components/Timer";
 import { RpeSelector } from "@/shared/components/RpeSelector";
 import { useActivityTracker } from "../api/useActivityTracker";
 
@@ -27,33 +27,28 @@ export const PerformanceCard = ({
 }: PerformanceCardProps) => {
     const [milliseconds, setMilliseconds] = useState(performance.duration ?? 0);
     const [isTimerRunning, setIsTimerRunning] = useState(false);
+    const latestMsRef = useRef(milliseconds);
+
+    const handleMsChange = (ms: number) => {
+        latestMsRef.current = ms;
+        setMilliseconds(ms);
+    };
 
     useEffect(() => {
         let interval: any;
         if (isTimerRunning) {
             interval = setInterval(() => {
-                setMilliseconds((prev) => prev + 100);
+                setMilliseconds((prev) => {
+                    const next = prev + 100;
+                    latestMsRef.current = next;
+                    return next;
+                });
             }, 100);
         } else if (!isTimerRunning && milliseconds !== performance.duration) {
             onUpdate({ ...performance, duration: milliseconds });
         }
         return () => interval && clearInterval(interval);
     }, [isTimerRunning, milliseconds, performance, onUpdate]);
-
-    const formatTime = (ms: number) => {
-        const minutes = Math.floor(ms / 60000);
-        const seconds = Math.floor((ms % 60000) / 1000);
-        const centiseconds = Math.floor((ms % 1000) / 10);
-        return (
-            <div className="flex items-center gap-1 text-lg font-medium">
-                <span>{minutes.toString().padStart(2, "0")}</span>
-                <span>:</span>
-                <span>{seconds.toString().padStart(2, "0")}</span>
-                <span>.</span>
-                <span>{centiseconds.toString().padStart(2, "0")}</span>
-            </div>
-        );
-    };
 
     const headerLabel = category === "cardio" ? "Lap" : "Set";
 
@@ -110,7 +105,14 @@ export const PerformanceCard = ({
                 )}
                 {category === "cardio" && (
                     <>
-                        {formatTime(milliseconds)}
+                        <TimerDisplay
+                            milliseconds={milliseconds}
+                            isRunning={isTimerRunning}
+                            isEditable
+                            showControls={false}
+                            onMillisecondsChange={handleMsChange}
+                            onCommit={() => onUpdate({ ...performance, duration: latestMsRef.current })}
+                        />
                         <NumericStepper
                             value={performance.distance ?? null}
                             onChange={(val) => onUpdate({ ...performance, distance: val })}
