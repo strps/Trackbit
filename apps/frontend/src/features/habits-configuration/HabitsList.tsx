@@ -1,23 +1,13 @@
-import { useState } from "react";
-import { Plus, GripVertical, ShieldAlert, Trash2 } from "lucide-react"
+import { Plus, Pencil, ShieldAlert } from "lucide-react"
 import { ICONS } from "./IconField";
 import { GRADIENT_PRESETS } from "./ColorThemeField";
 import { mapValueToColor } from "@/shared/utils/colorUtils";
 import { Badge } from "@/shared/components/ui/badge";
 import { BigButton } from "@/shared/components/BigButton";
+import { Button } from "@/shared/components/ui/button";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import { toast } from "sonner";
 import type { Habit } from "@trackbit/types";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/shared/components/ui/alert-dialog";
 
 const getColorAtOne = (habit: Habit) => {
     const stops = habit.colorTheme === 'custom' ? habit.colorStops : GRADIENT_PRESETS[habit.colorTheme]?.stops ?? habit.colorStops;
@@ -41,7 +31,6 @@ const renderIcon = (iconId: string, className = "w-5 h-5") => {
 };
 
 export const HabitList = ({ habits, activeHabitId, editHabit, handleDelete, startNewHabit, onReorder }: HabitListProps) => {
-    const [habitToDelete, setHabitToDelete] = useState<Habit | null>(null);
 
     const positiveHabits = habits
         .filter(h => !h.isAntiHabit)
@@ -61,12 +50,6 @@ export const HabitList = ({ habits, activeHabitId, editHabit, handleDelete, star
         const habitId = Number(draggableId);
         const draggedHabit = habits.find(h => h.id === habitId);
         if (!draggedHabit) return;
-
-        // Handle drop on delete zone
-        if (destination.droppableId === "delete-zone") {
-            setHabitToDelete(draggedHabit);
-            return;
-        }
 
         // Block structured sessions (complex) from being dropped into anti-habits
         if (destination.droppableId === "anti-habits" && draggedHabit.type === "complex") {
@@ -116,19 +99,13 @@ export const HabitList = ({ habits, activeHabitId, editHabit, handleDelete, star
                 <div
                     ref={provided.innerRef}
                     {...provided.draggableProps}
+                    {...provided.dragHandleProps}
                     className="mb-3"
                 >
                     <BigButton
-                        onClick={() => editHabit(habit)}
                         isSelected={activeHabitId === habit.id}
-                        className={`w-full cursor-pointer ${snapshot.isDragging ? 'shadow-xl ring-2 ring-primary/50' : ''}`}
+                        className={`w-full cursor-grab active:cursor-grabbing ${snapshot.isDragging ? 'shadow-xl ring-2 ring-primary/50' : ''}`}
                     >
-                        <div
-                            {...provided.dragHandleProps}
-                            className="flex items-center self-center text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                            <GripVertical className="w-5 h-5" />
-                        </div>
                         <div className="flex items-center gap-4 flex-1 relative z-10">
                             <div
                                 className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm shrink-0"
@@ -151,6 +128,18 @@ export const HabitList = ({ habits, activeHabitId, editHabit, handleDelete, star
                                     <span>{`Weekly ${habit.isAntiHabit ? 'Limit:' : 'Goal:'}`} {habit.weeklyGoal}/w</span>
                                 </div>
                             </div>
+
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="shrink-0 self-center"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    editHabit(habit);
+                                }}
+                            >
+                                <Pencil className="w-4 h-4" />
+                            </Button>
                         </div>
                     </BigButton>
                 </div>
@@ -159,15 +148,25 @@ export const HabitList = ({ habits, activeHabitId, editHabit, handleDelete, star
     );
 
     return (
-        <div className="lg:col-span-5 space-y-6">
+        <div className="lg:col-span-12 space-y-6">
             <DragDropContext onDragEnd={handleDragEnd}>
                 {/* Habits Group */}
                 <div className="space-y-3">
                     <div className="flex items-center justify-between">
                         <h2 className="text-lg font-semibold text-foreground">Habits</h2>
-                        <span className="text-xs font-medium px-2 py-1 bg-muted rounded-full text-muted-foreground">
-                            {positiveHabits.length}
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium px-2 py-1 bg-muted rounded-full text-muted-foreground">
+                                {positiveHabits.length}
+                            </span>
+                            <Button
+                                onClick={startNewHabit}
+                                size="sm"
+                                className="flex items-center gap-1"
+                            >
+                                <Plus className="w-4 h-4" />
+                                Add Habit
+                            </Button>
+                        </div>
                     </div>
 
                     <Droppable droppableId="habits">
@@ -182,7 +181,7 @@ export const HabitList = ({ habits, activeHabitId, editHabit, handleDelete, star
                             >
                                 {positiveHabits.length === 0 && !snapshot.isDraggingOver && (
                                     <p className="text-sm text-muted-foreground text-center py-5">
-                                        No habits yet — create one below
+                                        No habits yet — add one above
                                     </p>
                                 )}
                                 {snapshot.isDraggingOver && positiveHabits.length === 0 && (
@@ -196,14 +195,6 @@ export const HabitList = ({ habits, activeHabitId, editHabit, handleDelete, star
                         )}
                     </Droppable>
 
-                    <BigButton
-                        onClick={startNewHabit}
-                        isSelected={activeHabitId === null}
-                        className="flex items-center cursor-pointer border-4 border-dashed border-border w-full"
-                    >
-                        <Plus className="w-5 h-5" />
-                        Create New Habit
-                    </BigButton>
                 </div>
 
                 {/* Anti-Habits Group */}
@@ -242,60 +233,7 @@ export const HabitList = ({ habits, activeHabitId, editHabit, handleDelete, star
                         )}
                     </Droppable>
                 </div>
-
-                {/* Delete Drop Zone */}
-                <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                        <Trash2 className="w-4 h-4 text-destructive/70" />
-                        <h2 className="text-sm font-semibold text-destructive/70 uppercase tracking-wide">Delete</h2>
-                    </div>
-                    <Droppable droppableId="delete-zone">
-                        {(provided, snapshot) => (
-                            <div
-                                ref={provided.innerRef}
-                                {...provided.droppableProps}
-                                className={`flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed py-6 px-4 transition-all duration-200 ${snapshot.isDraggingOver
-                                    ? 'border-destructive bg-destructive/15 text-destructive scale-[1.02] shadow-lg shadow-destructive/10'
-                                    : 'border-destructive/30 bg-destructive/5 text-destructive/60'
-                                    }`}
-                            >
-                                <Trash2 className={`w-7 h-7 transition-transform duration-200 ${snapshot.isDraggingOver ? 'scale-125' : ''
-                                    }`} />
-                                <span className="text-sm font-semibold">
-                                    {snapshot.isDraggingOver ? 'Release to delete' : 'Drag a habit here to delete it'}
-                                </span>
-                                <div className="hidden">{provided.placeholder}</div>
-                            </div>
-                        )}
-                    </Droppable>
-                </div>
             </DragDropContext>
-
-            {/* Delete Confirmation Dialog */}
-            <AlertDialog open={!!habitToDelete} onOpenChange={(open) => !open && setHabitToDelete(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Delete "{habitToDelete?.name}"?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will permanently delete this habit and all its tracked data. This action cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            className="bg-destructive text-white hover:bg-destructive/90"
-                            onClick={() => {
-                                if (habitToDelete) {
-                                    handleDelete(habitToDelete.id);
-                                    setHabitToDelete(null);
-                                }
-                            }}
-                        >
-                            Delete
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </div>
     );
 };

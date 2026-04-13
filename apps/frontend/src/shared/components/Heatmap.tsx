@@ -1,6 +1,6 @@
 // components/Heatmap.tsx (updated with full grid alignment for weekday labels)
 
-import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { mapValueToCSSrgba } from "@/shared/utils/colorUtils";
 import { ColorStop } from "@trackbit/types";
 import React, { useMemo, useEffect, useRef } from "react";
@@ -15,6 +15,7 @@ import {
     eachWeekOfInterval,
 } from "date-fns";
 import { Button } from "./ui/button";
+import { DateSelector } from "@/shared/components/DateSelector";
 
 interface HeatmapProps {
     // data?: Record<string, { rating: number }>;
@@ -152,12 +153,6 @@ export const Heatmap = ({
         }
     }, [selectedDate, weeks]);
 
-    const displayDate = selectedDate
-        ? format(selectedDate + 'T00:00:00.000', "PPPP")
-        : "Select a date";
-
-
-    const isTodaySelected = selectedDate === today;
 
 
     if (weeks.length === 0) {
@@ -176,27 +171,13 @@ export const Heatmap = ({
                         </h2>
                     </div>
 
-                    {showNavigation && (
-                        <div className="flex items-center gap-3">
-                            <div className="flex border h-10 w-64 items-center justify-between gap-2 border-border rounded-md overflow-hidden shadow-sm">
-                                <button
-                                    onClick={() => handleDateChange(-1)}
-                                    className="h-full aspect-square flex items-center justify-center border-r"
-                                    aria-label="Previous day"
-                                >
-                                    <ChevronLeft className="w-3 h-3" />
-                                </button>
-                                <p className="text-sm text-slate-500 font-medium mt-1">{displayDate}</p>
-                                <button
-                                    onClick={() => handleDateChange(1)}
-                                    disabled={isTodaySelected && !showFutureDays}
-                                    className="h-full aspect-square flex items-center justify-center border-l"
-                                    aria-label="Next day"
-                                >
-                                    <ChevronRight className="w-3 h-3" />
-                                </button>
-                            </div>
-                        </div>
+                    {showNavigation && selectedDate && (
+                        <DateSelector
+                            selectedDay={selectedDate}
+                            today={today}
+                            onDateChange={handleDateChange}
+                            onDateSelect={(date) => onDateSelect?.(date)}
+                        />
                     )}
 
                     {showLegend && <GradientPreview stops={colorStops} showLabel />}

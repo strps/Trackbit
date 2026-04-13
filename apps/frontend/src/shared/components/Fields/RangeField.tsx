@@ -48,7 +48,7 @@ export const RangeFieldInput = ({
     };
 
     return (
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4" data-vaul-no-drag>
             <Slider
                 id={id}
                 min={min}

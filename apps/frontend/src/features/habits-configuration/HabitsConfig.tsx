@@ -1,9 +1,18 @@
 import { useState } from 'react';
-import { Settings } from 'lucide-react';
+import { Settings, X } from 'lucide-react';
 import { useHabits } from './use-habits';
 import { HabitList } from './HabitsList';
 import { HabitConfigForm } from './HabitConfigForm';
 import { Habit } from "@trackbit/types";
+import { Button } from "@/shared/components/ui/button";
+import {
+    Drawer,
+    DrawerContent,
+    DrawerHeader,
+    DrawerTitle,
+    DrawerDescription,
+    DrawerClose,
+} from "@/shared/components/ui/drawer";
 
 const HabitConfig = () => {
     const { habits, isLoading, createHabit, updateHabit, deleteHabit, reorderHabits } = useHabits();
@@ -58,11 +67,30 @@ const HabitConfig = () => {
                     onReorder={reorderHabits}
                 />
 
-                <HabitConfigForm
-                    isEditing={isEditing}
-                    habit={habits.find(e => e.id === activeHabitId)}
-                    onDelete={handleDelete}
-                />
+                <Drawer direction="right" open={isEditing} onOpenChange={(open) => !open && cancelEdit()}>
+                    <DrawerContent className="overflow-y-auto">
+                        <DrawerHeader className="flex flex-row items-start justify-between">
+                            <div className="flex flex-col gap-0.5">
+                                <DrawerTitle className="text-xl">
+                                    {activeHabitId ? 'Edit Habit' : 'New Habit'}
+                                </DrawerTitle>
+                                <DrawerDescription>
+                                    Define how you want to track this routine.
+                                </DrawerDescription>
+                            </div>
+                            <DrawerClose asChild>
+                                <Button variant="ghost" size="icon">
+                                    <X className="w-5 h-5" />
+                                </Button>
+                            </DrawerClose>
+                        </DrawerHeader>
+                        <HabitConfigForm
+                            habit={habits.find(e => e.id === activeHabitId)}
+                            onDelete={handleDelete}
+                            onCancel={cancelEdit}
+                        />
+                    </DrawerContent>
+                </Drawer>
             </div>
         </div>
     );

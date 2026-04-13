@@ -5,7 +5,7 @@ import { NavLink } from "react-router-dom";
 import {
     Flame, Menu, X, Sun, Moon,
     User, Settings, LogOut,
-    LayoutDashboard, ListTodo, BarChart3, Dumbbell, CreditCard
+    LayoutDashboard, ListTodo, BarChart3, Dumbbell, CreditCard, ChevronDown
 } from 'lucide-react';
 
 interface NavItem {
@@ -44,7 +44,7 @@ export const AppHeader: React.FC = () => {
 
                 {/* Desktop Navigation */}
                 <div className="flex ml-9">
-                    <nav className="hidden lg:flex items-center gap-6 text-sm font-medium">
+                    <nav className="hidden lg:flex items-center gap-6 text-sm font-medium mr-6">
                         {navItems.map((item) => (
                             <NavLink
                                 key={item.to}
@@ -54,6 +54,7 @@ export const AppHeader: React.FC = () => {
                                 {item.title}
                             </NavLink>
                         ))}
+                        <ConfigDropdown />
                     </nav>
 
                     {/* Mobile Menu Trigger */}
@@ -71,6 +72,7 @@ export const AppHeader: React.FC = () => {
                     {/* Mobile Menu Sheet */}
                     <MobileNav
                         items={navItems}
+                        configItems={configNavItems}
                         isOpen={mobileMenuOpen}
                         onClose={() => setMobileMenuOpen(false)}
                     />
@@ -171,27 +173,13 @@ const UserNav = () => {
                     <span>Log out</span>
                 </DropdownMenuItem>
 
-                <DropdownMenuSeparator />
-
-                <DropdownMenuLabel className="text-muted-foreground">Configuration</DropdownMenuLabel>
-                {configNavItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                        <DropdownMenuItem key={item.to} onClick={() => navigate(item.to)}>
-                            <Icon className="mr-2 h-4 w-4" />
-                            <span>{item.title}</span>
-                        </DropdownMenuItem>
-                    );
-                })}
-
-
 
             </DropdownMenuContent>
         </DropdownMenu>
     );
 };
 
-const MobileNav = ({ items, isOpen, onClose }: { items: NavItem[]; isOpen: boolean; onClose: () => void }) => {
+const MobileNav = ({ items, configItems, isOpen, onClose }: { items: NavItem[]; configItems: NavItem[]; isOpen: boolean; onClose: () => void }) => {
     return (
         <Sheet open={isOpen} onOpenChange={onClose}>
             <SheetContent side="left" className="w-3/4 max-w-sm p-0 lg:hidden">
@@ -206,25 +194,71 @@ const MobileNav = ({ items, isOpen, onClose }: { items: NavItem[]; isOpen: boole
                     </div>
                 </SheetHeader>
 
-                <div className="flex flex-col space-y-3 p-6">
-                    {items.map((item) => (
-                        <NavLink
-                            key={item.to}
-                            to={item.to}
-                            onClick={onClose}
-                            className={({ isActive }) => `
+                <div className="flex flex-col p-6 gap-6">
+                    <div className="flex flex-col space-y-1">
+                        {items.map((item) => (
+                            <NavLink
+                                key={item.to}
+                                to={item.to}
+                                onClick={onClose}
+                                className={({ isActive }) => `
                 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
                 ${isActive
-                                    ? "bg-accent text-accent-foreground"
-                                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"}
+                                        ? "bg-accent text-accent-foreground"
+                                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"}
               `}
-                        >
-                            <item.icon className="h-4 w-4" />
-                            {item.title}
-                        </NavLink>
-                    ))}
+                            >
+                                <item.icon className="h-4 w-4" />
+                                {item.title}
+                            </NavLink>
+                        ))}
+                    </div>
+
+                    <div className="flex flex-col space-y-1">
+                        <p className="px-3 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Configuration</p>
+                        {configItems.map((item) => (
+                            <NavLink
+                                key={item.to}
+                                to={item.to}
+                                onClick={onClose}
+                                className={({ isActive }) => `
+                flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
+                ${isActive
+                                        ? "bg-accent text-accent-foreground"
+                                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"}
+              `}
+                            >
+                                <item.icon className="h-4 w-4" />
+                                {item.title}
+                            </NavLink>
+                        ))}
+                    </div>
                 </div>
             </SheetContent>
         </Sheet>
+    );
+};
+
+const ConfigDropdown = () => {
+    const navigate = useNavigate();
+
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger className="flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+                Configuration
+                <ChevronDown className="h-3 w-3" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+                {configNavItems.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                        <DropdownMenuItem key={item.to} onClick={() => navigate(item.to)}>
+                            <Icon className="mr-2 h-4 w-4" />
+                            <span>{item.title}</span>
+                        </DropdownMenuItem>
+                    );
+                })}
+            </DropdownMenuContent>
+        </DropdownMenu>
     );
 };
