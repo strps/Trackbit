@@ -6,7 +6,6 @@ import {
     Activity,
     ArrowUpRight,
     TrendingUp,
-    Calendar
 } from "lucide-react";
 import {
     Card,

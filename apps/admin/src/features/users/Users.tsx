@@ -1,4 +1,3 @@
-import * as React from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { useQuery } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth-client";

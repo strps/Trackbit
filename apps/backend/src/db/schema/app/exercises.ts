@@ -46,7 +46,7 @@ export const muscleGroups: any = pgTable('muscle_groups', {
     createdAt: timestamp('created_at').defaultNow(),
 });
 
-export const exerciseMuscleGroups = pgTable('exercise_muscle_groups', {
+export const exerciseMuscleGroups = pgTable('exercise_muscle_group', {
     exerciseId: integer('exercise_id')
         .references(() => exercises.id, { onDelete: 'cascade' })
         .notNull(),

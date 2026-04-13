@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@trackbit/ui";
@@ -60,7 +60,7 @@ export default function VerifyEmail() {
                     );
                     setState("error");
                 }
-            } catch (err) {
+            } catch (err: unknown) {
                 setErrorMessage("An unexpected error occurred. Please try again.");
                 setState("error");
             }
@@ -81,8 +81,8 @@ export default function VerifyEmail() {
             });
             setResendSuccess("A new verification email has been sent. Please check your inbox.");
             form.reset();
-        } catch (err: any) {
-            setResendError(err.message || "Failed to send verification email. Please try again.");
+        } catch (err: unknown) {
+            setResendError((err as Error).message || "Failed to send verification email. Please try again.");
         } finally {
             setState("error"); // Return to error view to show resend form again
         }

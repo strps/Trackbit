@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import {
     Save,
     Globe,
@@ -11,10 +11,8 @@ import {
     Card,
     CardContent,
     CardDescription,
-    CardFooter,
     CardHeader,
     CardTitle,
-    Button,
     Input,
     Label,
     Tabs,

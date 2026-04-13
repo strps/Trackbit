@@ -333,7 +333,7 @@ const config: FormFieldConfig[] = [
 ];
 
 export const InvitationPage: React.FC = () => {
-    const { invites, isLoading, sendInvites, isSending, error, deleteInvite, deleteInvites } = useInvites();
+    const { invites, sendInvites, isSending, error, deleteInvite, deleteInvites } = useInvites();
     const [isDialogOpen, setIsDialogOpen] = React.useState(false);
 
     const form = useForm<InvitationFormValues>({

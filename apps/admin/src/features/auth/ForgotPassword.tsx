@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Mail } from 'lucide-react';
 import {
     Card,
     CardContent,
@@ -34,8 +33,8 @@ export default function ForgotPasswordPage() {
                 onSuccess: () => setSuccess('Check your email for a password reset link.'),
                 onError: (ctx) => setError(ctx.error.message),
             });
-        } catch (err: any) {
-            setError(err.message || 'An unexpected error occurred');
+        } catch (err: unknown) {
+            setError((err as Error).message || 'An unexpected error occurred');
         } finally {
             setIsLoading(false);
         }

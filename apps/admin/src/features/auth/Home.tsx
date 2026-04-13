@@ -5,7 +5,6 @@ import { Button } from '@trackbit/ui';
 import { Label } from '@trackbit/ui';
 import { useNavigate } from 'react-router-dom';
 import { authClient } from '@/lib/auth-client';
-import { GoogleIcon, GithubIcon } from './Icons'
 import { useState } from 'react';
 
 export const Home = () => {
@@ -29,21 +28,21 @@ export const Home = () => {
                 onSuccess: () => navigate('/dashboard'),
                 onError: (ctx) => setError(ctx.error.message),
             });
-        } catch (err: any) {
-            setError(err.message || 'An unexpected error occurred');
+        } catch (err: unknown) {
+            setError((err as Error).message || 'An unexpected error occurred');
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleSocial = async (provider: 'google' | 'github') => {
-        setIsLoading(true);
-        await authClient.signIn.social({
-            provider,
-            // Pass inviteCode via state if collected separately
-            callbackURL: `${import.meta.env.VITE_FRONTEND_URL}/dashboard`,
-        });
-    };
+    // const handleSocial = async (provider: 'google' | 'github') => {
+    //     setIsLoading(true);
+    //     await authClient.signIn.social({
+    //         provider,
+    //         // Pass inviteCode via state if collected separately
+    //         callbackURL: `${import.meta.env.VITE_FRONTEND_URL}/dashboard`,
+    //     });
+    // };
 
     return (
         <div className="min-h-screen flex bg-background">
