@@ -43,7 +43,7 @@ export default function SignInPage() {
         await authClient.signIn.social({
             provider,
             // Pass inviteCode via state if collected separately
-            callbackURL: `${import.meta.env.VITE_FRONTEND_URL}/traker`,
+            callbackURL: `${import.meta.env.VITE_FRONTEND_URL}/tracker`,
         });
     };
 
@@ -87,7 +87,7 @@ export default function SignInPage() {
                                     <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">Or continue with</span></div>
                                 </div>
 
-                                <div className={`mt-6 grid gap-4 ${authSettings?.googleLoginEnabled && authSettings?.githubLoginEnabled ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                                <div className={`mt-6 grid gap-4 ${authSettings?.googleLoginEnabled && authSettings?.githubLoginEnabled ? 'grid-cols-2' : 'grid-cols-1'}`}>    
                                     {authSettings?.googleLoginEnabled && (
                                         <Button variant="outline" onClick={() => handleSocial('google')} disabled={isLoading}>
                                             <GoogleIcon />
