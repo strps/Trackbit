@@ -59,7 +59,6 @@ export const AddExercisePicker = ({ sessionId, setEditing }: { sessionId: number
                                         className="pl-10 bg-background"
                                         value={search}
                                         onChange={(e) => setSearch(e.target.value)}
-                                        autoFocus
                                     />
                                 </div>
                             </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useExercises } from '@/hooks/use-exercises';
 import { PerformanceCard } from './PerformanceCard';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/shared/components/ui/collapsible';
@@ -25,11 +25,25 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
     const { deletePerformance, newPerformance: newSet, updatePerformance: updateSet, removeExerciseLog } = useActivityTracker();
     const exercise = exercises.find(e => e.id === exerciseLog.exerciseId);
     const [selectedPerformanceId, setSelectedPerformanceId] = useState<number | null>(null);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const prevPerformanceCountRef = useRef(exerciseLog.exercisePerformances.length);
+
+    React.useEffect(() => {
+        const currentCount = exerciseLog.exercisePerformances.length;
+        if (currentCount > prevPerformanceCountRef.current && scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTo({ left: scrollContainerRef.current.scrollWidth, behavior: 'smooth' });
+        }
+        prevPerformanceCountRef.current = currentCount;
+    }, [exerciseLog.exercisePerformances.length]);
+
+    const handleNewSet = () => {
+        newSet({ exerciseLogId: exerciseLog.id });
+    };
 
     const cardContents: any = {
         strength: {
             content: (
-                <div className="flex overflow-x-auto gap-2 p-2">
+                <div ref={scrollContainerRef} className="flex overflow-x-auto gap-2 p-2">
                     {exerciseLog.exercisePerformances.map((e: OptimisticExercisePerformance, i: number) => (
                         <PerformanceCard
                             key={i}
@@ -43,7 +57,7 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
                     ))}
                     <EmptyState
                         description="New Set"
-                        onClick={() => newSet({ exerciseLogId: exerciseLog.id })}
+                        onClick={handleNewSet}
                         className="w-26 py-0"
                         icon={Play}
                     />
@@ -81,7 +95,7 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
         },
         cardio: {
             content: (
-                <div className="flex overflow-x-auto gap-2 p-2">
+                <div ref={scrollContainerRef} className="flex overflow-x-auto gap-2 p-2">
                     {exerciseLog.exercisePerformances.map((e: OptimisticExercisePerformance, i: number) => (
                         <PerformanceCard
                             key={i}
@@ -95,7 +109,7 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
                     ))}
                     <EmptyState
                         description="New Lap"
-                        onClick={() => newSet({ exerciseLogId: exerciseLog.id })}
+                        onClick={handleNewSet}
                         className="w-26 py-0"
                         icon={Play}
                     />
