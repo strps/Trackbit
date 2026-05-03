@@ -15,6 +15,10 @@ export default function AppLayout({ isPublic }: AppLayoutProps) {
         navigate('/signin');
     }
 
+    if (session && !isPending && isPublic) {
+        navigate('/tracker');
+    }
+
 
     return (
         <div className="app-container min-h-svh">
