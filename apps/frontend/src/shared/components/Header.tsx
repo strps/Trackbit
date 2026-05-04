@@ -5,7 +5,7 @@ import { NavLink } from "react-router-dom";
 import {
     Flame, Menu, X, Sun, Moon,
     User, Settings, LogOut,
-    LayoutDashboard, ListTodo, BarChart3, Dumbbell, CreditCard, ChevronDown
+    LayoutDashboard, ListTodo, BarChart3, Dumbbell, CreditCard, ChevronDown, Bug
 } from 'lucide-react';
 
 interface NavItem {
@@ -27,6 +27,7 @@ const configNavItems: NavItem[] = [
 export const AppHeader: React.FC = () => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
+    const [feedbackOpen, setFeedbackOpen] = useState(false);
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 10);
@@ -35,51 +36,54 @@ export const AppHeader: React.FC = () => {
     }, []);
 
     return (
-        <header className={`sticky top-0 z-40 w-full border-b border-border bg-background/75 backdrop-blur transition-all ${scrolled ? 'shadow-sm' : ''}`}>
-            <div className="container max-w-full mx-auto flex h-16 items-center justify-between px-4 sm:px-8 ">
+        <>
+            <header className={`sticky top-0 z-40 w-full border-b border-border bg-background/75 backdrop-blur transition-all ${scrolled ? 'shadow-sm' : ''}`}>
+                <div className="container max-w-full mx-auto flex h-16 items-center justify-between px-4 sm:px-8 ">
 
-                {/* Logo */}
-                <LogoNameLeft className="h-12 fill-foreground shrink" />
+                    {/* Logo */}
+                    <LogoNameLeft className="h-12 fill-foreground shrink" />
 
 
-                {/* Desktop Navigation */}
-                <div className="flex ml-9">
-                    <nav className="hidden lg:flex items-center gap-6 text-sm font-medium mr-6">
-                        {navItems.map((item) => (
-                            <NavLink
-                                key={item.to}
-                                to={item.to}
-                                className={({ isActive }) => `flex items-center gap-2 transition-colors hover:text-foreground ${isActive ? "text-foreground font-semibold" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"}`}
-                            >
-                                {item.title}
-                            </NavLink>
-                        ))}
-                        <ConfigDropdown />
-                    </nav>
+                    {/* Desktop Navigation */}
+                    <div className="flex ml-9">
+                        <nav className="hidden lg:flex items-center gap-6 text-sm font-medium mr-6">
+                            {navItems.map((item) => (
+                                <NavLink
+                                    key={item.to}
+                                    to={item.to}
+                                    className={({ isActive }) => `flex items-center gap-2 transition-colors hover:text-foreground ${isActive ? "text-foreground font-semibold" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"}`}
+                                >
+                                    {item.title}
+                                </NavLink>
+                            ))}
+                            <ConfigDropdown />
+                        </nav>
 
-                    {/* Mobile Menu Trigger */}
-                    <div className="mr-4 lg:hidden">
-                        <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(true)}>
-                            <Menu className="h-5 w-5" />
-                            <span className="sr-only">Toggle Menu</span>
-                        </Button>
+                        {/* Mobile Menu Trigger */}
+                        <div className="mr-4 lg:hidden">
+                            <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(true)}>
+                                <Menu className="h-5 w-5" />
+                                <span className="sr-only">Toggle Menu</span>
+                            </Button>
+                        </div>
+                        {/* Right Side Actions */}
+                        <div className="ml-auto flex items-center gap-2 sm:gap-4">
+                            <UserNav onOpenFeedback={() => setFeedbackOpen(true)} />
+                        </div>
+
+                        {/* Mobile Menu Sheet */}
+                        <MobileNav
+                            items={navItems}
+                            configItems={configNavItems}
+                            isOpen={mobileMenuOpen}
+                            onClose={() => setMobileMenuOpen(false)}
+                        />
                     </div>
-                    {/* Right Side Actions */}
-                    <div className="ml-auto flex items-center gap-2 sm:gap-4">
-                        <UserNav />
-                    </div>
-
-                    {/* Mobile Menu Sheet */}
-                    <MobileNav
-                        items={navItems}
-                        configItems={configNavItems}
-                        isOpen={mobileMenuOpen}
-                        onClose={() => setMobileMenuOpen(false)}
-                    />
                 </div>
-            </div>
 
-        </header>
+            </header>
+            <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+        </>
     );
 };
 
@@ -92,8 +96,9 @@ import { useTheme } from "@/providers/theme-provider";
 import { signOut, useSession } from "@/shared/lib/auth-client";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 import { LogoNameLeft } from "./Logo";
+import { FeedbackModal } from "./FeedbackModal";
 
-const UserNav = () => {
+const UserNav = ({ onOpenFeedback }: { onOpenFeedback: () => void }) => {
     const { data, isPending } = useSession();
     const navigate = useNavigate();
     const { theme, setTheme } = useTheme();
@@ -159,7 +164,6 @@ const UserNav = () => {
                     <span>Profile</span>
                 </DropdownMenuItem>
 
-
                 <DropdownMenuItem onClick={onThemeChange}>
                     <div className="relative mr-2 h-4 w-4">
                         <Sun className="absolute h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
@@ -173,6 +177,12 @@ const UserNav = () => {
                     <span>Log out</span>
                 </DropdownMenuItem>
 
+                <DropdownMenuSeparator />
+
+                <DropdownMenuItem onClick={onOpenFeedback}>
+                    <Bug className="mr-2 h-4 w-4" />
+                    <span>Report a Bug</span>
+                </DropdownMenuItem>
 
             </DropdownMenuContent>
         </DropdownMenu>

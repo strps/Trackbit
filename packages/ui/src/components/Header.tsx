@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
-
-import {
-  Flame, Menu,
-
-  LayoutDashboard, ListTodo, BarChart3
-} from 'lucide-react';
+import { NavLink } from "react-router-dom";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
+import { UserNav } from "./UserNav";
+import { Flame, Menu, LayoutDashboard, ListTodo, BarChart3 } from 'lucide-react';
 
 interface NavItem {
   title: string;
@@ -86,10 +84,6 @@ export const AppHeader: React.FC = () => {
 
 export default AppHeader;
 
-import { NavLink } from "react-router-dom";
-
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
-import { UserNav } from "./UserNav";
 
 
 const MobileNav = ({ items, isOpen, onClose }: { items: NavItem[]; isOpen: boolean; onClose: () => void }) => {

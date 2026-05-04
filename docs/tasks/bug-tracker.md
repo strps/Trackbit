@@ -48,7 +48,7 @@ Automate the notification so you don't have to manually monitor the database.
 
 ## **Suggested Task List**
 
-1. [ ] **Database:** Run a migration to add the `issues` table.  
+1. [X] **Database:** Run a migration to add the `issues` table.  
 2. [ ] **Backend:** Build the `POST` endpoint with Hono.  
 3. [ ] **Frontend:** Create the `FeedbackModal` using a standard form.  
 4. [ ] **UX:** Add the bug icon to your sidebar/menu component.  
