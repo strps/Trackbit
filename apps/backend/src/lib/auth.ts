@@ -88,6 +88,18 @@ export const auth = betterAuth({
         defaultValue: "tester",
         input: false,
       },
+      locale: {
+        type: "string",
+        required: false,
+        defaultValue: "en",
+        input: true,
+      },
+      timezone: {
+        type: "string",
+        required: false,
+        defaultValue: "UTC",
+        input: true,
+      },
     },
   },
 

@@ -13,6 +13,13 @@ import { TextField } from '@/shared/components/Fields/TextField';
 import { PasswordField } from '@/shared/components/Fields/PasswordField';
 import { useAuthSettings } from '@/hooks/use-auth-settings';
 
+const SUPPORTED_LOCALES = ['en', 'es']
+
+function detectLocale(): string {
+    const lang = navigator.language.split('-')[0].toLowerCase()
+    return SUPPORTED_LOCALES.includes(lang) ? lang : 'en'
+}
+
 const signUpSchema = z.object({
     name: z.string().min(1, "Full name is required"),
     email: z.string().email("Invalid email address"),
@@ -64,6 +71,8 @@ export default function SignUpPage() {
                 email: data.email,
                 password: data.password,
                 inviteCode: data.inviteCode,
+                locale: detectLocale(),
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             }, {
                 onSuccess: () => {
                     setSuccessMessage("Account created successfully! Please check your email for a verification link to activate your account.");
@@ -89,7 +98,11 @@ export default function SignUpPage() {
         setIsLoading(true);
         await authClient.signIn.social({
             provider,
-            additionalData: { inviteCode },
+            additionalData: {
+                inviteCode,
+                locale: detectLocale(),
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            },
             callbackURL: `${import.meta.env.VITE_FRONTEND_URL}/tracker`
         });
     };

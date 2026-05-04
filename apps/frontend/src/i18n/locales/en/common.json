@@ -1,0 +1,6 @@
+{
+  "app_name": "Trackbit",
+  "loading": "Loading...",
+  "error.generic": "An unexpected error occurred",
+  "error.not_found": "Page not found"
+}

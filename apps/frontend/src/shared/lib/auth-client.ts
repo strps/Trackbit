@@ -12,8 +12,16 @@ export const authClient = createAuthClient({
                 },
                 inviteCode: {
                     type: "string" as const,
-                    required: false,     // It's optional in type, but we'll enforce required on the form
-                    input: true,         // Critical: allows passing during signup
+                    required: false,
+                    input: true,
+                },
+                locale: {
+                    type: "string" as const,
+                    required: false,
+                },
+                timezone: {
+                    type: "string" as const,
+                    required: false,
                 },
             },
 

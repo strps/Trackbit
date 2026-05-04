@@ -10,6 +10,7 @@ import trackerRoutes from './routes/app/tracker.js'
 import exerciseInfoRoutes from './routes/app/exercise-info/index.js'
 import configRoutes from './routes/app/config.js'
 import issueRoutes from './routes/app/issues.js'
+import preferencesRoutes from './routes/app/preferences.js'
 import inviteRoutes from './routes/admin/invites.js'
 import adminSettingsRoutes from './routes/admin/settings.js'
 import adminExerciseRoutes from './routes/admin/exercises.js'
@@ -47,6 +48,7 @@ app.route('/api/tracker', trackerRoutes)
 app.route('/api/exercise-info', exerciseInfoRoutes)
 app.route('/api/config', configRoutes)
 app.route('/api/issues', issueRoutes)
+app.route('/api/me', preferencesRoutes)
 
 // Admin Routes
 app.use('/admin/*', cors({
