@@ -13,11 +13,13 @@ import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/aler
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/shared/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
+import { FeedbackModal } from "@/shared/components/FeedbackModal";
 
 export default function ErrorPage() {
     const error = useRouteError();
     const navigate = useNavigate();
     const [isOpen, setIsOpen] = useState(false);
+    const [isCrashReportOpen, setIsCrashReportOpen] = useState(false);
 
     // Default Error State
     let title = "Something went wrong";
@@ -45,79 +47,100 @@ export default function ErrorPage() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-            <Card className="w-full max-w-lg">
-                <CardHeader className="text-center space-y-6">
-                    <div className="mx-auto w-24 h-24 rounded-full bg-muted flex items-center justify-center">
-                        <div>{icon}</div>
-                    </div>
-                    <div className="space-y-2">
-                        <CardTitle className="text-3xl">{title}</CardTitle>
-                        {status && <p className="text-5xl font-bold text-muted-foreground">{status}</p>}
-                        <CardDescription className="text-base max-w-md mx-auto">
-                            {message}
-                        </CardDescription>
-                    </div>
-                </CardHeader>
+        <>
+            <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+                <Card className="w-full max-w-lg">
+                    <CardHeader className="text-center space-y-6">
+                        <div className="mx-auto w-24 h-24 rounded-full bg-muted flex items-center justify-center">
+                            <div>{icon}</div>
+                        </div>
+                        <div className="space-y-2">
+                            <CardTitle className="text-3xl">{title}</CardTitle>
+                            {status && <p className="text-5xl font-bold text-muted-foreground">{status}</p>}
+                            <CardDescription className="text-base max-w-md mx-auto">
+                                {message}
+                            </CardDescription>
+                        </div>
+                    </CardHeader>
 
-                <CardContent className="space-y-4">
-                    <Alert variant={status === 404 ? "default" : "destructive"}>
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertTitle>Error Summary</AlertTitle>
-                        <AlertDescription>
-                            {isRouteErrorResponse(error)
-                                ? "This is a route-related error."
-                                : "This is a client-side JavaScript error."}
-                        </AlertDescription>
-                    </Alert>
+                    <CardContent className="space-y-4">
+                        <Alert variant={status === 404 ? "default" : "destructive"}>
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertTitle>Error Summary</AlertTitle>
+                            <AlertDescription>
+                                {isRouteErrorResponse(error)
+                                    ? "This is a route-related error."
+                                    : "This is a client-side JavaScript error."}
+                            </AlertDescription>
+                        </Alert>
 
-                    {(error instanceof Error || isRouteErrorResponse(error)) && (
-                        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-                            <CollapsibleTrigger asChild>
-                                <Button variant="outline" className="w-full justify-between">
-                                    <span className="flex items-center gap-2">
-                                        <Bug className="h-4 w-4" />
-                                        Show technical details
-                                    </span>
-                                    <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
-                                </Button>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent className="mt-4">
-                                <pre className="text-xs bg-muted p-4 rounded-md overflow-x-auto">
-                                    {errorDetails || (error as any).data || (error as Error).message || String(error)}
-                                </pre>
-                            </CollapsibleContent>
-                        </Collapsible>
-                    )}
-                </CardContent>
+                        {(error instanceof Error || isRouteErrorResponse(error)) && (
+                            <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+                                <CollapsibleTrigger asChild>
+                                    <Button variant="outline" className="w-full justify-between">
+                                        <span className="flex items-center gap-2">
+                                            <Bug className="h-4 w-4" />
+                                            Show technical details
+                                        </span>
+                                        <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                                    </Button>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent className="mt-4">
+                                    <pre className="text-xs bg-muted p-4 rounded-md overflow-x-auto">
+                                        {errorDetails || (error as any).data || (error as Error).message || String(error)}
+                                    </pre>
+                                </CollapsibleContent>
+                            </Collapsible>
+                        )}
+                    </CardContent>
 
-                <CardFooter className="flex flex-col gap-3 border-t bg-muted/50 pt-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
-                        <Button
-                            variant="outline"
-                            onClick={() => navigate(-1)}
-                            className="gap-2"
+                    <CardFooter className="flex flex-col gap-3 border-t bg-muted/50 pt-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                            <Button
+                                variant="outline"
+                                onClick={() => navigate(-1)}
+                                className="gap-2"
+                            >
+                                <ArrowLeft className="h-4 w-4" />
+                                Go Back
+                            </Button>
+                            <Button
+                                onClick={() => navigate("/tracker")}
+                                className="gap-2"
+                            >
+                                <Home className="h-4 w-4" />
+                                Go to Traker
+                            </Button>
+                        </div>
+                        {error instanceof Error && (
+                            <Button
+                                variant="outline"
+                                onClick={() => setIsCrashReportOpen(true)}
+                                className="w-full gap-2"
+                            >
+                                <Bug className="h-4 w-4" />
+                                Send Crash Report
+                            </Button>
+                        )}
+                        <button
+                            onClick={() => window.location.reload()}
+                            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                         >
-                            <ArrowLeft className="h-4 w-4" />
-                            Go Back
-                        </Button>
-                        <Button
-                            onClick={() => navigate("/")}
-                            className="gap-2"
-                        >
-                            <Home className="h-4 w-4" />
-                            Dashboard
-                        </Button>
-                    </div>
-                    <button
-                        onClick={() => window.location.reload()}
-                        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                        <RotateCcw className="h-4 w-4" />
-                        Reload Application
-                    </button>
-                </CardFooter>
-            </Card>
-        </div>
+                            <RotateCcw className="h-4 w-4" />
+                            Reload Application
+                        </button>
+                    </CardFooter>
+                </Card>
+            </div>
+
+            {error instanceof Error && (
+                <FeedbackModal
+                    open={isCrashReportOpen}
+                    onClose={() => setIsCrashReportOpen(false)}
+                    initialType="bug"
+                    initialStackTrace={errorDetails ?? undefined}
+                />
+            )}
+        </>
     );
 }

@@ -29,12 +29,15 @@ type IssueType = "bug" | "feedback";
 interface FeedbackModalProps {
     open: boolean;
     onClose: () => void;
+    initialStackTrace?: string;
+    initialType?: IssueType;
 }
 
-export const FeedbackModal = ({ open, onClose }: FeedbackModalProps) => {
+export const FeedbackModal = ({ open, onClose, initialStackTrace, initialType }: FeedbackModalProps) => {
     const [type, setType] = useState<IssueType>("bug");
     const [description, setDescription] = useState("");
     const [path, setPath] = useState("");
+    const [stackTrace, setStackTrace] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
     const [error, setError] = useState("");
@@ -45,7 +48,8 @@ export const FeedbackModal = ({ open, onClose }: FeedbackModalProps) => {
         if (open) {
             setPath(window.location.pathname);
             setDescription("");
-            setType("bug");
+            setType(initialType ?? "bug");
+            setStackTrace(initialStackTrace ?? "");
             setSubmitted(false);
             setError("");
         }
@@ -60,7 +64,12 @@ export const FeedbackModal = ({ open, onClose }: FeedbackModalProps) => {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
-                body: JSON.stringify({ type, description, path }),
+                body: JSON.stringify({
+                    type,
+                    description,
+                    path,
+                    ...(stackTrace ? { stackTrace } : {}),
+                }),
             });
             if (!res.ok) throw new Error("Failed to submit");
             setSubmitted(true);

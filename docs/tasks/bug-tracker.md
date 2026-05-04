@@ -49,7 +49,7 @@ Automate the notification so you don't have to manually monitor the database.
 ## **Suggested Task List**
 
 1. [X] **Database:** Run a migration to add the `issues` table.  
-2. [ ] **Backend:** Build the `POST` endpoint with Hono.  
-3. [ ] **Frontend:** Create the `FeedbackModal` using a standard form.  
-4. [ ] **UX:** Add the bug icon to your sidebar/menu component.  
-5. [ ] **Robustness:** Implement `useRouteError` in your main router file to catch and report crashes.
+2. [X] **Backend:** Build the `POST` endpoint with Hono.  
+3. [X] **Frontend:** Create the `FeedbackModal` using a standard form.  
+4. [X] **UX:** Add the bug icon to your sidebar/menu component.  
+5. [X] **Robustness:** Implement `useRouteError` in your main router file to catch and report crashes.
