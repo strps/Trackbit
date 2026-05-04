@@ -13,6 +13,7 @@ import issueRoutes from './routes/app/issues.js'
 import inviteRoutes from './routes/admin/invites.js'
 import adminSettingsRoutes from './routes/admin/settings.js'
 import adminExerciseRoutes from './routes/admin/exercises.js'
+import adminIssueRoutes from './routes/admin/issues.js'
 
 const app = new Hono()
 
@@ -58,6 +59,7 @@ app.use('/admin/*', cors({
 app.route('/admin/invitations', inviteRoutes)
 app.route('/admin/settings', adminSettingsRoutes)
 app.route('/admin/exercises', adminExerciseRoutes)
+app.route('/admin/issues', adminIssueRoutes)
 
 // 4. Health Check
 app.get('/health', (c) => c.json({ status: 'ok', time: new Date().toISOString() }))

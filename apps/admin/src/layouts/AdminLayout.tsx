@@ -22,11 +22,12 @@ import { useLocation } from "react-router-dom"
 
 import React from "react"
 import { signOut, useSession } from "@/lib/auth-client"
-import { CreditCard, Home, Settings, User, Users, Dumbbell, DoorOpen } from "lucide-react"
+import { CreditCard, Home, Settings, User, Users, Dumbbell, DoorOpen, Bug } from "lucide-react"
 
 const menuItems = [
     { title: "Dashboard", url: "/dashboard", icon: Home },
     { title: "Users", url: "/users", icon: Users },
+    { title: "Issues", url: "/issues", icon: Bug },
     { title: "Exercises", url: "/exercises", icon: Dumbbell },
     { title: "Invitations", url: "/invite", icon: DoorOpen },
     // { title: "Calendar", url: "/calendar", icon: Calendar },

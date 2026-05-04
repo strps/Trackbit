@@ -12,7 +12,8 @@ import UsersPage from './features/users/Users';
 import ExercisesPage from './features/exercises/Exercises';
 import AuthLayout from './layouts/AuthLayout';
 import Dashboard from './features/dashboard/Dashboard';
-import SettingsPage from './features/settings/Settings';
+import SettingsPage from './features/settings/Settings'
+import IssuesPage from './features/issues/Issues';
 
 
 const router = createBrowserRouter([
@@ -32,7 +33,8 @@ const router = createBrowserRouter([
       { path: "/invite", element: <InvitationPage /> },
       { path: '/users', element: <UsersPage /> },
       { path: '/exercises', element: <ExercisesPage /> },
-      { path: '/settings', element: <SettingsPage /> }
+      { path: '/settings', element: <SettingsPage /> },
+      { path: '/issues', element: <IssuesPage /> }
 
     ]
   },
