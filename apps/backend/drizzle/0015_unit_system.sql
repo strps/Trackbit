@@ -1,0 +1,1 @@
+ALTER TABLE "user" ADD COLUMN "unit_system" text DEFAULT 'metric' NOT NULL;
