@@ -17,6 +17,7 @@ import {
     type ChartMetric,
     type TimeRange,
 } from '../hooks/use-exercise-chart';
+import { useUnitSystem } from '@/providers/unit-system-provider';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -126,7 +127,8 @@ export const ExerciseChart = ({ habit, exercises, className }: ExerciseChartProp
     );
 
     const selectedExercise = filteredExercises.find((e) => e.id === exerciseId);
-    const { data, unit, prCount, allTimeMax } = useExerciseChart(habit, exerciseId, metric, range);
+    const { unitSystem } = useUnitSystem();
+    const { data, unit, prCount, allTimeMax } = useExerciseChart(habit, exerciseId, metric, range, unitSystem);
 
     const prPoints = data.filter((d) => d.isPR);
 

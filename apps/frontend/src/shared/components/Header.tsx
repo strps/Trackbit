@@ -5,7 +5,7 @@ import { NavLink } from "react-router-dom";
 import {
     Flame, Menu, X, Sun, Moon,
     User, Settings, LogOut,
-    LayoutDashboard, ListTodo, BarChart3, Dumbbell, CreditCard, ChevronDown, Bug, Globe
+    LayoutDashboard, ListTodo, BarChart3, Dumbbell, CreditCard, ChevronDown, Bug, Globe, Scale
 } from 'lucide-react';
 
 interface NavItem {
@@ -82,6 +82,7 @@ import { DropdownMenu, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSepara
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "@/providers/theme-provider";
+import { useUnitSystem } from "@/providers/unit-system-provider";
 import { signOut, useSession } from "@/shared/lib/auth-client";
 import { useTranslation } from 'react-i18next';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
@@ -121,6 +122,7 @@ const UserNav = ({ onOpenFeedback }: { onOpenFeedback: () => void }) => {
     const { data, isPending } = useSession();
     const navigate = useNavigate();
     const { theme, setTheme } = useTheme();
+    const { unitSystem, setUnitSystem } = useUnitSystem();
     const { i18n, t } = useTranslation('nav');
 
     const user = data?.user;
@@ -142,6 +144,19 @@ const UserNav = ({ onOpenFeedback }: { onOpenFeedback: () => void }) => {
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({ locale: next }),
+            });
+        }
+    };
+
+    const handleUnitSystemChange = () => {
+        const next = unitSystem === 'metric' ? 'imperial' : 'metric';
+        setUnitSystem(next);
+        if (user) {
+            fetch(`${API_URL}/api/me/preferences`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ unitSystem: next }),
             });
         }
     };
@@ -210,6 +225,11 @@ const UserNav = ({ onOpenFeedback }: { onOpenFeedback: () => void }) => {
                 <DropdownMenuItem onClick={handleLocaleChange}>
                     <Globe className="mr-2 h-4 w-4" />
                     <span>{t('language_label', { lang: langLabel })}</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem onClick={handleUnitSystemChange}>
+                    <Scale className="mr-2 h-4 w-4" />
+                    <span>{t('unit_label', { unit: t(unitSystem === 'metric' ? 'unit_metric' : 'unit_imperial') })}</span>
                 </DropdownMenuItem>
 
                 <DropdownMenuItem onClick={handleLogout}>

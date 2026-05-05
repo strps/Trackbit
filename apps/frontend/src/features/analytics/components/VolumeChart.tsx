@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid,
     Tooltip, ResponsiveContainer, Legend,
@@ -16,6 +16,9 @@ import {
     type VolumeBreakdown,
 } from '../hooks/use-volume-chart';
 import type { TimeRange } from '../hooks/use-exercise-chart';
+import { useUnitSystem } from '@/providers/unit-system-provider';
+import { kgToDisplay, weightUnit, formatNumber } from '@/shared/utils/intlFormatter';
+import { useTranslation } from 'react-i18next';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -48,10 +51,12 @@ interface CustomTooltipProps {
     breakdown: VolumeBreakdown;
     showRpe: boolean;
     exerciseMap: Map<number, string>;
+    unit: string;
+    locale: string;
 }
 
 const CustomTooltip = ({
-    active, payload, label, breakdown, showRpe, exerciseMap,
+    active, payload, label, breakdown, showRpe, exerciseMap, unit, locale,
 }: CustomTooltipProps) => {
     if (!active || !payload?.length) return null;
 
@@ -75,7 +80,7 @@ const CustomTooltip = ({
                                     {exerciseMap.get(exId) ?? `Ex ${exId}`}
                                 </span>
                             </div>
-                            <span className="font-medium tabular-nums">{item.value.toLocaleString()} kg</span>
+                            <span className="font-medium tabular-nums">{formatNumber(item.value, locale)} {unit}</span>
                         </div>
                     );
                 })
@@ -83,7 +88,7 @@ const CustomTooltip = ({
                     <div className="flex items-center justify-between gap-4">
                         <span className="text-muted-foreground text-xs">Volume</span>
                         <span className="font-medium tabular-nums">
-                            {volItems[0]?.value.toLocaleString() ?? 0} kg
+                            {formatNumber(volItems[0]?.value ?? 0, locale)} {unit}
                         </span>
                     </div>
                 )
@@ -111,8 +116,27 @@ export const VolumeChart = ({ habit, exercises, className }: VolumeChartProps) =
     const [breakdown, setBreakdown] = useState<VolumeBreakdown>('total');
     const [showRpe, setShowRpe] = useState(false);
 
-    const { weeks, exerciseIds, totalVolume, avgRpe, peakWeek } =
+    const { unitSystem } = useUnitSystem();
+    const { i18n } = useTranslation();
+    const locale = i18n.language;
+    const unit = weightUnit(unitSystem);
+
+    const { weeks: rawWeeks, exerciseIds, totalVolume: totalVolumeKg, avgRpe, peakWeek } =
         useVolumeChart(habit, range, exercises);
+
+    const weeks = useMemo(() =>
+        rawWeeks.map((w) => {
+            const converted: Record<string, unknown> = { week: w.week, weekKey: w.weekKey, avgRpe: w.avgRpe };
+            converted.total = kgToDisplay(w.total as number, unitSystem);
+            for (const id of exerciseIds) {
+                converted[`ex_${id}`] = kgToDisplay((w[`ex_${id}`] as number) ?? 0, unitSystem);
+            }
+            return converted as typeof w;
+        }),
+        [rawWeeks, unitSystem, exerciseIds],
+    );
+
+    const totalVolume = kgToDisplay(totalVolumeKg, unitSystem);
 
     const exerciseMap = new Map(exercises.map((e) => [e.id, e.name]));
 
@@ -166,8 +190,8 @@ export const VolumeChart = ({ habit, exercises, className }: VolumeChartProps) =
                     <p className="text-lg font-semibold">
                         {totalVolume >= 1000
                             ? `${(totalVolume / 1000).toFixed(1)}k`
-                            : totalVolume.toLocaleString()}
-                        <span className="text-sm font-normal text-muted-foreground ml-1">kg</span>
+                            : formatNumber(totalVolume, locale)}
+                        <span className="text-sm font-normal text-muted-foreground ml-1">{unit}</span>
                     </p>
                 </div>
                 {avgRpe != null && (
@@ -232,6 +256,8 @@ export const VolumeChart = ({ habit, exercises, className }: VolumeChartProps) =
                                     breakdown={breakdown}
                                     showRpe={showRpe}
                                     exerciseMap={exerciseMap}
+                                    unit={unit}
+                                    locale={locale}
                                 />
                             }
                         />

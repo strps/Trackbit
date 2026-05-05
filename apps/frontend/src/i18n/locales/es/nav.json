@@ -11,6 +11,9 @@
   "language_en": "English",
   "language_es": "Español",
   "language_label": "Idioma: {lang}",
+  "unit_metric": "Métrico (kg)",
+  "unit_imperial": "Imperial (lbs)",
+  "unit_label": "Unidades: {unit}",
   "log_out": "Cerrar sesión",
   "report_bug": "Reportar un error",
   "sign_in": "Iniciar sesión"

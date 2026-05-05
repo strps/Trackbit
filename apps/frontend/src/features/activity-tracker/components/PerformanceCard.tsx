@@ -6,6 +6,8 @@ import { OptimisticExercisePerformance, OptimisticExerciseLog } from "@/features
 import { TimerDisplay } from "@/shared/components/Timer";
 import { RpeSelector } from "@/shared/components/RpeSelector";
 import { useActivityTracker } from "../api/useActivityTracker";
+import { useUnitSystem } from "@/providers/unit-system-provider";
+import { kgToDisplay, displayToKg, weightUnit } from "@/shared/utils/intlFormatter";
 
 
 interface PerformanceCardProps {
@@ -25,6 +27,8 @@ export const PerformanceCard = ({
     onHeaderClick,
     onUpdate,
 }: PerformanceCardProps) => {
+    const { unitSystem } = useUnitSystem();
+    const unit = weightUnit(unitSystem);
     const [milliseconds, setMilliseconds] = useState(performance.duration ?? 0);
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const latestMsRef = useRef(milliseconds);
@@ -89,12 +93,12 @@ export const PerformanceCard = ({
                             aria-label={`Reps for ${headerLabel.toLowerCase()} ${index + 1}`}
                         />
                         <NumericStepper
-                            value={performance.weight ?? null}
-                            onChange={(val) => onUpdate({ ...performance, weight: val })}
+                            value={performance.weight != null ? kgToDisplay(performance.weight, unitSystem) : null}
+                            onChange={(val) => onUpdate({ ...performance, weight: val != null ? displayToKg(val, unitSystem) : null })}
                             placeholder="—"
-                            step={2.5}
+                            step={unitSystem === 'imperial' ? 5 : 2.5}
                             min={0}
-                            aria-label={`Weight for ${headerLabel.toLowerCase()} ${index + 1}`}
+                            aria-label={`Weight (${unit}) for ${headerLabel.toLowerCase()} ${index + 1}`}
                         />
                         <RpeSelector
                             compact

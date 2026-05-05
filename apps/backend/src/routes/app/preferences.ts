@@ -7,6 +7,7 @@ import { user } from '../../db/schema/app/user.js'
 import { requireAuth } from '../../middleware/auth.js'
 
 const SUPPORTED_LOCALES = ['en', 'es'] as const
+const SUPPORTED_UNIT_SYSTEMS = ['metric', 'imperial'] as const
 
 type AuthEnv = {
     Variables: {
@@ -21,19 +22,22 @@ app.use('*', requireAuth)
 const preferencesSchema = z.object({
     locale: z.enum(SUPPORTED_LOCALES).optional(),
     timezone: z.string().min(1).optional(),
-}).refine((data) => data.locale !== undefined || data.timezone !== undefined, {
-    message: 'At least one of locale or timezone must be provided',
-})
+    unitSystem: z.enum(SUPPORTED_UNIT_SYSTEMS).optional(),
+}).refine(
+    (data) => data.locale !== undefined || data.timezone !== undefined || data.unitSystem !== undefined,
+    { message: 'At least one preference field must be provided' },
+)
 
 app.patch('/preferences', zValidator('json', preferencesSchema), async (c) => {
     const sessionUser = c.get('user')
-    const { locale, timezone } = c.req.valid('json')
+    const { locale, timezone, unitSystem } = c.req.valid('json')
 
     await db
         .update(user)
         .set({
             ...(locale !== undefined && { locale }),
             ...(timezone !== undefined && { timezone }),
+            ...(unitSystem !== undefined && { unitSystem }),
         })
         .where(eq(user.id, sessionUser.id))
 

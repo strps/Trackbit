@@ -10,6 +10,9 @@ import type { HabitWithLogs } from '@/features/tracker/use-tracker';
 import type { ExerciseWithLastPerformance } from '@/hooks/use-exercises';
 import { useMuscleChart, type MuscleMetric } from '../hooks/use-muscle-chart';
 import type { TimeRange } from '../hooks/use-exercise-chart';
+import { useUnitSystem } from '@/providers/unit-system-provider';
+import { kgToDisplay, weightUnit, formatNumber } from '@/shared/utils/intlFormatter';
+import { useTranslation } from 'react-i18next';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -32,9 +35,11 @@ interface CustomTooltipProps {
     active?: boolean;
     payload?: { payload: { muscle: string; value: number; normalised: number } }[];
     metric: MuscleMetric;
+    unit: string;
+    locale: string;
 }
 
-const CustomTooltip = ({ active, payload, metric }: CustomTooltipProps) => {
+const CustomTooltip = ({ active, payload, metric, unit, locale }: CustomTooltipProps) => {
     if (!active || !payload?.length) return null;
     const { muscle, value } = payload[0].payload;
     return (
@@ -42,7 +47,7 @@ const CustomTooltip = ({ active, payload, metric }: CustomTooltipProps) => {
             <p className="font-medium">{muscle}</p>
             <p className="text-muted-foreground text-xs mt-0.5">
                 {metric === 'volume'
-                    ? `${value.toLocaleString()} kg`
+                    ? `${formatNumber(value, locale)} ${unit}`
                     : `${value} session${value !== 1 ? 's' : ''}`}
             </p>
         </div>
@@ -61,8 +66,15 @@ export const MuscleChart = ({ habit, exercises, className }: MuscleChartProps) =
     const [range, setRange] = useState<TimeRange>('3M');
     const [metric, setMetric] = useState<MuscleMetric>('volume');
 
-    const { points, topMuscle, neglectedMuscle, maxValue } =
+    const { unitSystem } = useUnitSystem();
+    const { i18n } = useTranslation();
+    const locale = i18n.language;
+    const unit = weightUnit(unitSystem);
+
+    const { points, topMuscle, neglectedMuscle, maxValue: maxValueKg } =
         useMuscleChart(habit, range, metric, exercises);
+
+    const maxValue = metric === 'volume' ? kgToDisplay(maxValueKg, unitSystem) : maxValueKg;
 
     if (points.length === 0) {
         return (
@@ -121,7 +133,7 @@ export const MuscleChart = ({ habit, exercises, className }: MuscleChartProps) =
                     </p>
                     <p className="text-base font-semibold">
                         {metric === 'volume'
-                            ? `${maxValue >= 1000 ? `${(maxValue / 1000).toFixed(1)}k` : maxValue} kg`
+                            ? `${maxValue >= 1000 ? `${(maxValue / 1000).toFixed(1)}k` : formatNumber(maxValue, locale)} ${unit}`
                             : `${maxValue} sessions`}
                     </p>
                 </div>
@@ -163,7 +175,7 @@ export const MuscleChart = ({ habit, exercises, className }: MuscleChartProps) =
                                 dot={{ r: 3, fill: '#8b5cf6', strokeWidth: 0 }}
                                 activeDot={{ r: 5, strokeWidth: 0 }}
                             />
-                            <Tooltip content={<CustomTooltip metric={metric} />} />
+                            <Tooltip content={<CustomTooltip metric={metric} unit={unit} locale={locale} />} />
                         </RadarChart>
                     </ResponsiveContainer>
                 )}

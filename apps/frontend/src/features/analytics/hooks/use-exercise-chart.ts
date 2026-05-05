@@ -3,6 +3,7 @@ import { subMonths, subYears, parseISO, isAfter } from 'date-fns';
 import type { HabitWithLogs } from '@/features/tracker/use-tracker';
 import { flattenPerformances } from '../utils/flattenPerformances';
 import type { ExerciseWithLastPerformance } from '@/hooks/use-exercises';
+import { kgToDisplay, weightUnit, type UnitSystem } from '@/shared/utils/intlFormatter';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -36,12 +37,9 @@ const RANGE_CUTOFF: Record<TimeRange, () => Date | null> = {
 const epley1RM = (weight: number, reps: number): number =>
     weight * (1 + reps / 30);
 
-const metricUnit: Record<ChartMetric, string> = {
-    maxWeight: 'kg',
-    totalVolume: 'kg',
-    estimatedOneRM: 'kg',
-    avgRpe: 'RPE',
-};
+function getUnit(metric: ChartMetric, unitSystem: UnitSystem): string {
+    return metric === 'avgRpe' ? 'RPE' : weightUnit(unitSystem);
+}
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
@@ -50,9 +48,11 @@ export function useExerciseChart(
     exerciseId: number | null,
     metric: ChartMetric,
     range: TimeRange,
+    unitSystem: UnitSystem = 'metric',
 ): ExerciseChartData {
     return useMemo(() => {
-        const empty: ExerciseChartData = { data: [], unit: metricUnit[metric], prCount: 0, allTimeMax: null };
+        const unit = getUnit(metric, unitSystem);
+        const empty: ExerciseChartData = { data: [], unit, prCount: 0, allTimeMax: null };
 
         if (!habit || exerciseId == null) return empty;
 
@@ -103,17 +103,21 @@ export function useExerciseChart(
             }
         }
 
-        // PR detection — scan chronologically, mark when value exceeds all prior
+        // PR detection — scan chronologically in kg, then convert to display unit
         let runningMax = -Infinity;
+        const isWeight = metric !== 'avgRpe';
         const data: ChartDataPoint[] = aggregated.map(({ date, value }) => {
             const isPR = value > runningMax;
             if (isPR) runningMax = value;
-            return { date, value, isPR };
+            const displayValue = isWeight ? kgToDisplay(value, unitSystem) : value;
+            return { date, value: displayValue, isPR };
         });
 
         const prCount = data.filter((d) => d.isPR).length;
-        const allTimeMax = runningMax === -Infinity ? null : runningMax;
+        const allTimeMax = runningMax === -Infinity
+            ? null
+            : isWeight ? kgToDisplay(runningMax, unitSystem) : runningMax;
 
-        return { data, unit: metricUnit[metric], prCount, allTimeMax };
-    }, [habit, exerciseId, metric, range]);
+        return { data, unit, prCount, allTimeMax };
+    }, [habit, exerciseId, metric, range, unitSystem]);
 }

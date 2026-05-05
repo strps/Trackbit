@@ -1,16 +1,22 @@
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
 import { authClient, signOut, useSession } from "@/shared/lib/auth-client";
+import { useUnitSystem } from "@/providers/unit-system-provider";
 import { Loader2, LogOut, User } from "lucide-react";
 import { ChangeEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 const AccountSettings = () => {
     const navigate = useNavigate();
-    const { t } = useTranslation('auth');
+    const { t, i18n } = useTranslation('auth');
+    const { t: tNav } = useTranslation('nav');
     const { data: session, isPending } = useSession();
+    const { unitSystem, setUnitSystem } = useUnitSystem();
 
     const [activeTab, setActiveTab] = useState('general');
     const [isLoading, setIsLoading] = useState(false);
@@ -18,6 +24,35 @@ const AccountSettings = () => {
 
     const [profileData, setProfileData] = useState({ name: '', image: '' });
     const [passData, setPassData] = useState({ current: '', new: '', confirm: '' });
+
+    const locale = i18n.language.startsWith('es') ? 'es' : 'en';
+
+    const handleLocaleChange = (next: string) => {
+        i18n.changeLanguage(next);
+        if (session?.user) {
+            fetch(`${API_URL}/api/me/preferences`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ locale: next }),
+            });
+        }
+        setMessage({ type: 'success', text: t('account.message.preferences_updated') });
+    };
+
+    const handleUnitSystemChange = (next: string) => {
+        const us = next as 'metric' | 'imperial';
+        setUnitSystem(us);
+        if (session?.user) {
+            fetch(`${API_URL}/api/me/preferences`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ unitSystem: us }),
+            });
+        }
+        setMessage({ type: 'success', text: t('account.message.preferences_updated') });
+    };
 
     useEffect(() => {
         if (session?.user) {
@@ -107,6 +142,33 @@ const AccountSettings = () => {
 
                         {activeTab === 'general' && (
                             <div className="space-y-6">
+                                <div className="p-6 bg-card text-card-foreground rounded-lg border shadow-sm space-y-4">
+                                    <h3 className="text-lg font-medium">{t('account.preferences.heading')}</h3>
+                                    <div className="space-y-2">
+                                        <Label>{t('account.preferences.language')}</Label>
+                                        <Select value={locale} onValueChange={handleLocaleChange}>
+                                            <SelectTrigger className="w-48">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="en">{tNav('language_en')}</SelectItem>
+                                                <SelectItem value="es">{tNav('language_es')}</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>{t('account.preferences.units')}</Label>
+                                        <Select value={unitSystem} onValueChange={handleUnitSystemChange}>
+                                            <SelectTrigger className="w-48">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="metric">{tNav('unit_metric')}</SelectItem>
+                                                <SelectItem value="imperial">{tNav('unit_imperial')}</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
                                 <div className="p-6 bg-card text-card-foreground rounded-lg border shadow-sm space-y-4">
                                     <h3 className="text-lg font-medium">{t('account.profile.heading')}</h3>
                                     <div className="flex items-center gap-4">

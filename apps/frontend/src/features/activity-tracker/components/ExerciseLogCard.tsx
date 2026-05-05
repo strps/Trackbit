@@ -1,4 +1,6 @@
 import React, { useState, useRef } from 'react';
+import { useUnitSystem } from '@/providers/unit-system-provider';
+import { kgToDisplay, weightUnit } from '@/shared/utils/intlFormatter';
 import { useExercises } from '@/hooks/use-exercises';
 import { PerformanceCard } from './PerformanceCard';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/shared/components/ui/collapsible';
@@ -23,6 +25,8 @@ export interface ExerciseLogCardProps {
 export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: onEditTrigger }: ExerciseLogCardProps) => {
     const { exercises } = useExercises();
     const { deletePerformance, newPerformance: newSet, updatePerformance: updateSet, removeExerciseLog } = useActivityTracker();
+    const { unitSystem } = useUnitSystem();
+    const unit = weightUnit(unitSystem);
     const exercise = exercises.find(e => e.id === exerciseLog.exerciseId);
     const [selectedPerformanceId, setSelectedPerformanceId] = useState<number | null>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -70,16 +74,19 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
                         <div className="flex items-end gap-x-4">
                             <div className="flex flex-col gap-1 items-end">
                                 <div className="flex items-center gap-1"><Hash className="w-3 h-3" /> Reps</div>
-                                <div className="flex items-center gap-1"><Scale className="w-3 h-3" /> Weight (kg)</div>
+                                <div className="flex items-center gap-1"><Scale className="w-3 h-3" /> Weight ({unit})</div>
                             </div>
                             <div className="flex gap-2 text-foreground font-medium">
-                                {exerciseLog.exercisePerformances.map((_: any, i: number) => (
-                                    <div key={i} className="flex flex-col gap-1 text-center">
-                                        <span className="text-muted-foreground text-[9px]">Set {i + 1}</span>
-                                        <span>{exerciseLog.exercisePerformances[i].reps || '-'}</span>
-                                        <span>{exerciseLog.exercisePerformances[i].weight || '-'}</span>
-                                    </div>
-                                ))}
+                                {exerciseLog.exercisePerformances.map((_: any, i: number) => {
+                                    const w = exerciseLog.exercisePerformances[i].weight;
+                                    return (
+                                        <div key={i} className="flex flex-col gap-1 text-center">
+                                            <span className="text-muted-foreground text-[9px]">Set {i + 1}</span>
+                                            <span>{exerciseLog.exercisePerformances[i].reps || '-'}</span>
+                                            <span>{w != null ? kgToDisplay(w, unitSystem) : '-'}</span>
+                                        </div>
+                                    );
+                                })}
                             </div>
                             {avgRpe != null && (
                                 <div className={`ml-auto flex flex-col items-end normal-case ${rpeColor(avgRpe)}`}>
