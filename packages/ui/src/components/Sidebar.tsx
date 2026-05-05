@@ -24,14 +24,15 @@ type MenuItem = {
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
     menuItems?: MenuItem[]
+    groupLabel?: string
 }
 
-export function AppSidebar({ menuItems, ...props }: AppSidebarProps) {
+export function AppSidebar({ menuItems, groupLabel = "Application", ...props }: AppSidebarProps) {
     return (
         <Sidebar collapsible="icon" {...props}>
             <SidebarContent>
                 <SidebarGroup>
-                    <SidebarGroupLabel>Application</SidebarGroupLabel>
+                    <SidebarGroupLabel>{groupLabel}</SidebarGroupLabel>
                     <SidebarGroupContent>
                         <SidebarMenu>
                             {menuItems?.map((item) => (

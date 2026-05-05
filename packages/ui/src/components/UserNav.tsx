@@ -11,6 +11,12 @@ export interface UserNavMenuItem {
     href?: string;
 }
 
+export interface UserNavLabels {
+    signIn?: string;
+    theme?: (theme: string) => string;
+    logOut?: string;
+}
+
 export interface UserNavProps {
     user?: {
         name?: string;
@@ -23,6 +29,7 @@ export interface UserNavProps {
     onLogout?: () => void;
     onLogin?: () => void;
     menuItems?: UserNavMenuItem[];
+    labels?: UserNavLabels;
 }
 
 export const UserNav = ({
@@ -32,8 +39,13 @@ export const UserNav = ({
     onThemeToggle,
     onLogout,
     onLogin,
-    menuItems = []
+    menuItems = [],
+    labels = {},
 }: UserNavProps) => {
+    const signIn = labels.signIn ?? "Sign In";
+    const themeLabel = labels.theme ?? ((t: string) => `Theme: ${t}`);
+    const logOut = labels.logOut ?? "Log out";
+
     if (isLoading) {
         return <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />;
     }
@@ -41,7 +53,7 @@ export const UserNav = ({
     if (!user) {
         return (
             <Button variant="outline" onClick={onLogin}>
-                Sign In
+                {signIn}
             </Button>
         );
     }
@@ -84,14 +96,14 @@ export const UserNav = ({
                         <Sun className="absolute h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                         <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                     </div>
-                    <span className="capitalize">Theme: {theme}</span>
+                    <span className="capitalize">{themeLabel(theme ?? "")}</span>
                 </DropdownMenuItem>}
 
                 <DropdownMenuSeparator />
 
                 <DropdownMenuItem onClick={onLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
+                    <span>{logOut}</span>
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>

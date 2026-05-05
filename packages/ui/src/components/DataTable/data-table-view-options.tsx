@@ -11,18 +11,20 @@ import {
 import { ChevronDown } from "lucide-react";
 interface DataTableViewOptionsProps<TData> {
     table: Table<TData>;
+    columns?: string;
+    toggleColumns?: string;
 }
 
-export function DataTableViewOptions<TData>({ table }: DataTableViewOptionsProps<TData>) {
+export function DataTableViewOptions<TData>({ table, columns = "Columns", toggleColumns = "Toggle columns" }: DataTableViewOptionsProps<TData>) {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
-                    Columns <ChevronDown className="ml-2 h-4 w-4" />
+                    {columns} <ChevronDown className="ml-2 h-4 w-4" />
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+                <DropdownMenuLabel>{toggleColumns}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {table
                     .getAllColumns()

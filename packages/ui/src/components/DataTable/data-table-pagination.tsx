@@ -4,14 +4,24 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface DataTablePaginationProps<TData> {
     table: Table<TData>;
+    previous?: string;
+    next?: string;
+    rowsSelected?: (selected: number, total: number) => string;
 }
 
-export function DataTablePagination<TData>({ table }: DataTablePaginationProps<TData>) {
+export function DataTablePagination<TData>({
+    table,
+    previous = "Previous",
+    next = "Next",
+    rowsSelected = (s, t) => `${s} of ${t} row(s) selected.`,
+}: DataTablePaginationProps<TData>) {
     return (
         <div className="flex items-center justify-between px-2">
             <div className="flex-1 text-sm text-muted-foreground">
-                {table.getFilteredSelectedRowModel().rows.length} of {table.getFilteredRowModel().rows.length} row(s)
-                selected.
+                {rowsSelected(
+                    table.getFilteredSelectedRowModel().rows.length,
+                    table.getFilteredRowModel().rows.length,
+                )}
             </div>
             <div className="flex items-center space-x-6 lg:space-x-8">
                 <div className="flex items-center space-x-2">
@@ -22,7 +32,7 @@ export function DataTablePagination<TData>({ table }: DataTablePaginationProps<T
                         disabled={!table.getCanPreviousPage()}
                     >
                         <ChevronLeft className="h-4 w-4" />
-                        Previous
+                        {previous}
                     </Button>
                     <Button
                         variant="outline"
@@ -30,7 +40,7 @@ export function DataTablePagination<TData>({ table }: DataTablePaginationProps<T
                         onClick={() => table.nextPage()}
                         disabled={!table.getCanNextPage()}
                     >
-                        Next
+                        {next}
                         <ChevronRight className="h-4 w-4" />
                     </Button>
                 </div>

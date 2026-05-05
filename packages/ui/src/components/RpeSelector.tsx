@@ -34,9 +34,10 @@ interface PipBarProps {
     hovered: number | null;
     onHover: (v: number | null) => void;
     onPipClick: (v: number) => void;
+    rpeLabels: Record<number, string>;
 }
 
-const PipBar = ({ value, hovered, onHover, onPipClick }: PipBarProps) => {
+const PipBar = ({ value, hovered, onHover, onPipClick, rpeLabels }: PipBarProps) => {
     const activeLevel = hovered ?? value;
     return (
         <div
@@ -54,7 +55,7 @@ const PipBar = ({ value, hovered, onHover, onPipClick }: PipBarProps) => {
                     <button
                         key={pip}
                         type="button"
-                        title={`RPE ${pip} – ${RPE_LABELS[pip]}`}
+                        title={`RPE ${pip} – ${rpeLabels[pip]}`}
                         aria-label={`RPE ${pip}`}
                         onMouseEnter={() => onHover(pip)}
                         onClick={() => onPipClick(pip)}
@@ -74,11 +75,13 @@ interface RpePopoverGridProps {
     value: number | null;
     onChange: (v: number | null) => void;
     onClose: () => void;
+    rpeLabels: Record<number, string>;
+    popoverTitle: string;
 }
 
-const RpePopoverGrid = ({ value, onChange, onClose }: RpePopoverGridProps) => (
+const RpePopoverGrid = ({ value, onChange, onClose, rpeLabels, popoverTitle }: RpePopoverGridProps) => (
     <div className="flex flex-col gap-2 p-1">
-        <p className="text-xs text-center text-muted-foreground font-medium px-1">Rate of Perceived Exertion</p>
+        <p className="text-xs text-center text-muted-foreground font-medium px-1">{popoverTitle}</p>
         <div className="grid grid-cols-5 gap-1.5">
             {Array.from({ length: 10 }, (_, i) => {
                 const level = i + 1;
@@ -89,7 +92,7 @@ const RpePopoverGrid = ({ value, onChange, onClose }: RpePopoverGridProps) => (
                         key={level}
                         type="button"
                         aria-label={`RPE ${level}`}
-                        title={RPE_LABELS[level]}
+                        title={rpeLabels[level]}
                         onClick={() => {
                             onChange(isActive ? null : level);
                             onClose();
@@ -107,20 +110,24 @@ const RpePopoverGrid = ({ value, onChange, onClose }: RpePopoverGridProps) => (
             })}
         </div>
         {value != null && (
-            <p className="text-xs text-center text-muted-foreground italic">{RPE_LABELS[value]}</p>
+            <p className="text-xs text-center text-muted-foreground italic">{rpeLabels[value]}</p>
         )}
     </div>
 );
 
 // ── Public component ──────────────────────────────────────────────────────────
 
-interface RpeSelectorProps {
+export interface RpeSelectorProps {
     value: number | null;
     onChange: (value: number | null) => void;
     className?: string;
     label?: string;
     /** Compact mode: hides the label row and description text, suitable for tight spaces */
     compact?: boolean;
+    /** Per-level description labels, keyed 1–10. Defaults to English RPE_LABELS. */
+    rpeLabels?: Record<number, string>;
+    /** Title shown at the top of the mobile popover grid. */
+    popoverTitle?: string;
 }
 
 export const RpeSelector = ({
@@ -129,6 +136,8 @@ export const RpeSelector = ({
     className,
     label = "RPE",
     compact = false,
+    rpeLabels = RPE_LABELS,
+    popoverTitle = "Rate of Perceived Exertion",
 }: RpeSelectorProps) => {
     const [hovered, setHovered] = useState<number | null>(null);
     const [popoverOpen, setPopoverOpen] = useState(false);
@@ -141,6 +150,7 @@ export const RpeSelector = ({
             hovered={hovered}
             onHover={setHovered}
             onPipClick={(pip) => onChange(value === pip ? null : pip)}
+            rpeLabels={rpeLabels}
         />
     );
 
@@ -174,6 +184,8 @@ export const RpeSelector = ({
                         value={value}
                         onChange={onChange}
                         onClose={() => setPopoverOpen(false)}
+                        rpeLabels={rpeLabels}
+                        popoverTitle={popoverTitle}
                     />
                 </PopoverContent>
             </Popover>
@@ -184,7 +196,7 @@ export const RpeSelector = ({
                 </p>
             ) : (
                 <p className="text-xs text-muted-foreground/60 italic text-right leading-none h-3">
-                    {activeLevel != null ? RPE_LABELS[activeLevel] : ""}
+                    {activeLevel != null ? rpeLabels[activeLevel] : ""}
                 </p>
             )}
         </div>

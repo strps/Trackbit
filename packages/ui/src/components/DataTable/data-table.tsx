@@ -20,12 +20,23 @@ import { cn } from "@/lib/utils";
 import { DataTableToolbar } from "./data-table-toolbar";
 import { DataTablePagination } from "./data-table-pagination";
 
+export interface DataTableLabels {
+    noResults?: string;
+    previous?: string;
+    next?: string;
+    rowsSelected?: (selected: number, total: number) => string;
+    filterPlaceholder?: (column: string) => string;
+    columns?: string;
+    toggleColumns?: string;
+}
+
 interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[];
     data: TData[];
-    searchColumn?: string; // Optional column key for global search (e.g., "email")
+    searchColumn?: string;
     className?: string;
     actions?: (table: import("@tanstack/react-table").Table<TData>) => React.ReactNode;
+    labels?: DataTableLabels;
 }
 
 export function DataTable<TData, TValue>({
@@ -34,6 +45,7 @@ export function DataTable<TData, TValue>({
     searchColumn,
     actions,
     className,
+    labels = {},
 }: DataTableProps<TData, TValue>) {
     const [sorting, setSorting] = React.useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -61,7 +73,13 @@ export function DataTable<TData, TValue>({
 
     return (
         <div className={cn("w-full space-y-4", className)}>
-            <DataTableToolbar table={table} searchColumn={searchColumn}>
+            <DataTableToolbar
+                table={table}
+                searchColumn={searchColumn}
+                filterPlaceholder={labels.filterPlaceholder}
+                columns={labels.columns}
+                toggleColumns={labels.toggleColumns}
+            >
                 {actions?.(table)}
             </DataTableToolbar>
             <div className="overflow-hidden rounded-md border">
@@ -93,14 +111,19 @@ export function DataTable<TData, TValue>({
                         ) : (
                             <TableRow>
                                 <TableCell colSpan={columns.length} className="h-24 text-center">
-                                    No results.
+                                    {labels.noResults ?? "No results."}
                                 </TableCell>
                             </TableRow>
                         )}
                     </TableBody>
                 </Table>
             </div>
-            <DataTablePagination table={table} />
+            <DataTablePagination
+                table={table}
+                previous={labels.previous}
+                next={labels.next}
+                rowsSelected={labels.rowsSelected}
+            />
         </div>
     );
 }
