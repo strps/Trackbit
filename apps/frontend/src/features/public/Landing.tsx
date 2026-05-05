@@ -71,7 +71,7 @@ export default function Landing() {
                         <FeatureShowcaseCard
                             icon={<Palette className="h-12 w-12 text-primary mb-4" />}
                             title="Hybrid Habit & Workout Tracking"
-                            description="Log simple check-ins, counts, or detailed sessions with sets, reps, weights, timers, and RPE—all in one unified dashboard."
+                            description="Log simple check-ins, counts, or detailed sessions with sets, reps, weights, timers, and RPE—all in one unified Tracker."
                             backgroundComponent={<HybridTrackingBackground />}
                             className="mt-24"
                         />

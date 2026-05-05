@@ -13,7 +13,7 @@ export interface UIConfig {
     appName: string;
     isBetaUser: boolean;
     primaryNav: NavItem[];
-    dashboardWidgets: string[];
+    trackerWidgets: string[];
 }
 
 const fetchConfig = async (): Promise<UIConfig> => {
@@ -37,10 +37,10 @@ export function useUIConfig() {
         appName: "HabitTrack",
         isBetaUser: false,
         primaryNav: [
-            { title: "Dashboard", href: "/dashboard", icon: "LayoutDashboard" },
+            { title: "Tracker", href: "/tracker", icon: "LayoutDashboard" },
             { title: "Settings", href: "/account-settings", icon: "Settings" },
         ],
-        dashboardWidgets: [],
+        trackerWidgets: [],
     };
 
     return {

@@ -1,9 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { Activity, ArrowLeft, Home, FileQuestion } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
+import { useSession } from "@/shared/lib/auth-client";
 
 export default function NotFound() {
     const navigate = useNavigate();
+    const { data, isPending } = useSession();
+    const user = data?.user;
 
     return (
         <div className="min-h-screen bg-background flex items-center justify-center p-4 font-sans">
@@ -46,7 +49,7 @@ export default function NotFound() {
                     </h1>
                     <p className="text-muted-foreground text-lg">
                         This page has veered off course and couldn't be located. No worries—your habits and progress are still on track elsewhere.
-                        Head back to the dashboard and keep logging those consistent wins!
+                        Head back to the Tracker and keep logging those consistent wins!
                     </p>
                 </div>
 
@@ -62,11 +65,17 @@ export default function NotFound() {
                     </Button>
 
                     <Button
-                        onClick={() => navigate("/")}
+                        onClick={() => {
+                            if (!user) {
+                                navigate("/");
+                            }
+                            navigate("/tracker")
+
+                        }}
                         className="gap-2"
                     >
                         <Home className="w-4 h-4" />
-                        Back to Dashboard
+                        Back to {!user ? "Home" : "Tracker"}
                     </Button>
                 </div>
 

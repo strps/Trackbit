@@ -79,7 +79,7 @@ export default function VerifyEmail() {
         try {
             await authClient.sendVerificationEmail({
                 email: data.email,
-                callbackURL: "/dashboard",
+                callbackURL: "/tracker",
             });
             setResendSuccess(t('verify.resend_success'));
             form.reset();
@@ -112,7 +112,7 @@ export default function VerifyEmail() {
                                     {t('verify.feature_access')}
                                 </AlertDescription>
                             </Alert>
-                            <Button onClick={() => navigate("/dashboard")} size="lg">
+                            <Button onClick={() => navigate("/tracker")} size="lg">
                                 {t('verify.go_dashboard')}
                             </Button>
                         </>
