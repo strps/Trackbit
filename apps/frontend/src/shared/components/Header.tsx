@@ -5,7 +5,7 @@ import { NavLink } from "react-router-dom";
 import {
     Flame, Menu, X, Sun, Moon,
     User, Settings, LogOut,
-    LayoutDashboard, ListTodo, BarChart3, Dumbbell, CreditCard, ChevronDown, Bug
+    LayoutDashboard, ListTodo, BarChart3, Dumbbell, CreditCard, ChevronDown, Bug, Globe
 } from 'lucide-react';
 
 interface NavItem {
@@ -94,22 +94,40 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "@/providers/theme-provider";
 import { signOut, useSession } from "@/shared/lib/auth-client";
+import { useTranslation } from 'react-i18next';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 import { LogoNameLeft } from "./Logo";
 import { FeedbackModal } from "./FeedbackModal";
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 const UserNav = ({ onOpenFeedback }: { onOpenFeedback: () => void }) => {
     const { data, isPending } = useSession();
     const navigate = useNavigate();
     const { theme, setTheme } = useTheme();
+    const { i18n } = useTranslation();
 
     const user = data?.user;
     const themes = ["light", "dark", "system"];
+    const locale = i18n.language.startsWith('es') ? 'es' : 'en';
 
     const onThemeChange = () => {
         const selectedThemeIndex = themes.indexOf(theme);
         const nextTheme = themes[(selectedThemeIndex + 1) % themes.length];
         setTheme(nextTheme as "light" | "dark" | "system");
+    };
+
+    const handleLocaleChange = () => {
+        const next = locale === 'en' ? 'es' : 'en';
+        i18n.changeLanguage(next);
+        if (user) {
+            fetch(`${API_URL}/api/me/preferences`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ locale: next }),
+            });
+        }
     };
 
     const handleLogout = async () => {
@@ -170,6 +188,11 @@ const UserNav = ({ onOpenFeedback }: { onOpenFeedback: () => void }) => {
                         <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                     </div>
                     <span className="capitalize">Theme: {theme}</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem onClick={handleLocaleChange}>
+                    <Globe className="mr-2 h-4 w-4" />
+                    <span>Language: {locale === 'en' ? 'English' : 'Español'}</span>
                 </DropdownMenuItem>
 
                 <DropdownMenuItem onClick={handleLogout}>
