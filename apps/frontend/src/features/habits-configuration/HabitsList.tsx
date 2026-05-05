@@ -8,6 +8,7 @@ import { Button } from "@/shared/components/ui/button";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import { toast } from "sonner";
 import type { Habit } from "@trackbit/types";
+import { useTranslation } from "react-i18next";
 
 const getColorAtOne = (habit: Habit) => {
     const stops = habit.colorTheme === 'custom' ? habit.colorStops : GRADIENT_PRESETS[habit.colorTheme]?.stops ?? habit.colorStops;
@@ -31,6 +32,7 @@ const renderIcon = (iconId: string, className = "w-5 h-5") => {
 };
 
 export const HabitList = ({ habits, activeHabitId, editHabit, handleDelete, startNewHabit, onReorder }: HabitListProps) => {
+    const { t } = useTranslation('habits');
 
     const positiveHabits = habits
         .filter(h => !h.isAntiHabit)
@@ -44,42 +46,34 @@ export const HabitList = ({ habits, activeHabitId, editHabit, handleDelete, star
         const { source, destination, draggableId } = result;
         if (!destination) return;
 
-        // Same position, nothing changed
         if (source.droppableId === destination.droppableId && source.index === destination.index) return;
 
         const habitId = Number(draggableId);
         const draggedHabit = habits.find(h => h.id === habitId);
         if (!draggedHabit) return;
 
-        // Block structured sessions (complex) from being dropped into anti-habits
         if (destination.droppableId === "anti-habits" && draggedHabit.type === "complex") {
-            toast.error("Structured sessions can't be anti-habits", {
-                description: "Only Count, Check, and Timed habits can be marked as anti-habits.",
+            toast.error(t('list.error.structured_anti'), {
+                description: t('list.error.anti_restriction'),
             });
             return;
         }
 
-        // Build mutable copies of the relevant lists
         const sourceList = source.droppableId === "habits" ? [...positiveHabits] : [...antiHabits];
         const isSameList = source.droppableId === destination.droppableId;
         const destList = isSameList
             ? sourceList
             : destination.droppableId === "habits" ? [...positiveHabits] : [...antiHabits];
 
-        // Remove from source
         const [moved] = sourceList.splice(source.index, 1);
-
-        // Insert at destination
         destList.splice(destination.index, 0, moved);
 
-        // Determine final lists
         const finalPositive = destination.droppableId === "habits" ? destList :
             source.droppableId === "habits" ? sourceList : [...positiveHabits];
 
         const finalAnti = destination.droppableId === "anti-habits" ? destList :
             source.droppableId === "anti-habits" ? sourceList : [...antiHabits];
 
-        // Build reorder payload
         const reorderItems: { id: number; order: number; isAntiHabit: boolean }[] = [];
 
         finalPositive.forEach((h, i) => {
@@ -91,6 +85,13 @@ export const HabitList = ({ habits, activeHabitId, editHabit, handleDelete, star
         });
 
         onReorder(reorderItems);
+    };
+
+    const badgeLabel = (type: Habit['type']) => {
+        if (type === 'complex') return t('list.badge.structured');
+        if (type === 'timed') return t('list.badge.timed');
+        if (type === 'check') return t('list.badge.check');
+        return t('list.badge.count');
     };
 
     const renderHabitCard = (habit: Habit, index: number) => (
@@ -109,9 +110,7 @@ export const HabitList = ({ habits, activeHabitId, editHabit, handleDelete, star
                         <div className="flex items-center gap-4 flex-1 relative z-10">
                             <div
                                 className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm shrink-0"
-                                style={{
-                                    backgroundColor: getColorAtOne(habit)
-                                }}
+                                style={{ backgroundColor: getColorAtOne(habit) }}
                             >
                                 {renderIcon(habit.icon, "w-6 h-6")}
                             </div>
@@ -119,13 +118,11 @@ export const HabitList = ({ habits, activeHabitId, editHabit, handleDelete, star
                             <div className="flex-1 min-w-0">
                                 <h3 className="font-bold text-lg truncate">{habit.name}</h3>
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                    <Badge variant="secondary">
-                                        {habit.type === 'complex' ? 'Structured' : habit.type === 'timed' ? 'Timed' : habit.type === 'check' ? 'Check' : 'Count'}
-                                    </Badge>
+                                    <Badge variant="secondary">{badgeLabel(habit.type)}</Badge>
                                     <span>•</span>
-                                    <span>{`Daily ${habit.isAntiHabit ? 'Limit:' : 'Goal:'}`} {habit.dailyGoal}/d</span>
+                                    <span>{habit.isAntiHabit ? t('list.daily_limit') : t('list.daily_goal')} {habit.dailyGoal}{t('list.per_day')}</span>
                                     <span>•</span>
-                                    <span>{`Weekly ${habit.isAntiHabit ? 'Limit:' : 'Goal:'}`} {habit.weeklyGoal}/w</span>
+                                    <span>{habit.isAntiHabit ? t('list.weekly_limit') : t('list.weekly_goal')} {habit.weeklyGoal}{t('list.per_week')}</span>
                                 </div>
                             </div>
 
@@ -153,7 +150,7 @@ export const HabitList = ({ habits, activeHabitId, editHabit, handleDelete, star
                 {/* Habits Group */}
                 <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                        <h2 className="text-lg font-semibold text-foreground">Habits</h2>
+                        <h2 className="text-lg font-semibold text-foreground">{t('list.habits')}</h2>
                         <div className="flex items-center gap-2">
                             <span className="text-xs font-medium px-2 py-1 bg-muted rounded-full text-muted-foreground">
                                 {positiveHabits.length}
@@ -164,7 +161,7 @@ export const HabitList = ({ habits, activeHabitId, editHabit, handleDelete, star
                                 className="flex items-center gap-1"
                             >
                                 <Plus className="w-4 h-4" />
-                                Add Habit
+                                {t('list.add')}
                             </Button>
                         </div>
                     </div>
@@ -181,12 +178,12 @@ export const HabitList = ({ habits, activeHabitId, editHabit, handleDelete, star
                             >
                                 {positiveHabits.length === 0 && !snapshot.isDraggingOver && (
                                     <p className="text-sm text-muted-foreground text-center py-5">
-                                        No habits yet — add one above
+                                        {t('list.empty')}
                                     </p>
                                 )}
                                 {snapshot.isDraggingOver && positiveHabits.length === 0 && (
                                     <p className="text-sm text-primary font-medium text-center py-5">
-                                        Drop here to add to Habits
+                                        {t('list.drop_here_habits')}
                                     </p>
                                 )}
                                 {positiveHabits.map((habit, index) => renderHabitCard(habit, index))}
@@ -202,7 +199,7 @@ export const HabitList = ({ habits, activeHabitId, editHabit, handleDelete, star
                     <div className="flex items-center justify-between">
                         <h2 className="text-lg font-semibold text-destructive flex items-center gap-2">
                             <ShieldAlert className="w-5 h-5" />
-                            Anti-Habits
+                            {t('list.anti_habits')}
                         </h2>
                         <span className="text-xs font-medium px-2 py-1 bg-destructive/10 rounded-full text-destructive">
                             {antiHabits.length}
@@ -220,11 +217,10 @@ export const HabitList = ({ habits, activeHabitId, editHabit, handleDelete, star
                                     }`}
                             >
                                 {antiHabits.length === 0 && (
-                                    <p className={`text-sm text-center py-5 transition-colors ${snapshot.isDraggingOver ? 'text-destructive font-medium' : 'text-muted-foreground'
-                                        }`}>
+                                    <p className={`text-sm text-center py-5 transition-colors ${snapshot.isDraggingOver ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
                                         {snapshot.isDraggingOver
-                                            ? 'Drop here to mark as anti-habit'
-                                            : 'Drag a habit here to mark it as an anti-habit'}
+                                            ? t('list.drop_here_anti')
+                                            : t('list.drag_to_anti')}
                                     </p>
                                 )}
                                 {antiHabits.map((habit, index) => renderHabitCard(habit, index))}

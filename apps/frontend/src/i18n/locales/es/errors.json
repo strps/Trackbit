@@ -1,0 +1,15 @@
+{
+  "generic_title": "Algo salió mal",
+  "generic_message": "Ocurrió un error inesperado. Nuestro equipo ha sido notificado.",
+  "unexpected_title": "Error inesperado",
+  "not_found_title": "Página no encontrada",
+  "not_found_message": "No encontramos la página que buscas. Puede que haya sido movida o eliminada.",
+  "summary_title": "Resumen del error",
+  "route_error": "Este es un error relacionado con la ruta.",
+  "client_error": "Este es un error de JavaScript en el cliente.",
+  "show_details": "Mostrar detalles técnicos",
+  "go_back": "Volver",
+  "go_to_tracker": "Ir al seguimiento",
+  "send_crash_report": "Enviar informe de error",
+  "reload": "Recargar aplicación"
+}

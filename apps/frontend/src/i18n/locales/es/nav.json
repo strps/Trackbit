@@ -1,0 +1,17 @@
+{
+  "tracker": "Seguimiento",
+  "stats": "Estadísticas",
+  "configuration": "Configuración",
+  "habits": "Hábitos",
+  "exercises": "Ejercicios",
+  "toggle_menu": "Alternar menú",
+  "my_account": "Mi cuenta",
+  "profile": "Perfil",
+  "theme": "Tema: {theme}",
+  "language_en": "English",
+  "language_es": "Español",
+  "language_label": "Idioma: {lang}",
+  "log_out": "Cerrar sesión",
+  "report_bug": "Reportar un error",
+  "sign_in": "Iniciar sesión"
+}

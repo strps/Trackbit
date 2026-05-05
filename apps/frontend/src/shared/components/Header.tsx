@@ -9,19 +9,19 @@ import {
 } from 'lucide-react';
 
 interface NavItem {
-    title: string;
+    titleKey: string;
     to: string;
     icon: React.ElementType;
 }
 
 const navItems: NavItem[] = [
-    { title: "Tracker", to: "/tracker", icon: Flame },
-    { title: "Stats", to: "/stats", icon: BarChart3 },
+    { titleKey: "tracker", to: "/tracker", icon: Flame },
+    { titleKey: "stats", to: "/stats", icon: BarChart3 },
 ];
 
 const configNavItems: NavItem[] = [
-    { title: "Habits", to: "/config/habits", icon: ListTodo },
-    { title: "Exercises", to: "/config/exercises", icon: Dumbbell },
+    { titleKey: "habits", to: "/config/habits", icon: ListTodo },
+    { titleKey: "exercises", to: "/config/exercises", icon: Dumbbell },
 ];
 
 export const AppHeader: React.FC = () => {
@@ -47,24 +47,13 @@ export const AppHeader: React.FC = () => {
                     {/* Desktop Navigation */}
                     <div className="flex ml-9">
                         <nav className="hidden lg:flex items-center gap-6 text-sm font-medium mr-6">
-                            {navItems.map((item) => (
-                                <NavLink
-                                    key={item.to}
-                                    to={item.to}
-                                    className={({ isActive }) => `flex items-center gap-2 transition-colors hover:text-foreground ${isActive ? "text-foreground font-semibold" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"}`}
-                                >
-                                    {item.title}
-                                </NavLink>
-                            ))}
+                            <DesktopNavItems items={navItems} />
                             <ConfigDropdown />
                         </nav>
 
                         {/* Mobile Menu Trigger */}
                         <div className="mr-4 lg:hidden">
-                            <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(true)}>
-                                <Menu className="h-5 w-5" />
-                                <span className="sr-only">Toggle Menu</span>
-                            </Button>
+                            <MobileMenuTrigger onOpen={() => setMobileMenuOpen(true)} />
                         </div>
                         {/* Right Side Actions */}
                         <div className="ml-auto flex items-center gap-2 sm:gap-4">
@@ -101,11 +90,38 @@ import { FeedbackModal } from "./FeedbackModal";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
+const DesktopNavItems = ({ items }: { items: NavItem[] }) => {
+    const { t } = useTranslation('nav');
+    return (
+        <>
+            {items.map((item) => (
+                <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={({ isActive }) => `flex items-center gap-2 transition-colors hover:text-foreground ${isActive ? "text-foreground font-semibold" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"}`}
+                >
+                    {t(item.titleKey)}
+                </NavLink>
+            ))}
+        </>
+    );
+};
+
+const MobileMenuTrigger = ({ onOpen }: { onOpen: () => void }) => {
+    const { t } = useTranslation('nav');
+    return (
+        <Button variant="ghost" size="icon" onClick={onOpen}>
+            <Menu className="h-5 w-5" />
+            <span className="sr-only">{t('toggle_menu')}</span>
+        </Button>
+    );
+};
+
 const UserNav = ({ onOpenFeedback }: { onOpenFeedback: () => void }) => {
     const { data, isPending } = useSession();
     const navigate = useNavigate();
     const { theme, setTheme } = useTheme();
-    const { i18n } = useTranslation();
+    const { i18n, t } = useTranslation('nav');
 
     const user = data?.user;
     const themes = ["light", "dark", "system"];
@@ -142,7 +158,7 @@ const UserNav = ({ onOpenFeedback }: { onOpenFeedback: () => void }) => {
     if (!user) {
         return (
             <Button variant="outline" onClick={() => navigate('/signin')}>
-                Sign In
+                {t('sign_in')}
             </Button>
         );
     }
@@ -150,6 +166,8 @@ const UserNav = ({ onOpenFeedback }: { onOpenFeedback: () => void }) => {
     const initials = user.name
         ? user.name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase()
         : "U";
+
+    const langLabel = locale === 'en' ? t('language_en') : t('language_es');
 
     return (
         <DropdownMenu>
@@ -172,14 +190,13 @@ const UserNav = ({ onOpenFeedback }: { onOpenFeedback: () => void }) => {
                     </div>
                 </div>
 
-
                 <DropdownMenuSeparator />
 
-                <DropdownMenuLabel className="text-muted-foreground">My Account</DropdownMenuLabel>
+                <DropdownMenuLabel className="text-muted-foreground">{t('my_account')}</DropdownMenuLabel>
 
                 <DropdownMenuItem onClick={() => navigate('/account-settings')}>
                     <User className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
+                    <span>{t('profile')}</span>
                 </DropdownMenuItem>
 
                 <DropdownMenuItem onClick={onThemeChange}>
@@ -187,24 +204,24 @@ const UserNav = ({ onOpenFeedback }: { onOpenFeedback: () => void }) => {
                         <Sun className="absolute h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                         <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                     </div>
-                    <span className="capitalize">Theme: {theme}</span>
+                    <span className="capitalize">{t('theme', { theme })}</span>
                 </DropdownMenuItem>
 
                 <DropdownMenuItem onClick={handleLocaleChange}>
                     <Globe className="mr-2 h-4 w-4" />
-                    <span>Language: {locale === 'en' ? 'English' : 'Español'}</span>
+                    <span>{t('language_label', { lang: langLabel })}</span>
                 </DropdownMenuItem>
 
                 <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
+                    <span>{t('log_out')}</span>
                 </DropdownMenuItem>
 
                 <DropdownMenuSeparator />
 
                 <DropdownMenuItem onClick={onOpenFeedback}>
                     <Bug className="mr-2 h-4 w-4" />
-                    <span>Report a Bug</span>
+                    <span>{t('report_bug')}</span>
                 </DropdownMenuItem>
 
             </DropdownMenuContent>
@@ -213,6 +230,7 @@ const UserNav = ({ onOpenFeedback }: { onOpenFeedback: () => void }) => {
 };
 
 const MobileNav = ({ items, configItems, isOpen, onClose }: { items: NavItem[]; configItems: NavItem[]; isOpen: boolean; onClose: () => void }) => {
+    const { t } = useTranslation('nav');
     return (
         <Sheet open={isOpen} onOpenChange={onClose}>
             <SheetContent side="left" className="w-3/4 max-w-sm p-0 lg:hidden">
@@ -242,13 +260,13 @@ const MobileNav = ({ items, configItems, isOpen, onClose }: { items: NavItem[]; 
               `}
                             >
                                 <item.icon className="h-4 w-4" />
-                                {item.title}
+                                {t(item.titleKey)}
                             </NavLink>
                         ))}
                     </div>
 
                     <div className="flex flex-col space-y-1">
-                        <p className="px-3 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Configuration</p>
+                        <p className="px-3 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('configuration')}</p>
                         {configItems.map((item) => (
                             <NavLink
                                 key={item.to}
@@ -262,7 +280,7 @@ const MobileNav = ({ items, configItems, isOpen, onClose }: { items: NavItem[]; 
               `}
                             >
                                 <item.icon className="h-4 w-4" />
-                                {item.title}
+                                {t(item.titleKey)}
                             </NavLink>
                         ))}
                     </div>
@@ -274,11 +292,12 @@ const MobileNav = ({ items, configItems, isOpen, onClose }: { items: NavItem[]; 
 
 const ConfigDropdown = () => {
     const navigate = useNavigate();
+    const { t } = useTranslation('nav');
 
     return (
         <DropdownMenu>
             <DropdownMenuTrigger className="flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-                Configuration
+                {t('configuration')}
                 <ChevronDown className="h-3 w-3" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
@@ -287,7 +306,7 @@ const ConfigDropdown = () => {
                     return (
                         <DropdownMenuItem key={item.to} onClick={() => navigate(item.to)}>
                             <Icon className="mr-2 h-4 w-4" />
-                            <span>{item.title}</span>
+                            <span>{t(item.titleKey)}</span>
                         </DropdownMenuItem>
                     );
                 })}

@@ -4,24 +4,13 @@ import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { Bug, MessageSquare, CheckCircle2, MapPin } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
+import { useTranslation } from "react-i18next";
 
 const API_URL = `${import.meta.env.VITE_API_URL}/issues`;
 
-const types = [
-    {
-        value: "bug" as const,
-        label: "Bug",
-        icon: Bug,
-        question: "What went wrong?",
-        placeholder: "Describe what happened and what you expected instead.",
-    },
-    {
-        value: "feedback" as const,
-        label: "Feedback",
-        icon: MessageSquare,
-        question: "What's on your mind?",
-        placeholder: "Share your thoughts, ideas, or suggestions.",
-    },
+const TYPE_IDS = [
+    { value: "bug" as const, icon: Bug },
+    { value: "feedback" as const, icon: MessageSquare },
 ];
 
 type IssueType = "bug" | "feedback";
@@ -34,6 +23,7 @@ interface FeedbackModalProps {
 }
 
 export const FeedbackModal = ({ open, onClose, initialStackTrace, initialType }: FeedbackModalProps) => {
+    const { t } = useTranslation('issues');
     const [type, setType] = useState<IssueType>("bug");
     const [description, setDescription] = useState("");
     const [path, setPath] = useState("");
@@ -41,8 +31,6 @@ export const FeedbackModal = ({ open, onClose, initialStackTrace, initialType }:
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
     const [error, setError] = useState("");
-
-    const selected = types.find((t) => t.value === type)!;
 
     useEffect(() => {
         if (open) {
@@ -75,7 +63,7 @@ export const FeedbackModal = ({ open, onClose, initialStackTrace, initialType }:
             setSubmitted(true);
             setTimeout(onClose, 2000);
         } catch {
-            setError("Something went wrong. Please try again.");
+            setError(t('modal.error'));
         } finally {
             setIsSubmitting(false);
         }
@@ -87,18 +75,18 @@ export const FeedbackModal = ({ open, onClose, initialStackTrace, initialType }:
                 {submitted ? (
                     <div className="flex flex-col items-center gap-3 py-8 text-center">
                         <CheckCircle2 className="h-10 w-10 text-primary" />
-                        <DialogTitle>Thanks for the report!</DialogTitle>
-                        <p className="text-sm text-muted-foreground">We'll take a look.</p>
+                        <DialogTitle>{t('modal.success_title')}</DialogTitle>
+                        <p className="text-sm text-muted-foreground">{t('modal.success_message')}</p>
                     </div>
                 ) : (
                     <>
                         <DialogHeader>
-                            <DialogTitle>Get in touch</DialogTitle>
+                            <DialogTitle>{t('modal.title')}</DialogTitle>
                         </DialogHeader>
 
                         <div className="flex flex-col gap-5">
                             <div className="flex gap-2">
-                                {types.map(({ value, label, icon: Icon }) => (
+                                {TYPE_IDS.map(({ value, icon: Icon }) => (
                                     <button
                                         key={value}
                                         type="button"
@@ -111,15 +99,15 @@ export const FeedbackModal = ({ open, onClose, initialStackTrace, initialType }:
                                         )}
                                     >
                                         <Icon className="h-4 w-4" />
-                                        {label}
+                                        {t(`type.${value}.label`)}
                                     </button>
                                 ))}
                             </div>
 
                             <div className="flex flex-col gap-2">
-                                <p className="text-sm font-medium">{selected.question}</p>
+                                <p className="text-sm font-medium">{t(`type.${type}.question`)}</p>
                                 <Textarea
-                                    placeholder={selected.placeholder}
+                                    placeholder={t(`type.${type}.placeholder`)}
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
                                     rows={4}
@@ -137,10 +125,10 @@ export const FeedbackModal = ({ open, onClose, initialStackTrace, initialType }:
 
                         <DialogFooter>
                             <Button variant="outline" onClick={onClose}>
-                                Cancel
+                                {t('modal.cancel')}
                             </Button>
                             <Button onClick={handleSubmit} disabled={!description.trim() || isSubmitting}>
-                                {isSubmitting ? "Sending..." : "Send"}
+                                {isSubmitting ? t('modal.sending') : t('modal.send')}
                             </Button>
                         </DialogFooter>
                     </>

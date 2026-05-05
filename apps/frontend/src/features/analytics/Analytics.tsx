@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/shared/components/ui/label";
 import { Button } from "@/shared/components/ui/button";
 import { DateTime } from "luxon";
+import { useTranslation } from "react-i18next";
 
 export const Analytics = () => {
     const {
@@ -19,11 +20,12 @@ export const Analytics = () => {
         getRating, stats,
     } = useAnalytics();
     const { exercises } = useExercises();
+    const { t } = useTranslation('analytics');
     const [showHeatmap, setShowHeatmap] = useState(true);
     const [showFilters, setShowFilters] = useState(false);
 
     if (isLoading) {
-        return <div className="p-8 text-center text-muted-foreground">Loading analytics...</div>;
+        return <div className="p-8 text-center text-muted-foreground">{t('loading')}</div>;
     }
 
     return (
@@ -32,17 +34,17 @@ export const Analytics = () => {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
                         <BarChart3 className="w-8 h-8 text-blue-500" />
-                        Stats
+                        {t('title')}
                     </h1>
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2">
-                            <Label htmlFor="habit-select" className="text-sm text-muted-foreground whitespace-nowrap">Habit</Label>
+                            <Label htmlFor="habit-select" className="text-sm text-muted-foreground whitespace-nowrap">{t('habit_label')}</Label>
                             <Select
                                 value={currentHabit ? String(currentHabit.id) : ""}
                                 onValueChange={(val) => { setHabitId(Number(val)); setDay(DateTime.now().toISODate()); }}
                             >
                                 <SelectTrigger id="habit-select" className="w-48">
-                                    <SelectValue placeholder="Select a habit…" />
+                                    <SelectValue placeholder={t('habit_placeholder')} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sortedHabits.map((habit) => (
@@ -57,7 +59,7 @@ export const Analytics = () => {
                             variant="outline"
                             size="icon"
                             onClick={() => setShowHeatmap(v => !v)}
-                            aria-label={showHeatmap ? 'Hide heatmap' : 'Show heatmap'}
+                            aria-label={showHeatmap ? t('hide_heatmap') : t('show_heatmap')}
                         >
                             {showHeatmap ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                         </Button>
@@ -65,7 +67,7 @@ export const Analytics = () => {
                             variant={showFilters ? 'secondary' : 'outline'}
                             size="icon"
                             onClick={() => setShowFilters(v => !v)}
-                            aria-label="Toggle filters"
+                            aria-label={t('toggle_filters')}
                         >
                             <SlidersHorizontal className="w-4 h-4" />
                         </Button>

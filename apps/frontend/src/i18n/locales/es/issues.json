@@ -1,0 +1,16 @@
+{
+  "modal.title": "Contáctanos",
+  "modal.cancel": "Cancelar",
+  "modal.send": "Enviar",
+  "modal.sending": "Enviando...",
+  "modal.error": "Algo salió mal. Por favor, inténtalo de nuevo.",
+  "modal.success_title": "¡Gracias por el reporte!",
+  "modal.success_message": "Le echaremos un vistazo.",
+
+  "type.bug.label": "Error",
+  "type.bug.question": "¿Qué salió mal?",
+  "type.bug.placeholder": "Describe qué pasó y qué esperabas que ocurriera.",
+  "type.feedback.label": "Comentarios",
+  "type.feedback.question": "¿Qué tienes en mente?",
+  "type.feedback.placeholder": "Comparte tus pensamientos, ideas o sugerencias."
+}

@@ -1,0 +1,9 @@
+{
+  "title": "Estadísticas",
+  "loading": "Cargando estadísticas...",
+  "habit_label": "Hábito",
+  "habit_placeholder": "Selecciona un hábito…",
+  "hide_heatmap": "Ocultar mapa de calor",
+  "show_heatmap": "Mostrar mapa de calor",
+  "toggle_filters": "Alternar filtros"
+}

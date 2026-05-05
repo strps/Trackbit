@@ -1,0 +1,16 @@
+{
+  "modal.title": "Get in touch",
+  "modal.cancel": "Cancel",
+  "modal.send": "Send",
+  "modal.sending": "Sending...",
+  "modal.error": "Something went wrong. Please try again.",
+  "modal.success_title": "Thanks for the report!",
+  "modal.success_message": "We'll take a look.",
+
+  "type.bug.label": "Bug",
+  "type.bug.question": "What went wrong?",
+  "type.bug.placeholder": "Describe what happened and what you expected instead.",
+  "type.feedback.label": "Feedback",
+  "type.feedback.question": "What's on your mind?",
+  "type.feedback.placeholder": "Share your thoughts, ideas, or suggestions."
+}

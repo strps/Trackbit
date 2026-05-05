@@ -1,0 +1,17 @@
+{
+  "tracker": "Tracker",
+  "stats": "Stats",
+  "configuration": "Configuration",
+  "habits": "Habits",
+  "exercises": "Exercises",
+  "toggle_menu": "Toggle Menu",
+  "my_account": "My Account",
+  "profile": "Profile",
+  "theme": "Theme: {theme}",
+  "language_en": "English",
+  "language_es": "Español",
+  "language_label": "Language: {lang}",
+  "log_out": "Log out",
+  "report_bug": "Report a Bug",
+  "sign_in": "Sign In"
+}

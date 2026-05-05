@@ -26,49 +26,22 @@ import { RangeField } from "@/shared/components/Fields/RangeField";
 import { Field } from "@/shared/components/Fields/FieldBase";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
+import { useTranslation } from "react-i18next";
 
-
-
-const TRACKING_TYPES = [
-    {
-        id: 'count',
-        label: 'Count',
-        description: 'Track daily counts (e.g., glasses of water, pages read).',
-        icon: CheckCircle
-    },
-    {
-        id: 'check',
-        label: 'Check',
-        description: 'Simple yes/no daily completion (e.g., meditated, journaled).',
-        icon: CheckCircle
-    },
-    {
-        id: 'timed',
-        label: 'Timed',
-        description: 'Track duration or time spent (e.g., 30 min reading).',
-        icon: CheckCircle
-    },
-    {
-        id: 'complex',
-        label: 'Structured Session',
-        description: 'Log sets, reps, weights, time, or distance (e.g., Gym).',
-        icon: List
-    },
-];
+const TRACKING_TYPE_IDS = [
+    { id: 'count', icon: CheckCircle },
+    { id: 'check', icon: CheckCircle },
+    { id: 'timed', icon: CheckCircle },
+    { id: 'complex', icon: List },
+] as const;
 
 const formSchema = z.object({
     id: z.number().optional(),
-    name: z
-        .string()
-        .min(3, "Name should be at least 3 characters long")
-        .max(50, "Name should not exceed 50 characters long"),
-
-
+    name: z.string().min(3).max(50),
     description: z.string().optional().nullable(),
     type: z.enum(["count", "complex", "negative", "timed", "check"]).optional(),
     icon: z.string().optional(),
     isAntiHabit: z.boolean(),
-    //color theme enum
     colorTheme: z.enum(["green", "blue", "orange", "purple", "rose", "fire", "custom"]),
     colorStops: z.array(
         z.object({
@@ -95,6 +68,7 @@ const defaultValues = {
 } satisfies z.infer<typeof formSchema>;
 
 const TimeDurationField = ({ form }: { form: ReturnType<typeof useForm<z.infer<typeof formSchema>>> }) => {
+    const { t } = useTranslation('habits');
     const totalMinutes = useWatch({ control: form.control, name: 'dailyGoal' });
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
@@ -111,7 +85,7 @@ const TimeDurationField = ({ form }: { form: ReturnType<typeof useForm<z.infer<t
 
     return (
         <div className="space-y-2" data-vaul-no-drag>
-            <Label>Daily Goal (Duration)</Label>
+            <Label>{t('form.daily_goal_duration')}</Label>
             <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1.5">
                     <Input
@@ -122,7 +96,7 @@ const TimeDurationField = ({ form }: { form: ReturnType<typeof useForm<z.infer<t
                         onChange={handleHoursChange}
                         className="w-16 text-center"
                     />
-                    <span className="text-sm text-muted-foreground">h</span>
+                    <span className="text-sm text-muted-foreground">{t('form.duration_hours')}</span>
                 </div>
                 <span className="text-lg font-bold text-muted-foreground">:</span>
                 <div className="flex items-center gap-1.5">
@@ -134,7 +108,7 @@ const TimeDurationField = ({ form }: { form: ReturnType<typeof useForm<z.infer<t
                         onChange={handleMinutesChange}
                         className="w-16 text-center"
                     />
-                    <span className="text-sm text-muted-foreground">min</span>
+                    <span className="text-sm text-muted-foreground">{t('form.duration_minutes')}</span>
                 </div>
             </div>
         </div>
@@ -153,35 +127,29 @@ export const HabitConfigForm = ({
     onDelete,
     onCancel
 }: HabitConfigProps) => {
-
+    const { t } = useTranslation('habits');
     const { createHabit, updateHabit } = useHabits();
 
     const form = useForm<z.infer<typeof formSchema>>({
         mode: "onSubmit",
         reValidateMode: "onSubmit",
         resolver: zodResolver(formSchema),
-
         defaultValues
     });
 
     useEffect(() => {
         resetForm()
-    }, [habit, /*form*/]);
+    }, [habit]);
 
 
     const resetForm = () => {
-        form.reset(
-            habit
-                ? habit
-                : defaultValues
-        );
+        form.reset(habit ? habit : defaultValues);
     };
 
     const handleCancel = () => {
         resetForm();
         onCancel();
     };
-
 
     const onSubmit = (data: z.infer<typeof formSchema>) => {
         if (!data.id)
@@ -198,8 +166,8 @@ export const HabitConfigForm = ({
 
                 <TextField
                     name="name"
-                    label="Habit Name"
-                    placeholder="e.g., Drink Water"
+                    label={t('form.name')}
+                    placeholder={t('form.name_placeholder')}
                     className="text-4xl! h-14"
                     form={form}
                 />
@@ -207,20 +175,18 @@ export const HabitConfigForm = ({
 
                     <RangeField
                         name="weeklyGoal"
-                        label="Weekly Goal (Days)"
+                        label={t('form.weekly_goal')}
                         form={form}
                         min={1}
                         max={7}
                     />
 
                     {habitType === 'timed' ? (
-                        <TimeDurationField
-                            form={form}
-                        />
+                        <TimeDurationField form={form} />
                     ) : habitType !== 'check' ? (
                         <RangeField
                             name="dailyGoal"
-                            label="Daily Goal (Times)"
+                            label={t('form.daily_goal_times')}
                             form={form}
                             min={0}
                             max={100}
@@ -231,15 +197,13 @@ export const HabitConfigForm = ({
 
                 {/* Tracking Method */}
                 <div className="space-y-3">
-
                     <Field
                         name="type"
-                        label="Tracking Method"
+                        label={t('form.tracking_method')}
                         form={form}
                         fieldInput={({ field }) => (
-
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {TRACKING_TYPES.map((type) => {
+                                {TRACKING_TYPE_IDS.map((type) => {
                                     const Icon = type.icon;
                                     return (
                                         <BigButton
@@ -251,16 +215,15 @@ export const HabitConfigForm = ({
                                                 <Icon className="w-5 h-5" />
                                             </div>
                                             <div>
-                                                <div className="font-bold">{type.label}</div>
+                                                <div className="font-bold">{t(`type.${type.id}.label`)}</div>
                                                 <div className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                                                    {type.description}
+                                                    {t(`type.${type.id}.description`)}
                                                 </div>
                                             </div>
                                         </BigButton>
                                     );
                                 })}
                             </div>
-
                         )}
                     />
                 </div>
@@ -275,8 +238,8 @@ export const HabitConfigForm = ({
                             <label className="flex items-center gap-3 cursor-pointer p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors">
                                 <ShieldAlert className={`w-5 h-5 ${field.value ? 'text-destructive' : 'text-muted-foreground'}`} />
                                 <div className="flex-1">
-                                    <div className="font-bold text-sm">Anti-Habit</div>
-                                    <div className="text-xs text-muted-foreground">Mark as a bad habit you want to reduce or avoid (e.g., Smoking, Junk Food).</div>
+                                    <div className="font-bold text-sm">{t('form.anti_habit')}</div>
+                                    <div className="text-xs text-muted-foreground">{t('form.anti_habit_description')}</div>
                                 </div>
                                 <Switch
                                     checked={!!field.value}
@@ -298,7 +261,7 @@ export const HabitConfigForm = ({
                         name="icon"
                         fieldInput={({ field }) => (
                             <div className="space-y-3">
-                                <label className="block text-sm font-bold">Icon</label>
+                                <label className="block text-sm font-bold">{t('form.icon')}</label>
                                 <IconSelector
                                     selected={field.value}
                                     onChange={field.onChange}
@@ -308,9 +271,7 @@ export const HabitConfigForm = ({
                     />
 
                     {/* Color */}
-                    <ColorThemeField
-                        form={form}
-                    />
+                    <ColorThemeField form={form} />
 
                 </div>
 
@@ -322,31 +283,31 @@ export const HabitConfigForm = ({
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
                             <Button type="button" variant="destructive" className="flex items-center gap-2 mr-auto">
-                                <Trash2 className="w-4 h-4" /> Delete
+                                <Trash2 className="w-4 h-4" /> {t('form.delete')}
                             </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                             <AlertDialogHeader>
-                                <AlertDialogTitle>Delete "{habit.name}"?</AlertDialogTitle>
+                                <AlertDialogTitle>{t('form.delete_title', { name: habit.name })}</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                    This will permanently delete this habit and all its tracked data. This action cannot be undone.
+                                    {t('form.delete_body')}
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogCancel>{t('form.cancel')}</AlertDialogCancel>
                                 <AlertDialogAction
                                     className="bg-destructive text-white hover:bg-destructive/90"
                                     onClick={() => onDelete(habit.id)}
                                 >
-                                    Delete
+                                    {t('form.delete')}
                                 </AlertDialogAction>
                             </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>
                 )}
-                <Button type="button" variant="outline" onClick={handleCancel}>Cancel</Button>
+                <Button type="button" variant="outline" onClick={handleCancel}>{t('form.cancel')}</Button>
                 <Button type="submit" className="flex items-center gap-2">
-                    <Save className="w-4 h-4" /> Save
+                    <Save className="w-4 h-4" /> {t('form.save')}
                 </Button>
             </div>
         </form>

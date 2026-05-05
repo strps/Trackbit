@@ -5,6 +5,20 @@ import ICU from 'i18next-icu';
 
 import enCommon from './locales/en/common.json';
 import esCommon from './locales/es/common.json';
+import enAuth from './locales/en/auth.json';
+import esAuth from './locales/es/auth.json';
+import enNav from './locales/en/nav.json';
+import esNav from './locales/es/nav.json';
+import enTracker from './locales/en/tracker.json';
+import esTracker from './locales/es/tracker.json';
+import enHabits from './locales/en/habits.json';
+import esHabits from './locales/es/habits.json';
+import enAnalytics from './locales/en/analytics.json';
+import esAnalytics from './locales/es/analytics.json';
+import enErrors from './locales/en/errors.json';
+import esErrors from './locales/es/errors.json';
+import enIssues from './locales/en/issues.json';
+import esIssues from './locales/es/issues.json';
 
 i18n
   .use(ICU)
@@ -15,8 +29,26 @@ i18n
     fallbackLng: 'en',
     defaultNS: 'common',
     resources: {
-      en: { common: enCommon },
-      es: { common: esCommon },
+      en: {
+        common: enCommon,
+        auth: enAuth,
+        nav: enNav,
+        tracker: enTracker,
+        habits: enHabits,
+        analytics: enAnalytics,
+        errors: enErrors,
+        issues: enIssues,
+      },
+      es: {
+        common: esCommon,
+        auth: esAuth,
+        nav: esNav,
+        tracker: esTracker,
+        habits: esHabits,
+        analytics: esAnalytics,
+        errors: esErrors,
+        issues: esIssues,
+      },
     },
     detection: {
       order: ['querystring', 'localStorage', 'navigator'],

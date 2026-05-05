@@ -1,6 +1,7 @@
 {
   "app_name": "Trackbit",
   "loading": "Cargando...",
-  "error.generic": "Ocurrió un error inesperado",
-  "error.not_found": "Página no encontrada"
+  "validation.too_short": "Debe tener al menos {min} caracteres",
+  "validation.too_long": "Debe tener como máximo {max} caracteres",
+  "validation.invalid_email": "Introduce un correo electrónico válido"
 }

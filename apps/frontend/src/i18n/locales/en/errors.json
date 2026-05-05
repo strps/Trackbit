@@ -1,0 +1,15 @@
+{
+  "generic_title": "Something went wrong",
+  "generic_message": "An unexpected error occurred. Our team has been notified.",
+  "unexpected_title": "Unexpected Error",
+  "not_found_title": "Page Not Found",
+  "not_found_message": "We couldn't find the page you're looking for. It might have been moved or deleted.",
+  "summary_title": "Error Summary",
+  "route_error": "This is a route-related error.",
+  "client_error": "This is a client-side JavaScript error.",
+  "show_details": "Show technical details",
+  "go_back": "Go Back",
+  "go_to_tracker": "Go to Tracker",
+  "send_crash_report": "Send Crash Report",
+  "reload": "Reload Application"
+}

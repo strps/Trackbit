@@ -1,0 +1,9 @@
+{
+  "title": "Stats",
+  "loading": "Loading analytics...",
+  "habit_label": "Habit",
+  "habit_placeholder": "Select a habit…",
+  "hide_heatmap": "Hide heatmap",
+  "show_heatmap": "Show heatmap",
+  "toggle_filters": "Toggle filters"
+}

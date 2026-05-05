@@ -14,33 +14,33 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/shared/co
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { FeedbackModal } from "@/shared/components/FeedbackModal";
+import { useTranslation } from "react-i18next";
 
 export default function ErrorPage() {
     const error = useRouteError();
     const navigate = useNavigate();
+    const { t } = useTranslation('errors');
     const [isOpen, setIsOpen] = useState(false);
     const [isCrashReportOpen, setIsCrashReportOpen] = useState(false);
 
-    // Default Error State
-    let title = "Something went wrong";
-    let message = "An unexpected error occurred. Our team has been notified.";
+    let title = t('generic_title');
+    let message = t('generic_message');
     let icon = <AlertTriangle className="h-12 w-12 text-destructive" />;
     let status: number | null = null;
     let errorDetails: string | null = null;
 
-    // Detect specific error types
     if (isRouteErrorResponse(error)) {
         status = error.status;
         if (error.status === 404) {
-            title = "Page Not Found";
-            message = "We couldn't find the page you're looking for. It might have been moved or deleted.";
+            title = t('not_found_title');
+            message = t('not_found_message');
             icon = <FileQuestion className="h-12 w-12 text-primary" />;
         } else {
             title = `${error.status} ${error.statusText || "Error"}`;
             message = error.data?.message || error.statusText || message;
         }
     } else if (error instanceof Error) {
-        title = "Unexpected Error";
+        title = t('unexpected_title');
         message = error.message || message;
         errorDetails = error.stack || null;
         icon = <Bug className="h-12 w-12 text-destructive" />;
@@ -66,11 +66,11 @@ export default function ErrorPage() {
                     <CardContent className="space-y-4">
                         <Alert variant={status === 404 ? "default" : "destructive"}>
                             <AlertTriangle className="h-4 w-4" />
-                            <AlertTitle>Error Summary</AlertTitle>
+                            <AlertTitle>{t('summary_title')}</AlertTitle>
                             <AlertDescription>
                                 {isRouteErrorResponse(error)
-                                    ? "This is a route-related error."
-                                    : "This is a client-side JavaScript error."}
+                                    ? t('route_error')
+                                    : t('client_error')}
                             </AlertDescription>
                         </Alert>
 
@@ -80,7 +80,7 @@ export default function ErrorPage() {
                                     <Button variant="outline" className="w-full justify-between">
                                         <span className="flex items-center gap-2">
                                             <Bug className="h-4 w-4" />
-                                            Show technical details
+                                            {t('show_details')}
                                         </span>
                                         <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
                                     </Button>
@@ -102,14 +102,14 @@ export default function ErrorPage() {
                                 className="gap-2"
                             >
                                 <ArrowLeft className="h-4 w-4" />
-                                Go Back
+                                {t('go_back')}
                             </Button>
                             <Button
                                 onClick={() => navigate("/tracker")}
                                 className="gap-2"
                             >
                                 <Home className="h-4 w-4" />
-                                Go to Traker
+                                {t('go_to_tracker')}
                             </Button>
                         </div>
                         {error instanceof Error && (
@@ -119,7 +119,7 @@ export default function ErrorPage() {
                                 className="w-full gap-2"
                             >
                                 <Bug className="h-4 w-4" />
-                                Send Crash Report
+                                {t('send_crash_report')}
                             </Button>
                         )}
                         <button
@@ -127,7 +127,7 @@ export default function ErrorPage() {
                             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                         >
                             <RotateCcw className="h-4 w-4" />
-                            Reload Application
+                            {t('reload')}
                         </button>
                     </CardFooter>
                 </Card>

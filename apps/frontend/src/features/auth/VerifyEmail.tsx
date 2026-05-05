@@ -9,11 +9,12 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { TextField } from "@/shared/components/Fields/TextField";
+import { useTranslation } from "react-i18next";
 
 type VerificationState = "loading" | "success" | "error" | "resending";
 
 const resendSchema = z.object({
-    email: z.string().email("Invalid email address"),
+    email: z.string().email(),
 });
 
 type ResendFormData = z.infer<typeof resendSchema>;
@@ -21,10 +22,11 @@ type ResendFormData = z.infer<typeof resendSchema>;
 export default function VerifyEmail() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
+    const { t } = useTranslation('auth');
     const backendUrl = searchParams.get("backendUrl");
 
     const [state, setState] = useState<VerificationState>("loading");
-    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [errorKey, setErrorKey] = useState<string | null>(null);
     const [resendSuccess, setResendSuccess] = useState<string | null>(null);
     const [resendError, setResendError] = useState<string | null>(null);
 
@@ -36,7 +38,7 @@ export default function VerifyEmail() {
     useEffect(() => {
         if (!backendUrl) {
             setState("error");
-            setErrorMessage("Invalid verification link. Missing backend URL.");
+            setErrorKey("verify.error.missing_url");
             return;
         }
 
@@ -53,15 +55,15 @@ export default function VerifyEmail() {
                 } else {
                     const url = new URL(response.url);
                     const errorParam = url.searchParams.get("error");
-                    setErrorMessage(
+                    setErrorKey(
                         errorParam === "invalid_token" || errorParam === "expired_token"
-                            ? "This verification link has expired or is invalid."
-                            : "Verification failed. Please try again or request a new link."
+                            ? "verify.error.invalid_token"
+                            : "verify.error.verification_failed"
                     );
                     setState("error");
                 }
             } catch (err) {
-                setErrorMessage("An unexpected error occurred. Please try again.");
+                setErrorKey("verify.error.unexpected");
                 setState("error");
             }
         };
@@ -77,14 +79,14 @@ export default function VerifyEmail() {
         try {
             await authClient.sendVerificationEmail({
                 email: data.email,
-                callbackURL: "/dashboard", // Optional: Adjust to your desired post-verification path
+                callbackURL: "/dashboard",
             });
-            setResendSuccess("A new verification email has been sent. Please check your inbox.");
+            setResendSuccess(t('verify.resend_success'));
             form.reset();
         } catch (err: any) {
-            setResendError(err.message || "Failed to send verification email. Please try again.");
+            setResendError(err.message || t('verify.resend_error'));
         } finally {
-            setState("error"); // Return to error view to show resend form again
+            setState("error");
         }
     };
 
@@ -92,11 +94,11 @@ export default function VerifyEmail() {
         <div className="min-h-screen flex items-center justify-center bg-background px-4">
             <Card className="w-full max-w-md">
                 <CardHeader className="text-center">
-                    <CardTitle className="text-2xl">Email Verification</CardTitle>
+                    <CardTitle className="text-2xl">{t('verify.title')}</CardTitle>
                     <CardDescription>
-                        {state === "loading" && "Verifying your email address..."}
-                        {state === "success" && "Your email has been successfully verified!"}
-                        {(state === "error" || state === "resending") && "Email verification failed"}
+                        {state === "loading" && t('verify.loading')}
+                        {state === "success" && t('verify.success_description')}
+                        {(state === "error" || state === "resending") && t('verify.error_description')}
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col items-center space-y-6">
@@ -107,11 +109,11 @@ export default function VerifyEmail() {
                             <CheckCircle2 className="h-16 w-16 text-green-600" />
                             <Alert className="border-green-200 bg-green-50">
                                 <AlertDescription className="text-green-800">
-                                    You can now access all features of Trackbit.
+                                    {t('verify.feature_access')}
                                 </AlertDescription>
                             </Alert>
                             <Button onClick={() => navigate("/dashboard")} size="lg">
-                                Go to Dashboard
+                                {t('verify.go_dashboard')}
                             </Button>
                         </>
                     )}
@@ -119,17 +121,17 @@ export default function VerifyEmail() {
                     {(state === "error" || state === "resending") && (
                         <>
                             <XCircle className="h-16 w-16 text-destructive" />
-                            {errorMessage && (
+                            {errorKey && (
                                 <Alert variant="destructive">
-                                    <AlertTitle>Verification Error</AlertTitle>
-                                    <AlertDescription>{errorMessage}</AlertDescription>
+                                    <AlertTitle>{t('verify.error_title')}</AlertTitle>
+                                    <AlertDescription>{t(errorKey)}</AlertDescription>
                                 </Alert>
                             )}
 
                             <form onSubmit={form.handleSubmit(handleResend)} className="w-full space-y-4">
-                                <TextField name="email" label="Email" form={form} placeholder="your@email.com" />
+                                <TextField name="email" label={t('verify.email_label')} form={form} placeholder="your@email.com" />
                                 <Button type="submit" className="w-full" disabled={state === "resending"}>
-                                    {state === "resending" ? "Sending..." : "Resend Verification Email"}
+                                    {state === "resending" ? t('verify.resend_submitting') : t('verify.resend_submit')}
                                 </Button>
                             </form>
 
@@ -137,7 +139,7 @@ export default function VerifyEmail() {
                             {resendError && <Alert variant="destructive"><AlertDescription>{resendError}</AlertDescription></Alert>}
 
                             <Button onClick={() => navigate("/signin")} variant="outline">
-                                Back to Sign In
+                                {t('verify.back_signin')}
                             </Button>
                         </>
                     )}

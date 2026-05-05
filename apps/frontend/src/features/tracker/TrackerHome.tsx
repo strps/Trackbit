@@ -22,6 +22,7 @@ import { ComplexHabitRow } from './components/ExerciseHabitRow';
 import { TimedHabitRow } from './components/TimedHabitRow';
 import { CheckHabitRow } from './components/CheckHabitRow';
 import { CountHabitRow } from './components/CountHabitRow';
+import { useTranslation } from 'react-i18next';
 
 // ---------------------------------------------------------------------------
 // HabitRowWrapper — defined at module scope so React.memo can do stable
@@ -159,6 +160,7 @@ const HabitRowWrapper = memo(({ habit, selectedDay, logSimple }: HabitRowWrapper
 
 const TrackerHome = () => {
     const { habitsWithLogs, isLoading, logSimple } = useTracker();
+    const { t } = useTranslation('tracker');
     const today = DateTime.now().toISODate();
     const [searchParams, setSearchParams] = useSearchParams();
 
@@ -188,7 +190,7 @@ const TrackerHome = () => {
     const antiHabits = useMemo(() => sortedHabits.filter(h => h.isAntiHabit), [sortedHabits]);
 
     if (isLoading) {
-        return <div className="p-8 text-center text-muted-foreground">Loading habits...</div>;
+        return <div className="p-8 text-center text-muted-foreground">{t('loading')}</div>;
     }
 
     if (sortedHabits.length === 0) {
@@ -197,7 +199,7 @@ const TrackerHome = () => {
                 <div className="p-6 bg-muted rounded-full">
                     <Dumbbell className="w-8 h-8 text-muted-foreground" />
                 </div>
-                <p className="text-muted-foreground">No habits found. Go to Settings to create one!</p>
+                <p className="text-muted-foreground">{t('empty')}</p>
             </div>
         );
     }
@@ -238,7 +240,7 @@ const TrackerHome = () => {
                     <div className="space-y-3">
                         <h2 className="text-lg font-semibold text-muted-foreground flex items-center gap-2">
                             <ShieldAlert className="w-5 h-5" />
-                            Anti-Habits
+                            {t('anti_habits')}
                         </h2>
                         <div className="grid grid-cols-1 gap-3">
                             {antiHabits.map((habit) => (

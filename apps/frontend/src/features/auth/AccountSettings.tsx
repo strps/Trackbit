@@ -5,11 +5,11 @@ import { authClient, signOut, useSession } from "@/shared/lib/auth-client";
 import { Loader2, LogOut, User } from "lucide-react";
 import { ChangeEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-
+import { useTranslation } from "react-i18next";
 
 const AccountSettings = () => {
     const navigate = useNavigate();
+    const { t } = useTranslation('auth');
     const { data: session, isPending } = useSession();
 
     const [activeTab, setActiveTab] = useState('general');
@@ -31,12 +31,11 @@ const AccountSettings = () => {
     const handleUpdateProfile = async () => {
         setIsLoading(true);
         setMessage(null);
-        // UPDATED: Access user update via authClient.user
         await authClient.updateUser({
             name: profileData.name,
             image: profileData.image
         }, {
-            onSuccess: () => setMessage({ type: 'success', text: 'Profile updated successfully' }),
+            onSuccess: () => setMessage({ type: 'success', text: t('account.message.profile_updated') }),
             onError: (ctx) => setMessage({ type: 'error', text: ctx.error.message })
         });
         setIsLoading(false);
@@ -44,18 +43,17 @@ const AccountSettings = () => {
 
     const handleChangePassword = async () => {
         if (passData.new !== passData.confirm) {
-            setMessage({ type: 'error', text: "New passwords do not match" });
+            setMessage({ type: 'error', text: t('account.message.passwords_mismatch') });
             return;
         }
         setIsLoading(true);
-        // UPDATED: Access password change via authClient.user
         await authClient.changePassword({
             newPassword: passData.new,
             currentPassword: passData.current,
             revokeOtherSessions: true
         }, {
             onSuccess: () => {
-                setMessage({ type: 'success', text: 'Password changed successfully' });
+                setMessage({ type: 'success', text: t('account.message.password_changed') });
                 setPassData({ current: '', new: '', confirm: '' });
             },
             onError: (ctx) => setMessage({ type: 'error', text: ctx.error.message })
@@ -70,17 +68,19 @@ const AccountSettings = () => {
 
     if (isPending) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
 
+    const tabs = ['general', 'security', 'data'] as const;
+
     return (
         <div className="min-h-screen bg-background p-4 md:p-8 font-sans text-foreground">
             <div className="max-w-6xl mx-auto space-y-6">
 
                 <div className="flex justify-between items-center">
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Account Settings</h1>
-                        <p className="text-muted-foreground">Manage your profile and security.</p>
+                        <h1 className="text-3xl font-bold tracking-tight">{t('account.title')}</h1>
+                        <p className="text-muted-foreground">{t('account.subtitle')}</p>
                     </div>
                     <button onClick={handleLogout} className="text-sm text-destructive hover:underline flex items-center gap-1">
-                        <LogOut className="w-4 h-4" /> Sign Out
+                        <LogOut className="w-4 h-4" /> {t('account.sign_out')}
                     </button>
                 </div>
 
@@ -92,13 +92,13 @@ const AccountSettings = () => {
 
                 <div className="flex flex-col lg:flex-row gap-8">
                     <aside className="lg:w-1/4 flex lg:flex-col gap-2 overflow-x-auto pb-2">
-                        {['general', 'security', 'data'].map((tab) => (
+                        {tabs.map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
-                                className={`px-4 py-2 rounded-md text-left capitalize ${activeTab === tab ? 'bg-muted font-medium' : 'hover:bg-muted/50'}`}
+                                className={`px-4 py-2 rounded-md text-left ${activeTab === tab ? 'bg-muted font-medium' : 'hover:bg-muted/50'}`}
                             >
-                                {tab}
+                                {t(`account.tab.${tab}`)}
                             </button>
                         ))}
                     </aside>
@@ -108,13 +108,13 @@ const AccountSettings = () => {
                         {activeTab === 'general' && (
                             <div className="space-y-6">
                                 <div className="p-6 bg-card text-card-foreground rounded-lg border shadow-sm space-y-4">
-                                    <h3 className="text-lg font-medium">Profile</h3>
+                                    <h3 className="text-lg font-medium">{t('account.profile.heading')}</h3>
                                     <div className="flex items-center gap-4">
                                         <div className="w-20 h-20 rounded-full bg-muted overflow-hidden">
                                             {profileData.image ? <img src={profileData.image} alt="Avatar" /> : <User className="w-full h-full p-4 text-muted-foreground" />}
                                         </div>
                                         <div className="flex-1 space-y-2">
-                                            <Label>Profile Image URL</Label>
+                                            <Label>{t('account.profile.image_url')}</Label>
                                             <Input
                                                 value={profileData.image}
                                                 onChange={(e: ChangeEvent<HTMLInputElement>) => setProfileData({ ...profileData, image: e.target.value })}
@@ -123,21 +123,21 @@ const AccountSettings = () => {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label>Full Name</Label>
+                                        <Label>{t('account.profile.name')}</Label>
                                         <Input
                                             type="text"
                                             value={profileData.name}
                                             onChange={(e: ChangeEvent<HTMLInputElement>) => setProfileData({ ...profileData, name: e.target.value })} />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Email</Label>
+                                        <Label>{t('account.profile.email')}</Label>
                                         <Input value={session?.user?.email} disabled className="opacity-50 cursor-not-allowed" />
                                     </div>
 
                                     <div className="flex justify-end">
                                         <Button onClick={handleUpdateProfile}>
                                             {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                                            Save Changes
+                                            {t('account.profile.save')}
                                         </Button>
                                     </div>
                                 </div>
@@ -147,9 +147,9 @@ const AccountSettings = () => {
                         {activeTab === 'security' && (
                             <div className="space-y-6">
                                 <div className="p-6 bg-card text-card-foreground rounded-lg border shadow-sm space-y-4">
-                                    <h3 className="text-lg font-medium">Change Password</h3>
+                                    <h3 className="text-lg font-medium">{t('account.security.heading')}</h3>
                                     <div className="space-y-2">
-                                        <Label>Current Password</Label>
+                                        <Label>{t('account.security.current')}</Label>
                                         <Input
                                             type="password"
                                             value={passData.current}
@@ -157,7 +157,7 @@ const AccountSettings = () => {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>New Password</Label>
+                                        <Label>{t('account.security.new')}</Label>
                                         <Input
                                             type="password"
                                             value={passData.new}
@@ -165,7 +165,7 @@ const AccountSettings = () => {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Confirm Password</Label>
+                                        <Label>{t('account.security.confirm')}</Label>
                                         <Input type="password"
                                             value={passData.confirm}
                                             onChange={(e: ChangeEvent<HTMLInputElement>) => setPassData({ ...passData, confirm: e.target.value })}
@@ -174,7 +174,7 @@ const AccountSettings = () => {
                                     <div className="flex justify-end">
                                         <Button onClick={handleChangePassword}>
                                             {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                                            Update Password
+                                            {t('account.security.update')}
                                         </Button>
                                     </div>
                                 </div>
@@ -183,9 +183,9 @@ const AccountSettings = () => {
 
                         {activeTab === 'data' && (
                             <div className="p-6 bg-destructive/10 border border-destructive/20 rounded-lg">
-                                <h3 className="text-lg font-medium text-destructive">Danger Zone</h3>
-                                <p className="text-sm text-destructive/80 mb-4">Irreversible actions.</p>
-                                <Button variant="destructive" onClick={() => alert("API endpoint for deletion needs to be implemented")}>Delete Account</Button>
+                                <h3 className="text-lg font-medium text-destructive">{t('account.data.heading')}</h3>
+                                <p className="text-sm text-destructive/80 mb-4">{t('account.data.description')}</p>
+                                <Button variant="destructive" onClick={() => alert("API endpoint for deletion needs to be implemented")}>{t('account.data.delete')}</Button>
                             </div>
                         )}
 
