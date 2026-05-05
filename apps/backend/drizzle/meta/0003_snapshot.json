@@ -332,8 +332,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.exercise_muscle_group": {
-      "name": "exercise_muscle_group",
+    "public.exercise_muscle_groups": {
+      "name": "exercise_muscle_groups",
       "schema": "",
       "columns": {
         "exercise_id": {
@@ -353,7 +353,7 @@
       "foreignKeys": {
         "exercise_muscle_group_exercise_id_exercises_id_fk": {
           "name": "exercise_muscle_group_exercise_id_exercises_id_fk",
-          "tableFrom": "exercise_muscle_group",
+          "tableFrom": "exercise_muscle_groups",
           "tableTo": "exercises",
           "columnsFrom": [
             "exercise_id"
@@ -366,7 +366,7 @@
         },
         "exercise_muscle_group_muscle_group_id_muscle_groups_id_fk": {
           "name": "exercise_muscle_group_muscle_group_id_muscle_groups_id_fk",
-          "tableFrom": "exercise_muscle_group",
+          "tableFrom": "exercise_muscle_groups",
           "tableTo": "muscle_groups",
           "columnsFrom": [
             "muscle_group_id"
