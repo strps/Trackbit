@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useUnitSystem } from '@/providers/unit-system-provider';
 import { kgToDisplay, weightUnit } from '@/shared/utils/intlFormatter';
 import { useExercises } from '@/hooks/use-exercises';
@@ -26,6 +27,7 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
     const { exercises } = useExercises();
     const { deletePerformance, newPerformance: newSet, updatePerformance: updateSet, removeExerciseLog } = useActivityTracker();
     const { unitSystem } = useUnitSystem();
+    const { t } = useTranslation('tracker');
     const unit = weightUnit(unitSystem);
     const exercise = exercises.find(e => e.id === exerciseLog.exerciseId);
     const [selectedPerformanceId, setSelectedPerformanceId] = useState<number | null>(null);
@@ -60,7 +62,7 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
                         />
                     ))}
                     <EmptyState
-                        description="New Set"
+                        description={t('activity_new_set')}
                         onClick={handleNewSet}
                         className="w-26 py-0"
                         icon={Play}
@@ -73,15 +75,15 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
                     <div className="text-[12px] font-bold text-muted-foreground uppercase">
                         <div className="flex items-end gap-x-4">
                             <div className="flex flex-col gap-1 items-end">
-                                <div className="flex items-center gap-1"><Hash className="w-3 h-3" /> Reps</div>
-                                <div className="flex items-center gap-1"><Scale className="w-3 h-3" /> Weight ({unit})</div>
+                                <div className="flex items-center gap-1"><Hash className="w-3 h-3" /> {t('activity_reps')}</div>
+                                <div className="flex items-center gap-1"><Scale className="w-3 h-3" /> {t('activity_weight_unit', { unit })}</div>
                             </div>
                             <div className="flex gap-2 text-foreground font-medium">
                                 {exerciseLog.exercisePerformances.map((_: any, i: number) => {
                                     const w = exerciseLog.exercisePerformances[i].weight;
                                     return (
                                         <div key={i} className="flex flex-col gap-1 text-center">
-                                            <span className="text-muted-foreground text-[9px]">Set {i + 1}</span>
+                                            <span className="text-muted-foreground text-[9px]">{t('activity_set')} {i + 1}</span>
                                             <span>{exerciseLog.exercisePerformances[i].reps || '-'}</span>
                                             <span>{w != null ? kgToDisplay(w, unitSystem) : '-'}</span>
                                         </div>
@@ -90,7 +92,7 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
                             </div>
                             {avgRpe != null && (
                                 <div className={`ml-auto flex flex-col items-end normal-case ${rpeColor(avgRpe)}`}>
-                                    <span className="text-[9px] text-muted-foreground uppercase">Avg RPE</span>
+                                    <span className="text-[9px] text-muted-foreground uppercase">{t('activity_avg_rpe')}</span>
                                     <span className="text-base font-bold leading-none">{avgRpe}</span>
                                     <span className="text-[9px] font-normal italic normal-case opacity-80">{RPE_LABELS[avgRpe]}</span>
                                 </div>
@@ -115,7 +117,7 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
                         />
                     ))}
                     <EmptyState
-                        description="New Lap"
+                        description={t('activity_new_lap')}
                         onClick={handleNewSet}
                         className="w-26 py-0"
                         icon={Play}
@@ -128,13 +130,13 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
                     <div className="text-[12px] font-bold text-muted-foreground uppercase">
                         <div className="flex items-end gap-x-4">
                             <div className="flex flex-col gap-1 items-end">
-                                <div className="flex items-center gap-1"><Clock className="w-3 h-3" /> Time</div>
-                                <div className="flex items-center gap-1"><MapPin className="w-3 h-3" /> Distance (km)</div>
+                                <div className="flex items-center gap-1"><Clock className="w-3 h-3" /> {t('activity_time')}</div>
+                                <div className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {t('activity_distance_km')}</div>
                             </div>
                             <div className="flex gap-2 text-foreground font-medium">
                                 {exerciseLog.exercisePerformances.map((_: any, i: number) => (
                                     <div key={i} className="flex flex-col gap-1 text-center">
-                                        <span className="text-muted-foreground text-[9px]">Lap {i + 1}</span>
+                                        <span className="text-muted-foreground text-[9px]">{t('activity_lap')} {i + 1}</span>
                                         <span>{formatDuration((exerciseLog.exercisePerformances[i].duration ?? 0) / 1000)}</span>
                                         <span>{exerciseLog.exercisePerformances[i].distance ?? '-'}</span>
                                     </div>
@@ -142,7 +144,7 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
                             </div>
                             {avgRpe != null && (
                                 <div className={`ml-auto flex flex-col items-end normal-case ${rpeColor(avgRpe)}`}>
-                                    <span className="text-[9px] text-muted-foreground uppercase">Avg RPE</span>
+                                    <span className="text-[9px] text-muted-foreground uppercase">{t('activity_avg_rpe')}</span>
                                     <span className="text-base font-bold leading-none">{avgRpe}</span>
                                     <span className="text-[9px] font-normal italic normal-case opacity-80">{RPE_LABELS[avgRpe]}</span>
                                 </div>
@@ -162,7 +164,7 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
                         <div className="flex items-center justify-between gap-4">
                             <div className="flex items-center gap-2">
                                 <Clock className="w-4 h-4" />
-                                <span>Duration: {formatDuration((exerciseLog.duration ?? perf?.duration ?? 0) / 1000)}</span>
+                                <span>{t('activity_duration')}: {formatDuration((exerciseLog.duration ?? perf?.duration ?? 0) / 1000)}</span>
                             </div>
                             {rpe != null && (
                                 <div className={`flex flex-col items-end normal-case ${rpeColor(rpe)}`}>
@@ -188,13 +190,13 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
                     <div className="flex border-b justify-between w-full px-6 py-1">
                         <div className="flex items-center">
                             <h4 className="font-bold text-sm">
-                                {exercise?.name || 'Unknown Exercise'}
+                                {exercise?.name || t('activity_unknown_exercise')}
                             </h4>
                             <Button variant="ghost"><Info /></Button>
                         </div>
                         <div className="flex items-center gap-2">
                             {isSelected && (
-                                <Button onClick={() => onEditTrigger(null)}>Finish</Button>
+                                <Button onClick={() => onEditTrigger(null)}>{t('activity_finish')}</Button>
                             )}
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -206,17 +208,17 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
                                     {isSelected ? (
                                         <DropdownMenuItem onSelect={() => onEditTrigger(null)}>
                                             <SquarePen className="mr-2 h-4 w-4" />
-                                            Finish Editing
+                                            {t('activity_finish_editing')}
                                         </DropdownMenuItem>
                                     ) : (
                                         <DropdownMenuItem onSelect={() => onEditTrigger(index)}>
                                             <SquarePen className="mr-2 h-4 w-4" />
-                                            Edit Exercise
+                                            {t('activity_edit_exercise')}
                                         </DropdownMenuItem>
                                     )}
                                     <DropdownMenuItem onSelect={() => removeExerciseLog(exerciseLog.id)}>
                                         <Trash2 className="mr-2 h-4 w-4" />
-                                        Delete Exercise
+                                        {t('activity_delete_exercise')}
                                     </DropdownMenuItem>
                                     {isSelected && (
                                         <>
@@ -226,7 +228,7 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
                                                 disabled={!selectedPerformanceId}
                                             >
                                                 <Trash2 className="mr-2 h-4 w-4" />
-                                                Delete Selected {exercise?.category === 'strength' ? 'Set' : exercise?.category === 'cardio' ? 'Lap' : 'Set'}
+                                                {exercise?.category === 'cardio' ? t('activity_delete_selected_lap') : t('activity_delete_selected_set')}
                                             </DropdownMenuItem>
                                         </>
                                     )}
@@ -257,12 +259,13 @@ interface FlexibilityHoldCardProps {
 
 export const FlexibilityHoldCard = ({ exerciseLog }: FlexibilityHoldCardProps) => {
     const { updatePerformance: updateSet } = useActivityTracker();
+    const { t } = useTranslation('tracker');
     const performance = exerciseLog.exercisePerformances[0];
 
     if (!performance) {
         return (
             <div className="flex items-center justify-center py-8 text-muted-foreground">
-                No hold recorded yet.
+                {t('activity_no_hold_recorded')}
             </div>
         );
     }
@@ -274,7 +277,7 @@ export const FlexibilityHoldCard = ({ exerciseLog }: FlexibilityHoldCardProps) =
     return (
         <div className="flex flex-col items-center gap-6 py-8 px-4">
             <div className="text-center">
-                <p className="text-sm text-muted-foreground">Duration</p>
+                <p className="text-sm text-muted-foreground">{t('activity_duration')}</p>
                 <Timer
                     initialMilliseconds={performance.duration ?? 0}
                     showControls={true}
@@ -283,7 +286,7 @@ export const FlexibilityHoldCard = ({ exerciseLog }: FlexibilityHoldCardProps) =
             </div>
             <div className="flex flex-col items-center gap-3 w-full max-w-xs">
                 <RpeSelector
-                    label="Perceived Intensity"
+                    label={t('activity_perceived_intensity')}
                     value={performance.rpe ?? null}
                     onChange={(val) => handleUpdate({ rpe: val })}
                 />

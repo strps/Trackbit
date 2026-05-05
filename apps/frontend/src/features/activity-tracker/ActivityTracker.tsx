@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router-dom';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { useActivityTracker } from './api/useActivityTracker';
 import { useActivityTrackerStore } from './store/activityTrackerStore';
+import { useTranslation } from 'react-i18next';
 
 const ActivityTracker = () => {
     const [searchParams] = useSearchParams();
@@ -19,9 +20,10 @@ const ActivityTracker = () => {
 
 
     const { habitName, sessions, isLoading, createSession } = useActivityTracker();
+    const { t } = useTranslation('tracker');
 
     if (isLoading) {
-        return <div className="p-8 text-center text-muted-foreground">Loading sessions...</div>;
+        return <div className="p-8 text-center text-muted-foreground">{t('activity_loading')}</div>;
     }
 
     return (
@@ -40,8 +42,8 @@ const ActivityTracker = () => {
                 {(!sessions || sessions.length === 0) ? (
                     <EmptyState
                         onClick={() => createSession()}
-                        title="No Sessions Found"
-                        description="Click here to start your first workout session"
+                        title={t('activity_no_sessions_title')}
+                        description={t('activity_no_sessions_desc')}
                     />
                 ) : (
                     <div className="space-y-6">

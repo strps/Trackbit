@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { Button } from '@/shared/components/ui/button';
 import { useActivityTracker } from '../api/useActivityTracker';
+import { useTranslation } from 'react-i18next';
 
 export interface SessionCardProps {
     session: OptimisticExerciseSession;
@@ -15,6 +16,7 @@ export interface SessionCardProps {
 
 export const SessionPanel = ({ session, index }: SessionCardProps) => {
     const { deleteSession } = useActivityTracker();
+    const { t } = useTranslation('tracker');
     const exerciseLogs = session.exerciseLogs || [];
     const [selectedExerciseLogIndex, setSelectedExerciseLogIndex] = useState<number | null>(null);
 
@@ -26,7 +28,7 @@ export const SessionPanel = ({ session, index }: SessionCardProps) => {
                         <Dumbbell className="w-5 h-5" />
                     </div>
                     <div>
-                        <h3 className="font-bold text-sm text-foreground">Workout Session</h3>
+                        <h3 className="font-bold text-sm text-foreground">{t('activity_workout_session')}</h3>
                         <div className="flex items-center gap-2 h-4">
                             <span className="text-xs text-muted-foreground" />
                         </div>
@@ -41,7 +43,7 @@ export const SessionPanel = ({ session, index }: SessionCardProps) => {
                     <DropdownMenuContent>
                         <DropdownMenuItem onSelect={() => deleteSession(session.id)}>
                             <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
+                            {t('activity_delete')}
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
@@ -50,8 +52,8 @@ export const SessionPanel = ({ session, index }: SessionCardProps) => {
             <div className="overflow-y-auto px-4 space-y-4">
                 {exerciseLogs.length === 0 ? (
                     <EmptyState
-                        title="Empty Session"
-                        description="Add your first exercise to start tracking."
+                        title={t('activity_empty_session_title')}
+                        description={t('activity_empty_session_desc')}
                     />
                 ) : (
                     exerciseLogs.map((exerciseLog, i) => (

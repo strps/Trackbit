@@ -9,12 +9,14 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '@/shared/components/ui/
 import { Plus, Play, ChevronDown, Search } from 'lucide-react';
 import { Exercise } from '@trackbit/types';
 import { useActivityTracker } from '../api/useActivityTracker';
+import { useTranslation } from 'react-i18next';
 
 export const AddExercisePicker = ({ sessionId, setEditing }: { sessionId: number; setEditing: () => void }) => {
     const { exercises } = useExercises();
 
     const { addExerciseLog } = useActivityTracker();
 
+    const { t } = useTranslation('tracker');
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [selected, setSelected] = useState(0);
@@ -40,12 +42,12 @@ export const AddExercisePicker = ({ sessionId, setEditing }: { sessionId: number
         <div className="w-min flex items-stretch rounded-l-xl rounded-r-[3rem] border-2 border-primary bg-card p-4 shadow-sm">
             <div className="flex items-center gap-4">
                 <div className="flex flex-col gap-2">
-                    <Label className="text-xs text-muted-foreground ml-2">Recommended:</Label>
+                    <Label className="text-xs text-muted-foreground ml-2">{t('activity_recommended')}</Label>
                     <Popover open={open} onOpenChange={setOpen}>
                         <PopoverTrigger asChild>
                             <Button variant="outline" className="w-48 justify-between">
                                 <span className="truncate">
-                                    {exercises.length > 0 ? exercises[selected].name : 'Select exercise'}
+                                    {exercises.length > 0 ? exercises[selected].name : t('activity_select_exercise')}
                                 </span>
                                 <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
                             </Button>
@@ -55,7 +57,7 @@ export const AddExercisePicker = ({ sessionId, setEditing }: { sessionId: number
                                 <div className="relative">
                                     <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                                     <Input
-                                        placeholder="Search exercises..."
+                                        placeholder={t('activity_search_exercises')}
                                         className="pl-10 bg-background"
                                         value={search}
                                         onChange={(e) => setSearch(e.target.value)}
@@ -66,9 +68,9 @@ export const AddExercisePicker = ({ sessionId, setEditing }: { sessionId: number
                                 <div className="p-2 flex flex-col gap-1">
                                     {filtered.length === 0 ? (
                                         <div className="py-8 text-center">
-                                            <p className="text-sm text-muted-foreground">No exercises found.</p>
+                                            <p className="text-sm text-muted-foreground">{t('activity_no_exercises_found')}</p>
                                             <Button variant="link" size="sm" className="mt-2">
-                                                + Create "{search}"
+                                                {t('activity_create_exercise', { name: search })}
                                             </Button>
                                         </div>
                                     ) : (
@@ -111,7 +113,7 @@ export const AddExercisePicker = ({ sessionId, setEditing }: { sessionId: number
                         </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                        <p>Add Recommended Exercise</p>
+                        <p>{t('activity_add_recommended')}</p>
                     </TooltipContent>
                 </Tooltip>
             </div>
