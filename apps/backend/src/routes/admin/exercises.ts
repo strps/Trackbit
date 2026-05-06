@@ -16,10 +16,20 @@ type AuthEnv = {
 const app = new Hono<AuthEnv>()
 app.use('*', requireAdminAuth)
 
+const i18nStringSchema = z.object({
+    en: z.string().min(1, 'English name is required'),
+    es: z.string().optional(),
+})
+
+const i18nOptionalSchema = z.object({
+    en: z.string().max(500).optional(),
+    es: z.string().max(500).optional(),
+}).optional().nullable()
+
 const exerciseBodySchema = z.object({
-    name: z.string().min(1, 'Name is required').trim(),
+    name: i18nStringSchema,
     category: z.enum(['strength', 'cardio', 'flexibility']),
-    description: z.string().max(500).optional().nullable(),
+    description: i18nOptionalSchema,
     defaultWeightUnit: z.enum(['kg', 'lbs']).optional().nullable(),
     defaultDistanceUnit: z.enum(['km', 'miles']).optional().nullable(),
     muscleGroups: z.array(z.number().int().positive()).optional(),
@@ -31,8 +41,9 @@ app.get('/', async (c) => {
         .select({
             id: exercises.id,
             name: exercises.name,
+            nameI18n: exercises.nameI18n,
             category: exercises.category,
-            description: exercises.description,
+            descriptionI18n: exercises.descriptionI18n,
             defaultWeightUnit: exercises.defaultWeightUnit,
             defaultDistanceUnit: exercises.defaultDistanceUnit,
             userId: exercises.userId,
@@ -72,11 +83,17 @@ app.get('/', async (c) => {
 
 // Create a system exercise (userId = null)
 app.post('/', zValidator('json', exerciseBodySchema), async (c) => {
-    const { muscleGroups: mgIds, ...data } = c.req.valid('json')
+    const { muscleGroups: mgIds, name, description, ...rest } = c.req.valid('json')
 
     const [created] = await db
         .insert(exercises)
-        .values({ ...data, userId: null })
+        .values({
+            ...rest,
+            userId: null,
+            name: name.en,
+            nameI18n: name,
+            descriptionI18n: description ?? null,
+        })
         .returning()
 
     if (mgIds && mgIds.length > 0) {
@@ -97,11 +114,20 @@ app.patch('/:id', zValidator('json', exerciseBodySchema.partial()), async (c) =>
     const id = parseInt(c.req.param('id'), 10)
     if (isNaN(id)) return c.json({ error: 'Invalid id' }, 400)
 
-    const { muscleGroups: mgIds, ...data } = c.req.valid('json')
+    const { muscleGroups: mgIds, name, description, ...rest } = c.req.valid('json')
+
+    const updates: Record<string, unknown> = { ...rest }
+    if (name !== undefined) {
+        updates.name = name.en
+        updates.nameI18n = name
+    }
+    if (description !== undefined) {
+        updates.descriptionI18n = description
+    }
 
     const [updated] = await db
         .update(exercises)
-        .set(data)
+        .set(updates)
         .where(eq(exercises.id, id))
         .returning()
 
@@ -137,9 +163,9 @@ app.delete('/:id', async (c) => {
 // ─── Muscle Group Routes ───────────────────────────────────────────────────────
 
 const muscleGroupBodySchema = z.object({
-    name: z.string().min(1, 'Name is required').trim(),
+    name: i18nStringSchema,
     slug: z.string().optional(),
-    description: z.string().optional().nullable(),
+    description: i18nOptionalSchema,
     parentId: z.number().int().positive().optional().nullable(),
     displayOrder: z.number().int().optional(),
 })
@@ -153,13 +179,14 @@ app.get('/muscle-groups', async (c) => {
         SELECT
             mg.id,
             mg.name,
+            mg.name_i18n      AS "nameI18n",
             mg.slug,
-            mg.description,
-            mg.parent_id   AS "parentId",
-            p.name         AS "parentName",
+            mg.description_i18n AS "descriptionI18n",
+            mg.parent_id      AS "parentId",
+            p.name            AS "parentName",
             mg.level,
-            mg.display_order AS "displayOrder",
-            mg.created_at  AS "createdAt"
+            mg.display_order  AS "displayOrder",
+            mg.created_at     AS "createdAt"
         FROM muscle_groups mg
         LEFT JOIN muscle_groups p ON mg.parent_id = p.id
         ORDER BY mg.display_order, mg.name
@@ -170,14 +197,13 @@ app.get('/muscle-groups', async (c) => {
 
 // Create a muscle group
 app.post('/muscle-groups', zValidator('json', muscleGroupBodySchema), async (c) => {
-    const body = c.req.valid('json')
-    const slug = body.slug ?? toSlug(body.name)
-
-    const level = body.parentId ? 2 : 1
+    const { name, description, ...rest } = c.req.valid('json')
+    const slug = rest.slug ?? toSlug(name.en)
+    const level = rest.parentId ? 2 : 1
 
     const rows = (await db
         .insert(muscleGroups)
-        .values({ ...body, slug, level })
+        .values({ ...rest, name: name.en, nameI18n: name, descriptionI18n: description ?? null, slug, level })
         .returning()) as unknown as any[]
     const created = rows[0]
 
@@ -189,9 +215,16 @@ app.patch('/muscle-groups/:id', zValidator('json', muscleGroupBodySchema.partial
     const id = parseInt(c.req.param('id'), 10)
     if (isNaN(id)) return c.json({ error: 'Invalid id' }, 400)
 
-    const body = c.req.valid('json')
-    const updates: Record<string, unknown> = { ...body }
-    if (body.name && !body.slug) updates.slug = toSlug(body.name)
+    const { name, description, ...rest } = c.req.valid('json')
+    const updates: Record<string, unknown> = { ...rest }
+    if (name !== undefined) {
+        updates.name = name.en
+        updates.nameI18n = name
+        if (!rest.slug) updates.slug = toSlug(name.en)
+    }
+    if (description !== undefined) {
+        updates.descriptionI18n = description
+    }
 
     const updatedRows = (await db
         .update(muscleGroups)

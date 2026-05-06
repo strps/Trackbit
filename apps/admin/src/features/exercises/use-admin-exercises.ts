@@ -3,11 +3,22 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 const API_URL = `${import.meta.env.VITE_API_URL}/admin/exercises`
 const MG_URL = `${import.meta.env.VITE_API_URL}/admin/exercises/muscle-groups`
 
+export interface I18nString {
+    en: string
+    es?: string | null
+}
+
+export interface I18nOptional {
+    en?: string | null
+    es?: string | null
+}
+
 export interface AdminExercise {
     id: number
     name: string
+    nameI18n: I18nString | null
     category: 'strength' | 'cardio' | 'flexibility'
-    description: string | null
+    descriptionI18n: I18nOptional | null
     defaultWeightUnit: string | null
     defaultDistanceUnit: string | null
     userId: string | null
@@ -18,8 +29,9 @@ export interface AdminExercise {
 export interface MuscleGroup {
     id: number
     name: string
+    nameI18n: I18nString | null
     slug: string
-    description: string | null
+    descriptionI18n: I18nOptional | null
     parentId: number | null
     parentName: string | null
     level: number
@@ -28,17 +40,17 @@ export interface MuscleGroup {
 }
 
 export interface ExercisePayload {
-    name: string
+    name: I18nString
     category: 'strength' | 'cardio' | 'flexibility'
-    description?: string | null
+    description?: I18nOptional | null
     defaultWeightUnit?: string | null
     defaultDistanceUnit?: string | null
     muscleGroups?: number[]
 }
 
 export interface MuscleGroupPayload {
-    name: string
-    description?: string | null
+    name: I18nString
+    description?: I18nOptional | null
     parentId?: number | null
     displayOrder?: number
 }

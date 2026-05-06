@@ -57,16 +57,25 @@ function buildExerciseColumns(
             header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
             cell: ({ row }) => {
                 const ex = row.original;
+                const displayName = ex.nameI18n?.en ?? ex.name;
+                const missingEs = ex.userId === null && !ex.nameI18n?.es;
                 return (
                     <div className="flex items-center gap-3">
                         <div className="flex h-9 w-9 items-center justify-center rounded-lg border bg-muted">
                             <Dumbbell className="h-4 w-4 text-foreground" />
                         </div>
                         <div className="grid gap-0.5">
-                            <span className="font-medium">{ex.name}</span>
-                            {ex.description && (
+                            <div className="flex items-center gap-2">
+                                <span className="font-medium">{displayName}</span>
+                                {missingEs && (
+                                    <Badge variant="outline" className="text-[10px] text-amber-500 border-amber-300">
+                                        ES missing
+                                    </Badge>
+                                )}
+                            </div>
+                            {ex.descriptionI18n?.en && (
                                 <span className="text-xs text-muted-foreground truncate max-w-48">
-                                    {ex.description}
+                                    {ex.descriptionI18n.en}
                                 </span>
                             )}
                         </div>

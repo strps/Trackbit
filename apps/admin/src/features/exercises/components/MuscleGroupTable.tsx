@@ -33,12 +33,19 @@ function buildMGColumns(
             header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
             cell: ({ row }) => {
                 const mg = row.original;
+                const displayName = mg.nameI18n?.en ?? mg.name;
+                const missingEs = !mg.nameI18n?.es;
                 return (
                     <div className="flex items-center gap-2">
                         <div className="flex h-8 w-8 items-center justify-center rounded-lg border bg-muted">
                             <Layers className="h-4 w-4 text-foreground" />
                         </div>
-                        <span className="font-medium">{mg.name}</span>
+                        <span className="font-medium">{displayName}</span>
+                        {missingEs && (
+                            <Badge variant="outline" className="text-[10px] text-amber-500 border-amber-300">
+                                ES missing
+                            </Badge>
+                        )}
                     </div>
                 );
             },
@@ -72,10 +79,10 @@ function buildMGColumns(
             ),
         },
         {
-            accessorKey: "description",
+            id: "description",
             header: "Description",
             cell: ({ row }) => {
-                const desc = row.getValue<string | null>("description");
+                const desc = row.original.descriptionI18n?.en ?? null;
                 return desc ? (
                     <span className="text-sm text-muted-foreground truncate max-w-48 block">
                         {desc}

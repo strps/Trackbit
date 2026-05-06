@@ -21,8 +21,10 @@ import {
 } from "../use-admin-exercises";
 
 const mgFormSchema = z.object({
-    name: z.string().min(1, "Name is required").trim(),
-    description: z.string().optional(),
+    nameEn: z.string().min(1, "English name is required").trim(),
+    nameEs: z.string().optional(),
+    descriptionEn: z.string().optional(),
+    descriptionEs: z.string().optional(),
     parentId: z.number().nullable().optional(),
 });
 type MGFormValues = z.infer<typeof mgFormSchema>;
@@ -41,16 +43,24 @@ export function MuscleGroupForm({ muscleGroup, allGroups, onSuccess }: MGFormPro
     const form = useForm<MGFormValues>({
         resolver: zodResolver(mgFormSchema),
         defaultValues: {
-            name: muscleGroup?.name ?? "",
-            description: muscleGroup?.description ?? "",
+            nameEn: muscleGroup?.nameI18n?.en ?? muscleGroup?.name ?? "",
+            nameEs: muscleGroup?.nameI18n?.es ?? "",
+            descriptionEn: muscleGroup?.descriptionI18n?.en ?? "",
+            descriptionEs: muscleGroup?.descriptionI18n?.es ?? "",
             parentId: muscleGroup?.parentId ?? null,
         },
     });
 
+    const nameEs = form.watch("nameEs");
+    const descriptionEn = form.watch("descriptionEn");
+    const descriptionEs = form.watch("descriptionEs");
+
     const handleSubmit = async (data: MGFormValues) => {
         const payload: MuscleGroupPayload = {
-            name: data.name,
-            description: data.description || null,
+            name: { en: data.nameEn, es: data.nameEs || undefined },
+            description: (data.descriptionEn || data.descriptionEs)
+                ? { en: data.descriptionEn || undefined, es: data.descriptionEs || undefined }
+                : null,
             parentId: data.parentId ?? null,
         };
         if (isEditMode) {
@@ -68,10 +78,21 @@ export function MuscleGroupForm({ muscleGroup, allGroups, onSuccess }: MGFormPro
     return (
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 pt-2">
             <div className="space-y-1.5">
-                <Label htmlFor="mg-name">Name</Label>
-                <Input id="mg-name" placeholder="e.g. Upper Chest" {...form.register("name")} />
-                {form.formState.errors.name && (
-                    <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>
+                <Label htmlFor="mg-name-en">Name (English)</Label>
+                <Input id="mg-name-en" placeholder="e.g. Upper Chest" {...form.register("nameEn")} />
+                {form.formState.errors.nameEn && (
+                    <p className="text-xs text-destructive">{form.formState.errors.nameEn.message}</p>
+                )}
+            </div>
+
+            <div className="space-y-1.5">
+                <Label htmlFor="mg-name-es">
+                    Name (Spanish)
+                    <span className="ml-1 text-xs text-muted-foreground">(optional)</span>
+                </Label>
+                <Input id="mg-name-es" placeholder="e.g. Pecho superior" {...form.register("nameEs")} />
+                {!nameEs && (
+                    <p className="text-xs text-amber-500">Missing Spanish translation</p>
                 )}
             </div>
 
@@ -90,7 +111,7 @@ export function MuscleGroupForm({ muscleGroup, allGroups, onSuccess }: MGFormPro
                         <SelectItem value="none">No parent (top-level)</SelectItem>
                         {topLevelGroups.map((g) => (
                             <SelectItem key={g.id} value={g.id.toString()}>
-                                {g.name}
+                                {g.nameI18n?.en ?? g.name}
                             </SelectItem>
                         ))}
                     </SelectContent>
@@ -98,13 +119,29 @@ export function MuscleGroupForm({ muscleGroup, allGroups, onSuccess }: MGFormPro
             </div>
 
             <div className="space-y-1.5">
-                <Label htmlFor="mg-desc">Description</Label>
+                <Label htmlFor="mg-desc-en">Description (English)</Label>
                 <Textarea
-                    id="mg-desc"
+                    id="mg-desc-en"
                     placeholder="Optional description..."
-                    rows={3}
-                    {...form.register("description")}
+                    rows={2}
+                    {...form.register("descriptionEn")}
                 />
+            </div>
+
+            <div className="space-y-1.5">
+                <Label htmlFor="mg-desc-es">
+                    Description (Spanish)
+                    <span className="ml-1 text-xs text-muted-foreground">(optional)</span>
+                </Label>
+                <Textarea
+                    id="mg-desc-es"
+                    placeholder="Descripción opcional..."
+                    rows={2}
+                    {...form.register("descriptionEs")}
+                />
+                {descriptionEn && !descriptionEs && (
+                    <p className="text-xs text-amber-500">Missing Spanish translation</p>
+                )}
             </div>
 
             <Button type="submit" className="w-full" disabled={isSaving}>

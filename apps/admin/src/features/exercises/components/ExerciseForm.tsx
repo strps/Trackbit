@@ -13,9 +13,11 @@ import {
 } from "../use-admin-exercises";
 
 const exerciseFormSchema = z.object({
-    name: z.string().min(1, "Name is required").trim(),
+    nameEn: z.string().min(1, "English name is required").trim(),
+    nameEs: z.string().optional(),
     category: z.enum(["strength", "cardio", "flexibility"]),
-    description: z.string().max(500).optional(),
+    descriptionEn: z.string().max(500).optional(),
+    descriptionEs: z.string().max(500).optional(),
     muscleGroups: z.array(z.number()),
 });
 type ExerciseFormValues = z.infer<typeof exerciseFormSchema>;
@@ -34,15 +36,19 @@ export function ExerciseForm({ exercise, onSuccess, muscleGroups }: ExerciseForm
     const form = useForm<ExerciseFormValues>({
         resolver: zodResolver(exerciseFormSchema),
         defaultValues: {
-            name: exercise?.name ?? "",
+            nameEn: exercise?.nameI18n?.en ?? exercise?.name ?? "",
+            nameEs: exercise?.nameI18n?.es ?? "",
             category: (exercise?.category ?? "strength") as ExerciseFormValues["category"],
-            description: exercise?.description ?? "",
+            descriptionEn: exercise?.descriptionI18n?.en ?? "",
+            descriptionEs: exercise?.descriptionI18n?.es ?? "",
             muscleGroups: exercise?.muscleGroups?.map((mg) => mg.id) ?? [],
         },
     });
 
     const selectedCategory = form.watch("category");
     const selectedMuscleGroups = form.watch("muscleGroups");
+    const nameEs = form.watch("nameEs");
+    const descriptionEs = form.watch("descriptionEs");
 
     const toggleMuscleGroup = (id: number) => {
         const current = form.getValues("muscleGroups");
@@ -54,9 +60,11 @@ export function ExerciseForm({ exercise, onSuccess, muscleGroups }: ExerciseForm
 
     const handleSubmit = async (data: ExerciseFormValues) => {
         const payload: ExercisePayload = {
-            name: data.name,
+            name: { en: data.nameEn, es: data.nameEs || undefined },
             category: data.category,
-            description: data.description || null,
+            description: (data.descriptionEn || data.descriptionEs)
+                ? { en: data.descriptionEn || undefined, es: data.descriptionEs || undefined }
+                : null,
             muscleGroups: data.muscleGroups,
         };
         if (isEditMode) {
@@ -73,24 +81,53 @@ export function ExerciseForm({ exercise, onSuccess, muscleGroups }: ExerciseForm
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-4">
                     <div className="space-y-1.5">
-                        <Label htmlFor="ex-name">Exercise Name</Label>
+                        <Label htmlFor="ex-name-en">Exercise Name (English)</Label>
                         <Input
-                            id="ex-name"
+                            id="ex-name-en"
                             placeholder="e.g. Bulgarian Split Squat"
-                            {...form.register("name")}
+                            {...form.register("nameEn")}
                         />
-                        {form.formState.errors.name && (
-                            <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>
+                        {form.formState.errors.nameEn && (
+                            <p className="text-xs text-destructive">{form.formState.errors.nameEn.message}</p>
                         )}
                     </div>
                     <div className="space-y-1.5">
-                        <Label htmlFor="ex-desc">Description</Label>
-                        <Textarea
-                            id="ex-desc"
-                            placeholder="Optional description..."
-                            rows={4}
-                            {...form.register("description")}
+                        <Label htmlFor="ex-name-es">
+                            Exercise Name (Spanish)
+                            <span className="ml-1 text-xs text-muted-foreground">(optional)</span>
+                        </Label>
+                        <Input
+                            id="ex-name-es"
+                            placeholder="e.g. Sentadilla búlgara"
+                            {...form.register("nameEs")}
                         />
+                        {!nameEs && (
+                            <p className="text-xs text-amber-500">Missing Spanish translation</p>
+                        )}
+                    </div>
+                    <div className="space-y-1.5">
+                        <Label htmlFor="ex-desc-en">Description (English)</Label>
+                        <Textarea
+                            id="ex-desc-en"
+                            placeholder="Optional description..."
+                            rows={3}
+                            {...form.register("descriptionEn")}
+                        />
+                    </div>
+                    <div className="space-y-1.5">
+                        <Label htmlFor="ex-desc-es">
+                            Description (Spanish)
+                            <span className="ml-1 text-xs text-muted-foreground">(optional)</span>
+                        </Label>
+                        <Textarea
+                            id="ex-desc-es"
+                            placeholder="Descripción opcional..."
+                            rows={3}
+                            {...form.register("descriptionEs")}
+                        />
+                        {form.watch("descriptionEn") && !descriptionEs && (
+                            <p className="text-xs text-amber-500">Missing Spanish translation</p>
+                        )}
                     </div>
                 </div>
 
@@ -109,7 +146,7 @@ export function ExerciseForm({ exercise, onSuccess, muscleGroups }: ExerciseForm
                                         : "bg-background hover:bg-accent border-input"
                                         }`}
                                 >
-                                    {mg.name}
+                                    {mg.nameI18n?.en ?? mg.name}
                                 </button>
                             );
                         })}

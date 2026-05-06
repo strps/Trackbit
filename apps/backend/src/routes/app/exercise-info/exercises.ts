@@ -29,6 +29,7 @@ const exerciseRouter = generateCrudRouter({
     overrides: {
         list: async (c: Context) => {
             const user = c.get('user')
+            const locale = (c.get('locale') as string | undefined) ?? 'en'
 
             //Query exercise exercises with the lastest set.
 
@@ -55,7 +56,7 @@ const exerciseRouter = generateCrudRouter({
                 .select({
                     id: exercises.id,
                     userId: exercises.userId,
-                    name: exercises.name,
+                    name: sql<string>`COALESCE(${exercises.nameI18n}->>${locale}, ${exercises.nameI18n}->>'en', ${exercises.name})`.as('name'),
                     category: exercises.category,
                     defaultWeightUnit: exercises.defaultWeightUnit,
                     defaultDistanceUnit: exercises.defaultDistanceUnit,

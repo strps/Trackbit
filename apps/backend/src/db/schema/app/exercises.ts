@@ -1,5 +1,5 @@
-import { relations } from "drizzle-orm";
-import { boolean, foreignKey, integer, numeric, pgTable, primaryKey, real, serial, text, timestamp, unique } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import { boolean, foreignKey, integer, jsonb, numeric, pgTable, primaryKey, real, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { dayLogs } from "./habits";
 import { user } from "./user";
 
@@ -9,14 +9,24 @@ export const exercises = pgTable('exercises', {
     // If NULL, it's a "System Default" exercise. If set, it's a user's custom exercise.
     userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }),
     name: text('name').notNull(), // "Bench Press", "Running"
+    // System exercises store translations here: { "en": "Bench Press", "es": "Press de banca" }
+    nameI18n: jsonb('name_i18n').$type<Record<string, string>>(),
     category: text('category').notNull().default('strength'), // 'strength', 'cardio', 'flexibility'
     description: text('description'),
+    descriptionI18n: jsonb('description_i18n').$type<Record<string, string>>(),
     defaultWeightUnit: text('default_weight_unit').default('kg'), // 'kg' or 'lbs'
     defaultDistanceUnit: text('default_distance_unit').default('km'), // 'km' or 'miles'
     createdAt: timestamp('created_at').defaultNow(),
 },
     (table) => [
-        unique('unique_user_exercise_name').on(table.userId, table.name),
+        // User exercises: unique per (userId, name)
+        uniqueIndex('unique_user_exercise_name')
+            .on(table.userId, table.name)
+            .where(sql`user_id IS NOT NULL`),
+        // System exercises: unique on English name in the JSONB translation object
+        uniqueIndex('unique_system_exercise_name')
+            .on(sql`(name_i18n->>'en')`)
+            .where(sql`user_id IS NULL`),
     ]
 );
 
@@ -31,6 +41,7 @@ export const exercisesRelations = relations(exercises, ({ many }) => ({
 export const muscleGroups: any = pgTable('muscle_groups', {
     id: serial('id').primaryKey(),
     name: text('name').notNull(),                    // Display name: "Chest", "Upper Chest"
+    nameI18n: jsonb('name_i18n').$type<Record<string, string>>(),
     slug: text('slug').notNull().unique(),           // URL-friendly: "chest", "upper-chest"
 
     // Hierarchy
@@ -40,6 +51,7 @@ export const muscleGroups: any = pgTable('muscle_groups', {
     // Metadata
     level: integer('level').notNull().default(1),    // 1 = Major, 2 = Subdivision, 3+ = Deep
     description: text('description'),
+    descriptionI18n: jsonb('description_i18n').$type<Record<string, string>>(),
     displayOrder: integer('display_order').default(0),
     // isActive: boolean('is_active').default(true),
 
