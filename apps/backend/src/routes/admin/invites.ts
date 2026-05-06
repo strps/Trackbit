@@ -8,6 +8,7 @@ import { eq, name, inArray } from "drizzle-orm"
 import { sendEmail } from '../../lib/email'
 import { TesterInvitationEmail } from '../../emails/TesterInvitation'
 import { jsx } from 'react/jsx-runtime'
+import { buildTesterInvitationStrings } from '../../i18n/email-strings.js'
 
 type AuthEnv = {
     Variables: {
@@ -88,9 +89,8 @@ app.post('/', async (c) => {
                     subject: 'Your Trackbit Invitation Code',
                     react: jsx(TesterInvitationEmail, {
                         invitationUrl: `${process.env.FRONT_URL}/signup?invite=true&code=${invite.code}`,
-                        name: invite.email!.split('@')[0]
-                    }
-                    ),
+                        strings: buildTesterInvitationStrings('en', invite.email!.split('@')[0]),
+                    }),
                 });
                 if (!emailResult.success) {
                     console.error(`Failed to send email to ${invite.email}: ${emailResult.error}`);

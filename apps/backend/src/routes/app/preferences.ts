@@ -1,10 +1,12 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
-import { z } from 'zod'
+import { z, type ZodError } from 'zod'
 import { eq } from 'drizzle-orm'
 import db from '../../db/db.js'
 import { user } from '../../db/schema/app/user.js'
 import { requireAuth } from '../../middleware/auth.js'
+import { localeMiddleware } from '../../middleware/locale.js'
+import { formatZodError } from '../../lib/utils.js'
 
 const SUPPORTED_LOCALES = ['en', 'es'] as const
 const SUPPORTED_UNIT_SYSTEMS = ['metric', 'imperial'] as const
@@ -12,12 +14,14 @@ const SUPPORTED_UNIT_SYSTEMS = ['metric', 'imperial'] as const
 type AuthEnv = {
     Variables: {
         user: any
+        locale: string
     }
 }
 
 const app = new Hono<AuthEnv>()
 
 app.use('*', requireAuth)
+app.use('*', localeMiddleware)
 
 const preferencesSchema = z.object({
     locale: z.enum(SUPPORTED_LOCALES).optional(),
@@ -28,7 +32,11 @@ const preferencesSchema = z.object({
     { message: 'At least one preference field must be provided' },
 )
 
-app.patch('/preferences', zValidator('json', preferencesSchema), async (c) => {
+app.patch('/preferences', zValidator('json', preferencesSchema, (result, c) => {
+    if (!result.success) {
+        return c.json(formatZodError(result.error as ZodError, ((c as any).get('locale') as string | undefined) ?? 'en'), 400)
+    }
+}), async (c) => {
     const sessionUser = c.get('user')
     const { locale, timezone, unitSystem } = c.req.valid('json')
 

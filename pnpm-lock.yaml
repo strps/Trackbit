@@ -213,6 +213,9 @@ importers:
       hono:
         specifier: ^4.10.7
         version: 4.11.1
+      i18next:
+        specifier: ^26.0.8
+        version: 26.0.8(typescript@5.9.3)
       luxon:
         specifier: ^3.7.2
         version: 3.7.2

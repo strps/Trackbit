@@ -1,0 +1,16 @@
+{
+  "unauthorized": "No autorizado",
+  "too_many_requests": "Demasiadas solicitudes",
+  "route_not_found": "Ruta no encontrada",
+  "internal_server_error": "Error interno del servidor",
+  "validation_failed": "Error de validación",
+  "not_found_or_unauthorized": "No encontrado o no autorizado",
+  "habit_not_found": "Hábito no encontrado",
+  "exercise_name_required": "El nombre del ejercicio es obligatorio",
+  "muscle_group_name_required": "El nombre del grupo muscular es obligatorio",
+  "at_least_one_preference": "Se debe proporcionar al menos un campo de preferencia",
+  "invite_code_required": "Se requiere un código de invitación para crear una cuenta.",
+  "invite_code_invalid": "Código de invitación no válido.",
+  "invite_code_max_uses": "Este código de invitación ha alcanzado su límite máximo de usos.",
+  "invite_code_expired": "Este código de invitación ha expirado."
+}

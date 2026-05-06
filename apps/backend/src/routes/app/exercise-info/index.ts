@@ -1,11 +1,11 @@
 import { Hono } from "hono";
-
-
-const exerciseInfoRouter = new Hono();
-
+import { localeMiddleware } from '../../../middleware/locale.js';
 import exerciseRouter from './exercises.js';
 import muscleGroupRouter from './musclegroups.js';
 
+const exerciseInfoRouter = new Hono();
+
+exerciseInfoRouter.use('*', localeMiddleware);
 exerciseInfoRouter.route('/exercises', exerciseRouter);
 exerciseInfoRouter.route('/muscle-groups', muscleGroupRouter);
 

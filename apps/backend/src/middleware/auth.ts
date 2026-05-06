@@ -1,5 +1,6 @@
 import { createMiddleware } from 'hono/factory'
 import { auth } from '../lib/auth.js'
+import { t, negotiateFromHeader } from '../i18n/index.js'
 
 type Env = {
     Variables: {
@@ -14,7 +15,8 @@ export const requireAuth = createMiddleware<Env>(async (c, next) => {
     })
 
     if (!session) {
-        return c.json({ error: "Unauthorized" }, 401)
+        const locale = negotiateFromHeader(c.req.header('accept-language'))
+        return c.json({ error: t('errors', 'unauthorized', locale) }, 401)
     }
 
     // Set user/session in Context for routes to use

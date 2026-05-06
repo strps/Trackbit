@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import { handle } from '@hono/node-server/vercel'
+import { t, negotiateFromHeader } from './i18n/index.js'
 
 // Import Routes
 import { auth } from './lib/auth.js'
@@ -68,13 +69,15 @@ app.get('/health', (c) => c.json({ status: 'ok', time: new Date().toISOString() 
 
 // 5. Not Found Handler
 app.notFound((c) => {
-    return c.json({ message: 'Route not found' }, 404)
+    const locale = negotiateFromHeader(c.req.header('accept-language'))
+    return c.json({ message: t('errors', 'route_not_found', locale) }, 404)
 })
 
 // 6. Error Handler
 app.onError((err, c) => {
     console.error('Unhandled error:', err);
-    return c.json({ error: 'Internal Server Error' }, 500);
+    const locale = negotiateFromHeader(c.req.raw.headers.get('accept-language') ?? undefined)
+    return c.json({ error: t('errors', 'internal_server_error', locale) }, 500);
 });
 
 //TODO check if cannot export directly, wronly changed bc bad mistakenly infer error cause.

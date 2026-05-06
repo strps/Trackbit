@@ -1,7 +1,6 @@
-// backend/src/middleware/rateLimit.ts
-import { Hono } from 'hono';
 import { getConnInfo } from 'hono/cloudflare-workers'; // Adjust based on runtime; for Node.js, use a different identifier
 import { RateLimiterMemory } from 'rate-limiter-flexible';
+import { t, negotiateFromHeader } from '../i18n/index.js';
 
 /**
  * Rate limiting middleware for Hono.
@@ -45,7 +44,7 @@ export function rateLimit(options: {
             c.header('X-RateLimit-Remaining', String(rej.remainingPoints));
             c.header('X-RateLimit-Reset', String(Math.floor((Date.now() + rej.msBeforeNext) / 1000)));
 
-            return c.json({ error: 'Too many requests' }, 429);
+            return c.json({ error: t('errors', 'too_many_requests', negotiateFromHeader(c.req.header('accept-language'))) }, 429);
         }
     };
 }

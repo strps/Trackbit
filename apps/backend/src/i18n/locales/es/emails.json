@@ -1,0 +1,33 @@
+{
+  "verification": {
+    "subject": "Verifica tu cuenta de Trackbit",
+    "preview": "Verifica tu correo para activar tu cuenta de Trackbit",
+    "heading": "¡Bienvenido a Trackbit!",
+    "greeting": "Hola {name},",
+    "body": "Gracias por registrarte. Haz clic en el botón de abajo para verificar tu dirección de correo electrónico.",
+    "button": "Verificar dirección de correo",
+    "link_prompt": "O copia y pega este enlace en tu navegador:",
+    "footer": "Si no creaste una cuenta, puedes ignorar este correo de forma segura."
+  },
+  "password_reset": {
+    "subject": "Restablece tu contraseña de Trackbit",
+    "preview": "Restablece tu contraseña de Trackbit",
+    "heading": "Solicitud de restablecimiento de contraseña",
+    "greeting": "Hola {name},",
+    "body": "Recibimos una solicitud para restablecer tu contraseña de Trackbit. Haz clic en el botón de abajo para establecer una nueva contraseña. Este enlace expirará en 1 hora por seguridad.",
+    "button": "Restablecer contraseña",
+    "link_prompt": "O copia y pega este enlace en tu navegador:",
+    "footer": "Si no solicitaste esto, ignora este correo: tu contraseña no ha cambiado."
+  },
+  "tester_invitation": {
+    "subject": "Tu código de invitación a Trackbit",
+    "preview": "¡Estás invitado a probar Trackbit en beta!",
+    "heading": "Invitación a tester beta",
+    "greeting": "Hola {name},",
+    "body1": "¡Nos emociona invitarte a la beta de Trackbit! Como tester tendrás acceso anticipado a nuestro rastreador híbrido de hábitos y entrenamiento, con mapas de calor interactivos, visualizaciones de progreso con degradados y mucho más.",
+    "body2": "Tu retroalimentación ayudará a dar forma a la aplicación. Únete ahora y comienza a construir hábitos más fuertes.",
+    "button": "Aceptar invitación y registrarse",
+    "link_prompt": "O copia y pega este enlace:",
+    "footer": "¿Preguntas? Responde este correo. ¡Apreciamos tu ayuda!"
+  }
+}

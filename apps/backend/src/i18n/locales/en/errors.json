@@ -1,0 +1,16 @@
+{
+  "unauthorized": "Unauthorized",
+  "too_many_requests": "Too many requests",
+  "route_not_found": "Route not found",
+  "internal_server_error": "Internal Server Error",
+  "validation_failed": "Validation failed",
+  "not_found_or_unauthorized": "Not found or unauthorized",
+  "habit_not_found": "Habit not found",
+  "exercise_name_required": "Exercise name is required",
+  "muscle_group_name_required": "Muscle group name is required",
+  "at_least_one_preference": "At least one preference field must be provided",
+  "invite_code_required": "An invitation code is required to create an account.",
+  "invite_code_invalid": "Invalid invitation code.",
+  "invite_code_max_uses": "This invitation code has reached its maximum uses.",
+  "invite_code_expired": "This invitation code has expired."
+}

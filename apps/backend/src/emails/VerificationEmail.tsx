@@ -1,17 +1,15 @@
 import { Button, Section, Text } from "@react-email/components";
 import { BaseEmail } from "./BaseEmail";
+import type { VerificationStrings } from "../i18n/email-strings";
 
 interface VerificationEmailProps {
     url: string;
-    userName?: string;
+    strings: VerificationStrings;
 }
 
 const frontendBase = process.env.FRONT_URL
 
-export const VerificationEmail = ({ url, userName = "User" }: VerificationEmailProps) => {
-
-
-
+export const VerificationEmail = ({ url, strings }: VerificationEmailProps) => {
     const verificationUrl = new URL(url);
     verificationUrl.searchParams.delete("callbackURL");
     const cleanUrl = verificationUrl.toString();
@@ -20,22 +18,20 @@ export const VerificationEmail = ({ url, userName = "User" }: VerificationEmailP
 
     return (
         <BaseEmail
-            previewText="Verify your email to activate your Trackbit account"
-            heading="Welcome to Trackbit!"
-            footer="If you didn't create an account, you can safely ignore this email."
+            previewText={strings.preview}
+            heading={strings.heading}
+            footer={strings.footer}
         >
             <Section className="mt-6">
-                <Text className="text-gray-700">Hello {userName},</Text>
-                <Text className="text-gray-700">
-                    Thank you for signing up. Click the button below to verify your email address.
-                </Text>
+                <Text className="text-gray-700">{strings.greeting}</Text>
+                <Text className="text-gray-700">{strings.body}</Text>
                 <Section className="text-center my-8">
                     <Button href={verificationLink} className="bg-primary text-primary-foreground px-6 py-3 rounded-md font-medium text-lg">
-                        Verify Email Address
+                        {strings.button}
                     </Button>
                 </Section>
                 <Text className="text-gray-600 text-sm">
-                    Or copy and paste this link into your browser: <br />
+                    {strings.linkPrompt} <br />
                     <a href={verificationLink} className="text-primary underline">{verificationLink}</a>
                 </Text>
             </Section>

@@ -11,6 +11,8 @@ import { VerificationEmail } from "../emails/VerificationEmail.js";
 import { sendEmail } from "./email.js";
 import { jsx } from "react/jsx-runtime";
 import db from "../db/db.js";
+import { t, negotiateFromHeader } from "../i18n/index.js";
+import { buildVerificationStrings, buildPasswordResetStrings } from "../i18n/email-strings.js";
 
 export const auth = betterAuth({
 
@@ -45,20 +47,24 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: true,
     async sendResetPassword({ user, url }) {
+      const locale = (user as any).locale ?? 'en';
+      const strings = buildPasswordResetStrings(locale, user.name ?? 'User');
       sendEmail({
         to: user.email,
-        subject: "Reset your Trackbit password",
-        react: jsx(PasswordResetEmail, { url, userName: user.name ?? undefined }),
+        subject: t('emails', 'password_reset.subject', locale),
+        react: jsx(PasswordResetEmail, { url, strings }),
       });
     },
   },
   emailVerification: {
     sendOnSignUp: true,
     sendVerificationEmail: async ({ user, url }) => {
+      const locale = (user as any).locale ?? 'en';
+      const strings = buildVerificationStrings(locale, user.name ?? 'User');
       sendEmail({
         to: user.email,
-        subject: "Verify your Trackbit account",
-        react: jsx(VerificationEmail, { url, userName: user.name ?? undefined }),
+        subject: t('emails', 'verification.subject', locale),
+        react: jsx(VerificationEmail, { url, strings }),
       });
     },
   },
@@ -107,6 +113,10 @@ export const auth = betterAuth({
     user: {
       create: {
         before: async (data, ctx) => {
+          const locale = negotiateFromHeader(
+            (ctx?.request as Request | undefined)?.headers?.get('accept-language') ?? undefined
+          );
+
           let inviteCode: string | undefined;
 
           // For email/password signup: inviteCode comes directly from data
@@ -124,7 +134,7 @@ export const auth = betterAuth({
           // Require an invite code for all new signups
           if (!inviteCode) {
             throw new APIError("BAD_REQUEST", {
-              message: "An invitation code is required to create an account.",
+              message: t('errors', 'invite_code_required', locale),
             });
           }
 
@@ -134,21 +144,21 @@ export const auth = betterAuth({
 
           if (!invite) {
             throw new APIError("BAD_REQUEST", {
-              message: "Invalid invitation code.",
+              message: t('errors', 'invite_code_invalid', locale),
             });
           }
 
           // Check usage limit
           if (invite.maxUses !== null && invite.uses >= invite.maxUses) {
             throw new APIError("BAD_REQUEST", {
-              message: "This invitation code has reached its maximum uses.",
+              message: t('errors', 'invite_code_max_uses', locale),
             });
           }
 
           // Check expiration
           if (invite.expiresAt && invite.expiresAt < new Date()) {
             throw new APIError("BAD_REQUEST", {
-              message: "This invitation code has expired.",
+              message: t('errors', 'invite_code_expired', locale),
             });
           }
 

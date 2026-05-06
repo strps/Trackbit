@@ -1,0 +1,33 @@
+{
+  "verification": {
+    "subject": "Verify your Trackbit account",
+    "preview": "Verify your email to activate your Trackbit account",
+    "heading": "Welcome to Trackbit!",
+    "greeting": "Hello {name},",
+    "body": "Thank you for signing up. Click the button below to verify your email address.",
+    "button": "Verify Email Address",
+    "link_prompt": "Or copy and paste this link into your browser:",
+    "footer": "If you didn't create an account, you can safely ignore this email."
+  },
+  "password_reset": {
+    "subject": "Reset your Trackbit password",
+    "preview": "Reset your Trackbit password",
+    "heading": "Password Reset Request",
+    "greeting": "Hello {name},",
+    "body": "We received a request to reset your Trackbit password. Click the button below to set a new password. This link will expire in 1 hour for security.",
+    "button": "Reset Password",
+    "link_prompt": "Or copy and paste this link into your browser:",
+    "footer": "If you didn't request this, please ignore this email—your password remains unchanged."
+  },
+  "tester_invitation": {
+    "subject": "Your Trackbit Invitation Code",
+    "preview": "You're invited to beta test Trackbit!",
+    "heading": "Beta Tester Invitation",
+    "greeting": "Hi {name},",
+    "body1": "We're excited to invite you to the Trackbit beta! As a tester, you'll get early access to our hybrid habit and workout tracker, including interactive heatmaps, gradient progress visuals, and more.",
+    "body2": "Your feedback will help shape the app. Join now and start building stronger habits.",
+    "button": "Accept Invitation & Sign Up",
+    "link_prompt": "Or copy and paste this link:",
+    "footer": "Questions? Reply to this email. We appreciate your help!"
+  }
+}

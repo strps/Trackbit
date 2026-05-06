@@ -19,10 +19,12 @@ import { requireAuth } from '../../middleware/auth.js';
 import { AnyPgTable } from 'drizzle-orm/pg-core';
 import z, { ZodError } from 'zod';
 import { formatZodError } from '../utils.js';
+import { t } from '../../i18n/index.js';
 
 type AppEnv = {
     Variables: {
         user: any;  // Replace 'any' with your actual User type if available
+        locale?: string;
     }
 };
 
@@ -122,7 +124,7 @@ export function generateCrudRouter<
     // Param validator (shared where needed)
     const paramValidator = zValidator('param', pkParamSchema, (result, c) => {
         if (!result.success) {
-            return c.json(formatZodError(result.error as ZodError), 400);
+            return c.json(formatZodError(result.error as ZodError, ((c as any).get('locale') as string | undefined) ?? 'en'), 400);
         }
     });
 
@@ -164,7 +166,7 @@ export function generateCrudRouter<
                         .limit(1) as InferSelectModel<T>[];
 
                     if (!found || (ownershipCheck && !(await ownershipCheck(user, found)))) {
-                        return c.json({ error: 'Not found or unauthorized' }, 404);
+                        return c.json({ error: t('errors', 'not_found_or_unauthorized', (c.get('locale') as string | undefined) ?? 'en') }, 404);
                     }
                     return c.json(found);
                 }
@@ -176,7 +178,7 @@ export function generateCrudRouter<
     if (shouldInclude('create')) {
         const jsonValidator = zValidator('json', schemas.create, (result, c) => {
             if (!result.success) {
-                return c.json(formatZodError(result.error as ZodError), 400);
+                return c.json(formatZodError(result.error as ZodError, ((c as any).get('locale') as string | undefined) ?? 'en'), 400);
             }
         });
 
@@ -202,7 +204,7 @@ export function generateCrudRouter<
         const path = `/${pkRouteSegment}`;
         const updateJsonValidator = zValidator('json', schemas.update, (result, c) => {
             if (!result.success) {
-                return c.json(formatZodError(result.error as ZodError), 400);
+                return c.json(formatZodError(result.error as ZodError, ((c as any).get('locale') as string | undefined) ?? 'en'), 400);
             }
         });
 
@@ -227,7 +229,7 @@ export function generateCrudRouter<
                         .limit(1) as InferSelectModel<T>[];
 
                     if (!existing || (ownershipCheck && !(await ownershipCheck(user, existing)))) {
-                        return c.json({ error: 'Not found or unauthorized' }, 404);
+                        return c.json({ error: t('errors', 'not_found_or_unauthorized', (c.get('locale') as string | undefined) ?? 'en') }, 404);
                     }
 
                     const [updated] = await db
@@ -263,7 +265,7 @@ export function generateCrudRouter<
                         .limit(1) as InferSelectModel<T>[];
 
                     if (!existing || (ownershipCheck && !(await ownershipCheck(user, existing)))) {
-                        return c.json({ error: 'Not found or unauthorized' }, 404);
+                        return c.json({ error: t('errors', 'not_found_or_unauthorized', (c.get('locale') as string | undefined) ?? 'en') }, 404);
                     }
 
                     await db.delete(table as any).where(buildPkWhere(table, pkParamNames, pkValues));

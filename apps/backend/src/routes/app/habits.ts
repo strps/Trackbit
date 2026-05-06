@@ -5,11 +5,14 @@ import db from "../../db/db.js";
 import { habits } from '../../db/schema/index.js'
 import { eq, and, desc } from 'drizzle-orm'
 import { requireAuth } from '../../middleware/auth.js'
+import { localeMiddleware } from '../../middleware/locale.js'
+import { t } from '../../i18n/index.js'
 
 // Define the Context Type to include User from middleware
 type AuthEnv = {
     Variables: {
         user: any // Replace with proper type import from auth definition
+        locale: string
     }
 }
 
@@ -17,6 +20,7 @@ const app = new Hono<AuthEnv>()
 
 // Apply Auth Middleware to all routes in this file
 app.use('*', requireAuth)
+app.use('*', localeMiddleware)
 
 // GET /api/habits
 app.get('/', async (c) => {
@@ -96,7 +100,7 @@ app.put(
             .returning()
 
         if (result.length === 0) {
-            return c.json({ error: "Habit not found" }, 404)
+            return c.json({ error: t('errors', 'habit_not_found', c.get('locale')) }, 404)
         }
 
         return c.json(result[0])
@@ -140,7 +144,7 @@ app.delete('/:id', async (c) => {
         .returning()
 
     if (result.length === 0) {
-        return c.json({ error: "Habit not found" }, 404)
+        return c.json({ error: t('errors', 'habit_not_found', c.get('locale')) }, 404)
     }
 
     return c.json({ success: true, deletedId: id })
