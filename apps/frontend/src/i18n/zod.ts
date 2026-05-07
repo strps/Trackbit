@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import i18n from './index';
 
-z.setErrorMap((issue, ctx) => {
+z.setErrorMap((issue) => {
   switch (issue.code) {
     case z.ZodIssueCode.too_small:
       if (issue.type === 'string')
@@ -11,10 +11,10 @@ z.setErrorMap((issue, ctx) => {
       if (issue.type === 'string')
         return { message: i18n.t('validation.too_long', { max: issue.maximum }) };
       break;
-    case z.ZodIssueCode.invalid_string:
-      if (issue.validation === 'email')
+    case z.ZodIssueCode.invalid_format:
+      if (issue.format === 'email')
         return { message: i18n.t('validation.invalid_email') };
       break;
   }
-  return { message: ctx.defaultError };
+  return null;
 });

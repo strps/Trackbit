@@ -29,8 +29,7 @@ export interface Exercise {
 }
 export interface ExerciseSession {
     id: number;
-    habitId: number;
-    date: string;
+    dayLogId: number;
     createdAt: string | null;
 }
 export interface ExerciseLog {
@@ -50,8 +49,8 @@ export interface ExercisePerformance {
     reps: number | null;
     weight: number | null;
     duration: number | null;
-    distance: string | null;
-    createdAt: string | null;
+    distance: number | null;
+    createdAt: Date | string | null;
     rpe: number | null;
 }
 //# sourceMappingURL=index.d.ts.map
