@@ -39,7 +39,7 @@ export const GRADIENT_PRESETS: Record<string, Preset> = {
             { position: 1, color: [194, 65, 12, 1] }      // orange-700
         ]
     },
-    violet: {
+    purple: {
         label: "Deep Work (Purple)",
         stops: [
             { position: 0, color: [241, 245, 249, 0.1] },   // slate-100
