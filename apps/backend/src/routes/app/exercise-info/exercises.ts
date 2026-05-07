@@ -18,7 +18,7 @@ const exerciseSchemas = defineCrudSchemas(exercises, {
             (data: any) => !!data.name?.trim(),
             { message: 'Exercise name is required', path: ['name'] }
         ),
-    idSchema: z.number().int().positive(),
+    idSchema: z.coerce.number().int().positive(),
 });
 
 // Generate full CRUD router
