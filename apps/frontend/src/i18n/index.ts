@@ -20,36 +20,55 @@ import esErrors from './locales/es/errors.json';
 import enIssues from './locales/en/issues.json';
 import esIssues from './locales/es/issues.json';
 
+import type { Resource } from 'i18next';
+import { isPseudoEnabled, PSEUDO_LOCALE, pseudoizeBundle } from './pseudo';
+
+const enResources = {
+  common: enCommon,
+  auth: enAuth,
+  nav: enNav,
+  tracker: enTracker,
+  habits: enHabits,
+  analytics: enAnalytics,
+  errors: enErrors,
+  issues: enIssues,
+};
+
+const resources: Resource = {
+  en: enResources,
+  es: {
+    common: esCommon,
+    auth: esAuth,
+    nav: esNav,
+    tracker: esTracker,
+    habits: esHabits,
+    analytics: esAnalytics,
+    errors: esErrors,
+    issues: esIssues,
+  },
+};
+
+const supportedLngs: string[] = ['en', 'es'];
+
+if (isPseudoEnabled()) {
+  resources[PSEUDO_LOCALE] = Object.fromEntries(
+    Object.entries(enResources).map(([ns, bundle]) => [
+      ns,
+      pseudoizeBundle(bundle as Record<string, string>),
+    ]),
+  );
+  supportedLngs.push(PSEUDO_LOCALE);
+}
+
 i18n
   .use(ICU)
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
-    supportedLngs: ['en', 'es'],
+    supportedLngs,
     fallbackLng: 'en',
     defaultNS: 'common',
-    resources: {
-      en: {
-        common: enCommon,
-        auth: enAuth,
-        nav: enNav,
-        tracker: enTracker,
-        habits: enHabits,
-        analytics: enAnalytics,
-        errors: enErrors,
-        issues: enIssues,
-      },
-      es: {
-        common: esCommon,
-        auth: esAuth,
-        nav: esNav,
-        tracker: esTracker,
-        habits: esHabits,
-        analytics: esAnalytics,
-        errors: esErrors,
-        issues: esIssues,
-      },
-    },
+    resources,
     detection: {
       order: ['querystring', 'localStorage', 'navigator'],
       lookupQuerystring: 'lang',

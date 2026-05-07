@@ -9,6 +9,7 @@ import { ChangeEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
+import { isPseudoEnabled, PSEUDO_LOCALE } from "@/i18n/pseudo";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -27,11 +28,17 @@ const AccountSettings = () => {
     const [profileData, setProfileData] = useState({ name: '', image: '' });
     const [passData, setPassData] = useState({ current: '', new: '', confirm: '' });
 
-    const locale = i18n.language.startsWith('es') ? 'es' : 'en';
+    const locale =
+        i18n.language === PSEUDO_LOCALE
+            ? PSEUDO_LOCALE
+            : i18n.language.startsWith('es')
+                ? 'es'
+                : 'en';
 
     const handleLocaleChange = async (next: string) => {
         i18n.changeLanguage(next);
-        if (session?.user) {
+        // en-XA is a dev/QA pseudo-locale; backend doesn't recognize it, so skip persistence.
+        if (session?.user && next !== PSEUDO_LOCALE) {
             await fetch(`${API_URL}/me/preferences`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
@@ -191,6 +198,9 @@ const AccountSettings = () => {
                                         <SelectContent>
                                             <SelectItem value="en">{tNav('language_en')}</SelectItem>
                                             <SelectItem value="es">{tNav('language_es')}</SelectItem>
+                                            {isPseudoEnabled() && (
+                                                <SelectItem value={PSEUDO_LOCALE}>Pseudo (QA)</SelectItem>
+                                            )}
                                         </SelectContent>
                                     </Select>
                                 </div>

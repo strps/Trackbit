@@ -10,6 +10,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { TextField } from "@/shared/components/Fields/TextField";
 import { useTranslation } from "react-i18next";
+import type { ParseKeys } from "i18next";
 
 type VerificationState = "loading" | "success" | "error" | "resending";
 
@@ -26,7 +27,7 @@ export default function VerifyEmail() {
     const backendUrl = searchParams.get("backendUrl");
 
     const [state, setState] = useState<VerificationState>("loading");
-    const [errorKey, setErrorKey] = useState<string | null>(null);
+    const [errorKey, setErrorKey] = useState<ParseKeys<'auth'> | null>(null);
     const [resendSuccess, setResendSuccess] = useState<string | null>(null);
     const [resendError, setResendError] = useState<string | null>(null);
 

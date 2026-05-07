@@ -13,7 +13,8 @@
         "db:pull": "pnpm --filter backend db:pull",
         "db:drop": "pnpm --filter backend db:drop",
         "build": "pnpm -r build",
-        "lint:all": "pnpm -r lint"
+        "lint:all": "pnpm -r lint",
+        "i18n:lint": "node scripts/i18n-lint.mjs"
     },
     "devDependencies": {
         "turbo": "^2.0.0",

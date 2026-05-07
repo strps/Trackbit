@@ -13,12 +13,13 @@ import { useTheme } from "@/providers/theme-provider";
 import { useUnitSystem } from "@/providers/unit-system-provider";
 import { signOut, useSession } from "@/shared/lib/auth-client";
 import { useTranslation } from 'react-i18next';
+import type { ParseKeys } from 'i18next';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 import { LogoNameLeft } from "./Logo";
 import { FeedbackModal } from "./FeedbackModal";
 
 interface NavItem {
-    titleKey: string;
+    titleKey: ParseKeys<'nav'>;
     to: string;
     icon: React.ElementType;
 }
