@@ -13,6 +13,7 @@ A hybrid habit tracker and workout logger for the modern web.
 - **Gradient Progress** — Color intensity increases as you approach daily targets.
 - **Secure Auth** — Email/password authentication powered by Better-Auth.
 - **Admin Dashboard** — Separate admin app with invitation management and data oversight.
+- **Internationalization** — English and Spanish out of the box, with locale + timezone preferences per user and a pseudo-locale for QA.
 - **E-Invoicing** — Costa Rican Hacienda v4.4 compliance via dedicated client package.
 
 ## Tech Stack
@@ -41,7 +42,6 @@ trackbit/
 ├── packages/
 │   ├── ui/                    # Shared UI components (Shadcn-based)
 │   ├── types/                 # Shared TypeScript type definitions
-│   └── hacienda-client/       # Costa Rican e-invoicing client (v4.4)
 ├── docs/                      # Project planning & documentation
 ├── pnpm-workspace.yaml
 ├── tsconfig.base.json
@@ -113,6 +113,52 @@ pnpm build            # Build all packages and apps
 pnpm lint:all         # Lint all workspaces
 ```
 
+## Internationalization
+
+Trackbit ships with English (`en`) as the source of truth and Spanish (`es`) as a translated target. The frontend (`apps/frontend`) and the user-facing parts of the backend (`apps/backend` — API errors and emails) are translated. The admin app (`apps/admin`) and `packages/ui` stay locale-agnostic.
+
+### Where strings live
+
+```
+apps/frontend/src/i18n/locales/<lang>/<namespace>.json   # UI strings
+apps/backend/src/i18n/locales/<lang>/<namespace>.json    # API errors + email copy
+```
+
+Frontend namespaces: `common`, `auth`, `nav`, `tracker`, `habits`, `analytics`, `errors`, `issues`. Backend namespaces: `errors`, `emails`.
+
+### Key conventions
+
+- Keys are written in English, flat per namespace, snake_case (e.g. `tracker.empty_state`).
+- One namespace per UI surface; do not cross namespaces.
+- `packages/ui` never calls `t()` — the consuming app passes translated labels as props.
+- Bundles must be **key-symmetric** across languages. CI fails on missing keys.
+
+### Adding or updating a translation
+
+1. Edit the source first: `apps/frontend/src/i18n/locales/en/<namespace>.json`.
+2. Mirror the change in every other language under the same namespace (`es/`, future locales). Empty string or English value counts as untranslated and will warn.
+3. Run `pnpm i18n:lint` to verify parity.
+
+### Local checks
+
+```bash
+pnpm i18n:lint        # Verify key parity across languages (errors on missing, warns on extra/untranslated)
+```
+
+**Pseudo-locale (`en-XA`)** — useful for spotting un-extracted strings and layout overflow. Set `VITE_ENABLE_PSEUDO=true` in `apps/frontend/.env.local`, restart `dev:frontend`, then pick "Pseudo (en-XA)" from the locale selector in Account Settings. Strings render as `⟦aaccceeennnttteeed⟧` with ~30% length inflation.
+
+### Adding a new language
+
+1. Create `apps/frontend/src/i18n/locales/<lang>/` and copy every JSON file from `en/` as a starting point.
+2. Do the same for `apps/backend/src/i18n/locales/<lang>/`.
+3. Register the locale in [apps/frontend/src/i18n/index.ts](apps/frontend/src/i18n/index.ts):
+   - Import each `<lang>/<namespace>.json`.
+   - Add the namespace map to `resources`.
+   - Append the tag to `supportedLngs`.
+4. Register the locale in the backend i18n init.
+5. Add the locale to `TARGET_LOCALES` in [scripts/i18n-lint.mjs](scripts/i18n-lint.mjs) so CI starts checking it.
+6. Translate. Run `pnpm i18n:lint` until clean.
+
 ## API Overview
 
 | Endpoint | Purpose |
@@ -139,9 +185,11 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the full roadmap. Current priorities:
 
 | Document | Description |
 |----------|-------------|
-| [ROADMAP.md](docs/ROADMAP.md) | Long-term vision and milestones |
-| [TODO.md](docs/TODO.md) | Current high-priority tasks |
-| [BACKLOG.md](docs/BACKLOG.md) | Future enhancements |
-| [TASKS.md](docs/TASKS.md) | Detailed task breakdowns |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Long-term vision and milestones |
+| [docs/BACKLOG.md](docs/BACKLOG.md) | Future enhancements |
+| [docs/admin-conventions.md](docs/admin-conventions.md) | Conventions for the admin app |
+| [docs/tasks/internationalization.md](docs/tasks/internationalization.md) | i18n rollout plan and phase tracker |
+| [docs/tasks/analitycs.md](docs/tasks/analitycs.md) | Analytics feature task breakdown |
+| [docs/tasks/bug-tracker.md](docs/tasks/bug-tracker.md) | Bug tracker feature task breakdown |
 | [AGENTS.md](AGENTS.md) | AI agent instructions for this codebase |
 
