@@ -1,5 +1,5 @@
 {
-  "id": "48ae8ab7-d11d-408b-9057-b204982889ad",
+  "id": "ab3a128c-8178-435c-bf14-f7d96784ca28",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -8,15 +8,15 @@
       "name": "day_logs",
       "schema": "",
       "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
         "habit_id": {
           "name": "habit_id",
           "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "date": {
-          "name": "date",
-          "type": "date",
           "primaryKey": false,
           "notNull": true
         },
@@ -32,11 +32,18 @@
           "primaryKey": false,
           "notNull": false
         },
+        "time_stamp": {
+          "name": "time_stamp",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "now()"
         }
       },
@@ -56,15 +63,7 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {
-        "day_logs_habit_id_date_pk": {
-          "name": "day_logs_habit_id_date_pk",
-          "columns": [
-            "habit_id",
-            "date"
-          ]
-        }
-      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -104,14 +103,29 @@
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
-          "default": "'simple'"
+          "default": "'count'"
         },
-        "color_palette": {
-          "name": "color_palette",
+        "is_anti_habit": {
+          "name": "is_anti_habit",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "color_theme": {
+          "name": "color_theme",
+          "type": "color_scale",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'green'"
+        },
+        "color_stops": {
+          "name": "color_stops",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": true,
-          "default": "'[{\"position\":0,\"color\":[241,245,249]},{\"position\":1,\"color\":[16,185,129]}]'::jsonb"
+          "default": "'[{\"position\":0,\"color\":[255,0,0,1]},{\"position\":0.5,\"color\":[255,225,0,1]},{\"position\":1,\"color\":[12,148,62,1]}]'::jsonb"
         },
         "icon": {
           "name": "icon",
@@ -133,6 +147,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": 1
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
         },
         "created_at": {
           "name": "created_at",
@@ -255,62 +276,82 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.exercise_sessions": {
-      "name": "exercise_sessions",
+    "public.exercise_muscle_groups": {
+      "name": "exercise_muscle_groups",
       "schema": "",
       "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "habit_id": {
-          "name": "habit_id",
+        "exercise_id": {
+          "name": "exercise_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
-        "date": {
-          "name": "date",
-          "type": "date",
+        "muscle_group_id": {
+          "name": "muscle_group_id",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'secondary'"
+        },
+        "contribution": {
+          "name": "contribution",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false,
-          "default": "now()"
+          "default": 100
         }
       },
       "indexes": {},
       "foreignKeys": {
-        "exercise_sessions_habit_id_date_day_logs_habit_id_date_fk": {
-          "name": "exercise_sessions_habit_id_date_day_logs_habit_id_date_fk",
-          "tableFrom": "exercise_sessions",
-          "tableTo": "day_logs",
+        "exercise_muscle_groups_exercise_id_exercises_id_fk": {
+          "name": "exercise_muscle_groups_exercise_id_exercises_id_fk",
+          "tableFrom": "exercise_muscle_groups",
+          "tableTo": "exercises",
           "columnsFrom": [
-            "habit_id",
-            "date"
+            "exercise_id"
           ],
           "columnsTo": [
-            "habit_id",
-            "date"
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "exercise_muscle_groups_muscle_group_id_muscle_groups_id_fk": {
+          "name": "exercise_muscle_groups_muscle_group_id_muscle_groups_id_fk",
+          "tableFrom": "exercise_muscle_groups",
+          "tableTo": "muscle_groups",
+          "columnsFrom": [
+            "muscle_group_id"
+          ],
+          "columnsTo": [
+            "id"
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "exercise_muscle_groups_exercise_id_muscle_group_id_pk": {
+          "name": "exercise_muscle_groups_exercise_id_muscle_group_id_pk",
+          "columns": [
+            "exercise_id",
+            "muscle_group_id"
+          ]
+        }
+      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.exercise_sets": {
-      "name": "exercise_sets",
+    "public.exercise_performances": {
+      "name": "exercise_performances",
       "schema": "",
       "columns": {
         "id": {
@@ -325,6 +366,13 @@
           "primaryKey": false,
           "notNull": true
         },
+        "number": {
+          "name": "number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
         "reps": {
           "name": "reps",
           "type": "integer",
@@ -334,6 +382,24 @@
         "weight": {
           "name": "weight",
           "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duration_miliseconds": {
+          "name": "duration_miliseconds",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "distance": {
+          "name": "distance",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rpe": {
+          "name": "rpe",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false
         },
@@ -347,12 +413,58 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "exercise_sets_exercise_log_id_exercise_log_id_fk": {
-          "name": "exercise_sets_exercise_log_id_exercise_log_id_fk",
-          "tableFrom": "exercise_sets",
+        "exercise_performances_exercise_log_id_exercise_log_id_fk": {
+          "name": "exercise_performances_exercise_log_id_exercise_log_id_fk",
+          "tableFrom": "exercise_performances",
           "tableTo": "exercise_log",
           "columnsFrom": [
             "exercise_log_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.exercise_sessions": {
+      "name": "exercise_sessions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "day_log_id": {
+          "name": "day_log_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "exercise_sessions_day_log_id_day_logs_id_fk": {
+          "name": "exercise_sessions_day_log_id_day_logs_id_fk",
+          "tableFrom": "exercise_sessions",
+          "tableTo": "day_logs",
+          "columnsFrom": [
+            "day_log_id"
           ],
           "columnsTo": [
             "id"
@@ -396,8 +508,8 @@
           "notNull": true,
           "default": "'strength'"
         },
-        "muscle_group": {
-          "name": "muscle_group",
+        "description": {
+          "name": "description",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -441,7 +553,102 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "unique_user_exercise_name": {
+          "name": "unique_user_exercise_name",
+          "nullsNotDistinct": false,
+          "columns": [
+            "user_id",
+            "name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.muscle_groups": {
+      "name": "muscle_groups",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "level": {
+          "name": "level",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "display_order": {
+          "name": "display_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "muscle_groups_parent_id_muscle_groups_id_fk": {
+          "name": "muscle_groups_parent_id_muscle_groups_id_fk",
+          "tableFrom": "muscle_groups",
+          "tableTo": "muscle_groups",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "muscle_groups_slug_unique": {
+          "name": "muscle_groups_slug_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "slug"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -602,6 +809,12 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "impersonated_by": {
+          "name": "impersonated_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -612,6 +825,19 @@
           "tableTo": "user",
           "columnsFrom": [
             "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "session_impersonated_by_user_id_fk": {
+          "name": "session_impersonated_by_user_id_fk",
+          "tableFrom": "session",
+          "tableTo": "user",
+          "columnsFrom": [
+            "impersonated_by"
           ],
           "columnsTo": [
             "id"
@@ -699,6 +925,25 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'user'"
+        },
+        "banned": {
+          "name": "banned",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "ban_reason": {
+          "name": "ban_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ban_expires_at": {
+          "name": "ban_expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
         },
         "name": {
           "name": "name",
@@ -788,7 +1033,7 @@
           "type": "text[]",
           "primaryKey": false,
           "notNull": false,
-          "default": "'{\"simple\",\"complex\"}'"
+          "default": "'{\"count\",\"complex\"}'"
         }
       },
       "indexes": {},
@@ -803,6 +1048,53 @@
           ]
         }
       },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.app_settings": {
+      "name": "app_settings",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "google_login_enabled": {
+          "name": "google_login_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "github_login_enabled": {
+          "name": "github_login_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "password_login_enabled": {
+          "name": "password_login_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -908,14 +1200,28 @@
     }
   },
   "enums": {
+    "public.color_scale": {
+      "name": "color_scale",
+      "schema": "public",
+      "values": [
+        "green",
+        "blue",
+        "orange",
+        "purple",
+        "rose",
+        "fire",
+        "custom"
+      ]
+    },
     "public.habit_type": {
       "name": "habit_type",
       "schema": "public",
       "values": [
-        "simple",
+        "count",
         "complex",
         "negative",
-        "timed"
+        "timed",
+        "check"
       ]
     }
   },

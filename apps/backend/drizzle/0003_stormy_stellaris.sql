@@ -1,1 +1,0 @@
-ALTER TABLE "habits" RENAME COLUMN "color_palette" TO "color_stops";--> statement-breakpoint

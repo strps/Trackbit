@@ -5,127 +5,15 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1766602683867,
-      "tag": "0000_real_molecule_man",
+      "when": 1778170190458,
+      "tag": "0000_base",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1767055923785,
-      "tag": "0001_acoustic_squadron_sinister",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1767055923799,
-      "tag": "0002_seed_muscle_groups",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1767148983680,
-      "tag": "0002_great_genesis",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1767289236416,
-      "tag": "0003_stormy_stellaris",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1767307955173,
-      "tag": "0004_hot_bromley",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1768086525662,
-      "tag": "0005_panoramic_captain_midlands",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1768427830650,
-      "tag": "0006_lame_lyja",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1769124786171,
-      "tag": "0007_brainy_nightmare",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1771860691838,
-      "tag": "0008_odd_nicolaos",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "7",
-      "when": 1771951703156,
-      "tag": "0009_previous_adam_destine",
-      "breakpoints": true
-    },
-    {
-      "idx": 10,
-      "version": "7",
-      "when": 1771951703160,
-      "tag": "0010_loving_abomination",
-      "breakpoints": true
-    },
-    {
-      "idx": 11,
-      "version": "7",
-      "when": 1771951703164,
-      "tag": "0011_seeding_muscle_groups",
-      "breakpoints": true
-    },
-    {
-      "idx": 12,
-      "version": "7",
-      "when": 1776278400000,
-      "tag": "0012_add_app_settings",
-      "breakpoints": true
-    },
-    {
-      "idx": 13,
-      "version": "7",
-      "when": 1777853967861,
-      "tag": "0013_cultured_otto_octavius",
-      "breakpoints": true
-    },
-    {
-      "idx": 14,
-      "version": "7",
-      "when": 1777999925253,
-      "tag": "0014_steep_vapor",
-      "breakpoints": true
-    },
-    {
-      "idx": 15,
-      "version": "7",
-      "when": 1778015951865,
-      "tag": "0015_unit_system",
-      "breakpoints": true
-    },
-    {
-      "idx": 16,
-      "version": "7",
-      "when": 1778110388627,
-      "tag": "0016_slippery_blur",
+      "when": 1778170437941,
+      "tag": "0001_internationalization",
       "breakpoints": true
     }
   ]

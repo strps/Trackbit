@@ -1,1 +1,0 @@
-ALTER TABLE "exercise_performances" ADD COLUMN "rpe" integer;
