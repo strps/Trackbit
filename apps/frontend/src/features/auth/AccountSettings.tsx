@@ -8,6 +8,7 @@ import { Loader2, LogOut, User } from "lucide-react";
 import { ChangeEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -17,6 +18,7 @@ const AccountSettings = () => {
     const { t: tNav } = useTranslation('nav');
     const { data: session, isPending } = useSession();
     const { unitSystem, setUnitSystem } = useUnitSystem();
+    const queryClient = useQueryClient();
 
     const [activeTab, setActiveTab] = useState('general');
     const [isLoading, setIsLoading] = useState(false);
@@ -27,16 +29,20 @@ const AccountSettings = () => {
 
     const locale = i18n.language.startsWith('es') ? 'es' : 'en';
 
-    const handleLocaleChange = (next: string) => {
+    const handleLocaleChange = async (next: string) => {
         i18n.changeLanguage(next);
         if (session?.user) {
-            fetch(`${API_URL}/api/me/preferences`, {
+            await fetch(`${API_URL}/me/preferences`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({ locale: next }),
             });
         }
+        await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ['exercises'] }),
+            queryClient.invalidateQueries({ queryKey: ['muscle-groups'] }),
+        ]);
         setMessage({ type: 'success', text: t('account.message.preferences_updated') });
     };
 
@@ -44,7 +50,7 @@ const AccountSettings = () => {
         const us = next as 'metric' | 'imperial';
         setUnitSystem(us);
         if (session?.user) {
-            fetch(`${API_URL}/api/me/preferences`, {
+            fetch(`${API_URL}/me/preferences`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -141,67 +147,64 @@ const AccountSettings = () => {
                     <div className="flex-1 space-y-6">
 
                         {activeTab === 'general' && (
-                            <div className="space-y-6">
-                                <div className="p-6 bg-card text-card-foreground rounded-lg border shadow-sm space-y-4">
-                                    <h3 className="text-lg font-medium">{t('account.preferences.heading')}</h3>
-                                    <div className="space-y-2">
-                                        <Label>{t('account.preferences.language')}</Label>
-                                        <Select value={locale} onValueChange={handleLocaleChange}>
-                                            <SelectTrigger className="w-48">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="en">{tNav('language_en')}</SelectItem>
-                                                <SelectItem value="es">{tNav('language_es')}</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                            <div className="p-6 bg-card text-card-foreground rounded-lg border shadow-sm space-y-4">
+                                <h3 className="text-lg font-medium">{t('account.profile.heading')}</h3>
+                                <div className="flex items-center gap-4">
+                                    <div className="w-20 h-20 rounded-full bg-muted overflow-hidden">
+                                        {profileData.image ? <img src={profileData.image} alt="Avatar" /> : <User className="w-full h-full p-4 text-muted-foreground" />}
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label>{t('account.preferences.units')}</Label>
-                                        <Select value={unitSystem} onValueChange={handleUnitSystemChange}>
-                                            <SelectTrigger className="w-48">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="metric">{tNav('unit_metric')}</SelectItem>
-                                                <SelectItem value="imperial">{tNav('unit_imperial')}</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                                    <div className="flex-1 space-y-2">
+                                        <Label>{t('account.profile.image_url')}</Label>
+                                        <Input
+                                            value={profileData.image}
+                                            onChange={(e: ChangeEvent<HTMLInputElement>) => setProfileData({ ...profileData, image: e.target.value })}
+                                            placeholder="https://..." />
                                     </div>
                                 </div>
-                                <div className="p-6 bg-card text-card-foreground rounded-lg border shadow-sm space-y-4">
-                                    <h3 className="text-lg font-medium">{t('account.profile.heading')}</h3>
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-20 h-20 rounded-full bg-muted overflow-hidden">
-                                            {profileData.image ? <img src={profileData.image} alt="Avatar" /> : <User className="w-full h-full p-4 text-muted-foreground" />}
-                                        </div>
-                                        <div className="flex-1 space-y-2">
-                                            <Label>{t('account.profile.image_url')}</Label>
-                                            <Input
-                                                value={profileData.image}
-                                                onChange={(e: ChangeEvent<HTMLInputElement>) => setProfileData({ ...profileData, image: e.target.value })}
-                                                placeholder="https://..." />
-                                        </div>
-                                    </div>
+                                <div className="space-y-2">
+                                    <Label>{t('account.profile.name')}</Label>
+                                    <Input
+                                        type="text"
+                                        value={profileData.name}
+                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setProfileData({ ...profileData, name: e.target.value })} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>{t('account.profile.email')}</Label>
+                                    <Input value={session?.user?.email} disabled className="opacity-50 cursor-not-allowed" />
+                                </div>
+                                <div className="flex justify-end">
+                                    <Button onClick={handleUpdateProfile}>
+                                        {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                                        {t('account.profile.save')}
+                                    </Button>
+                                </div>
 
-                                    <div className="space-y-2">
-                                        <Label>{t('account.profile.name')}</Label>
-                                        <Input
-                                            type="text"
-                                            value={profileData.name}
-                                            onChange={(e: ChangeEvent<HTMLInputElement>) => setProfileData({ ...profileData, name: e.target.value })} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>{t('account.profile.email')}</Label>
-                                        <Input value={session?.user?.email} disabled className="opacity-50 cursor-not-allowed" />
-                                    </div>
+                                <hr className="border-border" />
 
-                                    <div className="flex justify-end">
-                                        <Button onClick={handleUpdateProfile}>
-                                            {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                                            {t('account.profile.save')}
-                                        </Button>
-                                    </div>
+                                <h3 className="text-lg font-medium">{t('account.preferences.heading')}</h3>
+                                <div className="space-y-2">
+                                    <Label>{t('account.preferences.language')}</Label>
+                                    <Select value={locale} onValueChange={handleLocaleChange}>
+                                        <SelectTrigger className="w-48">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="en">{tNav('language_en')}</SelectItem>
+                                            <SelectItem value="es">{tNav('language_es')}</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>{t('account.preferences.units')}</Label>
+                                    <Select value={unitSystem} onValueChange={handleUnitSystemChange}>
+                                        <SelectTrigger className="w-48">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="metric">{tNav('unit_metric')}</SelectItem>
+                                            <SelectItem value="imperial">{tNav('unit_imperial')}</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                             </div>
                         )}

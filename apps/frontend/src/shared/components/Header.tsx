@@ -1,12 +1,21 @@
+import { DropdownMenu, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuContent, DropdownMenuLabel } from "./ui/dropdown-menu";
 import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import { NavLink } from "react-router-dom";
-
 import {
     Flame, Menu, X, Sun, Moon,
     User, Settings, LogOut,
-    LayoutDashboard, ListTodo, BarChart3, Dumbbell, CreditCard, ChevronDown, Bug, Globe, Scale
+    LayoutDashboard, ListTodo, BarChart3, Dumbbell, CreditCard, ChevronDown, Bug, Scale
 } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { useNavigate } from "react-router-dom";
+import { useTheme } from "@/providers/theme-provider";
+import { useUnitSystem } from "@/providers/unit-system-provider";
+import { signOut, useSession } from "@/shared/lib/auth-client";
+import { useTranslation } from 'react-i18next';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
+import { LogoNameLeft } from "./Logo";
+import { FeedbackModal } from "./FeedbackModal";
 
 interface NavItem {
     titleKey: string;
@@ -78,16 +87,7 @@ export const AppHeader: React.FC = () => {
 
 export default AppHeader;
 
-import { DropdownMenu, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuContent, DropdownMenuLabel } from "./ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { useNavigate } from "react-router-dom";
-import { useTheme } from "@/providers/theme-provider";
-import { useUnitSystem } from "@/providers/unit-system-provider";
-import { signOut, useSession } from "@/shared/lib/auth-client";
-import { useTranslation } from 'react-i18next';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
-import { LogoNameLeft } from "./Logo";
-import { FeedbackModal } from "./FeedbackModal";
+
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -123,29 +123,15 @@ const UserNav = ({ onOpenFeedback }: { onOpenFeedback: () => void }) => {
     const navigate = useNavigate();
     const { theme, setTheme } = useTheme();
     const { unitSystem, setUnitSystem } = useUnitSystem();
-    const { i18n, t } = useTranslation('nav');
+    const { t } = useTranslation('nav');
 
     const user = data?.user;
     const themes = ["light", "dark", "system"];
-    const locale = i18n.language.startsWith('es') ? 'es' : 'en';
 
     const onThemeChange = () => {
         const selectedThemeIndex = themes.indexOf(theme);
         const nextTheme = themes[(selectedThemeIndex + 1) % themes.length];
         setTheme(nextTheme as "light" | "dark" | "system");
-    };
-
-    const handleLocaleChange = () => {
-        const next = locale === 'en' ? 'es' : 'en';
-        i18n.changeLanguage(next);
-        if (user) {
-            fetch(`${API_URL}/api/me/preferences`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ locale: next }),
-            });
-        }
     };
 
     const handleUnitSystemChange = () => {
@@ -181,8 +167,6 @@ const UserNav = ({ onOpenFeedback }: { onOpenFeedback: () => void }) => {
     const initials = user.name
         ? user.name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase()
         : "U";
-
-    const langLabel = locale === 'en' ? t('language_en') : t('language_es');
 
     return (
         <DropdownMenu>
@@ -220,11 +204,6 @@ const UserNav = ({ onOpenFeedback }: { onOpenFeedback: () => void }) => {
                         <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                     </div>
                     <span className="capitalize">{t('theme', { theme })}</span>
-                </DropdownMenuItem>
-
-                <DropdownMenuItem onClick={handleLocaleChange}>
-                    <Globe className="mr-2 h-4 w-4" />
-                    <span>{t('language_label', { lang: langLabel })}</span>
                 </DropdownMenuItem>
 
                 <DropdownMenuItem onClick={handleUnitSystemChange}>
