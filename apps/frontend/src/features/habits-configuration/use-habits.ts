@@ -245,6 +245,7 @@ export function useHabits() {
     habits: habitsQuery.data ?? [],
     isLoading: habitsQuery.isLoading,
     isError: habitsQuery.isError,
+    isSaving: createMutation.isPending || updateMutation.isPending,
     createHabit: createMutation.mutate,
     deleteHabit: deleteMutation.mutate,
     updateHabit: updateMutation.mutate,

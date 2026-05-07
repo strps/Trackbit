@@ -128,7 +128,7 @@ export const HabitConfigForm = ({
     onCancel
 }: HabitConfigProps) => {
     const { t } = useTranslation('habits');
-    const { createHabit, updateHabit } = useHabits();
+    const { createHabit, updateHabit, isSaving } = useHabits();
 
     const form = useForm<z.infer<typeof formSchema>>({
         mode: "onSubmit",
@@ -152,10 +152,11 @@ export const HabitConfigForm = ({
     };
 
     const onSubmit = (data: z.infer<typeof formSchema>) => {
+        const options = { onSuccess: handleCancel };
         if (!data.id)
-            createHabit(data as Habit);
+            createHabit(data as Habit, options);
         else
-            updateHabit(data as Habit);
+            updateHabit(data as Habit, options);
     };
 
     const habitType = useWatch({ control: form.control, name: 'type' });
@@ -306,7 +307,7 @@ export const HabitConfigForm = ({
                     </AlertDialog>
                 )}
                 <Button type="button" variant="outline" onClick={handleCancel}>{t('form.cancel')}</Button>
-                <Button type="submit" className="flex items-center gap-2">
+                <Button type="submit" disabled={isSaving} className="flex items-center gap-2">
                     <Save className="w-4 h-4" /> {t('form.save')}
                 </Button>
             </div>
