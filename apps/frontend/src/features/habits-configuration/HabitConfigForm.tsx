@@ -27,6 +27,9 @@ import { Field } from "@/shared/components/Fields/FieldBase";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
+import { ApiError } from "@/shared/lib/api-error";
+import { Lock } from "lucide-react";
 
 const TRACKING_TYPE_IDS = [
     { id: 'count', icon: CheckCircle },
@@ -128,7 +131,35 @@ export const HabitConfigForm = ({
     onCancel
 }: HabitConfigProps) => {
     const { t } = useTranslation('habits');
+    const { t: tErrors } = useTranslation('errors');
     const { createHabit, updateHabit, isSaving } = useHabits();
+    const isFrozen = !!habit?.frozen;
+
+    const handleMutationError = (err: unknown) => {
+        if (err instanceof ApiError) {
+            switch (err.code) {
+                case 'habit_limit_reached':
+                    toast.error(tErrors('limits.habit_limit_reached_title'), {
+                        description: tErrors('limits.habit_limit_reached_body', { maxHabits: err.payload.maxHabits ?? 0 }),
+                    });
+                    return;
+                case 'habit_type_not_allowed':
+                    toast.error(tErrors('limits.habit_type_not_allowed_title'), {
+                        description: tErrors('limits.habit_type_not_allowed_body', {
+                            type: form.getValues('type') ?? '',
+                            allowed: (err.payload.allowedHabitTypes ?? []).join(', '),
+                        }),
+                    });
+                    return;
+                case 'habit_frozen':
+                    toast.error(tErrors('limits.habit_frozen_title'), {
+                        description: tErrors('limits.habit_frozen_body'),
+                    });
+                    return;
+            }
+        }
+        toast.error(tErrors('generic_title'), { description: tErrors('generic_message') });
+    };
 
     const form = useForm<z.infer<typeof formSchema>>({
         mode: "onSubmit",
@@ -152,7 +183,7 @@ export const HabitConfigForm = ({
     };
 
     const onSubmit = (data: z.infer<typeof formSchema>) => {
-        const options = { onSuccess: handleCancel };
+        const options = { onSuccess: handleCancel, onError: handleMutationError };
         if (!data.id)
             createHabit(data as Habit, options);
         else
@@ -164,6 +195,16 @@ export const HabitConfigForm = ({
     return (
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-y-auto">
             <div className="p-6 space-y-8 flex-1">
+
+                {isFrozen && (
+                    <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/20 p-3">
+                        <Lock className="w-4 h-4 mt-0.5 shrink-0" />
+                        <div className="text-sm">
+                            <div className="font-semibold">{tErrors('limits.habit_frozen_title')}</div>
+                            <div className="text-muted-foreground">{tErrors('limits.habit_frozen_body')}</div>
+                        </div>
+                    </div>
+                )}
 
                 <TextField
                     name="name"
@@ -307,7 +348,7 @@ export const HabitConfigForm = ({
                     </AlertDialog>
                 )}
                 <Button type="button" variant="outline" onClick={handleCancel}>{t('form.cancel')}</Button>
-                <Button type="submit" disabled={isSaving} className="flex items-center gap-2">
+                <Button type="submit" disabled={isSaving || isFrozen} className="flex items-center gap-2">
                     <Save className="w-4 h-4" /> {t('form.save')}
                 </Button>
             </div>

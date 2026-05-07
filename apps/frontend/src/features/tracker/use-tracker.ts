@@ -3,6 +3,22 @@ import { create } from 'zustand';
 import { Habit, ExerciseSession, ExerciseLog, ExercisePerformance } from "@trackbit/types";
 import { DateTime } from 'luxon';
 import { GRADIENT_PRESETS } from '@/features/habits-configuration/ColorThemeField';
+import { ApiError, parseApiError } from '@/shared/lib/api-error';
+import { toast } from 'sonner';
+import i18next from 'i18next';
+
+const toastFrozenError = (err: unknown) => {
+    if (!(err instanceof ApiError)) return;
+    if (err.code === 'habit_frozen') {
+        toast.error(i18next.t('errors:limits.habit_frozen_title'), {
+            description: i18next.t('errors:limits.habit_frozen_body'),
+        });
+    } else if (err.code === 'custom_exercise_frozen') {
+        toast.error(i18next.t('errors:limits.custom_exercise_frozen_title'), {
+            description: i18next.t('errors:limits.custom_exercise_frozen_body'),
+        });
+    }
+};
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -154,6 +170,7 @@ export function useTracker() {
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
             });
+            if (!res.ok) throw await parseApiError(res, 'Failed to log habit');
             return res.json();
         },
         onMutate: async (newItem) => {
@@ -184,10 +201,11 @@ export function useTracker() {
             });
             return { previousData };
         },
-        onError: (_err, _variables, context) => {
+        onError: (err, _variables, context) => {
             if (context?.previousData) {
                 queryClient.setQueryData(['habit-logs'], context.previousData);
             }
+            toastFrozenError(err);
         },
     });
 

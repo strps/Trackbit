@@ -11,5 +11,18 @@
   "go_back": "Volver",
   "go_to_tracker": "Ir al seguimiento",
   "send_crash_report": "Enviar informe de error",
-  "reload": "Recargar aplicación"
+  "reload": "Recargar aplicación",
+  "limits.habit_frozen_title": "Hábito congelado",
+  "limits.habit_frozen_body": "Este hábito es de solo lectura porque se redujeron los límites de tu rol. Elimínalo o elimina otro para liberar un espacio.",
+  "limits.custom_exercise_frozen_title": "Ejercicio congelado",
+  "limits.custom_exercise_frozen_body": "Este ejercicio personalizado es de solo lectura porque se redujeron los límites de tu rol. Elimínalo o elimina otro para liberar un espacio.",
+  "limits.habit_limit_reached_title": "Límite de hábitos alcanzado",
+  "limits.habit_limit_reached_body": "Has alcanzado el máximo de {maxHabits} hábitos permitidos para tu rol.",
+  "limits.custom_exercise_limit_reached_title": "Límite de ejercicios alcanzado",
+  "limits.custom_exercise_limit_reached_body": "Has alcanzado el máximo de {maxCustomExercises} ejercicios personalizados permitidos para tu rol.",
+  "limits.habit_type_not_allowed_title": "Tipo de hábito no permitido",
+  "limits.habit_type_not_allowed_body": "El tipo de hábito \"{type}\" no está permitido para tu rol. Tipos permitidos: {allowed}.",
+  "limits.frozen_badge": "Congelado",
+  "limits.frozen_tooltip": "Congelado — elimínalo para liberar un espacio",
+  "limits.at_cap_tooltip": "Has alcanzado el límite de tu rol"
 }

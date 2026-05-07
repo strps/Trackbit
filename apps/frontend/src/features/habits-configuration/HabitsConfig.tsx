@@ -3,6 +3,7 @@ import { Settings, X } from 'lucide-react';
 import { useHabits } from './use-habits';
 import { HabitList } from './HabitsList';
 import { HabitConfigForm } from './HabitConfigForm';
+import { useLimits } from '@/hooks/use-limits';
 import { Habit } from "@trackbit/types";
 import { Button } from "@/shared/components/ui/button";
 import {
@@ -16,11 +17,13 @@ import {
 
 const HabitConfig = () => {
     const { habits, isLoading, createHabit, updateHabit, deleteHabit, reorderHabits } = useHabits();
+    const { atHabitCap, effective } = useLimits();
 
     const [isEditing, setIsEditing] = useState(false);
     const [activeHabitId, setActiveHabitId] = useState<number | null | undefined>(undefined);
 
     const startNewHabit = () => {
+        if (atHabitCap) return;
         setActiveHabitId(null);
         setIsEditing(true);
     };
@@ -65,6 +68,8 @@ const HabitConfig = () => {
                     handleDelete={handleDelete}
                     startNewHabit={startNewHabit}
                     onReorder={reorderHabits}
+                    atHabitCap={atHabitCap}
+                    maxHabits={effective?.maxHabits ?? null}
                 />
 
                 <Drawer direction="right" open={isEditing} onOpenChange={(open) => !open && cancelEdit()}>

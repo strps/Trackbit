@@ -2,6 +2,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Habit } from "@trackbit/types"
 import { GRADIENT_PRESETS } from '@/features/habits-configuration/ColorThemeField';
 import type { HabitWithLogs } from '@/features/tracker/use-tracker';
+import { ApiError, parseApiError } from '@/shared/lib/api-error';
+import { toast } from 'sonner';
+import i18next from 'i18next';
 
 const resolveColorStops = (habit: Habit | Omit<Habit, 'id' | 'createdAt'>) =>
   habit.colorTheme === 'custom'
@@ -17,7 +20,7 @@ const fetchHabits = async (): Promise<Habit[]> => {
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include' // Important for Better-Auth cookies
   });
-  if (!res.ok) throw new Error('Failed to fetch habits');
+  if (!res.ok) throw await parseApiError(res, 'Failed to fetch habits');
   return res.json();
 };
 
@@ -28,7 +31,7 @@ const createHabit = async (newHabit: Omit<Habit, 'id' | 'createdAt'>) => {
     credentials: 'include',
     body: JSON.stringify(newHabit),
   });
-  if (!res.ok) throw new Error('Failed to create habit');
+  if (!res.ok) throw await parseApiError(res, 'Failed to create habit');
   return res.json();
 };
 
@@ -37,7 +40,7 @@ const deleteHabit = async (id: number) => {
     method: 'DELETE',
     credentials: 'include',
   });
-  if (!res.ok) throw new Error('Failed to delete habit');
+  if (!res.ok) throw await parseApiError(res, 'Failed to delete habit');
   return res.json();
 };
 
@@ -48,7 +51,7 @@ const updateHabit = async (habit: Habit) => {
     credentials: 'include',
     body: JSON.stringify(habit),
   });
-  if (!res.ok) throw new Error('Failed to update habit');
+  if (!res.ok) throw await parseApiError(res, 'Failed to update habit');
   return res.json();
 };
 
@@ -65,7 +68,7 @@ const reorderHabits = async (items: ReorderItem[]) => {
     credentials: 'include',
     body: JSON.stringify({ items }),
   });
-  if (!res.ok) throw new Error('Failed to reorder habits');
+  if (!res.ok) throw await parseApiError(res, 'Failed to reorder habits');
   return res.json();
 };
 
@@ -116,6 +119,7 @@ export function useHabits() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['habits'] });
+      queryClient.invalidateQueries({ queryKey: ['me', 'limits'] });
     },
   });
 
@@ -151,6 +155,7 @@ export function useHabits() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['habits'] });
+      queryClient.invalidateQueries({ queryKey: ['me', 'limits'] });
     },
   });
 
@@ -191,6 +196,7 @@ export function useHabits() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['habits'] });
+      queryClient.invalidateQueries({ queryKey: ['me', 'limits'] });
     },
   });
 
@@ -228,16 +234,22 @@ export function useHabits() {
 
       return { previousHabits, previousLogs };
     },
-    onError: (_err, _vars, context) => {
+    onError: (err, _vars, context) => {
       if (context?.previousHabits) {
         queryClient.setQueryData(['habits'], context.previousHabits);
       }
       if (context?.previousLogs) {
         queryClient.setQueryData(['habit-logs'], context.previousLogs);
       }
+      if (err instanceof ApiError && err.code === 'habit_frozen') {
+        toast.error(i18next.t('errors:limits.habit_frozen_title'), {
+          description: i18next.t('errors:limits.habit_frozen_body'),
+        });
+      }
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['habits'] });
+      queryClient.invalidateQueries({ queryKey: ['me', 'limits'] });
     },
   });
 

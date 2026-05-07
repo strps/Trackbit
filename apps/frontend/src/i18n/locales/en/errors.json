@@ -11,5 +11,18 @@
   "go_back": "Go Back",
   "go_to_tracker": "Go to Tracker",
   "send_crash_report": "Send Crash Report",
-  "reload": "Reload Application"
+  "reload": "Reload Application",
+  "limits.habit_frozen_title": "Habit is frozen",
+  "limits.habit_frozen_body": "This habit is read-only because your role limits were reduced. Delete it or another to free a slot.",
+  "limits.custom_exercise_frozen_title": "Exercise is frozen",
+  "limits.custom_exercise_frozen_body": "This custom exercise is read-only because your role limits were reduced. Delete it or another to free a slot.",
+  "limits.habit_limit_reached_title": "Habit limit reached",
+  "limits.habit_limit_reached_body": "You have reached the maximum of {maxHabits} habits for your role.",
+  "limits.custom_exercise_limit_reached_title": "Exercise limit reached",
+  "limits.custom_exercise_limit_reached_body": "You have reached the maximum of {maxCustomExercises} custom exercises for your role.",
+  "limits.habit_type_not_allowed_title": "Habit type not allowed",
+  "limits.habit_type_not_allowed_body": "Habit type \"{type}\" isn't allowed for your role. Allowed types: {allowed}.",
+  "limits.frozen_badge": "Frozen",
+  "limits.frozen_tooltip": "Frozen — delete to free a slot",
+  "limits.at_cap_tooltip": "You're at your role's limit"
 }

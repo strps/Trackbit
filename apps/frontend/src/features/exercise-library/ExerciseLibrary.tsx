@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import {
     Dumbbell, Search, Plus,
     Activity, User, Globe, Check,
-    Timer, Hash, Ruler, Scale, MoreVertical, Trash2, Pencil
+    Timer, Hash, Ruler, Scale, MoreVertical, Trash2, Pencil, Lock
 } from 'lucide-react';
 import { useExercises } from '../../hooks/use-exercises';
+import { useLimits } from '@/hooks/use-limits';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Badge } from '@/shared/components/ui/badge';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/shared/components/ui/tooltip';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -20,9 +22,12 @@ import {
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from '@/shared/components/ui/dropdown-menu';
+import { toast } from 'sonner';
+import { ApiError } from '@/shared/lib/api-error';
 
 const ExerciseLibrary = () => {
     const { exercises, isLoading, deleteExercise } = useExercises();
+    const { atExerciseCap, effective } = useLimits();
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState<'all' | 'custom' | 'system'>('all');
 
@@ -57,13 +62,25 @@ const ExerciseLibrary = () => {
                             Manage your database of movements and activities.
                         </p>
                     </div>
-                    <Button
-                        onClick={() => setIsFormOpen(true)}
-                        className="font-bold"
-                        size="lg"
-                    >
-                        <Plus className="w-4 h-4 mr-2" /> Add Custom Exercise
-                    </Button>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <span>
+                                <Button
+                                    onClick={() => { if (!atExerciseCap) setIsFormOpen(true); }}
+                                    disabled={atExerciseCap}
+                                    className="font-bold"
+                                    size="lg"
+                                >
+                                    <Plus className="w-4 h-4 mr-2" /> Add Custom Exercise
+                                </Button>
+                            </span>
+                        </TooltipTrigger>
+                        {atExerciseCap && (
+                            <TooltipContent>
+                                You've reached your role's limit of {effective?.maxCustomExercises ?? 0} custom exercises.
+                            </TooltipContent>
+                        )}
+                    </Tooltip>
                 </div>
 
                 {/* Add Exercise Dialog */}
@@ -121,11 +138,13 @@ const ExerciseLibrary = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredExercises.map((exercise) => {
                         const config = CATEGORY_CONFIG.find(c => c.value === exercise.category) || CATEGORY_CONFIG[0];
+                        const isFrozen = !!exercise.frozen;
 
                         return (
                             <div
                                 key={exercise.id}
-                                className="p-4 bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow"
+                                className={`p-4 bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow ${isFrozen ? 'opacity-60 grayscale' : ''}`}
+                                title={isFrozen ? 'Frozen — delete to free a slot' : undefined}
                             >
                                 <div className="flex justify-between items-start mb-2">
                                     <Badge variant="secondary" className={config.color}>
@@ -134,6 +153,11 @@ const ExerciseLibrary = () => {
                                     <div className="flex items-center gap-1">
                                         {exercise.userId ? (
                                             <>
+                                                {isFrozen && (
+                                                    <Badge variant="outline" className="flex items-center gap-1">
+                                                        <Lock className="w-3 h-3" /> Frozen
+                                                    </Badge>
+                                                )}
                                                 <Badge variant="outline" className="flex items-center gap-1">
                                                     <User className="w-3 h-3" /> Mine
                                                 </Badge>
@@ -144,11 +168,13 @@ const ExerciseLibrary = () => {
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem
-                                                            onClick={() => setEditingExercise(exercise)}
-                                                        >
-                                                            <Pencil className="w-4 h-4 mr-2" /> Edit
-                                                        </DropdownMenuItem>
+                                                        {!isFrozen && (
+                                                            <DropdownMenuItem
+                                                                onClick={() => setEditingExercise(exercise)}
+                                                            >
+                                                                <Pencil className="w-4 h-4 mr-2" /> Edit
+                                                            </DropdownMenuItem>
+                                                        )}
                                                         <DropdownMenuItem
                                                             className="text-destructive focus:text-destructive"
                                                             onClick={() => deleteExercise(exercise.id)}
@@ -276,13 +302,31 @@ const CreateExerciseForm = ({ onSuccess, exercise }: ExerciseFormProps) => {
     });
 
     const handleSubmit = async (data: z.infer<typeof createExerciseSchema>) => {
-        if (isEditMode) {
-            await updateExercise({ id: exercise.id, ...data });
-        } else {
-            await createExercise(data);
+        try {
+            if (isEditMode) {
+                await updateExercise({ id: exercise.id, ...data });
+            } else {
+                await createExercise(data);
+            }
+            form.reset();
+            onSuccess();
+        } catch (err) {
+            if (err instanceof ApiError) {
+                if (err.code === 'custom_exercise_limit_reached') {
+                    toast.error('Exercise limit reached', {
+                        description: `You have reached the maximum of ${err.payload.maxCustomExercises ?? ''} custom exercises for your role.`,
+                    });
+                    return;
+                }
+                if (err.code === 'custom_exercise_frozen') {
+                    toast.error('Exercise is frozen', {
+                        description: 'This custom exercise is read-only because your role limits were reduced. Delete it or another to free a slot.',
+                    });
+                    return;
+                }
+            }
+            toast.error('Something went wrong', { description: 'An unexpected error occurred.' });
         }
-        form.reset();
-        onSuccess();
     };
 
     const options = muscleGroups.map(m => ({ value: m.id, label: m.name }));

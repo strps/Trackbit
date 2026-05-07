@@ -8,6 +8,22 @@ import {
 } from '@/features/tracker/use-tracker';
 import { useActivityTrackerStore } from '../store/activityTrackerStore';
 import { useExercises } from '@/hooks/use-exercises';
+import { ApiError, parseApiError } from '@/shared/lib/api-error';
+import { toast } from 'sonner';
+import i18next from 'i18next';
+
+const toastFrozenError = (err: unknown) => {
+    if (!(err instanceof ApiError)) return;
+    if (err.code === 'habit_frozen') {
+        toast.error(i18next.t('errors:limits.habit_frozen_title'), {
+            description: i18next.t('errors:limits.habit_frozen_body'),
+        });
+    } else if (err.code === 'custom_exercise_frozen') {
+        toast.error(i18next.t('errors:limits.custom_exercise_frozen_title'), {
+            description: i18next.t('errors:limits.custom_exercise_frozen_body'),
+        });
+    }
+};
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -116,10 +132,11 @@ export function useActivityTracker() {
                 credentials: 'include',
                 body: JSON.stringify({ dayLogId }),
             });
-            if (!res.ok) throw new Error('Failed to create session');
+            if (!res.ok) throw await parseApiError(res, 'Failed to create session');
             return res.json();
         },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['habit-logs'] }),
+        onError: toastFrozenError,
     });
 
     // -------------------------------------------------------------------------
@@ -164,7 +181,7 @@ export function useActivityTracker() {
                 credentials: 'include',
                 body: JSON.stringify(payload),
             });
-            if (!res.ok) throw new Error('Failed to add exercise log');
+            if (!res.ok) throw await parseApiError(res, 'Failed to add exercise log');
             return res.json();
         },
         onMutate: async (payload) => {
@@ -216,8 +233,9 @@ export function useActivityTracker() {
                 }
             });
         },
-        onError: (_err, _vars, context) => {
+        onError: (err, _vars, context) => {
             if (context?.previousData) queryClient.setQueryData(['habit-logs'], context.previousData);
+            toastFrozenError(err);
         },
     });
 

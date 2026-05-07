@@ -18,6 +18,7 @@ export interface Habit {
     dailyGoal: number;
     order: number;
     createdAt: string | null;
+    frozen?: boolean;
 }
 
 export interface Exercise {
@@ -29,6 +30,7 @@ export interface Exercise {
     defaultWeightUnit: string | null;
     defaultDistanceUnit: string | null;
     createdAt: string | null;
+    frozen?: boolean;
 }
 
 export interface ExerciseSession {

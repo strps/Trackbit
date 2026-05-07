@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Exercise } from '@trackbit/types';
+import { parseApiError } from '@/shared/lib/api-error';
 
 const API_URL = `${import.meta.env.VITE_API_URL}/exercise-info`;
 
@@ -17,13 +18,13 @@ export interface ExerciseWithLastPerformance extends Exercise {
 
 const fetchExercises = async (): Promise<ExerciseWithLastPerformance[]> => {
     const res = await fetch(`${API_URL}/exercises`, { credentials: 'include' });
-    if (!res.ok) throw new Error('Failed to fetch exercises');
+    if (!res.ok) throw await parseApiError(res, 'Failed to fetch exercises');
     return res.json();
 };
 
 const fetchMuscleGroups = async (): Promise<{ name: string; id: number }[]> => {
     const res = await fetch(`${API_URL}/muscle-groups`, { credentials: 'include' });
-    if (!res.ok) throw new Error('Failed to fetch muscle groups');
+    if (!res.ok) throw await parseApiError(res, 'Failed to fetch muscle groups');
     return res.json();
 };
 
@@ -34,7 +35,7 @@ const createExercise = async (newExercise: { name: string; category: string; mus
         credentials: 'include',
         body: JSON.stringify(newExercise),
     });
-    if (!res.ok) throw new Error('Failed to create exercise');
+    if (!res.ok) throw await parseApiError(res, 'Failed to create exercise');
     return res.json();
 };
 
@@ -43,7 +44,7 @@ const deleteExercise = async (id: number) => {
         method: 'DELETE',
         credentials: 'include',
     });
-    if (!res.ok) throw new Error('Failed to delete exercise');
+    if (!res.ok) throw await parseApiError(res, 'Failed to delete exercise');
     return res.json();
 };
 
@@ -54,7 +55,7 @@ const updateExercise = async ({ id, ...data }: { id: number; name: string; categ
         credentials: 'include',
         body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error('Failed to update exercise');
+    if (!res.ok) throw await parseApiError(res, 'Failed to update exercise');
     return res.json();
 };
 
@@ -73,12 +74,18 @@ export function useExercises() {
 
     const createMutation = useMutation({
         mutationFn: createExercise,
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['exercises'] }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['exercises'] });
+            queryClient.invalidateQueries({ queryKey: ['me', 'limits'] });
+        },
     });
 
     const deleteMutation = useMutation({
         mutationFn: deleteExercise,
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['exercises'] }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['exercises'] });
+            queryClient.invalidateQueries({ queryKey: ['me', 'limits'] });
+        },
     });
 
     const updateMutation = useMutation({

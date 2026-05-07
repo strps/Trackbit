@@ -1,12 +1,15 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z, type ZodError } from 'zod'
-import { eq } from 'drizzle-orm'
+import { eq, count } from 'drizzle-orm'
 import db from '../../db/db.js'
 import { user } from '../../db/schema/app/user.js'
+import { habits } from '../../db/schema/app/habits.js'
+import { exercises } from '../../db/schema/app/exercises.js'
 import { requireAuth } from '../../middleware/auth.js'
 import { localeMiddleware } from '../../middleware/locale.js'
 import { formatZodError } from '../../lib/utils.js'
+import { getEffectiveLimits } from '../../lib/app-limits.js'
 
 const SUPPORTED_LOCALES = ['en', 'es'] as const
 const SUPPORTED_UNIT_SYSTEMS = ['metric', 'imperial'] as const
@@ -50,6 +53,29 @@ app.patch('/preferences', zValidator('json', preferencesSchema, (result, c) => {
         .where(eq(user.id, sessionUser.id))
 
     return c.body(null, 204)
+})
+
+app.get('/limits', async (c) => {
+    const sessionUser = c.get('user')
+    const effective = await getEffectiveLimits(sessionUser.role)
+
+    const [{ value: habitsCount }] = await db
+        .select({ value: count() })
+        .from(habits)
+        .where(eq(habits.userId, sessionUser.id))
+
+    const [{ value: customExercisesCount }] = await db
+        .select({ value: count() })
+        .from(exercises)
+        .where(eq(exercises.userId, sessionUser.id))
+
+    return c.json({
+        effective,
+        counts: {
+            habits: habitsCount,
+            customExercises: customExercisesCount,
+        },
+    })
 })
 
 export default app

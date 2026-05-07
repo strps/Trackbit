@@ -1,10 +1,11 @@
-import { Plus, Pencil, ShieldAlert } from "lucide-react"
+import { Plus, Pencil, ShieldAlert, Lock } from "lucide-react"
 import { ICONS } from "./IconField";
 import { GRADIENT_PRESETS } from "./ColorThemeField";
 import { mapValueToColor } from "@/shared/utils/colorUtils";
 import { Badge } from "@/shared/components/ui/badge";
 import { BigButton } from "@/shared/components/BigButton";
 import { Button } from "@/shared/components/ui/button";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/shared/components/ui/tooltip";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import { toast } from "sonner";
 import type { Habit } from "@trackbit/types";
@@ -23,6 +24,8 @@ interface HabitListProps {
     handleDelete: (id: number) => void;
     startNewHabit: () => void;
     onReorder: (items: { id: number; order: number; isAntiHabit: boolean }[]) => void;
+    atHabitCap?: boolean;
+    maxHabits?: number | null;
 }
 
 const renderIcon = (iconId: string, className = "w-5 h-5") => {
@@ -31,8 +34,9 @@ const renderIcon = (iconId: string, className = "w-5 h-5") => {
     return IconComponent ? <IconComponent className={className} /> : null;
 };
 
-export const HabitList = ({ habits, activeHabitId, editHabit, handleDelete, startNewHabit, onReorder }: HabitListProps) => {
+export const HabitList = ({ habits, activeHabitId, editHabit, startNewHabit, onReorder, atHabitCap, maxHabits }: HabitListProps) => {
     const { t } = useTranslation('habits');
+    const { t: tErrors } = useTranslation('errors');
 
     const positiveHabits = habits
         .filter(h => !h.isAntiHabit)
@@ -94,55 +98,79 @@ export const HabitList = ({ habits, activeHabitId, editHabit, handleDelete, star
         return t('list.badge.count');
     };
 
-    const renderHabitCard = (habit: Habit, index: number) => (
-        <Draggable draggableId={String(habit.id)} index={index} key={habit.id}>
-            {(provided, snapshot) => (
-                <div
-                    ref={provided.innerRef}
-                    {...provided.draggableProps}
-                    {...provided.dragHandleProps}
-                    className="mb-3"
-                >
-                    <BigButton
-                        isSelected={activeHabitId === habit.id}
-                        className={`w-full cursor-grab active:cursor-grabbing ${snapshot.isDragging ? 'shadow-xl ring-2 ring-primary/50' : ''}`}
+    const renderHabitCard = (habit: Habit, index: number) => {
+        const isFrozen = !!habit.frozen;
+        return (
+            <Draggable draggableId={String(habit.id)} index={index} key={habit.id} isDragDisabled={isFrozen}>
+                {(provided, snapshot) => (
+                    <div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        {...provided.dragHandleProps}
+                        className="mb-3"
                     >
-                        <div className="flex items-center gap-4 flex-1 relative z-10">
-                            <div
-                                className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm shrink-0"
-                                style={{ backgroundColor: getColorAtOne(habit) }}
-                            >
-                                {renderIcon(habit.icon, "w-6 h-6")}
-                            </div>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <div>
+                                    <BigButton
+                                        isSelected={activeHabitId === habit.id}
+                                        className={`w-full ${isFrozen ? 'cursor-default opacity-60 grayscale' : 'cursor-grab active:cursor-grabbing'} ${snapshot.isDragging ? 'shadow-xl ring-2 ring-primary/50' : ''}`}
+                                    >
+                                        <div className="flex items-center gap-4 flex-1 relative z-10">
+                                            <div
+                                                className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm shrink-0 relative"
+                                                style={{ backgroundColor: getColorAtOne(habit) }}
+                                            >
+                                                {renderIcon(habit.icon, "w-6 h-6")}
+                                                {isFrozen && (
+                                                    <span className="absolute -top-1 -right-1 bg-background border rounded-full p-0.5">
+                                                        <Lock className="w-3 h-3" />
+                                                    </span>
+                                                )}
+                                            </div>
 
-                            <div className="flex-1 min-w-0">
-                                <h3 className="font-bold text-lg truncate">{habit.name}</h3>
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                    <Badge variant="secondary">{badgeLabel(habit.type)}</Badge>
-                                    <span>•</span>
-                                    <span>{habit.isAntiHabit ? t('list.daily_limit') : t('list.daily_goal')} {habit.dailyGoal}{t('list.per_day')}</span>
-                                    <span>•</span>
-                                    <span>{habit.isAntiHabit ? t('list.weekly_limit') : t('list.weekly_goal')} {habit.weeklyGoal}{t('list.per_week')}</span>
+                                            <div className="flex-1 min-w-0">
+                                                <h3 className="font-bold text-lg truncate flex items-center gap-2">
+                                                    {habit.name}
+                                                    {isFrozen && (
+                                                        <Badge variant="outline" className="text-xs">{tErrors('limits.frozen_badge')}</Badge>
+                                                    )}
+                                                </h3>
+                                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                    <Badge variant="secondary">{badgeLabel(habit.type)}</Badge>
+                                                    <span>•</span>
+                                                    <span>{habit.isAntiHabit ? t('list.daily_limit') : t('list.daily_goal')} {habit.dailyGoal}{t('list.per_day')}</span>
+                                                    <span>•</span>
+                                                    <span>{habit.isAntiHabit ? t('list.weekly_limit') : t('list.weekly_goal')} {habit.weeklyGoal}{t('list.per_week')}</span>
+                                                </div>
+                                            </div>
+
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="shrink-0 self-center"
+                                                disabled={isFrozen}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (isFrozen) return;
+                                                    editHabit(habit);
+                                                }}
+                                            >
+                                                <Pencil className="w-4 h-4" />
+                                            </Button>
+                                        </div>
+                                    </BigButton>
                                 </div>
-                            </div>
-
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="shrink-0 self-center"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    editHabit(habit);
-                                }}
-                            >
-                                <Pencil className="w-4 h-4" />
-                            </Button>
-                        </div>
-                    </BigButton>
-                </div>
-            )}
-        </Draggable>
-    );
+                            </TooltipTrigger>
+                            {isFrozen && (
+                                <TooltipContent>{tErrors('limits.frozen_tooltip')}</TooltipContent>
+                            )}
+                        </Tooltip>
+                    </div>
+                )}
+            </Draggable>
+        );
+    };
 
     return (
         <div className="lg:col-span-12 space-y-6">
@@ -155,14 +183,26 @@ export const HabitList = ({ habits, activeHabitId, editHabit, handleDelete, star
                             <span className="text-xs font-medium px-2 py-1 bg-muted rounded-full text-muted-foreground">
                                 {positiveHabits.length}
                             </span>
-                            <Button
-                                onClick={startNewHabit}
-                                size="sm"
-                                className="flex items-center gap-1"
-                            >
-                                <Plus className="w-4 h-4" />
-                                {t('list.add')}
-                            </Button>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <span>
+                                        <Button
+                                            onClick={startNewHabit}
+                                            size="sm"
+                                            disabled={!!atHabitCap}
+                                            className="flex items-center gap-1"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                            {t('list.add')}
+                                        </Button>
+                                    </span>
+                                </TooltipTrigger>
+                                {atHabitCap && (
+                                    <TooltipContent>
+                                        {tErrors('limits.habit_limit_reached_body', { maxHabits: maxHabits ?? 0 })}
+                                    </TooltipContent>
+                                )}
+                            </Tooltip>
                         </div>
                     </div>
 
