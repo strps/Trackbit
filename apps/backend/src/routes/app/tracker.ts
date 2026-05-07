@@ -2,12 +2,43 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import { eq, and, inArray, sql, gte, lte, desc, asc } from 'drizzle-orm'
+import { HTTPException } from 'hono/http-exception'
 import { requireAuth } from '../../middleware/auth'
 import { dayLogs, exerciseLogs, exercisePerformances, exerciseSessions, habits } from '../../db/schema'
 import db from '../../db/db'
 import { defineCrudSchemas } from '../../lib/utilities/drizzle-crud-schemas'
 import { generateCrudRouter } from '../../lib/utilities/crud-router-factory'
 import { ExercisePerformance } from '@trackbit/types'
+import {
+    computeFrozenExercisesForUser,
+    computeFrozenHabitsForUser,
+} from '../../lib/app-limits.js'
+
+function frozenHabitException(habitId: number) {
+    return new HTTPException(403, {
+        res: new Response(
+            JSON.stringify({
+                error: 'habit_frozen',
+                message: 'This habit is frozen because your role limits were reduced.',
+                habitId,
+            }),
+            { status: 403, headers: { 'content-type': 'application/json' } }
+        ),
+    })
+}
+
+function frozenExerciseException(exerciseId: number) {
+    return new HTTPException(403, {
+        res: new Response(
+            JSON.stringify({
+                error: 'custom_exercise_frozen',
+                message: 'This custom exercise is frozen because your role limits were reduced.',
+                exerciseId,
+            }),
+            { status: 403, headers: { 'content-type': 'application/json' } }
+        ),
+    })
+}
 
 
 
@@ -93,8 +124,18 @@ app.post(
     ),
     //TODO: check for user id in habit in order to make sure the user can only update own.
     async (c) => {
+        const user = c.get('user');
         const { habitId, rating, timeStamp } = c.req.valid('json');
         const tz = c.req.query('tz') || 'America/Costa_Rica';
+
+        const frozen = await computeFrozenHabitsForUser(user.id, user.role);
+        if (frozen.has(habitId)) {
+            return c.json({
+                error: 'habit_frozen',
+                message: 'This habit is frozen and cannot be tracked.',
+                habitId,
+            }, 403);
+        }
 
         // Derive the local day from the provided timestamp
         const localDayExpr = sql<string>`(${timeStamp}::timestamptz AT TIME ZONE ${tz})::date`;
@@ -167,7 +208,16 @@ const dayLogsRouter = generateCrudRouter({
             where: (h) => eq(h.id, log.habitId)
         });
         return habit?.userId === user.id;
-    }
+    },
+    beforeCreate: async (c, data) => {
+        const user = c.get('user');
+        const habitId = (data as any).habitId as number;
+        const frozen = await computeFrozenHabitsForUser(user.id, user.role);
+        if (frozen.has(habitId)) {
+            throw frozenHabitException(habitId);
+        }
+        return data;
+    },
 });
 
 app.route('/day-logs', dayLogsRouter);
@@ -203,6 +253,22 @@ const sessionRouter = generateCrudRouter({
             .limit(1);
 
         return habit.length > 0 && habit[0].userId === user.id;
+    },
+    beforeCreate: async (c, data) => {
+        const user = c.get('user');
+        const dayLogId = (data as any).dayLogId as number;
+        const [parentLog] = await db
+            .select({ habitId: dayLogs.habitId })
+            .from(dayLogs)
+            .where(eq(dayLogs.id, dayLogId))
+            .limit(1);
+        if (parentLog) {
+            const frozen = await computeFrozenHabitsForUser(user.id, user.role);
+            if (frozen.has(parentLog.habitId)) {
+                throw frozenHabitException(parentLog.habitId);
+            }
+        }
+        return data;
     },
 });
 
@@ -263,6 +329,36 @@ const exerciseLogsRouter = generateCrudRouter({
         create: async (c) => {
             //TODO: this values should be inferred from schema, this should be handeled in the generateCrudRouter
             const body = c.req.valid("json") as any;
+            const user = c.get('user');
+
+            // Freeze gates: block logs against frozen custom exercises or frozen parent habits.
+            const [frozenExercises, [parentSession]] = await Promise.all([
+                computeFrozenExercisesForUser(user.id, user.role),
+                db
+                    .select({ dayLogId: exerciseSessions.dayLogId })
+                    .from(exerciseSessions)
+                    .where(eq(exerciseSessions.id, body.exerciseSessionId))
+                    .limit(1),
+            ]);
+
+            if (frozenExercises.has(body.exerciseId)) {
+                throw frozenExerciseException(body.exerciseId);
+            }
+
+            if (parentSession) {
+                const [parentLog] = await db
+                    .select({ habitId: dayLogs.habitId })
+                    .from(dayLogs)
+                    .where(eq(dayLogs.id, parentSession.dayLogId))
+                    .limit(1);
+                if (parentLog) {
+                    const frozenHabits = await computeFrozenHabitsForUser(user.id, user.role);
+                    if (frozenHabits.has(parentLog.habitId)) {
+                        throw frozenHabitException(parentLog.habitId);
+                    }
+                }
+            }
+
             return await db.transaction(async (tx) => {
                 // 1. Create the Exercise Log Header
                 const logRes = await tx.insert(exerciseLogs).values({

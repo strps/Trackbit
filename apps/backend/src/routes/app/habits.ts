@@ -3,10 +3,15 @@ import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import db from "../../db/db.js";
 import { habits } from '../../db/schema/index.js'
-import { eq, and, desc } from 'drizzle-orm'
+import { eq, and, desc, count } from 'drizzle-orm'
 import { requireAuth } from '../../middleware/auth.js'
 import { localeMiddleware } from '../../middleware/locale.js'
 import { t } from '../../i18n/index.js'
+import {
+    computeFrozenHabitIds,
+    computeFrozenHabitsForUser,
+    getEffectiveLimits,
+} from '../../lib/app-limits.js'
 
 // Define the Context Type to include User from middleware
 type AuthEnv = {
@@ -31,7 +36,11 @@ app.get('/', async (c) => {
         .where(eq(habits.userId, user.id))
         .orderBy(habits.order, desc(habits.createdAt))
 
-    return c.json(result)
+    const limits = await getEffectiveLimits(user.role)
+    const frozen = computeFrozenHabitIds(result, limits)
+    const annotated = result.map((row) => ({ ...row, frozen: frozen.has(row.id) }))
+
+    return c.json(annotated)
 })
 
 // POST /api/habits
@@ -56,6 +65,33 @@ app.post(
     async (c) => {
         const user = c.get('user')
         const body = c.req.valid('json') // Type-safe body from Zod
+
+        const limits = await getEffectiveLimits(user.role)
+        if (limits) {
+            if (!limits.allowedHabitTypes.includes(body.type)) {
+                return c.json({
+                    error: 'habit_type_not_allowed',
+                    message: `Habit type "${body.type}" is not allowed for your role.`,
+                    allowedHabitTypes: limits.allowedHabitTypes,
+                }, 403)
+            }
+
+            if (limits.maxHabits != null) {
+                const [{ value: existingCount }] = await db
+                    .select({ value: count() })
+                    .from(habits)
+                    .where(eq(habits.userId, user.id))
+
+                if (existingCount >= limits.maxHabits) {
+                    return c.json({
+                        error: 'habit_limit_reached',
+                        message: `You have reached the maximum of ${limits.maxHabits} habits for your role.`,
+                        maxHabits: limits.maxHabits,
+                    }, 403)
+                }
+            }
+        }
+
         const result = await db.insert(habits).values({
             ...body,
             userId: user.id
@@ -94,6 +130,25 @@ app.put(
 
         const updates = c.req.valid('json')
 
+        const frozen = await computeFrozenHabitsForUser(user.id, user.role)
+        if (frozen.has(id)) {
+            return c.json({
+                error: 'habit_frozen',
+                message: 'This habit is frozen because your role limits were reduced. Delete it or another to free a slot.',
+            }, 403)
+        }
+
+        if (updates.type) {
+            const limits = await getEffectiveLimits(user.role)
+            if (limits && !limits.allowedHabitTypes.includes(updates.type)) {
+                return c.json({
+                    error: 'habit_type_not_allowed',
+                    message: `Habit type "${updates.type}" is not allowed for your role.`,
+                    allowedHabitTypes: limits.allowedHabitTypes,
+                }, 403)
+            }
+        }
+
         const result = await db.update(habits)
             .set(updates)
             .where(and(eq(habits.id, id), eq(habits.userId, user.id)))
@@ -120,6 +175,16 @@ app.patch(
     async (c) => {
         const user = c.get('user')
         const { items } = c.req.valid('json')
+
+        const frozen = await computeFrozenHabitsForUser(user.id, user.role)
+        const blockedIds = items.filter((it) => frozen.has(it.id)).map((it) => it.id)
+        if (blockedIds.length > 0) {
+            return c.json({
+                error: 'habit_frozen',
+                message: 'One or more habits are frozen and cannot be reordered.',
+                frozenIds: blockedIds,
+            }, 403)
+        }
 
         const results = await Promise.all(
             items.map(item =>

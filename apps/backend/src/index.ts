@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
+import { HTTPException } from 'hono/http-exception'
 import { handle } from '@hono/node-server/vercel'
 import { t, negotiateFromHeader } from './i18n/index.js'
 
@@ -16,6 +17,7 @@ import inviteRoutes from './routes/admin/invites.js'
 import adminSettingsRoutes from './routes/admin/settings.js'
 import adminExerciseRoutes from './routes/admin/exercises.js'
 import adminIssueRoutes from './routes/admin/issues.js'
+import adminLimitsRoutes from './routes/admin/limits.js'
 
 const app = new Hono()
 
@@ -63,6 +65,7 @@ app.route('/admin/invitations', inviteRoutes)
 app.route('/admin/settings', adminSettingsRoutes)
 app.route('/admin/exercises', adminExerciseRoutes)
 app.route('/admin/issues', adminIssueRoutes)
+app.route('/admin/limits', adminLimitsRoutes)
 
 // 4. Health Check
 app.get('/health', (c) => c.json({ status: 'ok', time: new Date().toISOString() }))
@@ -75,6 +78,9 @@ app.notFound((c) => {
 
 // 6. Error Handler
 app.onError((err, c) => {
+    if (err instanceof HTTPException) {
+        return err.getResponse();
+    }
     console.error('Unhandled error:', err);
     const locale = negotiateFromHeader(c.req.raw.headers.get('accept-language') ?? undefined)
     return c.json({ error: t('errors', 'internal_server_error', locale) }, 500);

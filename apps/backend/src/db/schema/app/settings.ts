@@ -4,8 +4,8 @@ import { relations } from "drizzle-orm";
 
 export const appSettings = pgTable("app_settings", {
     id: serial("id").primaryKey(),
-    googleLoginEnabled: boolean("google_login_enabled").notNull().default(true),
-    githubLoginEnabled: boolean("github_login_enabled").notNull().default(true),
+    googleLoginEnabled: boolean("google_login_enabled").notNull().default(false),
+    githubLoginEnabled: boolean("github_login_enabled").notNull().default(false),
     passwordLoginEnabled: boolean("password_login_enabled").notNull().default(true),
     updatedAt: timestamp("updated_at").defaultNow(),
 });

@@ -3,8 +3,13 @@ import { exerciseLogs, exercises, exercisePerformances, muscleGroups } from '../
 import { defineCrudSchemas } from '../../../lib/utilities/drizzle-crud-schemas.js'; // Adjust path if necessary
 import { z } from 'zod';
 import db from "../../../db/db.js";
-import { eq, isNull, or, sql, and } from 'drizzle-orm';
+import { eq, isNull, or, sql, and, count } from 'drizzle-orm';
 import { Context } from 'hono';
+import { HTTPException } from 'hono/http-exception';
+import {
+    computeFrozenExercisesForUser,
+    getEffectiveLimits,
+} from '../../../lib/app-limits.js';
 
 
 // Generate schemas tailored for exercises
@@ -81,7 +86,13 @@ const exerciseRouter = generateCrudRouter({
                 )
                 .where(or(isNull(exercises.userId), eq(exercises.userId, user.id)));
 
-            return c.json(result)
+            const frozen = await computeFrozenExercisesForUser(user.id, user.role)
+            const annotated = result.map((row) => ({
+                ...row,
+                frozen: row.userId === user.id ? frozen.has(row.id) : false,
+            }))
+
+            return c.json(annotated)
         },
     },
 
@@ -91,14 +102,52 @@ const exerciseRouter = generateCrudRouter({
         return record.userId === user.id;
     },
 
-    beforeCreate: async (c, data) => {
+    beforeUpdate: async (c, data) => {
+        const user = c.get('user')
+        const id = Number(c.req.param('id'))
+        const frozen = await computeFrozenExercisesForUser(user.id, user.role)
+        if (frozen.has(id)) {
+            throw new HTTPException(403, {
+                res: new Response(
+                    JSON.stringify({
+                        error: 'custom_exercise_frozen',
+                        message: 'This custom exercise is frozen because your role limits were reduced. Delete it or another to free a slot.',
+                    }),
+                    { status: 403, headers: { 'content-type': 'application/json' } }
+                ),
+            })
+        }
+        return data
+    },
 
-        const r = {
-            ...data,
-            userId: c.get('user').id, // Mark as custom
+    beforeCreate: async (c, data) => {
+        const user = c.get('user')
+        const limits = await getEffectiveLimits(user.role)
+
+        if (limits && limits.maxCustomExercises != null) {
+            const [{ value: existingCount }] = await db
+                .select({ value: count() })
+                .from(exercises)
+                .where(eq(exercises.userId, user.id))
+
+            if (existingCount >= limits.maxCustomExercises) {
+                throw new HTTPException(403, {
+                    res: new Response(
+                        JSON.stringify({
+                            error: 'custom_exercise_limit_reached',
+                            message: `You have reached the maximum of ${limits.maxCustomExercises} custom exercises for your role.`,
+                            maxCustomExercises: limits.maxCustomExercises,
+                        }),
+                        { status: 403, headers: { 'content-type': 'application/json' } }
+                    ),
+                })
+            }
         }
 
-        return (r)
+        return {
+            ...data,
+            userId: user.id, // Mark as custom
+        }
     },
 });
 

@@ -1,7 +1,6 @@
 import { Hono } from 'hono'
 import { requireAuth } from '../../middleware/auth.js'
-import db from '../../db/db.js'
-import { appSettings } from '../../db/schema/index.js'
+import { getOrCreateAppSettings } from '../../lib/app-settings.js'
 
 type AuthEnv = {
     Variables: {
@@ -13,21 +12,12 @@ const app = new Hono<AuthEnv>()
 
 // Public route — no auth required (needed on login/signup pages)
 app.get('/auth-settings', async (c) => {
-    const [settings] = await db.select({
-        googleLoginEnabled: appSettings.googleLoginEnabled,
-        githubLoginEnabled: appSettings.githubLoginEnabled,
-        passwordLoginEnabled: appSettings.passwordLoginEnabled,
-    }).from(appSettings).limit(1)
-
-    if (!settings) {
-        return c.json({
-            googleLoginEnabled: true,
-            githubLoginEnabled: true,
-            passwordLoginEnabled: true,
-        })
-    }
-
-    return c.json(settings)
+    const settings = await getOrCreateAppSettings()
+    return c.json({
+        googleLoginEnabled: settings.googleLoginEnabled,
+        githubLoginEnabled: settings.githubLoginEnabled,
+        passwordLoginEnabled: settings.passwordLoginEnabled,
+    })
 })
 
 // Protected routes

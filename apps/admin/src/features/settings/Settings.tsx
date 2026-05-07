@@ -6,6 +6,7 @@ import {
     Shield,
     Palette,
     Loader2,
+    Gauge,
 } from "lucide-react";
 import {
     Card,
@@ -31,6 +32,7 @@ import {
 } from "@trackbit/ui";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSettingsStore, type AuthSettingsDraft } from "./settings-store";
+import LimitsSection from "../limits/LimitsSection";
 
 const ADMIN_API = import.meta.env.VITE_API_URL;
 
@@ -129,6 +131,7 @@ export default function SettingsPage() {
                     <TabsTrigger value="appearance" className="gap-2"><Palette className="h-4 w-4" /> Appearance</TabsTrigger>
                     <TabsTrigger value="notifications" className="gap-2"><Bell className="h-4 w-4" /> Notifications</TabsTrigger>
                     <TabsTrigger value="security" className="gap-2"><Shield className="h-4 w-4" /> Security</TabsTrigger>
+                    <TabsTrigger value="limits" className="gap-2"><Gauge className="h-4 w-4" /> Limits</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="general" className="space-y-4">
@@ -284,6 +287,10 @@ export default function SettingsPage() {
                             </div>
                         </CardContent>
                     </Card>
+                </TabsContent>
+
+                <TabsContent value="limits" className="space-y-4">
+                    <LimitsSection />
                 </TabsContent>
             </Tabs>
         </AdminPage>

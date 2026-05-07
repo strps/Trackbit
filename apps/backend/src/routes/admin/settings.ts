@@ -5,6 +5,7 @@ import { appSettings } from '../../db/schema/app/settings.js'
 import { eq } from 'drizzle-orm'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
+import { getOrCreateAppSettings } from '../../lib/app-settings.js'
 
 type AuthEnv = {
     Variables: {
@@ -18,12 +19,7 @@ app.use('*', requireAdminAuth)
 
 // GET /admin/settings — fetch current app settings
 app.get('/', async (c) => {
-    const [settings] = await db.select().from(appSettings).limit(1)
-
-    if (!settings) {
-        return c.json({ error: 'App settings not found' }, 404)
-    }
-
+    const settings = await getOrCreateAppSettings()
     return c.json(settings)
 })
 
@@ -37,10 +33,7 @@ const updateSettingsSchema = z.object({
 app.put('/', zValidator('json', updateSettingsSchema), async (c) => {
     const body = c.req.valid('json')
 
-    const [settings] = await db.select().from(appSettings).limit(1)
-    if (!settings) {
-        return c.json({ error: 'App settings not found' }, 404)
-    }
+    const settings = await getOrCreateAppSettings()
 
     const [updated] = await db
         .update(appSettings)
