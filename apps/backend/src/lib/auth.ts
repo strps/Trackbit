@@ -35,7 +35,7 @@ export const auth = betterAuth({
   ],
 
   // Trusted origins for cross-site requests
-  trustedOrigins: process.env.ALLOWED_ORIGINS?.split(','),
+  trustedOrigins: [process.env.FRONT_URL || 'http://localhost:5173', process.env.ADMIN_URL || 'http://localhost:5173'],
   advanced: {
     defaultCookieAttributes: {
       sameSite: "none",  // Critical for cross-site cookie setting/sending

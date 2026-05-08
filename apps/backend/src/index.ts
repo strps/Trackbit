@@ -22,7 +22,7 @@ import adminLimitsRoutes from './routes/admin/limits.js'
 const app = new Hono()
 
 console.log('Starting Backend Server...')
-console.log('Allowed Origins:', process.env.ALLOWED_ORIGINS)
+console.log('Allowed Origins:', [process.env.FRONT_URL || 'http://localhost:5173', process.env.ADMIN_URL || 'http://localhost:5173'])
 // 1. Global Middleware
 app.use('*', logger())
 
