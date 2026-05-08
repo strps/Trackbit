@@ -91,7 +91,7 @@ export const auth = betterAuth({
       role: {
         type: "string",
         required: false,
-        defaultValue: "tester",
+        defaultValue: "user",
         input: false,
       },
       locale: {
@@ -131,11 +131,11 @@ export const auth = betterAuth({
             inviteCode = stateData?.inviteCode ?? inviteCode;
           }
 
-          // Require an invite code for all new signups
+          // Invite code is optional. Regular signups get the default role.
+          // If a code is supplied (e.g. from an emailed invite link), validate
+          // it, consume one use, and assign the role from the invite.
           if (!inviteCode) {
-            throw new APIError("BAD_REQUEST", {
-              message: t('errors', 'invite_code_required', locale),
-            });
+            return { data };
           }
 
           const invite = await db.query.invites.findFirst({
@@ -174,7 +174,6 @@ export const auth = betterAuth({
             })
             .where(eq(invites.id, invite.id));
 
-          // Assign role from the invite (defaults to 'tester' if not specified)
           return {
             data: {
               ...data,
