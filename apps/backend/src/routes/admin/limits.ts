@@ -4,9 +4,9 @@ import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import { requireAdminAuth } from '../../middleware/require-admin-auth.js'
 import db from '../../db/db.js'
-import { appLimits } from '../../db/schema/app/settings.js'
+import { userLimits } from '../../db/schema/app/settings.js'
 import { habitTypeEnum } from '../../db/schema/app/habits.js'
-import { ensureDefaultAppLimits } from '../../lib/app-limits.js'
+import { ensureDefaultUserLimits } from '../../lib/user-limits.js'
 
 type AuthEnv = {
     Variables: {
@@ -35,7 +35,7 @@ const updateSchema = z.object({
 
 // GET /admin/limits — list all role limits (seeds default tester row if empty)
 app.get('/', async (c) => {
-    const rows = await ensureDefaultAppLimits()
+    const rows = await ensureDefaultUserLimits()
     return c.json(rows)
 })
 
@@ -45,15 +45,15 @@ app.post('/', zValidator('json', createSchema), async (c) => {
 
     const [existing] = await db
         .select()
-        .from(appLimits)
-        .where(eq(appLimits.role, body.role))
+        .from(userLimits)
+        .where(eq(userLimits.role, body.role))
         .limit(1)
 
     if (existing) {
         return c.json({ error: `Limits for role "${body.role}" already exist` }, 409)
     }
 
-    const [created] = await db.insert(appLimits).values(body).returning()
+    const [created] = await db.insert(userLimits).values(body).returning()
     return c.json(created, 201)
 })
 
@@ -63,9 +63,9 @@ app.put('/:role', zValidator('json', updateSchema), async (c) => {
     const body = c.req.valid('json')
 
     const [updated] = await db
-        .update(appLimits)
+        .update(userLimits)
         .set(body)
-        .where(eq(appLimits.role, role))
+        .where(eq(userLimits.role, role))
         .returning()
 
     if (!updated) {
@@ -80,8 +80,8 @@ app.delete('/:role', async (c) => {
     const role = c.req.param('role')
 
     const [deleted] = await db
-        .delete(appLimits)
-        .where(eq(appLimits.role, role))
+        .delete(userLimits)
+        .where(eq(userLimits.role, role))
         .returning()
 
     if (!deleted) {

@@ -48,6 +48,7 @@ interface EnhancedDayLog { //TODO: use trackbit types
 type DayLogs = Record<string, EnhancedDayLog>
 export interface HabitWithLogs extends Habit {
     dayLogs: DayLogs
+    frozen?: boolean
 }
 
 // --- Fetcher ---

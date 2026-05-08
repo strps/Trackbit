@@ -9,7 +9,7 @@ import { HTTPException } from 'hono/http-exception';
 import {
     computeFrozenExercisesForUser,
     getEffectiveLimits,
-} from '../../../lib/app-limits.js';
+} from '../../../lib/user-limits.js';
 
 
 // Generate schemas tailored for exercises

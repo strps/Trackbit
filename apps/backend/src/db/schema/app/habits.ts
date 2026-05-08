@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, date, jsonb, primaryKey, pgEnum, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, integer, timestamp, date, jsonb, primaryKey, pgEnum, boolean, unique } from 'drizzle-orm/pg-core';
 import { user } from './user';
 import { relations } from 'drizzle-orm';
 import { exerciseSessions } from './exercises';
@@ -35,7 +35,13 @@ export const habits = pgTable('habits', {
   order: integer('sort_order').notNull().default(0),
 
   createdAt: timestamp('created_at').defaultNow(),
-});
+},
+  (table) => [
+    // Enforced as DEFERRABLE INITIALLY DEFERRED in migration 0003 so PATCH /reorder
+    // can swap orders inside a transaction without intermediate-state conflicts.
+    unique('habits_user_anti_order_uq').on(table.userId, table.isAntiHabit, table.order),
+  ]
+);
 
 export const habitsRelations = relations(habits, ({ one, many }) => ({
   user: one(user, {

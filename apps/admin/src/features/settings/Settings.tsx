@@ -131,7 +131,7 @@ export default function SettingsPage() {
                     <TabsTrigger value="appearance" className="gap-2"><Palette className="h-4 w-4" /> Appearance</TabsTrigger>
                     <TabsTrigger value="notifications" className="gap-2"><Bell className="h-4 w-4" /> Notifications</TabsTrigger>
                     <TabsTrigger value="security" className="gap-2"><Shield className="h-4 w-4" /> Security</TabsTrigger>
-                    <TabsTrigger value="limits" className="gap-2"><Gauge className="h-4 w-4" /> Limits</TabsTrigger>
+                    <TabsTrigger value="limits" className="gap-2"><Gauge className="h-4 w-4" /> User Limits</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="general" className="space-y-4">

@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import db from "../db/db.js";
-import { appLimits } from "../db/schema/app/settings.js";
+import { userLimits } from "../db/schema/app/settings.js";
 import { habits } from "../db/schema/app/habits.js";
 import { exercises } from "../db/schema/app/exercises.js";
 
@@ -25,16 +25,16 @@ const SECURE_DEFAULT_LIMITS: EffectiveLimits = {
     allowedHabitTypes: ["count", "complex"],
 };
 
-export async function ensureDefaultAppLimits() {
-    const rows = await db.select().from(appLimits);
+export async function ensureDefaultUserLimits() {
+    const rows = await db.select().from(userLimits);
     if (rows.length > 0) return rows;
 
     await db
-        .insert(appLimits)
+        .insert(userLimits)
         .values(DEFAULT_TESTER_LIMITS)
         .onConflictDoNothing();
 
-    return db.select().from(appLimits);
+    return db.select().from(userLimits);
 }
 
 interface HabitForFreeze {
@@ -145,8 +145,8 @@ export async function getEffectiveLimits(role: string | null | undefined): Promi
     if (role) {
         const [row] = await db
             .select()
-            .from(appLimits)
-            .where(eq(appLimits.role, role))
+            .from(userLimits)
+            .where(eq(userLimits.role, role))
             .limit(1);
 
         if (row) {

@@ -30,7 +30,7 @@ export const invitesRelations = relations(invites, ({ one }) => ({
     }),
 }));
 
-export const appLimits = pgTable("app_limits", {
+export const userLimits = pgTable("user_limits", {
     id: serial("id").primaryKey(),
     role: text("role").notNull().unique(), // 'tester', potentially others
     maxHabits: integer("max_habits").default(10),

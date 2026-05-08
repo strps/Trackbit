@@ -12,7 +12,7 @@ import { ExercisePerformance } from '@trackbit/types'
 import {
     computeFrozenExercisesForUser,
     computeFrozenHabitsForUser,
-} from '../../lib/app-limits.js'
+} from '../../lib/user-limits.js'
 
 function frozenHabitException(habitId: number) {
     return new HTTPException(403, {
@@ -106,7 +106,10 @@ app.get('/history', async (c) => {
         orderBy: [asc(habits.order), asc(habits.createdAt)],
     });
 
-    return c.json(habitsWithLogs.length > 0 ? habitsWithLogs : []);
+    const frozen = await computeFrozenHabitsForUser(user.id, user.role);
+    const annotated = habitsWithLogs.map((h) => ({ ...h, frozen: frozen.has(h.id) }));
+
+    return c.json(annotated.length > 0 ? annotated : []);
 });
 
 
@@ -218,6 +221,22 @@ const dayLogsRouter = generateCrudRouter({
         }
         return data;
     },
+    beforeUpdate: async (c, data) => {
+        const user = c.get('user');
+        const id = Number(c.req.param('id'));
+        const [row] = await db
+            .select({ habitId: dayLogs.habitId })
+            .from(dayLogs)
+            .where(eq(dayLogs.id, id))
+            .limit(1);
+        if (row) {
+            const frozen = await computeFrozenHabitsForUser(user.id, user.role);
+            if (frozen.has(row.habitId)) {
+                throw frozenHabitException(row.habitId);
+            }
+        }
+        return data;
+    },
 });
 
 app.route('/day-logs', dayLogsRouter);
@@ -266,6 +285,23 @@ const sessionRouter = generateCrudRouter({
             const frozen = await computeFrozenHabitsForUser(user.id, user.role);
             if (frozen.has(parentLog.habitId)) {
                 throw frozenHabitException(parentLog.habitId);
+            }
+        }
+        return data;
+    },
+    beforeUpdate: async (c, data) => {
+        const user = c.get('user');
+        const id = Number(c.req.param('id'));
+        const [row] = await db
+            .select({ habitId: dayLogs.habitId })
+            .from(exerciseSessions)
+            .innerJoin(dayLogs, eq(dayLogs.id, exerciseSessions.dayLogId))
+            .where(eq(exerciseSessions.id, id))
+            .limit(1);
+        if (row) {
+            const frozen = await computeFrozenHabitsForUser(user.id, user.role);
+            if (frozen.has(row.habitId)) {
+                throw frozenHabitException(row.habitId);
             }
         }
         return data;
@@ -325,6 +361,33 @@ const exerciseLogsRouter = generateCrudRouter({
         return habit.length > 0 && habit[0].userId === user.id;
     },
 
+    beforeUpdate: async (c, data) => {
+        const user = c.get('user');
+        const id = Number(c.req.param('id'));
+        const [row] = await db
+            .select({
+                habitId: dayLogs.habitId,
+                exerciseId: exerciseLogs.exerciseId,
+            })
+            .from(exerciseLogs)
+            .innerJoin(exerciseSessions, eq(exerciseSessions.id, exerciseLogs.exerciseSessionId))
+            .innerJoin(dayLogs, eq(dayLogs.id, exerciseSessions.dayLogId))
+            .where(eq(exerciseLogs.id, id))
+            .limit(1);
+        if (row) {
+            const [frozenHabits, frozenExercises] = await Promise.all([
+                computeFrozenHabitsForUser(user.id, user.role),
+                computeFrozenExercisesForUser(user.id, user.role),
+            ]);
+            if (frozenHabits.has(row.habitId)) {
+                throw frozenHabitException(row.habitId);
+            }
+            if (frozenExercises.has(row.exerciseId)) {
+                throw frozenExerciseException(row.exerciseId);
+            }
+        }
+        return data;
+    },
     overrides: {
         create: async (c) => {
             //TODO: this values should be inferred from schema, this should be handeled in the generateCrudRouter

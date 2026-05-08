@@ -11,7 +11,23 @@ import {
     computeFrozenHabitIds,
     computeFrozenHabitsForUser,
     getEffectiveLimits,
-} from '../../lib/app-limits.js'
+} from '../../lib/user-limits.js'
+
+const HABIT_ORDER_UNIQUE_CONSTRAINT = 'habits_user_anti_order_uq'
+
+// Postgres unique-violation thrown by `node-postgres` carries `code === '23505'`
+// and `constraint === '<name>'` on the underlying error.
+function isHabitOrderConflict(err: unknown): boolean {
+    const e = err as { code?: string; constraint?: string; cause?: unknown }
+    if (e?.code === '23505' && e?.constraint === HABIT_ORDER_UNIQUE_CONSTRAINT) return true
+    if (e?.cause) return isHabitOrderConflict(e.cause)
+    return false
+}
+
+const HABIT_ORDER_CONFLICT_RESPONSE = {
+    error: 'habit_order_conflict',
+    message: 'Another habit already uses this order.',
+} as const
 
 // Define the Context Type to include User from middleware
 type AuthEnv = {
@@ -92,12 +108,19 @@ app.post(
             }
         }
 
-        const result = await db.insert(habits).values({
-            ...body,
-            userId: user.id
-        }).returning()
+        try {
+            const result = await db.insert(habits).values({
+                ...body,
+                userId: user.id
+            }).returning()
 
-        return c.json(result[0], 201)
+            return c.json(result[0], 201)
+        } catch (err) {
+            if (isHabitOrderConflict(err)) {
+                return c.json(HABIT_ORDER_CONFLICT_RESPONSE, 409)
+            }
+            throw err
+        }
     }
 )
 
@@ -149,16 +172,23 @@ app.put(
             }
         }
 
-        const result = await db.update(habits)
-            .set(updates)
-            .where(and(eq(habits.id, id), eq(habits.userId, user.id)))
-            .returning()
+        try {
+            const result = await db.update(habits)
+                .set(updates)
+                .where(and(eq(habits.id, id), eq(habits.userId, user.id)))
+                .returning()
 
-        if (result.length === 0) {
-            return c.json({ error: t('errors', 'habit_not_found', c.get('locale')) }, 404)
+            if (result.length === 0) {
+                return c.json({ error: t('errors', 'habit_not_found', c.get('locale')) }, 404)
+            }
+
+            return c.json(result[0])
+        } catch (err) {
+            if (isHabitOrderConflict(err)) {
+                return c.json(HABIT_ORDER_CONFLICT_RESPONSE, 409)
+            }
+            throw err
         }
-
-        return c.json(result[0])
     }
 )
 
@@ -186,16 +216,25 @@ app.patch(
             }, 403)
         }
 
-        const results = await Promise.all(
-            items.map(item =>
-                db.update(habits)
-                    .set({ order: item.order, isAntiHabit: item.isAntiHabit })
-                    .where(and(eq(habits.id, item.id), eq(habits.userId, user.id)))
-                    .returning()
+        try {
+            const results = await db.transaction(async (tx) =>
+                Promise.all(
+                    items.map(item =>
+                        tx.update(habits)
+                            .set({ order: item.order, isAntiHabit: item.isAntiHabit })
+                            .where(and(eq(habits.id, item.id), eq(habits.userId, user.id)))
+                            .returning()
+                    )
+                )
             )
-        )
 
-        return c.json({ success: true, updated: results.flat() })
+            return c.json({ success: true, updated: results.flat() })
+        } catch (err) {
+            if (isHabitOrderConflict(err)) {
+                return c.json(HABIT_ORDER_CONFLICT_RESPONSE, 409)
+            }
+            throw err
+        }
     }
 )
 

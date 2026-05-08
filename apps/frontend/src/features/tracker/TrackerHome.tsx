@@ -186,8 +186,8 @@ const TrackerHome = () => {
         });
     }, [habitsWithLogs]);
 
-    const regularHabits = useMemo(() => sortedHabits.filter(h => !h.isAntiHabit), [sortedHabits]);
-    const antiHabits = useMemo(() => sortedHabits.filter(h => h.isAntiHabit), [sortedHabits]);
+    const regularHabits = useMemo(() => sortedHabits.filter(h => !h.isAntiHabit && !h.frozen), [sortedHabits]);
+    const antiHabits = useMemo(() => sortedHabits.filter(h => h.isAntiHabit && !h.frozen), [sortedHabits]);
 
     if (isLoading) {
         return <div className="p-8 text-center text-muted-foreground">{t('loading')}</div>;

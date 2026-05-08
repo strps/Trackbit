@@ -22,6 +22,20 @@
       "when": 1778188725543,
       "tag": "0002_secure_auth_defaults",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1778261829909,
+      "tag": "0003_habits_unique_order",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778262143707,
+      "tag": "0004_rename_app_limits_to_user_limits",
+      "breakpoints": true
     }
   ]
 }

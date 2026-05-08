@@ -9,7 +9,7 @@ import { exercises } from '../../db/schema/app/exercises.js'
 import { requireAuth } from '../../middleware/auth.js'
 import { localeMiddleware } from '../../middleware/locale.js'
 import { formatZodError } from '../../lib/utils.js'
-import { getEffectiveLimits } from '../../lib/app-limits.js'
+import { getEffectiveLimits } from '../../lib/user-limits.js'
 
 const SUPPORTED_LOCALES = ['en', 'es'] as const
 const SUPPORTED_UNIT_SYSTEMS = ['metric', 'imperial'] as const
