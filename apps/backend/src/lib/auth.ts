@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { admin } from "better-auth/plugins"
+import { admin, bearer } from "better-auth/plugins"
 import { user } from "../db/schema/app/user.js";
 import { account, session, verification } from "../db/schema/app/auth.js";
 import { invites } from "../db/schema/app/settings.js";
@@ -31,7 +31,8 @@ export const auth = betterAuth({
 
 
   plugins: [
-    admin()
+    admin(),
+    bearer(),
   ],
 
   // Trusted origins for cross-site requests
