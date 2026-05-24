@@ -38,11 +38,11 @@ Bootstrapped Expo app with theming, tab navigation, and platform conventions est
 ### Tasks
 
 - [x] Install and configure an HTTP client (`ky` or `fetch` wrapper) with base URL from env
-- [ ] `src/lib/api.ts` — typed fetch helper, attaches session cookie / token
+- [X] `src/lib/api.ts` — typed fetch helper, attaches session cookie / token
 - [x] `src/lib/auth.ts` — sign-in, sign-up, sign-out, session check calls to `/api/auth/*`
-- [ ] Secure token storage — `expo-secure-store` for session token persistence
-- [ ] Auth context (`src/context/auth-context.tsx`) — `useAuth()` hook exposing `user`, `signIn`, `signOut`, `isLoading`
-- [ ] Route guard in `src/app/_layout.tsx` — redirect to `/auth/sign-in` when unauthenticated
+- [x] Secure token storage — `expo-secure-store` for session token persistence
+- [x] Auth context (`src/context/auth-context.tsx`) — `useAuth()` hook exposing `user`, `signIn`, `signOut`, `isLoading`
+- [x] Route guard in `src/app/_layout.tsx` — redirect to `/auth/sign-in` when unauthenticated
 - [ ] `src/app/auth/sign-in.tsx` — sign-in screen (email + password form)
 - [ ] `src/app/auth/sign-up.tsx` — sign-up screen (name, email, password)
 - [ ] `src/app/auth/_layout.tsx` — auth stack layout (no tabs)
