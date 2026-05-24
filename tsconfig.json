@@ -8,9 +8,6 @@
             "path": "./apps/backend"
         },
         {
-            "path": "./packages/hacienda-client"
-        },
-        {
             "path": "./packages/types"
         },
         {

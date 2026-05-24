@@ -43,11 +43,11 @@ Bootstrapped Expo app with theming, tab navigation, and platform conventions est
 - [x] Secure token storage — `expo-secure-store` for session token persistence
 - [x] Auth context (`src/context/auth-context.tsx`) — `useAuth()` hook exposing `user`, `signIn`, `signOut`, `isLoading`
 - [x] Route guard in `src/app/_layout.tsx` — redirect to `/auth/sign-in` when unauthenticated
-- [ ] `src/app/auth/sign-in.tsx` — sign-in screen (email + password form)
-- [ ] `src/app/auth/sign-up.tsx` — sign-up screen (name, email, password)
+- [X] `src/app/auth/sign-in.tsx` — sign-in screen (email + password form)
+- [x] `src/app/auth/sign-up.tsx` — sign-up screen (name, email, password)
 - [ ] `src/app/auth/_layout.tsx` — auth stack layout (no tabs)
-- [ ] Form validation with Zod (match web validation rules)
-- [ ] Loading and error states on auth forms
+- [x] Form validation with Zod (match web validation rules)
+- [x] Loading and error states on auth forms
 - [ ] "Remember me" — persist session vs. session-only cookie
 
 ### Dependencies added
