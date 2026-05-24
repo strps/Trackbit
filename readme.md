@@ -20,7 +20,8 @@ A hybrid habit tracker and workout logger for the modern web.
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | React 19, Vite, TypeScript |
+| Frontend (web) | React 19, Vite, TypeScript |
+| Native app | Expo ~56, Expo Router, React Native 0.85 |
 | State & Data | TanStack Query (React Query) |
 | Styling | Tailwind CSS, Shadcn UI, Radix UI |
 | Backend | Hono (Node.js) |
@@ -38,7 +39,8 @@ trackbit/
 ├── apps/
 │   ├── frontend/              # Consumer-facing habit tracker (React + Vite)
 │   ├── backend/               # REST API server (Hono + PostgreSQL)
-│   └── admin/                 # Admin dashboard (React + Vite)
+│   ├── admin/                 # Admin dashboard (React + Vite)
+│   └── native/                # React Native app (Expo ~56)
 ├── packages/
 │   ├── ui/                    # Shared UI components (Shadcn-based)
 │   ├── types/                 # Shared TypeScript type definitions
@@ -188,6 +190,8 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the full roadmap. Current priorities:
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Long-term vision and milestones |
 | [docs/BACKLOG.md](docs/BACKLOG.md) | Future enhancements |
 | [docs/admin-conventions.md](docs/admin-conventions.md) | Conventions for the admin app |
+| [docs/tasks/native-app.md](docs/tasks/native-app.md) | Native app master implementation plan |
+| [apps/native/README.md](apps/native/README.md) | Native app structure, conventions, and dev setup |
 | [docs/tasks/internationalization.md](docs/tasks/internationalization.md) | i18n rollout plan and phase tracker |
 | [docs/tasks/analitycs.md](docs/tasks/analitycs.md) | Analytics feature task breakdown |
 | [docs/tasks/bug-tracker.md](docs/tasks/bug-tracker.md) | Bug tracker feature task breakdown |

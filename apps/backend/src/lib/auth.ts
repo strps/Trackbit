@@ -32,7 +32,7 @@ export const auth = betterAuth({
 
   plugins: [
     admin(),
-    bearer(),
+    bearer({ requireSignature: true }),
   ],
 
   // Trusted origins for cross-site requests
