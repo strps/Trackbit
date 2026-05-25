@@ -1,48 +1,90 @@
-import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { useColorScheme } from 'react-native';
+import {
+  Tabs,
+  TabList,
+  TabTrigger,
+  TabSlot,
+  TabTriggerSlotProps,
+  TabListProps,
+} from 'expo-router/ui';
+import type { Href } from 'expo-router';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Colors } from '@/constants/theme';
+import { ThemedText } from './themed-text';
+import { ThemedView } from './themed-view';
+
+import { Spacing } from '@/constants/theme';
 
 export default function AppTabs() {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
-
   return (
-    <NativeTabs
-      backgroundColor={colors.background}
-      indicatorColor={colors.backgroundElement}
-      labelStyle={{ selected: { color: colors.text } }}>
-      <NativeTabs.Trigger name="index">
-        <NativeTabs.Trigger.Label>Habits</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/home.png')}
-          renderingMode="template"
-        />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="log">
-        <NativeTabs.Trigger.Label>Log</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/explore.png')}
-          renderingMode="template"
-        />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="analytics">
-        <NativeTabs.Trigger.Label>Analytics</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/explore.png')}
-          renderingMode="template"
-        />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="settings">
-        <NativeTabs.Trigger.Label>Settings</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/explore.png')}
-          renderingMode="template"
-        />
-      </NativeTabs.Trigger>
-    </NativeTabs>
+    <Tabs>
+      <TabList asChild>
+        <CustomTabList>
+          <TabTrigger name="habits" href="/" asChild>
+            <TabButton>Habits</TabButton>
+          </TabTrigger>
+          <TabTrigger name="log" href={'/log' as Href} asChild>
+            <TabButton>Log</TabButton>
+          </TabTrigger>
+          <TabTrigger name="analytics" href={'/analytics' as Href} asChild>
+            <TabButton>Analytics</TabButton>
+          </TabTrigger>
+          <TabTrigger name="settings" href={'/settings' as Href} asChild>
+            <TabButton>Settings</TabButton>
+          </TabTrigger>
+        </CustomTabList>
+      </TabList>
+      <TabSlot />
+    </Tabs>
   );
 }
+
+function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
+  return (
+    <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
+      <ThemedView
+        type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
+        style={styles.tabButtonView}>
+        <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
+          {children}
+        </ThemedText>
+      </ThemedView>
+    </Pressable>
+  );
+}
+
+function CustomTabList(props: TabListProps) {
+  return (
+    <ThemedView>
+      <SafeAreaView edges={['top']}>
+        <View {...props} style={styles.tabListContainer}>
+          <ThemedText type="smallBold" style={styles.brandText}>
+            Trackbit
+          </ThemedText>
+          {props.children}
+        </View>
+      </SafeAreaView>
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  tabListContainer: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  brandText: {
+    marginRight: 'auto',
+  },
+  pressed: {
+    opacity: 0.7,
+  },
+  tabButtonView: {
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.three,
+    borderRadius: Spacing.three,
+  },
+});
