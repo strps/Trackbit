@@ -19,6 +19,7 @@ export interface Habit {
   order: number;
   createdAt: string | null;
   frozen: boolean;
+  loggedToday?: boolean;
 }
 
 export interface LogHabitParams {
@@ -37,8 +38,9 @@ export function getHabits(token: string): Promise<Habit[]> {
   return apiFetch<Habit[]>("/api/habits", { token });
 }
 
-export function logHabit(params: LogHabitParams, token: string): Promise<LogHabitResult> {
-  return apiFetch<LogHabitResult>("/api/tracker/check", {
+export function logHabit(params: LogHabitParams, token: string, tz?: string): Promise<LogHabitResult> {
+  const query = tz ? `?tz=${encodeURIComponent(tz)}` : "";
+  return apiFetch<LogHabitResult>(`/api/tracker/check${query}`, {
     method: "POST",
     body: params,
     token,

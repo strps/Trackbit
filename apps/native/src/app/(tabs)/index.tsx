@@ -1,17 +1,46 @@
-import { StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet } from "react-native";
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { HabitList } from "@/components/habit-list";
+import { useHabits } from "@/hooks/use-habits";
+import { useLogHabit } from "@/hooks/use-log-habit";
+import { Spacing } from "@/constants/theme";
+
+function formatToday(): string {
+  return `Today, ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric" })}`;
+}
 
 export default function HabitsScreen() {
+  const { data: habits = [], isLoading, isFetching, refetch } = useHabits();
+  const { mutate: logHabit, isPending, variables } = useLogHabit();
+
+  const loggingId = isPending ? (variables?.habitId ?? null) : null;
+
+  function handleLog(habitId: number) {
+    logHabit({ habitId, rating: 1, timeStamp: new Date().toISOString() });
+  }
+
+  if (isLoading) {
+    return (
+      <ThemedView style={styles.centered}>
+        <ThemedText themeColor="textSecondary">Loading habits…</ThemedText>
+      </ThemedView>
+    );
+  }
+
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedText type="title">Habits</ThemedText>
-        <ThemedText themeColor="textSecondary">Coming in Phase 2</ThemedText>
-      </SafeAreaView>
+      <ThemedText type="subtitle" style={styles.dateHeader}>
+        {formatToday()}
+      </ThemedText>
+      <HabitList
+        habits={habits}
+        loggingId={loggingId}
+        onLog={handleLog}
+        onRefresh={refetch}
+        refreshing={isFetching && !isLoading}
+      />
     </ThemedView>
   );
 }
@@ -20,10 +49,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  safeArea: {
+  centered: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.two,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dateHeader: {
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.two,
+    fontSize: 24,
+    lineHeight: 32,
   },
 });

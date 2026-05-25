@@ -1,7 +1,9 @@
 import '../global.css';
 
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
-import { useColorScheme } from 'react-native';
+import { Appearance, useColorScheme } from 'react-native';
+
+Appearance.setColorScheme('dark');
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
