@@ -4,7 +4,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { Spacing } from "@/constants/theme";
 import { type Habit, type ColorTheme } from "@/lib/habits-api";
 
-const COLOR_THEME_ACCENT: Record<ColorTheme, string> = {
+export const COLOR_THEME_ACCENT: Record<ColorTheme, string> = {
   green: "#22c55e",
   blue: "#3b82f6",
   orange: "#f97316",
@@ -14,13 +14,22 @@ const COLOR_THEME_ACCENT: Record<ColorTheme, string> = {
   custom: "#3b82f6",
 };
 
-const ICON_EMOJI: Record<string, string> = {
+export const ICON_EMOJI: Record<string, string> = {
   dumbbell: "🏋️",
   code: "💻",
   book: "📚",
   star: "⭐",
   water: "💧",
   alert: "🏆",
+  sun: "☀️",
+  moon: "🌙",
+  music: "🎵",
+  work: "💼",
+  coffee: "☕",
+  ban: "🚫",
+  home: "🏠",
+  heart: "❤️",
+  trees: "🌳",
 };
 
 function accentColor(habit: Habit): string {

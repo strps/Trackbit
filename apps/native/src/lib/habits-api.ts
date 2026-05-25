@@ -4,6 +4,27 @@ export type HabitType = "count" | "complex" | "negative" | "timed" | "check";
 export type ColorTheme = "green" | "blue" | "orange" | "purple" | "rose" | "fire" | "custom";
 export type ColorStop = { position: number; color: [number, number, number, number] };
 
+export interface CreateHabitInput {
+  name: string;
+  description?: string;
+  type?: HabitType;
+  isAntiHabit?: boolean;
+  weeklyGoal?: number;
+  dailyGoal?: number;
+  colorTheme?: ColorTheme;
+  colorStops?: ColorStop[];
+  icon?: string;
+  order?: number;
+}
+
+export type UpdateHabitInput = Partial<CreateHabitInput>;
+
+export interface ReorderItem {
+  id: number;
+  order: number;
+  isAntiHabit: boolean;
+}
+
 export interface Habit {
   id: number;
   userId: string;
@@ -52,4 +73,23 @@ export function deleteHabitLog(id: number, token: string): Promise<void> {
     method: "DELETE",
     token,
   });
+}
+
+export function createHabit(input: CreateHabitInput, token: string): Promise<Habit> {
+  return apiFetch<Habit>("/api/habits", { method: "POST", body: input, token });
+}
+
+export function updateHabit(id: number, input: UpdateHabitInput, token: string): Promise<Habit> {
+  return apiFetch<Habit>(`/api/habits/${id}`, { method: "PUT", body: input, token });
+}
+
+export function deleteHabit(id: number, token: string): Promise<{ success: true; deletedId: number }> {
+  return apiFetch(`/api/habits/${id}`, { method: "DELETE", token });
+}
+
+export function reorderHabits(
+  items: ReorderItem[],
+  token: string,
+): Promise<{ success: true; updated: Habit[] }> {
+  return apiFetch("/api/habits/reorder", { method: "PATCH", body: { items }, token });
 }

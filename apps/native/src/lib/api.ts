@@ -14,6 +14,8 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    public code?: string,
+    public payload: Record<string, unknown> = {},
   ) {
     super(message);
     this.name = "ApiError";
@@ -45,13 +47,18 @@ export async function apiFetch<T>(
 
   if (!response.ok) {
     let message = response.statusText;
+    let code: string | undefined;
+    let payload: Record<string, unknown> = {};
     try {
       const data = await response.json();
       if (typeof data?.message === "string") message = data.message;
+      if (typeof data?.error === "string") code = data.error;
+      const { error: _e, message: _m, ...rest } = data ?? {};
+      payload = rest;
     } catch {
-      // leave message as statusText
+      // leave as defaults
     }
-    throw new ApiError(response.status, message);
+    throw new ApiError(response.status, message, code, payload);
   }
 
   if (response.status === 204) {

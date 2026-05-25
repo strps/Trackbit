@@ -69,16 +69,16 @@ zod
 - [x] `src/hooks/use-habits.ts` — React Query hook (`useQuery`) for habits list
 - [x] `src/hooks/use-log-habit.ts` — React Query mutation for logging a habit
 - [x] Install React Query (`@tanstack/react-query`) + `QueryClientProvider` in root layout
-- [ ] `src/app/(tabs)/index.tsx` — habits list screen
+- [X] `src/app/(tabs)/index.tsx` — habits list screen
   - Flat list of habit rows
   - Completion checkbox / tap-to-log interaction
   - Optimistic update on log (match web UX)
   - Pull-to-refresh
   - Empty state
-- [ ] `src/components/habit-row.tsx` — single habit row component
-- [ ] `src/components/habit-list.tsx` — `FlatList` wrapper with section headers (active / frozen)
-- [ ] Frozen habit visual treatment (greyed out, locked icon)
-- [ ] Date header — "Today, May 23" above the list
+- [x] `src/components/habit-row.tsx` — single habit row component
+- [x] `src/components/habit-list.tsx` — `FlatList` wrapper with section headers (active / frozen)
+- [x] Frozen habit visual treatment (greyed out, locked icon)
+- [x] Date header — "Today, May 25" above the list
 
 ### Dependencies added
 
@@ -162,13 +162,18 @@ react-native-svg
 
 ### Tasks
 
-- [ ] `src/app/habits/new.tsx` — create habit screen (modal stack)
-- [ ] `src/app/habits/[id]/edit.tsx` — edit habit screen
-- [ ] Habit form component — name, type (binary / data), target, color
-- [ ] `src/hooks/use-create-habit.ts` / `use-update-habit.ts` / `use-delete-habit.ts` mutations
-- [ ] Reorder habits — drag-to-reorder in the habit list (`react-native-reanimated` drag handles)
-- [ ] Delete with swipe confirmation
-- [ ] Freeze / unfreeze habit toggle (respect backend freeze limits)
+- [x] `src/app/habits/new.tsx` — create habit screen (modal stack)
+- [x] `src/app/habits/[id]/edit.tsx` — edit habit screen
+- [x] `src/app/habits/manage.tsx` — manage screen with drag-to-reorder + delete
+- [x] `src/app/habits/_layout.tsx` — habits stack layout
+- [x] Habit form component — name, type, anti-habit switch, daily/weekly goal, icon, color preset, mock gradient editor
+- [x] `src/hooks/use-create-habit.ts` / `use-update-habit.ts` / `use-delete-habit.ts` / `use-reorder-habits.ts` mutations with optimistic updates
+- [x] Reorder habits — drag-to-reorder via `react-native-draggable-flatlist`
+- [x] Delete with Alert confirmation
+- [x] Frozen habit treatment — lock badge, disabled save, disabled drag; delete still works
+- [x] Error code branching — `habit_limit_reached`, `habit_type_not_allowed`, `habit_frozen`, `habit_order_conflict` → native Alert
+- [x] Settings tab updated with "Manage habits" entry point
+- [x] `GestureHandlerRootView` added to root layout
 
 ---
 
