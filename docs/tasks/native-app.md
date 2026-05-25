@@ -66,9 +66,9 @@ zod
 ### Tasks
 
 - [x] `src/lib/habits-api.ts` — typed wrappers for `GET /api/habits`, `POST /api/tracker`
-- [ ] `src/hooks/use-habits.ts` — React Query hook (`useQuery`) for habits list
-- [ ] `src/hooks/use-log-habit.ts` — React Query mutation for logging a habit
-- [ ] Install React Query (`@tanstack/react-query`) + `QueryClientProvider` in root layout
+- [x] `src/hooks/use-habits.ts` — React Query hook (`useQuery`) for habits list
+- [x] `src/hooks/use-log-habit.ts` — React Query mutation for logging a habit
+- [x] Install React Query (`@tanstack/react-query`) + `QueryClientProvider` in root layout
 - [ ] `src/app/(tabs)/index.tsx` — habits list screen
   - Flat list of habit rows
   - Completion checkbox / tap-to-log interaction
