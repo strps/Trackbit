@@ -4,8 +4,9 @@ import { clearToken, loadToken, saveToken } from "@/lib/token-store";
 
 interface AuthContextValue {
   user: Auth.AuthUser | null;
+  token: string | null;
   isLoading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string, remember?: boolean) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -13,15 +14,17 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<Auth.AuthUser | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function hydrate() {
       try {
-        const token = await loadToken();
-        if (!token) return;
-        const session = await Auth.getSession(token);
+        const stored = await loadToken();
+        if (!stored) return;
+        const session = await Auth.getSession(stored);
         if (session) {
+          setToken(stored);
           setUser(session.user);
         } else {
           // Token is stale — drop it so the user lands on sign-in.
@@ -34,14 +37,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     hydrate();
   }, []);
 
-  async function signIn(email: string, password: string): Promise<void> {
+  async function signIn(email: string, password: string, remember = true): Promise<void> {
     const result = await Auth.signIn(email, password);
-    await saveToken(result.token);
+    if (remember) await saveToken(result.token);
+    setToken(result.token);
     setUser(result.user);
   }
 
   async function signOut(): Promise<void> {
-    const token = await loadToken();
     if (token) {
       try {
         await Auth.signOut(token);
@@ -50,11 +53,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
     await clearToken();
+    setToken(null);
     setUser(null);
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, token, isLoading, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

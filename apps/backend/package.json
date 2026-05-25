@@ -22,7 +22,6 @@
     "@hono/node-server": "^1.19.6",
     "@hono/zod-validator": "^0.7.5",
     "@react-email/components": "^1.0.1",
-    "@trackbit/hacienda-client": "workspace:*",
     "@trackbit/types": "workspace:*",
     "@types/node": "^24.10.4",
     "@types/react": "^19.2.7",

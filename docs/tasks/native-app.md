@@ -45,10 +45,10 @@ Bootstrapped Expo app with theming, tab navigation, and platform conventions est
 - [x] Route guard in `src/app/_layout.tsx` — redirect to `/auth/sign-in` when unauthenticated
 - [X] `src/app/auth/sign-in.tsx` — sign-in screen (email + password form)
 - [x] `src/app/auth/sign-up.tsx` — sign-up screen (name, email, password)
-- [ ] `src/app/auth/_layout.tsx` — auth stack layout (no tabs)
+- [x] `src/app/auth/_layout.tsx` — auth stack layout (no tabs)
 - [x] Form validation with Zod (match web validation rules)
 - [x] Loading and error states on auth forms
-- [ ] "Remember me" — persist session vs. session-only cookie
+- [x] "Remember me" — persist session vs. session-only cookie
 
 ### Dependencies added
 

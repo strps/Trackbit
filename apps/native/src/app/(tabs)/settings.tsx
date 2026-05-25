@@ -5,12 +5,12 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 
-export default function HabitsScreen() {
+export default function SettingsScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedText type="title">Habits</ThemedText>
-        <ThemedText themeColor="textSecondary">Coming in Phase 2</ThemedText>
+        <ThemedText type="title">Settings</ThemedText>
+        <ThemedText themeColor="textSecondary">Coming in Phase 5</ThemedText>
       </SafeAreaView>
     </ThemedView>
   );

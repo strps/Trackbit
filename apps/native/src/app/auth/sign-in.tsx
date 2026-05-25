@@ -4,6 +4,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   TextInput,
   TouchableOpacity,
   View,
@@ -32,6 +33,7 @@ export default function SignInScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -56,7 +58,7 @@ export default function SignInScreen() {
 
     setIsLoading(true);
     try {
-      await signIn(result.data.email, result.data.password);
+      await signIn(result.data.email, result.data.password, rememberMe);
       // Stack.Protected in _layout.tsx navigates to (tabs) once user is set.
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Sign in failed. Please try again.';
@@ -155,6 +157,18 @@ export default function SignInScreen() {
               {fieldErrors.password ? (
                 <ThemedText style={styles.fieldError}>{fieldErrors.password}</ThemedText>
               ) : null}
+            </View>
+
+            <View style={styles.rememberRow}>
+              <ThemedText type="small" themeColor="textSecondary">
+                Remember me
+              </ThemedText>
+              <Switch
+                value={rememberMe}
+                onValueChange={setRememberMe}
+                trackColor={{ true: '#3c87f7' }}
+                disabled={isLoading}
+              />
             </View>
 
             <TouchableOpacity
@@ -262,5 +276,10 @@ const styles = StyleSheet.create({
   },
   signUpLink: {
     color: '#3c87f7',
+  },
+  rememberRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
 });
