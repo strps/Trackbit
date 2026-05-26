@@ -20,6 +20,7 @@ function RootNavigator() {
       <Stack.Protected guard={!isLoading && !!user}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="habits" />
+        <Stack.Screen name="session" />
       </Stack.Protected>
       <Stack.Protected guard={!isLoading && !user}>
         <Stack.Screen name="auth" />

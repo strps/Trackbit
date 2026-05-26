@@ -94,15 +94,16 @@ zod
 
 ### Tasks
 
-- [ ] `src/app/(tabs)/log.tsx` — log screen (new tab)
-- [ ] Add "Log" tab trigger to `app-tabs.tsx` with appropriate icon
-- [ ] `src/lib/tracker-api.ts` — typed wrappers for tracker endpoints
-- [ ] `src/hooks/use-tracker.ts` — React Query hooks for active session / history
-- [ ] Exercise picker — searchable list from `GET /api/exercise-info`
+- [x] `src/app/(tabs)/log.tsx` — log screen (new tab); lists exercise habits, Start/Open session
+- [x] Add "Log" tab trigger to `app-tabs.tsx` with icon (all tabs now have lucide icons)
+- [x] `src/lib/tracker-api.ts` — typed wrappers for all tracker + exercise-info endpoints
+- [x] `src/hooks/use-tracker.ts` — `useTodayHistory`, `useExercises`, `useHabitTodayLog`, `useActiveSession` selectors; `useStartExerciseSession`, CRUD mutations with optimistic updates
+- [x] `src/app/session/_layout.tsx` — session stack layout (registered in root auth guard)
+- [x] `src/app/session/[id].tsx` — session detail screen scaffold; uses `useActiveSession`, sets dynamic header title, lists exercise logs (placeholder rows ready for `set-row.tsx`)
+- [ ] Exercise picker — searchable list from `GET /api/exercise-info`; "Add exercise" in session screen
 - [ ] `src/components/set-row.tsx` — a single logged set (exercise, reps, weight, RPE)
 - [ ] `src/components/rpe-selector.tsx` — RPE picker (native bottom sheet)
-- [ ] Add set form — modal or inline form
-- [ ] Session summary at top (total sets, duration)
+- [ ] Add set form — inline form on set-row (reps + weight inputs, RPE picker)
 - [ ] Swipe-to-delete on set rows
 - [ ] Custom exercise creation flow
 

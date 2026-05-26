@@ -9,10 +9,17 @@ import {
 import type { Href } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  House,
+  Dumbbell,
+  TrendingUp,
+  Settings,
+  type LucideIcon,
+} from 'lucide-react-native';
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
-
+import { useTheme } from '@/hooks/use-theme';
 import { Spacing } from '@/constants/theme';
 
 export default function AppTabs() {
@@ -21,16 +28,16 @@ export default function AppTabs() {
       <TabList asChild>
         <CustomTabList>
           <TabTrigger name="habits" href="/" asChild>
-            <TabButton>Habits</TabButton>
+            <TabButton icon={House}>Habits</TabButton>
           </TabTrigger>
           <TabTrigger name="log" href={'/log' as Href} asChild>
-            <TabButton>Log</TabButton>
+            <TabButton icon={Dumbbell}>Log</TabButton>
           </TabTrigger>
           <TabTrigger name="analytics" href={'/analytics' as Href} asChild>
-            <TabButton>Analytics</TabButton>
+            <TabButton icon={TrendingUp}>Analytics</TabButton>
           </TabTrigger>
           <TabTrigger name="settings" href={'/settings' as Href} asChild>
-            <TabButton>Settings</TabButton>
+            <TabButton icon={Settings}>Settings</TabButton>
           </TabTrigger>
         </CustomTabList>
       </TabList>
@@ -39,12 +46,23 @@ export default function AppTabs() {
   );
 }
 
-function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
+function TabButton({
+  children,
+  isFocused,
+  icon: Icon,
+  ...props
+}: TabTriggerSlotProps & { icon: LucideIcon }) {
+  const theme = useTheme();
   return (
     <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
       <ThemedView
         type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
         style={styles.tabButtonView}>
+        <Icon
+          size={15}
+          color={isFocused ? theme.text : theme.textSecondary}
+          strokeWidth={2}
+        />
         <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
           {children}
         </ThemedText>
@@ -86,5 +104,8 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.three,
     borderRadius: Spacing.three,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
   },
 });
