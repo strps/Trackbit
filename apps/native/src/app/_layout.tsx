@@ -22,6 +22,7 @@ function RootNavigator() {
         <Stack.Screen name="habits" />
         <Stack.Screen name="session" />
         <Stack.Screen name="exercises" />
+        <Stack.Screen name="settings" options={{ headerShown: true, title: 'Settings' }} />
       </Stack.Protected>
       <Stack.Protected guard={!isLoading && !user}>
         <Stack.Screen name="auth" />

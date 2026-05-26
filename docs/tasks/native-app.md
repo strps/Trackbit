@@ -142,17 +142,18 @@ react-native-svg
 
 ## Phase 5 — Settings & Profile
 
-**Goal:** users can view their profile, change locale/timezone, and sign out from a Settings tab.
+**Goal:** users can view their profile, change locale/timezone, and sign out from a Settings screen.
+
+**Design decision:** Settings is not a tab. It lives at `src/app/settings.tsx` (stack screen) and is reached via the user avatar dropdown menu in the top-right of the tab bar. This keeps the tab bar uncluttered and groups account actions with the user menu.
 
 ### Tasks
 
-- [ ] `src/app/(tabs)/settings.tsx` — settings tab
-- [ ] Add "Settings" tab trigger to `app-tabs.tsx`
-- [ ] `src/components/settings-row.tsx` — tappable row for settings items
-- [ ] Profile section — display name, email (read-only)
+- [x] `src/app/settings.tsx` — settings screen (stack, not tab)
+- [x] "Settings" item in `UserMenu` dropdown → `router.push('/settings')`
+- [x] Profile section — display name, email (read-only)
+- [x] Sign-out button → calls `auth.signOut()`, redirects to sign-in
 - [ ] Locale picker — `PATCH /api/me/preferences` on change (matches web locale switcher)
 - [ ] Timezone picker — native scroll picker or modal list
-- [ ] Sign-out button → calls `auth.signOut()`, redirects to sign-in
 - [ ] App version / build info row
 
 ---
@@ -220,11 +221,12 @@ expo-background-fetch
 /                          Root layout (auth guard)
 ├── /auth/sign-in          Sign-in screen
 ├── /auth/sign-up          Sign-up screen
+├── /settings              Settings & profile (reached via user menu, not a tab)
 └── /(tabs)/               Tab navigator
     ├── index              Habits list (Home)
     ├── log                Activity log
     ├── analytics          Heatmap + analytics
-    └── settings           Profile + preferences
+    └── configuration      Habit + exercise management
         └── /habits/new    Create habit (modal)
         └── /habits/[id]/edit  Edit habit (modal)
 ```
