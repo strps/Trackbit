@@ -11,7 +11,6 @@ import { Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   House,
-  Dumbbell,
   TrendingUp,
   Settings,
   type LucideIcon,
@@ -28,9 +27,6 @@ export default function AppTabs() {
         <CustomTabList>
           <TabTrigger name="habits" href="/" asChild>
             <TabButton icon={House}>Habits</TabButton>
-          </TabTrigger>
-          <TabTrigger name="log" href={'/log' as Href} asChild>
-            <TabButton icon={Dumbbell}>Log</TabButton>
           </TabTrigger>
           <TabTrigger name="analytics" href={'/analytics' as Href} asChild>
             <TabButton icon={TrendingUp}>Analytics</TabButton>

@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from "react-native";
 import {
   Ban, BookOpen, Briefcase, Coffee, Code, Droplets,
-  Dumbbell, Heart, House, Moon, Music, Star, Sun, Trees, Trophy,
+  Dumbbell, Heart, House, Lock, Moon, Music, Star, Sun, Trees, Trophy,
   Check, Minus, Plus, Play, Pause, ChevronRight,
   type LucideIcon,
 } from "lucide-react-native";
@@ -10,6 +10,7 @@ import { ThemedText } from "@/components/themed-text";
 import { useTheme } from "@/hooks/use-theme";
 import { Spacing } from "@/constants/theme";
 import { type Habit, type ColorTheme } from "@/lib/habits-api";
+import type { DayLog } from "@/lib/tracker-api";
 
 export const COLOR_THEME_ACCENT: Record<ColorTheme, string> = {
   green: "#22c55e",
@@ -312,33 +313,73 @@ export function TimedHabitRow({ habit, onLog, isLogging }: TimedHabitRowProps) {
 // Complex (exercise) habit row
 // ---------------------------------------------------------------------------
 
-interface ComplexHabitRowProps {
-  habit: Habit;
-  onNavigate: (habitId: number) => void;
+function totalSets(dayLogs: DayLog[]): number {
+  return (dayLogs[0]?.exerciseSessions ?? [])
+    .flatMap((s) => s.exerciseLogs)
+    .flatMap((l) => l.exercisePerformances).length;
 }
 
-export function ComplexHabitRow({ habit, onNavigate }: ComplexHabitRowProps) {
+interface ComplexHabitRowProps {
+  habit: Habit & { dayLogs?: DayLog[] };
+  onStart: (habitId: number) => void;
+  onOpen: (sessionId: number) => void;
+  isStarting: boolean;
+}
+
+export function ComplexHabitRow({ habit, onStart, onOpen, isStarting }: ComplexHabitRowProps) {
   const theme = useTheme();
   const accent = accentColor(habit);
-  const sessions = 0; // navigation to exercise detail is not yet implemented
-  const inactive = sessions === 0;
+  const todayLog = habit.dayLogs?.[0] ?? null;
+  const hasSessions = (todayLog?.exerciseSessions?.length ?? 0) > 0;
+  const firstSessionId = todayLog?.exerciseSessions[0]?.id;
+  const sets = totalSets(habit.dayLogs ?? []);
+
+  let subtitle: string;
+  if (hasSessions) {
+    subtitle = sets === 0 ? "Session open — add exercises to log sets" : `${sets} set${sets === 1 ? "" : "s"} logged`;
+  } else {
+    subtitle = "No session today";
+  }
+
+  let right: React.ReactNode;
+  if (habit.frozen) {
+    right = <Lock size={18} color={theme.textSecondary} strokeWidth={2} />;
+  } else if (hasSessions) {
+    right = (
+      <TouchableOpacity
+        style={[styles.stepBtn, { borderColor: theme.backgroundSelected }]}
+        onPress={() => firstSessionId !== undefined && onOpen(firstSessionId)}
+        activeOpacity={0.7}
+      >
+        <ChevronRight size={16} color={theme.textSecondary} strokeWidth={2} />
+      </TouchableOpacity>
+    );
+  } else {
+    right = (
+      <TouchableOpacity
+        style={[styles.startBtn, { backgroundColor: accent }]}
+        onPress={() => onStart(habit.id)}
+        disabled={isStarting}
+        activeOpacity={0.7}
+      >
+        {isStarting ? (
+          <ActivityIndicator size="small" color="#ffffff" />
+        ) : (
+          <ThemedText type="small" style={styles.startBtnText}>
+            Start
+          </ThemedText>
+        )}
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <BaseRow
       habit={habit}
       accent={accent}
-      subtitle="Tap to log exercise"
-      inactive={inactive}
-      right={
-        <TouchableOpacity
-          onPress={() => onNavigate(habit.id)}
-          disabled={habit.frozen}
-          style={[styles.stepBtn, { borderColor: theme.backgroundSelected }]}
-          activeOpacity={0.7}
-        >
-          <ChevronRight size={16} color={theme.textSecondary} strokeWidth={2} />
-        </TouchableOpacity>
-      }
+      subtitle={subtitle}
+      inactive={!hasSessions && !habit.frozen}
+      right={right}
     />
   );
 }
@@ -348,20 +389,29 @@ export function ComplexHabitRow({ habit, onNavigate }: ComplexHabitRowProps) {
 // ---------------------------------------------------------------------------
 
 interface HabitRowProps {
-  habit: Habit;
+  habit: Habit & { dayLogs?: DayLog[] };
   onLog: (habitId: number, rating: number) => void;
   isLogging: boolean;
-  onNavigate?: (habitId: number) => void;
+  onStartSession?: (habitId: number) => void;
+  onOpenSession?: (sessionId: number) => void;
+  startingSessionId?: number | null;
 }
 
-export function HabitRow({ habit, onLog, isLogging, onNavigate }: HabitRowProps) {
+export function HabitRow({ habit, onLog, isLogging, onStartSession, onOpenSession, startingSessionId }: HabitRowProps) {
   switch (habit.type) {
     case "count":
       return <CountHabitRow habit={habit} onLog={onLog} isLogging={isLogging} />;
     case "timed":
       return <TimedHabitRow habit={habit} onLog={onLog} isLogging={isLogging} />;
     case "complex":
-      return <ComplexHabitRow habit={habit} onNavigate={onNavigate ?? (() => {})} />;
+      return (
+        <ComplexHabitRow
+          habit={habit}
+          onStart={onStartSession ?? (() => {})}
+          onOpen={onOpenSession ?? (() => {})}
+          isStarting={startingSessionId === habit.id}
+        />
+      );
     case "check":
     case "negative":
     default:
@@ -425,6 +475,20 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     minWidth: 24,
     textAlign: "center",
+  },
+  // Start button (complex habit)
+  startBtn: {
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.two + Spacing.one,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 56,
+    height: 32,
+  },
+  startBtnText: {
+    color: "#ffffff",
+    fontWeight: "600",
   },
   // Timer
   timerRight: {

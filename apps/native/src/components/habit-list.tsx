@@ -5,20 +5,35 @@ import { HabitRow } from "@/components/habit-row";
 import { Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import { type Habit } from "@/lib/habits-api";
+import type { DayLog } from "@/lib/tracker-api";
+
+type EnrichedHabit = Habit & { dayLogs?: DayLog[] };
 
 type ListItem =
   | { type: "header"; title: string; key: string }
-  | { type: "habit"; habit: Habit; key: string };
+  | { type: "habit"; habit: EnrichedHabit; key: string };
 
 interface HabitListProps {
-  habits: Habit[];
+  habits: EnrichedHabit[];
   loggingId: number | null;
   onLog: (habitId: number, rating: number) => void;
   onRefresh: () => void;
   refreshing: boolean;
+  onStartSession?: (habitId: number) => void;
+  onOpenSession?: (sessionId: number) => void;
+  startingSessionId?: number | null;
 }
 
-export function HabitList({ habits, loggingId, onLog, onRefresh, refreshing }: HabitListProps) {
+export function HabitList({
+  habits,
+  loggingId,
+  onLog,
+  onRefresh,
+  refreshing,
+  onStartSession,
+  onOpenSession,
+  startingSessionId,
+}: HabitListProps) {
   const theme = useTheme();
 
   const active = habits.filter((h) => !h.frozen);
@@ -73,7 +88,9 @@ export function HabitList({ habits, loggingId, onLog, onRefresh, refreshing }: H
             habit={item.habit}
             onLog={onLog}
             isLogging={loggingId === item.habit.id}
-            onNavigate={() => {}}
+            onStartSession={onStartSession}
+            onOpenSession={onOpenSession}
+            startingSessionId={startingSessionId}
           />
         );
       }}
