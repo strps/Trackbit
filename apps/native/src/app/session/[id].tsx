@@ -7,11 +7,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { ExercisePicker } from "@/components/exercise-picker";
-import { useActiveSession, type EnrichedExerciseLog } from "@/hooks/use-tracker";
+import { SetRow } from "@/components/set-row";
+import { useActiveSession, useCreatePerformance, type EnrichedExerciseLog } from "@/hooks/use-tracker";
 import { useTheme } from "@/hooks/use-theme";
 import { Spacing } from "@/constants/theme";
 
-// --- Exercise log row (placeholder for set-row.tsx component) ---
+// --- Exercise log card with per-set rows ---
 
 interface ExerciseLogRowProps {
   log: EnrichedExerciseLog;
@@ -19,21 +20,59 @@ interface ExerciseLogRowProps {
 
 function ExerciseLogRow({ log }: ExerciseLogRowProps) {
   const theme = useTheme();
-  const setCount = log.exercisePerformances.length;
+  const createPerf = useCreatePerformance();
+  const weightUnit = log.exercise?.defaultWeightUnit ?? "kg";
+  const performances = log.exercisePerformances;
+
+  function handleAddSet() {
+    const prev = performances[performances.length - 1] ?? null;
+    createPerf.mutate({
+      exerciseLogId: log.id,
+      number: performances.length + 1,
+      reps: prev?.reps ?? null,
+      weight: prev?.weight ?? null,
+      duration: null,
+      distance: null,
+      rpe: null,
+    });
+  }
 
   return (
-    <View style={[styles.logRow, { backgroundColor: theme.backgroundElement }]}>
-      <View style={[styles.logIcon, { backgroundColor: theme.backgroundSelected }]}>
-        <Dumbbell size={16} color={theme.textSecondary} strokeWidth={2} />
+    <View style={[styles.logCard, { backgroundColor: theme.backgroundElement }]}>
+      {/* Header */}
+      <View style={styles.logHeader}>
+        <View style={[styles.logIcon, { backgroundColor: theme.backgroundSelected }]}>
+          <Dumbbell size={16} color={theme.textSecondary} strokeWidth={2} />
+        </View>
+        <View style={styles.logBody}>
+          <ThemedText type="default" numberOfLines={1}>
+            {log.exercise?.name ?? `Exercise #${log.exerciseId}`}
+          </ThemedText>
+          {log.exercise?.category ? (
+            <ThemedText type="small" themeColor="textSecondary">
+              {log.exercise.category}
+            </ThemedText>
+          ) : null}
+        </View>
       </View>
-      <View style={styles.logBody}>
-        <ThemedText type="default" numberOfLines={1}>
-          {log.exercise?.name ?? `Exercise #${log.exerciseId}`}
-        </ThemedText>
+
+      {/* Set rows */}
+      {performances.map((perf) => (
+        <SetRow key={perf.id} performance={perf} weightUnit={weightUnit} />
+      ))}
+
+      {/* Add set */}
+      <TouchableOpacity
+        style={styles.addSetBtn}
+        onPress={handleAddSet}
+        activeOpacity={0.7}
+        disabled={createPerf.isPending}
+      >
+        <Plus size={14} color={theme.textSecondary} strokeWidth={2.5} />
         <ThemedText type="small" themeColor="textSecondary">
-          {setCount === 0 ? "No sets logged" : `${setCount} set${setCount === 1 ? "" : "s"}`}
+          Add set
         </ThemedText>
-      </View>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -143,13 +182,16 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.five,
     flexGrow: 1,
   },
-  logRow: {
+  logCard: {
+    borderRadius: 12,
+    marginVertical: Spacing.one,
+    overflow: "hidden",
+  },
+  logHeader: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two + Spacing.one,
-    borderRadius: 12,
-    marginVertical: Spacing.one,
     gap: Spacing.three,
   },
   logIcon: {
@@ -162,6 +204,13 @@ const styles = StyleSheet.create({
   logBody: {
     flex: 1,
     gap: 2,
+  },
+  addSetBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.one,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
   },
   emptyState: {
     alignItems: "center",

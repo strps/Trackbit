@@ -99,12 +99,12 @@ zod
 - [x] `src/lib/tracker-api.ts` — typed wrappers for all tracker + exercise-info endpoints
 - [x] `src/hooks/use-tracker.ts` — `useTodayHistory`, `useExercises`, `useHabitTodayLog`, `useActiveSession` selectors; `useStartExerciseSession`, CRUD mutations with optimistic updates
 - [x] `src/app/session/_layout.tsx` — session stack layout (registered in root auth guard)
-- [x] `src/app/session/[id].tsx` — session detail screen scaffold; uses `useActiveSession`, sets dynamic header title, lists exercise logs (placeholder rows ready for `set-row.tsx`)
+- [x] `src/app/session/[id].tsx` — session detail screen; expanded exercise log cards with per-set rows and "+ Add set" button
 - [x] Exercise picker — searchable list from `GET /api/exercise-info`; "Add exercise" in session screen
-- [ ] `src/components/set-row.tsx` — a single logged set (exercise, reps, weight, RPE)
-- [ ] `src/components/rpe-selector.tsx` — RPE picker (native bottom sheet)
-- [ ] Add set form — inline form on set-row (reps + weight inputs, RPE picker)
-- [ ] Swipe-to-delete on set rows
+- [x] `src/components/set-row.tsx` — single logged set; display (set #, reps × weight, RPE badge), tap-to-edit (inline reps + weight TextInputs), swipe-to-delete (Swipeable → `useDeletePerformance`); pending rows (id < 0) shown at reduced opacity
+- [x] Swipe-to-delete on set rows — via `Swipeable` from `react-native-gesture-handler`
+- [x] `src/components/rpe-selector.tsx` — RPE picker (native bottom sheet)
+- [x] Add set form — RPE editing on set-row (requires `rpe-selector.tsx`); reps + weight inline editing already ships in `set-row.tsx`
 - [ ] Custom exercise creation flow
 
 ### Dependencies added
