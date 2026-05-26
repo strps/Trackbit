@@ -1,10 +1,12 @@
-import { ActivityIndicator, FlatList, StyleSheet, View } from "react-native";
+import { ActivityIndicator, FlatList, StyleSheet, TouchableOpacity, View } from "react-native";
 import { useLocalSearchParams, useNavigation } from "expo-router";
-import { useEffect } from "react";
-import { Dumbbell } from "lucide-react-native";
+import { useEffect, useState } from "react";
+import { Dumbbell, Plus } from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import { ExercisePicker } from "@/components/exercise-picker";
 import { useActiveSession, type EnrichedExerciseLog } from "@/hooks/use-tracker";
 import { useTheme } from "@/hooks/use-theme";
 import { Spacing } from "@/constants/theme";
@@ -43,6 +45,8 @@ export default function SessionScreen() {
   const sessionId = id ? Number(id) : null;
   const navigation = useNavigation();
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const [pickerVisible, setPickerVisible] = useState(false);
 
   const { isLoading, isFetching, refetch, habit, session, enrichedLogs, totalSets } =
     useActiveSession(sessionId);
@@ -82,7 +86,7 @@ export default function SessionScreen() {
       <FlatList
         data={enrichedLogs}
         keyExtractor={(l) => String(l.id)}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 72 }]}
         refreshing={isFetching && !isLoading}
         onRefresh={refetch}
         renderItem={({ item }) => <ExerciseLogRow log={item} />}
@@ -95,6 +99,28 @@ export default function SessionScreen() {
           </View>
         }
       />
+
+      <TouchableOpacity
+        style={[
+          styles.addBtn,
+          { bottom: insets.bottom + Spacing.three, backgroundColor: theme.backgroundElement },
+        ]}
+        onPress={() => setPickerVisible(true)}
+        activeOpacity={0.8}
+      >
+        <Plus size={18} color={theme.text} strokeWidth={2.5} />
+        <ThemedText type="default" style={styles.addBtnLabel}>
+          Add exercise
+        </ThemedText>
+      </TouchableOpacity>
+
+      {session && (
+        <ExercisePicker
+          visible={pickerVisible}
+          exerciseSessionId={session.id}
+          onClose={() => setPickerVisible(false)}
+        />
+      )}
     </ThemedView>
   );
 }
@@ -144,5 +170,23 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     textAlign: "center",
+  },
+  addBtn: {
+    position: "absolute",
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.one,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    borderRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  addBtnLabel: {
+    fontWeight: "600",
   },
 });

@@ -100,7 +100,7 @@ zod
 - [x] `src/hooks/use-tracker.ts` — `useTodayHistory`, `useExercises`, `useHabitTodayLog`, `useActiveSession` selectors; `useStartExerciseSession`, CRUD mutations with optimistic updates
 - [x] `src/app/session/_layout.tsx` — session stack layout (registered in root auth guard)
 - [x] `src/app/session/[id].tsx` — session detail screen scaffold; uses `useActiveSession`, sets dynamic header title, lists exercise logs (placeholder rows ready for `set-row.tsx`)
-- [ ] Exercise picker — searchable list from `GET /api/exercise-info`; "Add exercise" in session screen
+- [x] Exercise picker — searchable list from `GET /api/exercise-info`; "Add exercise" in session screen
 - [ ] `src/components/set-row.tsx` — a single logged set (exercise, reps, weight, RPE)
 - [ ] `src/components/rpe-selector.tsx` — RPE picker (native bottom sheet)
 - [ ] Add set form — inline form on set-row (reps + weight inputs, RPE picker)
