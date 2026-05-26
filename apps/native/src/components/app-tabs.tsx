@@ -7,7 +7,7 @@ import {
   TabListProps,
 } from 'expo-router/ui';
 import type { Href } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   House,
@@ -20,7 +20,6 @@ import {
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 import { useTheme } from '@/hooks/use-theme';
-import { Spacing } from '@/constants/theme';
 
 export default function AppTabs() {
   return (
@@ -50,23 +49,24 @@ function TabButton({
   children,
   isFocused,
   icon: Icon,
+  style,
   ...props
 }: TabTriggerSlotProps & { icon: LucideIcon }) {
   const theme = useTheme();
   return (
-    <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
+    <Pressable {...props} style={[style as any, { flexDirection: 'column' }]} className="flex-1 items-center gap-1">
       <ThemedView
         type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
-        style={styles.tabButtonView}>
+        className="w-14 h-14 items-center justify-center rounded-2xl">
         <Icon
-          size={15}
+          size={18}
           color={isFocused ? theme.text : theme.textSecondary}
           strokeWidth={2}
         />
-        <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
-          {children}
-        </ThemedText>
       </ThemedView>
+      <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
+        {children}
+      </ThemedText>
     </Pressable>
   );
 }
@@ -75,37 +75,10 @@ function CustomTabList(props: TabListProps) {
   return (
     <ThemedView>
       <SafeAreaView edges={['top']}>
-        <View {...props} style={styles.tabListContainer}>
-          <ThemedText type="smallBold" style={styles.brandText}>
-            Trackbit
-          </ThemedText>
+        <View {...props} className="flex-row items-center gap-2 px-4 py-2">
           {props.children}
         </View>
       </SafeAreaView>
     </ThemedView>
   );
 }
-
-const styles = StyleSheet.create({
-  tabListContainer: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  brandText: {
-    marginRight: 'auto',
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-  tabButtonView: {
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.three,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-  },
-});
