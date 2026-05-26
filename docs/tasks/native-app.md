@@ -105,7 +105,7 @@ zod
 - [x] Swipe-to-delete on set rows — via `Swipeable` from `react-native-gesture-handler`
 - [x] `src/components/rpe-selector.tsx` — RPE picker (native bottom sheet)
 - [x] Add set form — RPE editing on set-row (requires `rpe-selector.tsx`); reps + weight inline editing already ships in `set-row.tsx`
-- [ ] Custom exercise creation flow
+- [x] Custom exercise creation flow
 
 ### Dependencies added
 

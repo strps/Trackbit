@@ -140,3 +140,36 @@ export function deletePerformance(id: number, token: string): Promise<void> {
 export function getExercises(token: string): Promise<ExerciseInfo[]> {
   return apiFetch<ExerciseInfo[]>("/api/exercise-info/exercises", { token });
 }
+
+export interface MuscleGroup {
+  id: number;
+  name: string;
+  slug: string;
+  parentId: number | null;
+  level: number;
+  displayOrder: number | null;
+}
+
+export type ExerciseCategory = "strength" | "cardio" | "flexibility";
+
+export type CreateExerciseInput = {
+  name: string;
+  category: ExerciseCategory;
+  description?: string;
+  muscleGroups: number[];
+};
+
+export function getMuscleGroups(token: string): Promise<MuscleGroup[]> {
+  return apiFetch<MuscleGroup[]>("/api/exercise-info/muscle-groups", { token });
+}
+
+export function createExercise(
+  input: CreateExerciseInput,
+  token: string,
+): Promise<ExerciseInfo> {
+  return apiFetch<ExerciseInfo>("/api/exercise-info/exercises", {
+    method: "POST",
+    body: input,
+    token,
+  });
+}

@@ -29,8 +29,8 @@ export default function AppTabs() {
           <TabTrigger name="analytics" href={'/analytics' as Href} asChild>
             <TabButton>Analytics</TabButton>
           </TabTrigger>
-          <TabTrigger name="settings" href={'/settings' as Href} asChild>
-            <TabButton>Settings</TabButton>
+          <TabTrigger name="configuration" href={'/configuration' as Href} asChild>
+            <TabButton>Configuration</TabButton>
           </TabTrigger>
         </CustomTabList>
       </TabList>

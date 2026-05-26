@@ -7,7 +7,7 @@ import { ThemedView } from "@/components/themed-view";
 import { useTheme } from "@/hooks/use-theme";
 import { Spacing } from "@/constants/theme";
 
-function SettingsRow({ label, onPress }: { label: string; onPress: () => void }) {
+function ConfigRow({ label, onPress }: { label: string; onPress: () => void }) {
   const theme = useTheme();
   return (
     <TouchableOpacity
@@ -21,20 +21,29 @@ function SettingsRow({ label, onPress }: { label: string; onPress: () => void })
   );
 }
 
-export default function SettingsScreen() {
+export default function ConfigurationScreen() {
   const router = useRouter();
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedText type="title" style={styles.heading}>Settings</ThemedText>
+        <ThemedText type="title" style={styles.heading}>Configuration</ThemedText>
         <View style={styles.section}>
           <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionLabel}>
             HABITS
           </ThemedText>
-          <SettingsRow
+          <ConfigRow
             label="Manage habits"
             onPress={() => router.push("/habits/manage" as never)}
+          />
+        </View>
+        <View style={styles.section}>
+          <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionLabel}>
+            EXERCISES
+          </ThemedText>
+          <ConfigRow
+            label="New custom exercise"
+            onPress={() => router.push("/exercises/new" as never)}
           />
         </View>
       </SafeAreaView>
@@ -46,7 +55,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1, padding: Spacing.three },
   heading: { marginBottom: Spacing.four },
-  section: { gap: Spacing.two },
+  section: { gap: Spacing.two, marginBottom: Spacing.four },
   sectionLabel: { marginBottom: Spacing.one, marginLeft: Spacing.two },
   row: {
     flexDirection: "row",
