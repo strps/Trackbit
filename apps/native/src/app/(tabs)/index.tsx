@@ -5,6 +5,7 @@ import { ThemedView } from "@/components/themed-view";
 import { HabitList } from "@/components/habit-list";
 import { useHabits } from "@/hooks/use-habits";
 import { useLogHabit } from "@/hooks/use-log-habit";
+import { useTodayLogs } from "@/hooks/use-today-logs";
 import { Spacing } from "@/constants/theme";
 
 function formatToday(): string {
@@ -14,11 +15,12 @@ function formatToday(): string {
 export default function HabitsScreen() {
   const { data: habits = [], isLoading, isFetching, refetch } = useHabits();
   const { mutate: logHabit, isPending, variables } = useLogHabit();
+  useTodayLogs(); // populates todayRatingsKey in query client
 
   const loggingId = isPending ? (variables?.habitId ?? null) : null;
 
-  function handleLog(habitId: number) {
-    logHabit({ habitId, rating: 1, timeStamp: new Date().toISOString() });
+  function handleLog(habitId: number, rating: number) {
+    logHabit({ habitId, rating, timeStamp: new Date().toISOString() });
   }
 
   if (isLoading) {

@@ -1,7 +1,9 @@
+import { useState, useRef, useEffect } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import {
   Ban, BookOpen, Briefcase, Coffee, Code, Droplets,
   Dumbbell, Heart, House, Moon, Music, Star, Sun, Trees, Trophy,
+  Check, Minus, Plus, Play, Pause, ChevronRight,
   type LucideIcon,
 } from "lucide-react-native";
 import { ThemedText } from "@/components/themed-text";
@@ -48,7 +50,7 @@ export function HabitIcon({ name, size = 20, color = "#ffffff" }: HabitIconProps
   return <Icon size={size} color={color} strokeWidth={2} />;
 }
 
-function accentColor(habit: Habit): string {
+export function accentColor(habit: Habit): string {
   if (habit.colorTheme === "custom" && habit.colorStops.length > 0) {
     const mid = habit.colorStops[Math.floor(habit.colorStops.length / 2)];
     const [r, g, b] = mid.color;
@@ -57,23 +59,26 @@ function accentColor(habit: Habit): string {
   return COLOR_THEME_ACCENT[habit.colorTheme];
 }
 
-interface HabitRowProps {
+// ---------------------------------------------------------------------------
+// Shared row shell
+// ---------------------------------------------------------------------------
+
+interface BaseRowProps {
   habit: Habit;
-  onLog: (habitId: number) => void;
-  isLogging: boolean;
+  accent: string;
+  subtitle: string;
+  inactive?: boolean;
+  right: React.ReactNode;
 }
 
-export function HabitRow({ habit, onLog, isLogging }: HabitRowProps) {
+function BaseRow({ habit, accent, subtitle, inactive, right }: BaseRowProps) {
   const theme = useTheme();
-  const accent = accentColor(habit);
-  const interactive = !habit.frozen && !isLogging;
-
   return (
-    <TouchableOpacity
-      style={[styles.row, { backgroundColor: theme.backgroundElement }]}
-      onPress={() => onLog(habit.id)}
-      disabled={!interactive}
-      activeOpacity={0.7}
+    <View
+      style={[
+        styles.row,
+        { backgroundColor: theme.backgroundElement, opacity: inactive ? 0.55 : 1 },
+      ]}
     >
       <View
         style={[
@@ -92,22 +97,281 @@ export function HabitRow({ habit, onLog, isLogging }: HabitRowProps) {
         >
           {habit.name}
         </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+          {subtitle}
+        </ThemedText>
       </View>
 
-      <View style={styles.status}>
-        {habit.frozen ? (
-          <ThemedText style={styles.statusEmoji}>🔒</ThemedText>
-        ) : habit.loggedToday ? (
-          <View style={[styles.checkCircle, { backgroundColor: accent }]}>
-            <ThemedText style={styles.checkMark}>✓</ThemedText>
-          </View>
-        ) : (
-          <View style={[styles.emptyCircle, { borderColor: theme.backgroundSelected }]} />
-        )}
-      </View>
-    </TouchableOpacity>
+      <View style={styles.rightSlot}>{right}</View>
+    </View>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Check habit row (check / negative types)
+// ---------------------------------------------------------------------------
+
+interface CheckHabitRowProps {
+  habit: Habit;
+  onLog: (habitId: number, rating: number) => void;
+  isLogging: boolean;
+}
+
+export function CheckHabitRow({ habit, onLog, isLogging }: CheckHabitRowProps) {
+  const theme = useTheme();
+  const accent = accentColor(habit);
+  const checked = !!habit.loggedToday;
+  const interactive = !habit.frozen && !isLogging;
+
+  const subtitle = habit.isAntiHabit
+    ? checked ? "Slipped" : "Avoided"
+    : checked ? "Completed" : "Not yet";
+
+  return (
+    <BaseRow
+      habit={habit}
+      accent={accent}
+      subtitle={subtitle}
+      inactive={!checked}
+      right={
+        <TouchableOpacity
+          onPress={() => onLog(habit.id, checked ? 0 : 1)}
+          disabled={!interactive}
+          style={[
+            styles.checkCircle,
+            checked
+              ? { backgroundColor: accent }
+              : { borderWidth: 2, borderColor: theme.backgroundSelected },
+          ]}
+          activeOpacity={0.7}
+        >
+          {checked && <Check size={16} color="#ffffff" strokeWidth={3} />}
+        </TouchableOpacity>
+      }
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Count habit row
+// ---------------------------------------------------------------------------
+
+interface CountHabitRowProps {
+  habit: Habit;
+  onLog: (habitId: number, rating: number) => void;
+  isLogging: boolean;
+}
+
+export function CountHabitRow({ habit, onLog, isLogging }: CountHabitRowProps) {
+  const theme = useTheme();
+  const accent = accentColor(habit);
+  const goal = habit.dailyGoal || 1;
+  const value = habit.todayRating ?? 0;
+  const interactive = !habit.frozen && !isLogging;
+  const isGoalMet = value >= goal;
+
+  const subtitle = habit.isAntiHabit
+    ? value === 0 ? "Avoided" : `${value} / ${goal} slips`
+    : `${value} / ${goal}`;
+
+  return (
+    <BaseRow
+      habit={habit}
+      accent={accent}
+      subtitle={subtitle}
+      inactive={value === 0}
+      right={
+        <View style={styles.stepper}>
+          <TouchableOpacity
+            onPress={() => onLog(habit.id, Math.max(0, value - 1))}
+            disabled={!interactive || value === 0}
+            style={[
+              styles.stepBtn,
+              {
+                borderColor: theme.backgroundSelected,
+                opacity: value === 0 ? 0.3 : 1,
+              },
+            ]}
+            activeOpacity={0.7}
+          >
+            <Minus size={14} color={theme.text} strokeWidth={2} />
+          </TouchableOpacity>
+
+          <ThemedText
+            type="default"
+            style={[styles.countValue, isGoalMet && { color: accent }]}
+          >
+            {value}
+          </ThemedText>
+
+          <TouchableOpacity
+            onPress={() => onLog(habit.id, value + 1)}
+            disabled={!interactive}
+            style={[styles.stepBtn, { borderColor: theme.backgroundSelected }]}
+            activeOpacity={0.7}
+          >
+            <Plus size={14} color={theme.text} strokeWidth={2} />
+          </TouchableOpacity>
+        </View>
+      }
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Timed habit row
+// ---------------------------------------------------------------------------
+
+const formatMs = (ms: number) => {
+  const totalSecs = Math.floor(ms / 1000);
+  const mins = Math.floor(totalSecs / 60);
+  const secs = totalSecs % 60;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+};
+
+interface TimedHabitRowProps {
+  habit: Habit;
+  onLog: (habitId: number, rating: number) => void;
+  isLogging: boolean;
+}
+
+export function TimedHabitRow({ habit, onLog, isLogging }: TimedHabitRowProps) {
+  const theme = useTheme();
+  const accent = accentColor(habit);
+  const goalMs = (habit.dailyGoal || 1) * 60_000;
+  const [localMs, setLocalMs] = useState(habit.todayRating ?? 0);
+  const [running, setRunning] = useState(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const interactive = !habit.frozen && !isLogging;
+
+  // Sync when todayRating changes from outside (e.g. after invalidate)
+  useEffect(() => {
+    if (!running) setLocalMs(habit.todayRating ?? 0);
+  }, [habit.todayRating, running]);
+
+  useEffect(() => {
+    if (running) {
+      intervalRef.current = setInterval(() => setLocalMs((ms) => ms + 1000), 1000);
+    } else {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    }
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [running]);
+
+  function handleToggle() {
+    if (running) {
+      setRunning(false);
+      onLog(habit.id, localMs);
+    } else {
+      setRunning(true);
+    }
+  }
+
+  const progress = Math.min(localMs / goalMs, 1);
+  const isGoalMet = progress >= 1;
+  const inactive = localMs === 0 && !running;
+
+  const subtitle = habit.isAntiHabit && localMs === 0 && !running
+    ? "Avoided"
+    : `${formatMs(localMs)} / ${habit.dailyGoal || 1}m`;
+
+  return (
+    <BaseRow
+      habit={habit}
+      accent={accent}
+      subtitle={subtitle}
+      inactive={inactive}
+      right={
+        <View style={styles.timerRight}>
+          <ThemedText
+            type="default"
+            style={[styles.timerDisplay, isGoalMet && { color: accent }]}
+          >
+            {formatMs(localMs)}
+          </ThemedText>
+          <TouchableOpacity
+            onPress={handleToggle}
+            disabled={!interactive}
+            style={[styles.stepBtn, { borderColor: running ? accent : theme.backgroundSelected }]}
+            activeOpacity={0.7}
+          >
+            {running
+              ? <Pause size={14} color={accent} strokeWidth={2} />
+              : <Play size={14} color={localMs > 0 ? theme.text : theme.textSecondary} strokeWidth={2} />
+            }
+          </TouchableOpacity>
+        </View>
+      }
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Complex (exercise) habit row
+// ---------------------------------------------------------------------------
+
+interface ComplexHabitRowProps {
+  habit: Habit;
+  onNavigate: (habitId: number) => void;
+}
+
+export function ComplexHabitRow({ habit, onNavigate }: ComplexHabitRowProps) {
+  const theme = useTheme();
+  const accent = accentColor(habit);
+  const sessions = 0; // navigation to exercise detail is not yet implemented
+  const inactive = sessions === 0;
+
+  return (
+    <BaseRow
+      habit={habit}
+      accent={accent}
+      subtitle="Tap to log exercise"
+      inactive={inactive}
+      right={
+        <TouchableOpacity
+          onPress={() => onNavigate(habit.id)}
+          disabled={habit.frozen}
+          style={[styles.stepBtn, { borderColor: theme.backgroundSelected }]}
+          activeOpacity={0.7}
+        >
+          <ChevronRight size={16} color={theme.textSecondary} strokeWidth={2} />
+        </TouchableOpacity>
+      }
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Dispatcher
+// ---------------------------------------------------------------------------
+
+interface HabitRowProps {
+  habit: Habit;
+  onLog: (habitId: number, rating: number) => void;
+  isLogging: boolean;
+  onNavigate?: (habitId: number) => void;
+}
+
+export function HabitRow({ habit, onLog, isLogging, onNavigate }: HabitRowProps) {
+  switch (habit.type) {
+    case "count":
+      return <CountHabitRow habit={habit} onLog={onLog} isLogging={isLogging} />;
+    case "timed":
+      return <TimedHabitRow habit={habit} onLog={onLog} isLogging={isLogging} />;
+    case "complex":
+      return <ComplexHabitRow habit={habit} onNavigate={onNavigate ?? (() => {})} />;
+    case "check":
+    case "negative":
+    default:
+      return <CheckHabitRow habit={habit} onLog={onLog} isLogging={isLogging} />;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   row: {
@@ -128,32 +392,51 @@ const styles = StyleSheet.create({
   },
   label: {
     flex: 1,
+    gap: 2,
   },
-  status: {
-    width: 28,
+  rightSlot: {
     alignItems: "center",
     justifyContent: "center",
   },
-  statusEmoji: {
-    fontSize: 16,
-  },
+  // Check
   checkCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
   },
-  checkMark: {
-    color: "#ffffff",
-    fontSize: 14,
-    fontWeight: "700",
-    lineHeight: 18,
+  // Count stepper
+  stepper: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.two,
   },
-  emptyCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
+  stepBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  countValue: {
+    fontSize: 16,
+    fontWeight: "600",
+    minWidth: 24,
+    textAlign: "center",
+  },
+  // Timer
+  timerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.two,
+  },
+  timerDisplay: {
+    fontSize: 15,
+    fontWeight: "600",
+    fontVariant: ["tabular-nums"],
+    minWidth: 44,
+    textAlign: "right",
   },
 });

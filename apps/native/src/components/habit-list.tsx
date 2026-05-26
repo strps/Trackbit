@@ -13,7 +13,7 @@ type ListItem =
 interface HabitListProps {
   habits: Habit[];
   loggingId: number | null;
-  onLog: (habitId: number) => void;
+  onLog: (habitId: number, rating: number) => void;
   onRefresh: () => void;
   refreshing: boolean;
 }
@@ -73,6 +73,7 @@ export function HabitList({ habits, loggingId, onLog, onRefresh, refreshing }: H
             habit={item.habit}
             onLog={onLog}
             isLogging={loggingId === item.habit.id}
+            onNavigate={() => {}}
           />
         );
       }}

@@ -41,6 +41,7 @@ export interface Habit {
   createdAt: string | null;
   frozen: boolean;
   loggedToday?: boolean;
+  todayRating?: number;
 }
 
 export interface LogHabitParams {
@@ -57,6 +58,24 @@ export interface LogHabitResult {
 
 export function getHabits(token: string): Promise<Habit[]> {
   return apiFetch<Habit[]>("/api/habits", { token });
+}
+
+export interface TodayLog {
+  habitId: number;
+  rating: number;
+  id: number;
+}
+
+export function getTodayLogs(token: string, tz: string): Promise<TodayLog[]> {
+  const today = new Date().toISOString().slice(0, 10);
+  return apiFetch<Array<{ id: number; dayLogs: Array<{ id: number; habitId: number; rating: number | null }> }>>(
+    `/api/tracker/history?start=${today}&end=${today}&tz=${encodeURIComponent(tz)}`,
+    { token },
+  ).then((habits) =>
+    habits.flatMap((h) =>
+      h.dayLogs.map((dl) => ({ habitId: dl.habitId, rating: dl.rating ?? 0, id: dl.id })),
+    ),
+  );
 }
 
 export function logHabit(params: LogHabitParams, token: string, tz?: string): Promise<LogHabitResult> {
