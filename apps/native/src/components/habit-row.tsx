@@ -1,4 +1,9 @@
 import { StyleSheet, TouchableOpacity, View } from "react-native";
+import {
+  Ban, BookOpen, Briefcase, Coffee, Code, Droplets,
+  Dumbbell, Heart, House, Moon, Music, Star, Sun, Trees, Trophy,
+  type LucideIcon,
+} from "lucide-react-native";
 import { ThemedText } from "@/components/themed-text";
 import { useTheme } from "@/hooks/use-theme";
 import { Spacing } from "@/constants/theme";
@@ -14,23 +19,34 @@ export const COLOR_THEME_ACCENT: Record<ColorTheme, string> = {
   custom: "#3b82f6",
 };
 
-export const ICON_EMOJI: Record<string, string> = {
-  dumbbell: "🏋️",
-  code: "💻",
-  book: "📚",
-  star: "⭐",
-  water: "💧",
-  alert: "🏆",
-  sun: "☀️",
-  moon: "🌙",
-  music: "🎵",
-  work: "💼",
-  coffee: "☕",
-  ban: "🚫",
-  home: "🏠",
-  heart: "❤️",
-  trees: "🌳",
+export const ICON_COMPONENTS: Record<string, LucideIcon> = {
+  dumbbell: Dumbbell,
+  code: Code,
+  book: BookOpen,
+  star: Star,
+  water: Droplets,
+  alert: Trophy,
+  sun: Sun,
+  moon: Moon,
+  music: Music,
+  work: Briefcase,
+  coffee: Coffee,
+  ban: Ban,
+  home: House,
+  heart: Heart,
+  trees: Trees,
 };
+
+interface HabitIconProps {
+  name: string;
+  size?: number;
+  color?: string;
+}
+
+export function HabitIcon({ name, size = 20, color = "#ffffff" }: HabitIconProps) {
+  const Icon = ICON_COMPONENTS[name] ?? Star;
+  return <Icon size={size} color={color} strokeWidth={2} />;
+}
 
 function accentColor(habit: Habit): string {
   if (habit.colorTheme === "custom" && habit.colorStops.length > 0) {
@@ -50,7 +66,6 @@ interface HabitRowProps {
 export function HabitRow({ habit, onLog, isLogging }: HabitRowProps) {
   const theme = useTheme();
   const accent = accentColor(habit);
-  const icon = ICON_EMOJI[habit.icon] ?? "⭐";
   const interactive = !habit.frozen && !isLogging;
 
   return (
@@ -66,7 +81,7 @@ export function HabitRow({ habit, onLog, isLogging }: HabitRowProps) {
           { backgroundColor: habit.frozen ? theme.backgroundSelected : accent },
         ]}
       >
-        <ThemedText style={styles.iconEmoji}>{icon}</ThemedText>
+        <HabitIcon name={habit.icon} size={20} color="#ffffff" />
       </View>
 
       <View style={styles.label}>
@@ -110,10 +125,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
-  },
-  iconEmoji: {
-    fontSize: 18,
-    lineHeight: 22,
   },
   label: {
     flex: 1,

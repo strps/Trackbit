@@ -14,7 +14,7 @@ import { ThemedText } from "@/components/themed-text";
 import { Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import { type Habit, type HabitType, type ColorTheme, type ColorStop } from "@/lib/habits-api";
-import { COLOR_THEME_ACCENT, ICON_EMOJI } from "@/components/habit-row";
+import { COLOR_THEME_ACCENT, ICON_COMPONENTS, HabitIcon } from "@/components/habit-row";
 
 const PREDEFINED_GRADIENT_STOPS: ColorStop[] = [
   { position: 0, color: [99, 102, 241, 255] },
@@ -31,7 +31,7 @@ const HABIT_TYPES: { value: HabitType; label: string }[] = [
 
 const COLOR_THEMES: ColorTheme[] = ["green", "blue", "orange", "purple", "rose", "fire", "custom"];
 
-const ICON_KEYS = Object.keys(ICON_EMOJI);
+const ICON_KEYS = Object.keys(ICON_COMPONENTS);
 
 const schema = z.object({
   name: z
@@ -243,7 +243,7 @@ export function HabitForm({
                     ]}
                     onPress={() => !isSubmitting && !frozen && setIcon(key)}
                   >
-                    <ThemedText style={styles.iconEmoji}>{ICON_EMOJI[key]}</ThemedText>
+                    <HabitIcon name={key} size={22} color={active ? "#ffffff" : theme.text} />
                   </TouchableOpacity>
                 );
               })}
@@ -366,7 +366,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  iconEmoji: { fontSize: 22, lineHeight: 26 },
   colorRow: { flexDirection: "row", gap: Spacing.two + Spacing.one },
   colorSwatch: {
     width: 32,

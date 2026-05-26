@@ -11,7 +11,8 @@ import { useHabits } from "@/hooks/use-habits";
 import { useDeleteHabit } from "@/hooks/use-delete-habit";
 import { useReorderHabits } from "@/hooks/use-reorder-habits";
 import { type Habit } from "@/lib/habits-api";
-import { COLOR_THEME_ACCENT, ICON_EMOJI } from "@/components/habit-row";
+import { GripVertical } from "lucide-react-native";
+import { COLOR_THEME_ACCENT, HabitIcon } from "@/components/habit-row";
 import { useTheme } from "@/hooks/use-theme";
 import { Spacing } from "@/constants/theme";
 
@@ -91,7 +92,6 @@ export default function ManageHabitsScreen() {
               return `rgb(${r},${g},${b})`;
             })()
           : COLOR_THEME_ACCENT[habit.colorTheme];
-      const emoji = ICON_EMOJI[habit.icon] ?? "⭐";
 
       return (
         <ScaleDecorator>
@@ -111,9 +111,7 @@ export default function ManageHabitsScreen() {
               style={styles.dragHandle}
               accessibilityLabel="Drag to reorder"
             >
-              <ThemedText themeColor="textSecondary" style={styles.dragIcon}>
-                ☰
-              </ThemedText>
+              <GripVertical size={18} color={theme.textSecondary} strokeWidth={2} />
             </TouchableOpacity>
 
             {/* Icon */}
@@ -123,7 +121,7 @@ export default function ManageHabitsScreen() {
                 { backgroundColor: habit.frozen ? theme.backgroundSelected : accent },
               ]}
             >
-              <ThemedText style={styles.iconEmoji}>{emoji}</ThemedText>
+              <HabitIcon name={habit.icon} size={16} color="#ffffff" />
             </View>
 
             {/* Name — tap to edit */}
@@ -210,7 +208,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  dragIcon: { fontSize: 18 },
   iconCircle: {
     width: 36,
     height: 36,
@@ -218,7 +215,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  iconEmoji: { fontSize: 16, lineHeight: 20 },
   nameArea: {
     flex: 1,
     flexDirection: "row",

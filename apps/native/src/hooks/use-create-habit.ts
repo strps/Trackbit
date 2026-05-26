@@ -35,7 +35,12 @@ export function useCreateHabit() {
   const queryClient = useQueryClient();
 
   return useMutation<Habit, Error, CreateHabitInput>({
-    mutationFn: (input) => createHabit(input, token!),
+    mutationFn: (input) => {
+      const cached = queryClient.getQueryData<Habit[]>(habitsQueryKey) ?? [];
+      // Filter out optimistic entries (negative IDs) to get the real count
+      const realCount = cached.filter((h) => h.id > 0).length;
+      return createHabit({ ...input, order: input.order ?? realCount }, token!);
+    },
     onMutate: async (input) => {
       await queryClient.cancelQueries({ queryKey: habitsQueryKey });
       const prevHabits = queryClient.getQueryData<Habit[]>(habitsQueryKey);
@@ -52,7 +57,7 @@ export function useCreateHabit() {
         icon: input.icon ?? "star",
         weeklyGoal: input.weeklyGoal ?? 5,
         dailyGoal: input.dailyGoal ?? 1,
-        order: input.order ?? 0,
+        order: input.order ?? (prevHabits?.length ?? 0),
         createdAt: null,
         frozen: false,
         loggedToday: false,
