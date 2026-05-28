@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Alert, FlatList, Modal, Pressable, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -45,7 +45,13 @@ export default function SettingsScreen() {
   const [tzSearch, setTzSearch] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const allTimezones = Intl.supportedValuesOf("timeZone");
+  const allTimezones = useMemo<string[]>(() => {
+    try {
+      return (Intl as any).supportedValuesOf?.("timeZone") ?? [];
+    } catch {
+      return [];
+    }
+  }, []);
   const filteredTimezones = tzSearch
     ? allTimezones.filter(tz => tz.toLowerCase().includes(tzSearch.toLowerCase()))
     : allTimezones;
@@ -116,7 +122,7 @@ export default function SettingsScreen() {
       {/* Locale picker modal */}
       <Modal visible={localePicking} transparent animationType="fade" onRequestClose={() => setLocalePicking(false)}>
         <Pressable style={styles.modalBackdrop} onPress={() => setLocalePicking(false)}>
-          <Pressable style={[styles.localeCard, { backgroundColor: theme.backgroundElement }]} onPress={() => {}}>
+          <Pressable style={[styles.localeCard, { backgroundColor: theme.backgroundElement }]} onPress={() => { }}>
             <ThemedText type="default" style={[styles.modalTitle, { fontWeight: "600" }]}>Select Language</ThemedText>
             {LOCALES.map(locale => (
               <TouchableOpacity
