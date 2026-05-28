@@ -152,9 +152,9 @@ react-native-svg
 - [x] "Settings" item in `UserMenu` dropdown → `router.push('/settings')`
 - [x] Profile section — display name, email (read-only)
 - [x] Sign-out button → calls `auth.signOut()`, redirects to sign-in
-- [ ] Locale picker — `PATCH /api/me/preferences` on change (matches web locale switcher)
-- [ ] Timezone picker — native scroll picker or modal list
-- [ ] App version / build info row
+- [x] Locale picker — `PATCH /api/me/preferences` on change (matches web locale switcher)
+- [x] Timezone picker — native scroll picker or modal list
+- [x] App version / build info row
 
 ---
 
