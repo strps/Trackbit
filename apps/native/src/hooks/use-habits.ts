@@ -1,9 +1,23 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getHabits, type Habit } from "@/lib/habits-api";
+import { getHistory, type HabitWithHistory } from "@/lib/tracker-api";
 import { useAuth } from "@/context/auth-context";
 import { todayRatingsKey } from "./use-today-logs";
 
 export const habitsQueryKey = ["habits"] as const;
+export const habitHistoryKey = (start: string, end: string) =>
+  ["habits", "history", start, end] as const;
+
+export function useHabitHistory(start: string, end: string) {
+  const { token } = useAuth();
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return useQuery<HabitWithHistory[], Error>({
+    queryKey: habitHistoryKey(start, end),
+    queryFn: () => getHistory(token!, tz, start, end),
+    enabled: token !== null,
+    staleTime: 5 * 60 * 1000,
+  });
+}
 export const loggedTodayKey = ["logged-today"] as const;
 
 export function useHabits() {

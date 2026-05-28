@@ -121,15 +121,15 @@ zod
 
 ### Tasks
 
-- [ ] `src/app/(tabs)/analytics.tsx` — analytics tab
-- [ ] `src/lib/analytics-api.ts` — typed wrappers for analytics endpoints
-- [ ] `src/hooks/use-analytics.ts` — React Query hooks
-- [ ] Heatmap component — `src/components/heatmap.tsx`
+- [x] `src/app/(tabs)/analytics.tsx` — analytics tab
+- [x] `src/lib/analytics-api.ts` — typed wrappers for analytics endpoints
+- [x] `src/hooks/use-analytics.ts` — React Query hooks
+- [x] Heatmap component — `src/components/heatmap.tsx`
   - 52-week grid rendered with `react-native-svg` or custom `View` matrix
   - Color intensity matches `Colors` palette (primary blue gradient)
   - Touch to inspect a day
-- [ ] Habit selector to switch which habit's heatmap is shown
-- [ ] Streak counter row
+- [x] Habit selector to switch which habit's heatmap is shown
+- [x] Streak counter row
 - [ ] Weekly summary bar chart (optional, phase 4b)
 
 ### Dependencies added
