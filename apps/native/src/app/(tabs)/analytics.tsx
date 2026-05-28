@@ -64,6 +64,28 @@ function computeStreaks(map: Map<string, number>, today: string) {
   return { currentStreak: current, bestStreak: best };
 }
 
+function computeWeeklyBars(
+  map: Map<string, number>,
+  today: string,
+  numWeeks = 12,
+): Array<{ weekStart: string; daysCompleted: number }> {
+  const d = new Date(today + 'T12:00:00Z');
+  const dayOfWeek = d.getUTCDay(); // 0=Sun … 6=Sat
+  const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const currentMonday = offsetDate(today, -daysToMonday);
+
+  const result: Array<{ weekStart: string; daysCompleted: number }> = [];
+  for (let w = numWeeks - 1; w >= 0; w--) {
+    const weekStart = offsetDate(currentMonday, -w * 7);
+    let daysCompleted = 0;
+    for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+      if ((map.get(offsetDate(weekStart, dayOffset)) ?? 0) > 0) daysCompleted++;
+    }
+    result.push({ weekStart, daysCompleted });
+  }
+  return result;
+}
+
 function formatDate(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
@@ -130,6 +152,11 @@ export default function AnalyticsScreen() {
 
   const { currentStreak, bestStreak } = useMemo(
     () => computeStreaks(dayLogMap, today),
+    [dayLogMap, today],
+  );
+
+  const weeklyBars = useMemo(
+    () => computeWeeklyBars(dayLogMap, today),
     [dayLogMap, today],
   );
 
@@ -218,11 +245,41 @@ export default function AnalyticsScreen() {
             </View>
           )}
 
+          {/* Weekly completion bar chart */}
+          {selectedHabitMeta && (
+            <ThemedView type="backgroundElement" style={styles.weeklyChartCard}>
+              <ThemedText themeColor="textSecondary" style={styles.weeklyChartTitle}>
+                Weekly Completion
+              </ThemedText>
+              <View style={styles.weeklyChartBars}>
+                {weeklyBars.map((bar, index) => (
+                  <View key={bar.weekStart} style={styles.weeklyBarCol}>
+                    <View style={[styles.weeklyBarTrack, { backgroundColor: theme.backgroundElement }]}>
+                      <View
+                        style={[
+                          styles.weeklyBarFill,
+                          {
+                            height: `${Math.round((bar.daysCompleted / 7) * 100)}%`,
+                            backgroundColor: theme.backgroundSelected,
+                          },
+                        ]}
+                      />
+                    </View>
+                    <ThemedText themeColor="textSecondary" style={styles.weeklyBarLabel}>
+                      {index % 4 === 0 ? bar.weekStart.slice(5).replace('-', '/') : ''}
+                    </ThemedText>
+                  </View>
+                ))}
+              </View>
+            </ThemedView>
+          )}
+
           {/* ── Workout Analytics ── */}
           {isWorkoutLoading ? (
             <ActivityIndicator style={styles.loader} color={theme.textSecondary} />
           ) : (
             <>
+              <SectionHeader title="Exercises" />
               {/* Overview */}
               <SectionHeader title="Overview" />
               {overview.data ? (
@@ -429,4 +486,42 @@ const styles = StyleSheet.create({
   muscleValue: { width: 52, fontSize: 12, textAlign: 'right' },
 
   bottomPad: { height: Spacing.six },
+
+  // Weekly completion bar chart
+  weeklyChartCard: {
+    borderRadius: 10,
+    padding: Spacing.three,
+    marginBottom: Spacing.two,
+  },
+  weeklyChartTitle: {
+    fontSize: 12,
+    marginBottom: Spacing.two,
+  },
+  weeklyChartBars: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: Spacing.half,
+    height: 80,
+  },
+  weeklyBarCol: {
+    flex: 1,
+    alignItems: 'center',
+    height: '100%',
+  },
+  weeklyBarTrack: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'flex-end',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  weeklyBarFill: {
+    width: '100%',
+    borderRadius: 2,
+  },
+  weeklyBarLabel: {
+    fontSize: 9,
+    marginTop: Spacing.half,
+    textAlign: 'center',
+  },
 });
