@@ -2,6 +2,9 @@
 # Ignore environment files
 .env
 
+# Ignore handoff files
+docs/handoffs/*
+
 # track this file .gitignore (i.e. do NOT ignore it)
 !.gitignore
 !.github
