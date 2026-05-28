@@ -111,6 +111,7 @@ export default function AnalyticsScreen() {
   const today = toDateStr(new Date());
   const startDate = offsetDate(today, -364);
 
+  const [activeSection, setActiveSection] = useState<'habits' | 'exercises'>('habits');
   const [selectedHabitId, setSelectedHabitId] = useState<number | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(today);
 
@@ -175,236 +176,251 @@ export default function AnalyticsScreen() {
             Analytics
           </ThemedText>
 
+          {/* Section toggle */}
+          <View style={styles.sectionToggle}>
+            {(['habits', 'exercises'] as const).map((s) => (
+              <TouchableOpacity
+                key={s}
+                onPress={() => setActiveSection(s)}
+                style={[
+                  styles.sectionToggleBtn,
+                  activeSection === s && { backgroundColor: theme.backgroundSelected },
+                ]}
+              >
+                <ThemedText style={styles.sectionToggleText}>
+                  {s === 'habits' ? 'Habits' : 'Exercises'}
+                </ThemedText>
+              </TouchableOpacity>
+            ))}
+          </View>
+
           {/* ── Habits ── */}
-          <SectionHeader title="Habits" />
-
-          {/* Habit selector */}
-          {habits.isLoading ? (
-            <ActivityIndicator color={theme.textSecondary} style={styles.miniLoader} />
-          ) : (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.selectorScroll}
-              style={styles.selectorContainer}
-            >
-              {habitsData?.map((h) => (
-                <TouchableOpacity
-                  key={h.id}
-                  onPress={() => setSelectedHabitId(h.id)}
-                  style={[
-                    styles.habitPill,
-                    h.id === selectedHabitId && { backgroundColor: theme.backgroundSelected },
-                  ]}
-                >
-                  <ThemedText style={styles.habitPillText} numberOfLines={1}>
-                    {h.icon} {h.name}
-                  </ThemedText>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          )}
-
-          {/* Heatmap */}
-          {selectedHabitMeta && !history.isLoading ? (
-            <ThemedView type="backgroundElement" style={styles.heatmapCard}>
-              <Heatmap
-                getRating={getRating}
-                maxValue={selectedHabitMeta.dailyGoal || 1}
-                colorStops={selectedHabitMeta.colorStops}
-                selectedDate={selectedDate}
-                onDateSelect={setSelectedDate}
-                today={today}
-              />
-            </ThemedView>
-          ) : (
-            <ActivityIndicator color={theme.textSecondary} style={styles.miniLoader} />
-          )}
-
-          {/* Streak counter */}
-          {selectedHabitMeta && (
-            <View style={styles.statRow}>
-              <ThemedView type="backgroundElement" style={styles.statCard}>
-                <ThemedText themeColor="textSecondary" style={styles.statLabel}>
-                  Current Streak
-                </ThemedText>
-                <ThemedText type="subtitle">{currentStreak}</ThemedText>
-                <ThemedText themeColor="textSecondary" style={styles.statLabel}>
-                  {currentStreak === 1 ? 'day' : 'days'}
-                </ThemedText>
-              </ThemedView>
-              <ThemedView type="backgroundElement" style={styles.statCard}>
-                <ThemedText themeColor="textSecondary" style={styles.statLabel}>
-                  Best Streak
-                </ThemedText>
-                <ThemedText type="subtitle">{bestStreak}</ThemedText>
-                <ThemedText themeColor="textSecondary" style={styles.statLabel}>
-                  {bestStreak === 1 ? 'day' : 'days'}
-                </ThemedText>
-              </ThemedView>
-            </View>
-          )}
-
-          {/* Weekly completion bar chart */}
-          {selectedHabitMeta && (
-            <ThemedView type="backgroundElement" style={styles.weeklyChartCard}>
-              <ThemedText themeColor="textSecondary" style={styles.weeklyChartTitle}>
-                Weekly Completion
-              </ThemedText>
-              <View style={styles.weeklyChartBars}>
-                {weeklyBars.map((bar, index) => (
-                  <View key={bar.weekStart} style={styles.weeklyBarCol}>
-                    <View style={[styles.weeklyBarTrack, { backgroundColor: theme.backgroundElement }]}>
-                      <View
-                        style={[
-                          styles.weeklyBarFill,
-                          {
-                            height: `${Math.round((bar.daysCompleted / 7) * 100)}%`,
-                            backgroundColor: theme.backgroundSelected,
-                          },
-                        ]}
-                      />
-                    </View>
-                    <ThemedText themeColor="textSecondary" style={styles.weeklyBarLabel}>
-                      {index % 4 === 0 ? bar.weekStart.slice(5).replace('-', '/') : ''}
-                    </ThemedText>
-                  </View>
-                ))}
-              </View>
-            </ThemedView>
-          )}
-
-          {/* ── Workout Analytics ── */}
-          {isWorkoutLoading ? (
-            <ActivityIndicator style={styles.loader} color={theme.textSecondary} />
-          ) : (
+          {activeSection === 'habits' && (
             <>
-              <SectionHeader title="Exercises" />
-              {/* Overview */}
-              <SectionHeader title="Overview" />
-              {overview.data ? (
-                <>
-                  <View style={styles.statRow}>
-                    <ThemedView type="backgroundElement" style={styles.statCard}>
-                      <ThemedText themeColor="textSecondary" style={styles.statLabel}>
-                        Sessions
-                      </ThemedText>
-                      <ThemedText type="subtitle">{overview.data.totalSessions}</ThemedText>
-                    </ThemedView>
-                    <ThemedView type="backgroundElement" style={styles.statCard}>
-                      <ThemedText themeColor="textSecondary" style={styles.statLabel}>
-                        Volume (kg)
-                      </ThemedText>
-                      <ThemedText type="subtitle">
-                        {Math.round(overview.data.totalStrengthVolume).toLocaleString()}
-                      </ThemedText>
-                    </ThemedView>
-                  </View>
-                  <View style={styles.categoryRow}>
-                    {(
-                      [
-                        ['Strength', overview.data.sessionsByCategory.strength],
-                        ['Cardio', overview.data.sessionsByCategory.cardio],
-                        ['Flexibility', overview.data.sessionsByCategory.flexibility],
-                      ] as const
-                    ).map(([label, count]) => (
-                      <ThemedView key={label} type="backgroundElement" style={styles.categoryPill}>
-                        <ThemedText themeColor="textSecondary" style={styles.statLabel}>
-                          {label}
-                        </ThemedText>
-                        <ThemedText type="smallBold">{count}</ThemedText>
-                      </ThemedView>
-                    ))}
-                  </View>
-                </>
+              {habits.isLoading ? (
+                <ActivityIndicator color={theme.textSecondary} style={styles.miniLoader} />
               ) : (
-                <ThemedText themeColor="textSecondary" style={styles.empty}>
-                  No session data yet.
-                </ThemedText>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.selectorScroll}
+                  style={styles.selectorContainer}
+                >
+                  {habitsData?.map((h) => (
+                    <TouchableOpacity
+                      key={h.id}
+                      onPress={() => setSelectedHabitId(h.id)}
+                      style={[
+                        styles.habitPill,
+                        h.id === selectedHabitId && { backgroundColor: theme.backgroundSelected },
+                      ]}
+                    >
+                      <ThemedText style={styles.habitPillText} numberOfLines={1}>
+                        {h.icon} {h.name}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
               )}
 
-              {/* Personal Records */}
-              <SectionHeader title="Personal Records" />
-              {prs.data && prs.data.length > 0 ? (
-                prs.data.map((pr, i) => (
-                  <ThemedView key={i} type="backgroundElement" style={styles.prRow}>
-                    <View style={styles.prLeft}>
-                      <ThemedText type="default" style={styles.prName}>
-                        {pr.exerciseName}
-                      </ThemedText>
-                      <ThemedText themeColor="textSecondary" style={styles.prSub}>
-                        {pr.weight} kg × {pr.reps ?? '—'} reps · 1RM ≈ {Math.round(pr.estimated1RM)} kg
-                      </ThemedText>
-                    </View>
-                    <ThemedText themeColor="textSecondary" style={styles.prDate}>
-                      {formatDate(pr.date)}
+              {selectedHabitMeta && !history.isLoading ? (
+                <ThemedView type="backgroundElement" style={styles.heatmapCard}>
+                  <Heatmap
+                    getRating={getRating}
+                    maxValue={selectedHabitMeta.dailyGoal || 1}
+                    colorStops={selectedHabitMeta.colorStops}
+                    selectedDate={selectedDate}
+                    onDateSelect={setSelectedDate}
+                    today={today}
+                  />
+                </ThemedView>
+              ) : (
+                <ActivityIndicator color={theme.textSecondary} style={styles.miniLoader} />
+              )}
+
+              {selectedHabitMeta && (
+                <View style={styles.statRow}>
+                  <ThemedView type="backgroundElement" style={styles.statCard}>
+                    <ThemedText themeColor="textSecondary" style={styles.statLabel}>
+                      Current Streak
+                    </ThemedText>
+                    <ThemedText type="subtitle">{currentStreak}</ThemedText>
+                    <ThemedText themeColor="textSecondary" style={styles.statLabel}>
+                      {currentStreak === 1 ? 'day' : 'days'}
                     </ThemedText>
                   </ThemedView>
-                ))
-              ) : (
-                <ThemedText themeColor="textSecondary" style={styles.empty}>
-                  No personal records yet.
-                </ThemedText>
-              )}
-
-              {/* Volume by Muscle */}
-              <SectionHeader title="Volume by Muscle" />
-              {volume.data && volume.data.length > 0 ? (
-                volume.data.map((m) => (
-                  <View key={m.muscleGroup} style={styles.muscleRow}>
-                    <ThemedText style={styles.muscleName}>{m.muscleGroup}</ThemedText>
-                    <View style={styles.barTrack}>
-                      <View
-                        style={[
-                          styles.barFill,
-                          {
-                            width: `${Math.round((m.totalVolume / maxMuscleVolume) * 100)}%`,
-                            backgroundColor: theme.backgroundSelected,
-                          },
-                        ]}
-                      />
-                    </View>
-                    <ThemedText themeColor="textSecondary" style={styles.muscleValue}>
-                      {Math.round(m.totalVolume).toLocaleString()}
+                  <ThemedView type="backgroundElement" style={styles.statCard}>
+                    <ThemedText themeColor="textSecondary" style={styles.statLabel}>
+                      Best Streak
                     </ThemedText>
-                  </View>
-                ))
-              ) : (
-                <ThemedText themeColor="textSecondary" style={styles.empty}>
-                  No muscle volume data yet.
-                </ThemedText>
+                    <ThemedText type="subtitle">{bestStreak}</ThemedText>
+                    <ThemedText themeColor="textSecondary" style={styles.statLabel}>
+                      {bestStreak === 1 ? 'day' : 'days'}
+                    </ThemedText>
+                  </ThemedView>
+                </View>
               )}
 
-              {/* Cardio */}
-              {cardio.data && cardio.data.totalDurationSeconds > 0 && (
-                <>
-                  <SectionHeader title="Cardio" />
-                  <View style={styles.statRow}>
-                    <ThemedView type="backgroundElement" style={styles.statCard}>
-                      <ThemedText themeColor="textSecondary" style={styles.statLabel}>
-                        Distance
-                      </ThemedText>
-                      <ThemedText type="subtitle">
-                        {cardio.data.totalDistance.toFixed(1)} km
-                      </ThemedText>
-                    </ThemedView>
-                    <ThemedView type="backgroundElement" style={styles.statCard}>
-                      <ThemedText themeColor="textSecondary" style={styles.statLabel}>
-                        Duration
-                      </ThemedText>
-                      <ThemedText type="subtitle">
-                        {formatDuration(cardio.data.totalDurationSeconds)}
-                      </ThemedText>
-                    </ThemedView>
-                    <ThemedView type="backgroundElement" style={styles.statCard}>
-                      <ThemedText themeColor="textSecondary" style={styles.statLabel}>
-                        Avg Pace
-                      </ThemedText>
-                      <ThemedText type="subtitle">
-                        {cardio.data.averagePace.toFixed(1)}/h
-                      </ThemedText>
-                    </ThemedView>
+              {selectedHabitMeta && (
+                <ThemedView type="backgroundElement" style={styles.weeklyChartCard}>
+                  <ThemedText themeColor="textSecondary" style={styles.weeklyChartTitle}>
+                    Weekly Completion
+                  </ThemedText>
+                  <View style={styles.weeklyChartBars}>
+                    {weeklyBars.map((bar, index) => (
+                      <View key={bar.weekStart} style={styles.weeklyBarCol}>
+                        <View style={[styles.weeklyBarTrack, { backgroundColor: theme.backgroundElement }]}>
+                          <View
+                            style={[
+                              styles.weeklyBarFill,
+                              {
+                                height: `${Math.round((bar.daysCompleted / 7) * 100)}%`,
+                                backgroundColor: theme.backgroundSelected,
+                              },
+                            ]}
+                          />
+                        </View>
+                        <ThemedText themeColor="textSecondary" style={styles.weeklyBarLabel}>
+                          {index % 4 === 0 ? bar.weekStart.slice(5).replace('-', '/') : ''}
+                        </ThemedText>
+                      </View>
+                    ))}
                   </View>
+                </ThemedView>
+              )}
+            </>
+          )}
+
+          {/* ── Exercises ── */}
+          {activeSection === 'exercises' && (
+            <>
+              {isWorkoutLoading ? (
+                <ActivityIndicator style={styles.loader} color={theme.textSecondary} />
+              ) : (
+                <>
+                  <SectionHeader title="Overview" />
+                  {overview.data ? (
+                    <>
+                      <View style={styles.statRow}>
+                        <ThemedView type="backgroundElement" style={styles.statCard}>
+                          <ThemedText themeColor="textSecondary" style={styles.statLabel}>
+                            Sessions
+                          </ThemedText>
+                          <ThemedText type="subtitle">{overview.data.totalSessions}</ThemedText>
+                        </ThemedView>
+                        <ThemedView type="backgroundElement" style={styles.statCard}>
+                          <ThemedText themeColor="textSecondary" style={styles.statLabel}>
+                            Volume (kg)
+                          </ThemedText>
+                          <ThemedText type="subtitle">
+                            {Math.round(overview.data.totalStrengthVolume).toLocaleString()}
+                          </ThemedText>
+                        </ThemedView>
+                      </View>
+                      <View style={styles.categoryRow}>
+                        {(
+                          [
+                            ['Strength', overview.data.sessionsByCategory.strength],
+                            ['Cardio', overview.data.sessionsByCategory.cardio],
+                            ['Flexibility', overview.data.sessionsByCategory.flexibility],
+                          ] as const
+                        ).map(([label, count]) => (
+                          <ThemedView key={label} type="backgroundElement" style={styles.categoryPill}>
+                            <ThemedText themeColor="textSecondary" style={styles.statLabel}>
+                              {label}
+                            </ThemedText>
+                            <ThemedText type="smallBold">{count}</ThemedText>
+                          </ThemedView>
+                        ))}
+                      </View>
+                    </>
+                  ) : (
+                    <ThemedText themeColor="textSecondary" style={styles.empty}>
+                      No session data yet.
+                    </ThemedText>
+                  )}
+
+                  <SectionHeader title="Personal Records" />
+                  {prs.data && prs.data.length > 0 ? (
+                    prs.data.map((pr, i) => (
+                      <ThemedView key={i} type="backgroundElement" style={styles.prRow}>
+                        <View style={styles.prLeft}>
+                          <ThemedText type="default" style={styles.prName}>
+                            {pr.exerciseName}
+                          </ThemedText>
+                          <ThemedText themeColor="textSecondary" style={styles.prSub}>
+                            {pr.weight} kg × {pr.reps ?? '—'} reps · 1RM ≈ {Math.round(pr.estimated1RM)} kg
+                          </ThemedText>
+                        </View>
+                        <ThemedText themeColor="textSecondary" style={styles.prDate}>
+                          {formatDate(pr.date)}
+                        </ThemedText>
+                      </ThemedView>
+                    ))
+                  ) : (
+                    <ThemedText themeColor="textSecondary" style={styles.empty}>
+                      No personal records yet.
+                    </ThemedText>
+                  )}
+
+                  <SectionHeader title="Volume by Muscle" />
+                  {volume.data && volume.data.length > 0 ? (
+                    volume.data.map((m) => (
+                      <View key={m.muscleGroup} style={styles.muscleRow}>
+                        <ThemedText style={styles.muscleName}>{m.muscleGroup}</ThemedText>
+                        <View style={styles.barTrack}>
+                          <View
+                            style={[
+                              styles.barFill,
+                              {
+                                width: `${Math.round((m.totalVolume / maxMuscleVolume) * 100)}%`,
+                                backgroundColor: theme.backgroundSelected,
+                              },
+                            ]}
+                          />
+                        </View>
+                        <ThemedText themeColor="textSecondary" style={styles.muscleValue}>
+                          {Math.round(m.totalVolume).toLocaleString()}
+                        </ThemedText>
+                      </View>
+                    ))
+                  ) : (
+                    <ThemedText themeColor="textSecondary" style={styles.empty}>
+                      No muscle volume data yet.
+                    </ThemedText>
+                  )}
+
+                  {cardio.data && cardio.data.totalDurationSeconds > 0 && (
+                    <>
+                      <SectionHeader title="Cardio" />
+                      <View style={styles.statRow}>
+                        <ThemedView type="backgroundElement" style={styles.statCard}>
+                          <ThemedText themeColor="textSecondary" style={styles.statLabel}>
+                            Distance
+                          </ThemedText>
+                          <ThemedText type="subtitle">
+                            {cardio.data.totalDistance.toFixed(1)} km
+                          </ThemedText>
+                        </ThemedView>
+                        <ThemedView type="backgroundElement" style={styles.statCard}>
+                          <ThemedText themeColor="textSecondary" style={styles.statLabel}>
+                            Duration
+                          </ThemedText>
+                          <ThemedText type="subtitle">
+                            {formatDuration(cardio.data.totalDurationSeconds)}
+                          </ThemedText>
+                        </ThemedView>
+                        <ThemedView type="backgroundElement" style={styles.statCard}>
+                          <ThemedText themeColor="textSecondary" style={styles.statLabel}>
+                            Avg Pace
+                          </ThemedText>
+                          <ThemedText type="subtitle">
+                            {cardio.data.averagePace.toFixed(1)}/h
+                          </ThemedText>
+                        </ThemedView>
+                      </View>
+                    </>
+                  )}
                 </>
               )}
             </>
@@ -424,6 +440,19 @@ const styles = StyleSheet.create({
   miniLoader: { marginVertical: Spacing.two },
   scroll: { padding: Spacing.three },
   pageTitle: { marginBottom: Spacing.three },
+  sectionToggle: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+    marginBottom: Spacing.three,
+  },
+  sectionToggleBtn: {
+    flex: 1,
+    paddingVertical: Spacing.two,
+    borderRadius: 10,
+    alignItems: 'center',
+    backgroundColor: Colors.dark.backgroundElement,
+  },
+  sectionToggleText: { fontSize: 14 },
   sectionHeader: { marginTop: Spacing.four, marginBottom: Spacing.two },
   empty: { marginBottom: Spacing.two },
 

@@ -130,7 +130,7 @@ zod
   - Touch to inspect a day
 - [x] Habit selector to switch which habit's heatmap is shown
 - [x] Streak counter row
-- [ ] Weekly summary bar chart (optional, phase 4b)
+- [x] Weekly summary bar chart (optional, phase 4b)
 
 ### Dependencies added
 
