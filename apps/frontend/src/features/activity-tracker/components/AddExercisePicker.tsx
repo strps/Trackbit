@@ -11,7 +11,7 @@ import { Exercise } from '@trackbit/types';
 import { useActivityTracker } from '../api/useActivityTracker';
 import { useTranslation } from 'react-i18next';
 
-export const AddExercisePicker = ({ sessionId, setEditing }: { sessionId: number; setEditing: () => void }) => {
+export const ExercisePicker = ({ sessionId, setEditing }: { sessionId: number; setEditing: () => void }) => {
     const { exercises } = useExercises();
 
     const { addExerciseLog } = useActivityTracker();
@@ -81,7 +81,8 @@ export const AddExercisePicker = ({ sessionId, setEditing }: { sessionId: number
                                                     key={ex.id}
                                                     onClick={() => {
                                                         handleAddExerciseLog(ex.id);
-                                                        if (isTheSelected) setSelected((prev) => (prev + 1) % exercises.length);
+                                                        const idx = exercises.findIndex((e: Exercise) => e.id === ex.id);
+                                                        setSelected((idx + 1) % exercises.length);
                                                     }}
                                                     className={`w-full flex items-center justify-between rounded-md px-3 py-2.5 text-left text-sm hover:bg-accent transition-colors ${isTheSelected && 'ring ring-primary'}`}
                                                 >

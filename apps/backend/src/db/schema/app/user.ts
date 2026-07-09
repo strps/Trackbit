@@ -15,6 +15,7 @@ export const user = pgTable("user", {
   locale: text("locale").notNull().default("en"),
   timezone: text("timezone").notNull().default("UTC"),
   unitSystem: text("unit_system").notNull().default("metric"),
+  exerciseLogCardStyle: text("exercise_log_card_style").notNull().default("classic"),
 
   name: text("name").notNull(),
   email: text("email").notNull().unique(),

@@ -14,6 +14,8 @@
   "unit_metric": "Métrico (kg)",
   "unit_imperial": "Imperial (lbs)",
   "unit_label": "Unidades: {unit}",
+  "card_style_classic": "Clásico (tarjetas por serie)",
+  "card_style_compact": "Compacto (toca la serie para editar)",
   "log_out": "Cerrar sesión",
   "report_bug": "Reportar un error",
   "sign_in": "Iniciar sesión"

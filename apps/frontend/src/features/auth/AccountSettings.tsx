@@ -4,6 +4,7 @@ import { Label } from "@/shared/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
 import { authClient, signOut, useSession } from "@/shared/lib/auth-client";
 import { useUnitSystem } from "@/providers/unit-system-provider";
+import { useExerciseCardStyle } from "@/providers/exercise-card-style-provider";
 import { Loader2, LogOut, User } from "lucide-react";
 import { ChangeEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -19,6 +20,7 @@ const AccountSettings = () => {
     const { t: tNav } = useTranslation('nav');
     const { data: session, isPending } = useSession();
     const { unitSystem, setUnitSystem } = useUnitSystem();
+    const { cardStyle, setCardStyle } = useExerciseCardStyle();
     const queryClient = useQueryClient();
 
     const [activeTab, setActiveTab] = useState('general');
@@ -62,6 +64,20 @@ const AccountSettings = () => {
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({ unitSystem: us }),
+            });
+        }
+        setMessage({ type: 'success', text: t('account.message.preferences_updated') });
+    };
+
+    const handleCardStyleChange = (next: string) => {
+        const style = next as 'classic' | 'compact';
+        setCardStyle(style);
+        if (session?.user) {
+            fetch(`${API_URL}/me/preferences`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ exerciseLogCardStyle: style }),
             });
         }
         setMessage({ type: 'success', text: t('account.message.preferences_updated') });
@@ -213,6 +229,18 @@ const AccountSettings = () => {
                                         <SelectContent>
                                             <SelectItem value="metric">{tNav('unit_metric')}</SelectItem>
                                             <SelectItem value="imperial">{tNav('unit_imperial')}</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>{t('account.preferences.card_style')}</Label>
+                                    <Select value={cardStyle} onValueChange={handleCardStyleChange}>
+                                        <SelectTrigger className="w-48">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="classic">{tNav('card_style_classic')}</SelectItem>
+                                            <SelectItem value="compact">{tNav('card_style_compact')}</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>

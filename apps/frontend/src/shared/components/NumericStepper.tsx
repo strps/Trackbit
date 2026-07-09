@@ -1,6 +1,5 @@
 import { Minus, Plus } from "lucide-react";
-import { Button } from "@/shared/components/ui/button"; // Assuming shadcn/ui or similar
-import { Input } from "@/shared/components/ui/input"; // Optional: for base styling consistency
+import { cn } from "@/shared/utils/utils";
 
 interface NumericStepperProps {
     value: number | null;
@@ -11,6 +10,9 @@ interface NumericStepperProps {
     "aria-label"?: string;
     className?: string;
 }
+
+const stepperButtonClass =
+    "flex w-9 shrink-0 select-none items-center justify-center text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:bg-accent disabled:pointer-events-none disabled:opacity-40";
 
 export const NumericStepper = ({
     value,
@@ -38,24 +40,25 @@ export const NumericStepper = ({
         }
     };
 
-    const containerClasses = `
-    grid grid-cols-[1fr_1fr_1fr] w-full overflow-hidden border border-border shadow-inner
-    ${className ?? ""}
-  `.trim();
-
-    const buttonClass = "aspect-square bg-background hover:bg-accent transition-colors disabled:opacity-50 flex items-center justify-center border-r border-border"
-
     return (
-        <div className={containerClasses} role="spinbutton" aria-valuenow={value ?? undefined} aria-label={ariaLabel}>
+        <div
+            className={cn(
+                "border-input dark:bg-input/30 flex h-9 w-full items-stretch overflow-hidden rounded-md border bg-transparent shadow-xs transition-[color,box-shadow]",
+                "focus-within:border-ring focus-within:ring-ring/50 focus-within:ring-[3px]",
+                className
+            )}
+            role="group"
+            aria-label={ariaLabel}
+        >
             <button
                 type="button"
                 onClick={decrement}
                 disabled={value === null || value <= min}
-                className={buttonClass}
+                className={cn(stepperButtonClass, "border-input border-r")}
                 aria-label="Decrement"
                 tabIndex={-1}
             >
-                <Minus className="w-3 h-3 text-muted-foreground" />
+                <Minus className="size-3.5" />
             </button>
 
             <input
@@ -65,18 +68,18 @@ export const NumericStepper = ({
                 placeholder={placeholder}
                 min={min}
                 step={step}
-                className="flex-1 min-w-0 text-center bg-transparent text-foreground focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none font-medium"
+                className="text-foreground placeholder:text-muted-foreground w-full min-w-0 flex-1 bg-transparent text-center text-base font-medium tabular-nums outline-none md:text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 aria-label={ariaLabel}
             />
 
             <button
                 type="button"
                 onClick={increment}
-                className="flex-none w-8 bg-background hover:bg-accent transition-colors flex items-center justify-center border-l border-border"
+                className={cn(stepperButtonClass, "border-input border-l")}
                 aria-label="Increment"
                 tabIndex={-1}
             >
-                <Plus className="w-3 h-3 text-muted-foreground" />
+                <Plus className="size-3.5" />
             </button>
         </div>
     );
