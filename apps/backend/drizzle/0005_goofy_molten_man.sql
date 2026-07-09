@@ -1,0 +1,1 @@
+ALTER TABLE "user" ADD COLUMN "exercise_log_card_style" text DEFAULT 'classic' NOT NULL;

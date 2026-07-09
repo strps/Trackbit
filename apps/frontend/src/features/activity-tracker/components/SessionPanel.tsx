@@ -1,8 +1,10 @@
 import { Dumbbell, MoreVertical, Trash2 } from 'lucide-react';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { OptimisticExerciseSession } from '@/features/tracker/use-tracker';
-import { AddExercisePicker } from './AddExercisePicker';
+import { ExercisePicker } from './AddExercisePicker';
 import { ExerciseLogCard } from './ExerciseLogCard';
+import { ExerciseLogCardCompact } from './ExerciseLogCardCompact';
+import { useExerciseCardStyle } from '@/providers/exercise-card-style-provider';
 import React, { useState } from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { Button } from '@/shared/components/ui/button';
@@ -17,8 +19,10 @@ export interface SessionCardProps {
 export const SessionPanel = ({ session, index }: SessionCardProps) => {
     const { deleteSession } = useActivityTracker();
     const { t } = useTranslation('tracker');
+    const { cardStyle } = useExerciseCardStyle();
     const exerciseLogs = session.exerciseLogs || [];
     const [selectedExerciseLogIndex, setSelectedExerciseLogIndex] = useState<number | null>(null);
+    const Card = cardStyle === 'compact' ? ExerciseLogCardCompact : ExerciseLogCard;
 
     return (
         <div className="bg-card text-card-foreground flex flex-col item gap-6 py-6 shadow-lg">
@@ -57,7 +61,7 @@ export const SessionPanel = ({ session, index }: SessionCardProps) => {
                     />
                 ) : (
                     exerciseLogs.map((exerciseLog, i) => (
-                        <ExerciseLogCard
+                        <Card
                             key={i}
                             exerciseLog={exerciseLog}
                             index={i}
@@ -68,7 +72,7 @@ export const SessionPanel = ({ session, index }: SessionCardProps) => {
                 )}
 
                 <div className="flex justify-end">
-                    <AddExercisePicker sessionId={session.id} setEditing={() => setSelectedExerciseLogIndex(exerciseLogs.length)} />
+                    <ExercisePicker sessionId={session.id} setEditing={() => setSelectedExerciseLogIndex(exerciseLogs.length)} />
                 </div>
             </div>
         </div>

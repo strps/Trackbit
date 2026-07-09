@@ -36,6 +36,13 @@
       "when": 1778262143707,
       "tag": "0004_rename_app_limits_to_user_limits",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1783621208867,
+      "tag": "0005_goofy_molten_man",
+      "breakpoints": true
     }
   ]
 }

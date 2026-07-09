@@ -7,7 +7,7 @@ import { PerformanceCard } from './PerformanceCard';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/shared/components/ui/collapsible';
 import { Button } from '@/shared/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/shared/components/ui/dropdown-menu';
-import { Info, MoreVertical, SquarePen, Trash2, Clock, Hash, Scale, MapPin, Play } from 'lucide-react';
+import { Info, MoreVertical, Trash2, Clock, Hash, Scale, MapPin, Play, Square } from 'lucide-react';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { RPE_LABELS } from '@/shared/components/RpeSelector';
 import { OptimisticExerciseLog, OptimisticExercisePerformance } from '@/features/tracker/use-tracker';
@@ -195,9 +195,16 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
                             <Button variant="ghost"><Info /></Button>
                         </div>
                         <div className="flex items-center gap-2">
-                            {isSelected && (
-                                <Button onClick={() => onEditTrigger(null)}>{t('activity_finish')}</Button>
-                            )}
+                            <Button
+                                variant={isSelected ? 'default' : 'ghost'}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onEditTrigger(isSelected ? null : index);
+                                }}
+                            >
+                                {isSelected ? <Square className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                                {isSelected ? t('activity_finish') : t('activity_start')}
+                            </Button>
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="icon-lg" className="h-8 w-8 self-start text-muted-foreground hover:text-foreground">
@@ -205,17 +212,6 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent>
-                                    {isSelected ? (
-                                        <DropdownMenuItem onSelect={() => onEditTrigger(null)}>
-                                            <SquarePen className="mr-2 h-4 w-4" />
-                                            {t('activity_finish_editing')}
-                                        </DropdownMenuItem>
-                                    ) : (
-                                        <DropdownMenuItem onSelect={() => onEditTrigger(index)}>
-                                            <SquarePen className="mr-2 h-4 w-4" />
-                                            {t('activity_edit_exercise')}
-                                        </DropdownMenuItem>
-                                    )}
                                     <DropdownMenuItem onSelect={() => removeExerciseLog(exerciseLog.id)}>
                                         <Trash2 className="mr-2 h-4 w-4" />
                                         {t('activity_delete_exercise')}

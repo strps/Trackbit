@@ -60,7 +60,7 @@ export const PerformanceCard = ({
 
     return (
         <div
-            className={`flex flex-col shrink-0 w-26 items-center border border-border rounded-lg bg-card ${isSelected ? "ring ring-primary shadow-lg" : ""}`}
+            className={`flex flex-col shrink-0 w-32 items-center border border-border rounded-lg bg-card ${isSelected ? "ring ring-primary shadow-lg" : ""}`}
         >
             <div
                 onClick={onHeaderClick}

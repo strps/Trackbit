@@ -82,10 +82,10 @@ const RpeTooltip = ({ level, x, showLabel }: TooltipProps) => {
 
     return (
         <motion.div
-            className="absolute bottom-[calc(100%+24px)] z-10 pointer-events-none
-                   bg-popover rounded-md px-2 py-1
+            className="absolute bottom-[calc(100%+44px)] z-10 pointer-events-none
+                   bg-popover rounded-md px-3 py-2
                    flex flex-col items-center gap-0.5 whitespace-nowrap shadow-sm
-                   w-9"
+                   w-12"
             style={{ left: 0, translateX: "-50%", backgroundColor: color }}
             ref={scope}
             initial={{ x, scale: 0.1, opacity: 0 }}
@@ -103,7 +103,7 @@ const RpeTooltip = ({ level, x, showLabel }: TooltipProps) => {
         >
             <motion.span
                 key={level}
-                className="tabular-nums text-xl text-foreground font-bold"
+                className="tabular-nums text-2xl text-foreground font-bold"
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ type: "spring", stiffness: 500, damping: 35, mass: 0.5 }}
@@ -113,7 +113,7 @@ const RpeTooltip = ({ level, x, showLabel }: TooltipProps) => {
             {showLabel && (
                 <motion.span
                     key={`label-${level}`}
-                    className="text-[10px] text-muted-foreground"
+                    className="text-xs text-muted-foreground"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ type: "spring", stiffness: 500, damping: 35, mass: 0.5 }}
@@ -126,7 +126,7 @@ const RpeTooltip = ({ level, x, showLabel }: TooltipProps) => {
             <svg
                 className="absolute top-full left-1/2 -translate-x-1/2 z-0"
                 width="30"
-                height="20"
+                height="26"
                 viewBox="0 0 30 30"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
