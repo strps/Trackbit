@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { flushSync } from "react-dom";
 import { Plus, Pencil, ShieldAlert, Lock } from "lucide-react"
 import { ICONS } from "./IconField";
 import { GRADIENT_PRESETS } from "./ColorThemeField";
@@ -38,11 +40,20 @@ export const HabitList = ({ habits, activeHabitId, editHabit, startNewHabit, onR
     const { t } = useTranslation('habits');
     const { t: tErrors } = useTranslation('errors');
 
-    const positiveHabits = habits
+    // Local mirror of the server order. React Query v4 defers observer
+    // notifications to a microtask, so an optimistic cache write repaints one
+    // frame late — after @hello-pangea/dnd has already committed the drop against
+    // the old order, which is the reorder flash. Updating this state synchronously
+    // (flushSync) on drop keeps the DOM correct before dnd paints; it re-syncs from
+    // props so React Query stays the source of truth (incl. error rollback).
+    const [items, setItems] = useState<Habit[]>(habits);
+    useEffect(() => { setItems(habits); }, [habits]);
+
+    const positiveHabits = items
         .filter(h => !h.isAntiHabit)
         .sort((a, b) => a.order - b.order);
 
-    const antiHabits = habits
+    const antiHabits = items
         .filter(h => h.isAntiHabit)
         .sort((a, b) => a.order - b.order);
 
@@ -53,7 +64,7 @@ export const HabitList = ({ habits, activeHabitId, editHabit, startNewHabit, onR
         if (source.droppableId === destination.droppableId && source.index === destination.index) return;
 
         const habitId = Number(draggableId);
-        const draggedHabit = habits.find(h => h.id === habitId);
+        const draggedHabit = items.find(h => h.id === habitId);
         if (!draggedHabit) return;
 
         if (destination.droppableId === "anti-habits" && draggedHabit.type === "complex") {
@@ -86,6 +97,18 @@ export const HabitList = ({ habits, activeHabitId, editHabit, startNewHabit, onR
 
         finalAnti.forEach((h, i) => {
             reorderItems.push({ id: h.id, order: i, isAntiHabit: true });
+        });
+
+        // Apply the new order to local state synchronously so the DOM reflects it
+        // before dnd paints its drop animation — otherwise the list flashes back to
+        // the old order for a frame. React Query is updated (and rolled back on
+        // error) via onReorder below; the props effect keeps this state in sync.
+        const itemMap = new Map(reorderItems.map(i => [i.id, i]));
+        flushSync(() => {
+            setItems(prev => prev.map(h => {
+                const update = itemMap.get(h.id);
+                return update ? { ...h, order: update.order, isAntiHabit: update.isAntiHabit } : h;
+            }));
         });
 
         onReorder(reorderItems);

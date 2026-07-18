@@ -3,6 +3,7 @@ import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import db from "../../db/db.js";
 import { habits } from '../../db/schema/index.js'
+import { DEFAULT_COLOR_STOPS } from '../../db/schema/app/habits.js'
 import { eq, and, desc, count, sql } from 'drizzle-orm'
 import { requireAuth } from '../../middleware/auth.js'
 import { localeMiddleware } from '../../middleware/locale.js'
@@ -28,6 +29,13 @@ const HABIT_ORDER_CONFLICT_RESPONSE = {
     error: 'habit_order_conflict',
     message: 'Another habit already uses this order.',
 } as const
+
+// A gradient must have at least one stop — an empty array crashes the frontend
+// color renderer (`stops[0]` is undefined). Shared by create and update.
+const colorStopsSchema = z.array(z.object({
+    position: z.number(),
+    color: z.tuple([z.number(), z.number(), z.number(), z.number()]),
+})).min(1)
 
 // Define the Context Type to include User from middleware
 type AuthEnv = {
@@ -70,11 +78,9 @@ app.post(
         weeklyGoal: z.number().int().min(1).max(7).default(5),
         dailyGoal: z.number().default(1),
         colorTheme: z.enum(['green', 'blue', 'orange', 'purple', 'rose', 'fire', 'custom']).optional(),
-        // Validate the JSONB structure if you want, or just accept array
-        colorStops: z.array(z.object({
-            position: z.number(),
-            color: z.tuple([z.number(), z.number(), z.number(), z.number()])
-        })).optional(),
+        // Always persist a non-empty gradient: fall back to the default when omitted.
+        // Cast: ColorStop's color is a 3-or-4 tuple union, the schema pins it to rgba(4).
+        colorStops: colorStopsSchema.default(DEFAULT_COLOR_STOPS as z.infer<typeof colorStopsSchema>),
         icon: z.string().default('star'),
     })),
     async (c) => {
@@ -142,10 +148,7 @@ app.put(
         weeklyGoal: z.number().int().min(1).max(7).default(5),
         dailyGoal: z.number().default(1),
         colorTheme: z.enum(['green', 'blue', 'orange', 'purple', 'rose', 'fire', 'custom']).optional(),
-        colorStops: z.array(z.object({
-            position: z.number(),
-            color: z.tuple([z.number(), z.number(), z.number(), z.number()])
-        })).optional(),
+        colorStops: colorStopsSchema.optional(),
         icon: z.string().optional(),
         type: z.enum(['count', 'complex', 'negative', 'timed', 'check']).optional(),
         isAntiHabit: z.boolean().optional(),

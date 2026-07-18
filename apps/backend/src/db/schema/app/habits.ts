@@ -10,6 +10,15 @@ export const habitTypeEnum = pgEnum('habit_type', ['count', 'complex', 'negative
 // Note: 'negative' type is deprecated. Use isAntiHabit boolean flag instead.
 export const colorThemeEnum = pgEnum('color_scale', ["green", "blue", "orange", "purple", "rose", "fire", "custom"])
 
+// Canonical fallback gradient. Used as the column default, the create-route
+// default, and the backfill for legacy rows so every habit always carries a
+// non-empty colorStops array (an empty one crashes the gradient renderer).
+export const DEFAULT_COLOR_STOPS: ColorStop[] = [
+  { position: 0, color: [255, 0, 0, 1] },
+  { position: 0.5, color: [255, 225, 0, 1] },
+  { position: 1, color: [12, 148, 62, 1] },
+]
+
 //Habits
 export const habits = pgTable('habits', {
   id: serial('id').primaryKey(),
@@ -21,12 +30,7 @@ export const habits = pgTable('habits', {
   isAntiHabit: boolean('is_anti_habit').notNull().default(false),
 
   colorTheme: colorThemeEnum('color_theme').notNull().default('green').notNull(),
-  // Defaults to a simple Green gradient
-  colorStops: jsonb('color_stops').$type<ColorStop[]>().notNull().default([
-    { position: 0, color: [255, 0, 0, 1] },
-    { position: 0.5, color: [255, 225, 0, 1] },
-    { position: 1, color: [12, 148, 62, 1] }
-  ]),
+  colorStops: jsonb('color_stops').$type<ColorStop[]>().notNull().default(DEFAULT_COLOR_STOPS),
   // e.g., 'book', 'dumbbell'
   icon: text('icon').notNull().default('star').notNull(),
 

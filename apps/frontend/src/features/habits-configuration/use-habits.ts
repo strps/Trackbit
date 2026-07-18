@@ -204,11 +204,13 @@ export function useHabits() {
   const reorderMutation = useMutation({
     mutationFn: reorderHabits,
     onMutate: async (items) => {
-      await queryClient.cancelQueries({ queryKey: ['habits'] });
       const previousHabits = queryClient.getQueryData<Habit[]>(['habits']);
       const previousLogs = queryClient.getQueryData<Record<number, HabitWithLogs>>(['habit-logs']);
 
-      // Apply optimistic reorder
+      // Apply the optimistic reorder synchronously (before awaiting anything) so the
+      // drag-and-drop drop animation lands the card in its new slot. If this is deferred
+      // behind `await cancelQueries`, the card snaps back to its old position for a frame
+      // and then jumps — the visible flash on reorder.
       queryClient.setQueryData(['habits'], (old: Habit[] = []) => {
         const itemMap = new Map(items.map(i => [i.id, i]));
         return old.map(h => {
@@ -231,6 +233,10 @@ export function useHabits() {
         }
         return updated;
       });
+
+      // Cancel any in-flight refetch so it can't overwrite the optimistic order we
+      // just applied. Awaited last (not first) to keep the reorder synchronous.
+      await queryClient.cancelQueries({ queryKey: ['habits'] });
 
       return { previousHabits, previousLogs };
     },
