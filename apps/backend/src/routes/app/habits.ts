@@ -3,7 +3,7 @@ import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import db from "../../db/db.js";
 import { habits } from '../../db/schema/index.js'
-import { eq, and, desc, count } from 'drizzle-orm'
+import { eq, and, desc, count, sql } from 'drizzle-orm'
 import { requireAuth } from '../../middleware/auth.js'
 import { localeMiddleware } from '../../middleware/locale.js'
 import { t } from '../../i18n/index.js'
@@ -76,7 +76,6 @@ app.post(
             color: z.tuple([z.number(), z.number(), z.number(), z.number()])
         })).optional(),
         icon: z.string().default('star'),
-        order: z.number().int().min(0).default(0),
     })),
     async (c) => {
         const user = c.get('user')
@@ -108,9 +107,18 @@ app.post(
             }
         }
 
+        // Assign the next order slot server-side, scoped to the unique constraint's
+        // tuple (userId, isAntiHabit). Deletes leave gaps, so MAX+1 never collides
+        // with a surviving row. The client-supplied order is ignored.
+        const [{ nextOrder }] = await db
+            .select({ nextOrder: sql<number>`COALESCE(MAX(${habits.order}) + 1, 0)` })
+            .from(habits)
+            .where(and(eq(habits.userId, user.id), eq(habits.isAntiHabit, body.isAntiHabit)))
+
         try {
             const result = await db.insert(habits).values({
                 ...body,
+                order: nextOrder,
                 userId: user.id
             }).returning()
 
@@ -217,16 +225,30 @@ app.patch(
         }
 
         try {
-            const results = await db.transaction(async (tx) =>
-                Promise.all(
+            // Two-phase write so no intermediate state ever violates the unique
+            // constraint on (userId, isAntiHabit, order) — this keeps reorder correct
+            // whether or not the constraint is DEFERRABLE in the target database.
+            // Phase 1 parks every row in a temporary range (final orders are 0..n-1,
+            // so a large offset can never collide); phase 2 sets the final orders.
+            const TEMP_ORDER_OFFSET = 1_000_000
+            const results = await db.transaction(async (tx) => {
+                await Promise.all(
                     items.map(item =>
                         tx.update(habits)
-                            .set({ order: item.order, isAntiHabit: item.isAntiHabit })
+                            .set({ order: TEMP_ORDER_OFFSET + item.order, isAntiHabit: item.isAntiHabit })
+                            .where(and(eq(habits.id, item.id), eq(habits.userId, user.id)))
+                    )
+                )
+
+                return Promise.all(
+                    items.map(item =>
+                        tx.update(habits)
+                            .set({ order: item.order })
                             .where(and(eq(habits.id, item.id), eq(habits.userId, user.id)))
                             .returning()
                     )
                 )
-            )
+            })
 
             return c.json({ success: true, updated: results.flat() })
         } catch (err) {

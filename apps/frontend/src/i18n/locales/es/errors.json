@@ -24,5 +24,9 @@
   "limits.habit_type_not_allowed_body": "El tipo de hábito \"{type}\" no está permitido para tu rol. Tipos permitidos: {allowed}.",
   "limits.frozen_badge": "Congelado",
   "limits.frozen_tooltip": "Congelado — elimínalo para liberar un espacio",
-  "limits.at_cap_tooltip": "Has alcanzado el límite de tu rol"
+  "limits.at_cap_tooltip": "Has alcanzado el límite de tu rol",
+  "reorder.conflict_title": "No se pudo guardar el nuevo orden",
+  "reorder.conflict_body": "Otro hábito ya usa esa posición. Inténtalo de nuevo.",
+  "reorder.generic_title": "No se pudieron reordenar los hábitos",
+  "reorder.generic_body": "Tu cambio se revirtió. Inténtalo de nuevo."
 }

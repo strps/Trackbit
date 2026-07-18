@@ -241,10 +241,20 @@ export function useHabits() {
       if (context?.previousLogs) {
         queryClient.setQueryData(['habit-logs'], context.previousLogs);
       }
-      if (err instanceof ApiError && err.code === 'habit_frozen') {
-        toast.error(i18next.t('errors:limits.habit_frozen_title'), {
-          description: i18next.t('errors:limits.habit_frozen_body'),
-        });
+      if (err instanceof ApiError) {
+        if (err.code === 'habit_frozen') {
+          toast.error(i18next.t('errors:limits.habit_frozen_title'), {
+            description: i18next.t('errors:limits.habit_frozen_body'),
+          });
+        } else if (err.code === 'habit_order_conflict') {
+          toast.error(i18next.t('errors:reorder.conflict_title'), {
+            description: i18next.t('errors:reorder.conflict_body'),
+          });
+        } else {
+          toast.error(i18next.t('errors:reorder.generic_title'), {
+            description: i18next.t('errors:reorder.generic_body'),
+          });
+        }
       }
     },
     onSettled: () => {

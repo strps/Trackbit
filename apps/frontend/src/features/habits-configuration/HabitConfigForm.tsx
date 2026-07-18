@@ -54,7 +54,6 @@ const formSchema = z.object({
     ),
     dailyGoal: z.number().min(0).max(1440),
     weeklyGoal: z.number().min(1).max(7),
-    order: z.number().int().min(0),
 });
 
 const defaultValues = {
@@ -67,7 +66,6 @@ const defaultValues = {
     isAntiHabit: false,
     dailyGoal: 5,
     weeklyGoal: 7,
-    order: 0,
 } satisfies z.infer<typeof formSchema>;
 
 const TimeDurationField = ({ form }: { form: ReturnType<typeof useForm<z.infer<typeof formSchema>>> }) => {
