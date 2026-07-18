@@ -464,6 +464,11 @@ app.route('/exercise-logs', exerciseLogsRouter);
 
 const exercisePerformanceSchemas = defineCrudSchemas(exercisePerformances, {
     omitFromCreateUpdate: ['createdAt'],
+    // `distance` is a pg `numeric` column mapped to a JS number; unlike the `real`/`integer`
+    // columns on this table, drizzle-zod doesn't coerce it, so numeric strings must be allowed too.
+    refine: (schema) => schema.extend({
+        distance: z.coerce.number().nullable().optional(),
+    }),
 });
 
 const exercisePerformancesRouter = generateCrudRouter({
