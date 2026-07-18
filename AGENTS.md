@@ -67,6 +67,7 @@ pnpm --filter backend db:studio      # Launch Drizzle Studio
 
 ### General
 
+- **Fix the root cause, not the symptom.** Never ship quick fixes, band-aids, or defensive patches that only mask a problem. Enforce invariants at their source (e.g. DB default + Zod `.min(1)` at the write boundary instead of guarding every read/render site), and once the root fix makes a compensating patch redundant, remove the patch. When a fix is possible, propose the soundest solution even if it's larger.
 - TypeScript strict mode across all packages.
 - `tsconfig.base.json` at root, extended by each package.
 - Never commit `.env` files. Backend requires `DATABASE_URL`, `BETTER_AUTH_SECRET`.
