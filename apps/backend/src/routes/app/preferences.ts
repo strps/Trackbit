@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z, type ZodError } from 'zod'
 import { eq, count } from 'drizzle-orm'
+import { EXERCISE_SOURCE_KEY_PATTERN } from '@trackbit/types'
 import db from '../../db/db.js'
 import { user } from '../../db/schema/app/user.js'
 import { habits } from '../../db/schema/app/habits.js'
@@ -33,12 +34,16 @@ const preferencesSchema = z.object({
     timezone: z.string().min(1).optional(),
     unitSystem: z.enum(SUPPORTED_UNIT_SYSTEMS).optional(),
     exerciseLogCardStyle: z.enum(SUPPORTED_CARD_STYLES).optional(),
+    // Explicitly nullable: null is how the client returns to browse mode, and is
+    // also how it clears a key that no longer resolves.
+    preferredExerciseSource: z.string().regex(EXERCISE_SOURCE_KEY_PATTERN).nullable().optional(),
 }).refine(
     (data) =>
         data.locale !== undefined ||
         data.timezone !== undefined ||
         data.unitSystem !== undefined ||
-        data.exerciseLogCardStyle !== undefined,
+        data.exerciseLogCardStyle !== undefined ||
+        data.preferredExerciseSource !== undefined,
     { message: 'At least one preference field must be provided' },
 )
 
@@ -48,7 +53,7 @@ app.patch('/preferences', zValidator('json', preferencesSchema, (result, c) => {
     }
 }), async (c) => {
     const sessionUser = c.get('user')
-    const { locale, timezone, unitSystem, exerciseLogCardStyle } = c.req.valid('json')
+    const { locale, timezone, unitSystem, exerciseLogCardStyle, preferredExerciseSource } = c.req.valid('json')
 
     await db
         .update(user)
@@ -57,6 +62,7 @@ app.patch('/preferences', zValidator('json', preferencesSchema, (result, c) => {
             ...(timezone !== undefined && { timezone }),
             ...(unitSystem !== undefined && { unitSystem }),
             ...(exerciseLogCardStyle !== undefined && { exerciseLogCardStyle }),
+            ...(preferredExerciseSource !== undefined && { preferredExerciseSource }),
         })
         .where(eq(user.id, sessionUser.id))
 

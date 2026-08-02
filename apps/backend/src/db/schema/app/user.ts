@@ -16,6 +16,11 @@ export const user = pgTable("user", {
   timezone: text("timezone").notNull().default("UTC"),
   unitSystem: text("unit_system").notNull().default("metric"),
   exerciseLogCardStyle: text("exercise_log_card_style").notNull().default("classic"),
+  // Canonical exercise-source key (`list:12`, `program:3`, `computed:…`) the
+  // picker last used. Nullable, and null is meaningful: it *is* browse mode.
+  // Dangling keys are never repaired here — every read path resolves them and
+  // falls back to browse mode instead.
+  preferredExerciseSource: text("preferred_exercise_source"),
 
   name: text("name").notNull(),
   email: text("email").notNull().unique(),

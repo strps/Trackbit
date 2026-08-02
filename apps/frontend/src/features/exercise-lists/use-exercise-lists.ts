@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ExerciseList, ExerciseListItem, Prescription } from '@trackbit/types';
 import i18next from 'i18next';
 import { toast } from 'sonner';
+import { EXERCISE_QUEUE_QUERY_KEY } from '@/hooks/use-exercise-queue';
 import { EXERCISE_SOURCES_QUERY_KEY } from '@/hooks/use-exercise-sources';
 import { ApiError, parseApiError } from '@/shared/lib/api-error';
 
@@ -127,10 +128,12 @@ export function useExerciseLists() {
         queryFn: fetchLists,
     });
 
-    // Lists are also exercise sources, so any write invalidates both.
+    // Lists are also exercise sources, so any write invalidates the descriptors
+    // and every already-resolved queue that could have been built from them.
     const invalidateAll = () => {
         queryClient.invalidateQueries({ queryKey: EXERCISE_LISTS_QUERY_KEY });
         queryClient.invalidateQueries({ queryKey: EXERCISE_SOURCES_QUERY_KEY });
+        queryClient.invalidateQueries({ queryKey: EXERCISE_QUEUE_QUERY_KEY });
     };
 
     const createMutation = useMutation({

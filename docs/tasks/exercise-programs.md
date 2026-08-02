@@ -36,8 +36,11 @@ The full catalog has no order, no owner, and nothing to advance through, so mode
 | | Browse mode (`null`) | Source active |
 |---|---|---|
 | Picker popover | search the full catalog, add anything | queue in source order; search still falls back to the catalog, visually separated |
-| "Next up" Play button | **hidden** — nothing to advance | logs `entries[cursor]` and advances |
+| Trigger button | the last exercise picked (or last logged this session) | `entries[cursor]` |
+| Play button | logs whatever the trigger names — repeats the current pick | logs `entries[cursor]`; the cursor advances, so presses walk the queue |
 | Header label | `t('activity_all_exercises')` | source name |
+
+Play is **not** hidden in browse mode. The two controls divide as: Play is the quick "add another, one after the next" button, and the popover is for adding something out of order or outside the source via search. Hiding Play would remove the primary control for exactly the users who have not built a list yet. What browse mode lacks is a *queue*, not a selection — so the trigger holds the selection itself and Play stays meaningful in both modes.
 
 This is also what removes the current crash: there is no `exercises[selected]` to dereference when the catalog is empty ([AddExercisePicker.tsx:50](../../apps/frontend/src/features/activity-tracker/components/AddExercisePicker.tsx#L50), [:78](../../apps/frontend/src/features/activity-tracker/components/AddExercisePicker.tsx#L78), [:108](../../apps/frontend/src/features/activity-tracker/components/AddExercisePicker.tsx#L108)).
 
@@ -195,7 +198,7 @@ Two endpoints are the entire abstraction boundary. Adding a source kind touches 
 |---|---|
 | 1 — Data layer, lists | ✅ Complete (2026-08-02) — migration `0006` applied |
 | 2 — Favorites UI | ✅ Complete (2026-08-02) |
-| 3 — Picker source dropdown | ⬜ Not started |
+| 3 — Picker source dropdown | ✅ Complete (2026-08-02) — migration `0007` generated |
 | 4 — Programs | ⬜ Not started |
 | 5 — External authors & computed sources | ⬜ Not started |
 
@@ -261,20 +264,31 @@ API (Hono, `apps/backend`):
 - **List reorder is n PATCHes, not a bulk endpoint.** `exercise_lists` has no unique constraint on `(userId, position)`, so intermediate duplicates are harmless — unlike list *items*, which is why only the items table needed the deferrable constraint.
 - **The selected list is derived, never corrected in an effect.** `lists.find(...) ?? lists[0] ?? null` means deleting the open list falls back on the same render.
 
-### Phase 3: Picker source dropdown (the visible change)
+### Phase 3: Picker source dropdown (the visible change) ✅
 
 Rework [AddExercisePicker.tsx](../../apps/frontend/src/features/activity-tracker/components/AddExercisePicker.tsx):
 
-- [ ] Replace the static `activity_recommended` label with a **source dropdown** (small, ghost-style select above the exercise button): *All exercises* as the browse-mode default, then one entry per descriptor from `GET /api/exercise-sources`. Future kinds append themselves with no frontend change.
-- [ ] `useExerciseQueue(activeSource: ExerciseSourceRef | null, sessionId)`:
-  - `null` → browse mode; no queue, Play button hidden, popover searches the catalog.
+- [x] Replace the static `activity_recommended` label with a **source dropdown** (small, ghost-style select above the exercise button): *All exercises* as the browse-mode default, then one entry per descriptor from `GET /api/exercise-sources`. Future kinds append themselves with no frontend change.
+- [x] `useExerciseQueue(activeSource: ExerciseSourceRef | null, sessionId)`:
+  - `null` → browse mode; no queue, popover searches the catalog. *(Play stays — see the note below.)*
   - otherwise → `ResolvedQueue` + a client-derived cursor (`nextQueueIndex`).
   - The popover lists queue entries in source order; searching outside the source falls back to the full catalog in a clearly separated group.
   - The Play button logs `entries[cursor]` and advances. When the entry has a prescription, `addExerciseLog` receives `listItemId` (provenance) and the prescription is used to **pre-fill the editor** — no rows are written from it. *(The `addExerciseLog` mutation already accepts `listItemId`; the backend validates and stores it.)*
   - Empty queues render `emptyReason` ("Rest day", "Nothing scheduled today") instead of a broken control.
-- [ ] Persist the last-selected source as a nullable `preferredExerciseSource` text column on user preferences, holding the canonical key. Same channel as the compact log-card style. Default `null` (browse mode); dangling keys resolve to `null` and are cleared.
-- [ ] Tooltip copy changes from "add recommended" to "add next from &lt;source&gt;".
-- [ ] Fixes the empty-catalog crash at [AddExercisePicker.tsx:50](../../apps/frontend/src/features/activity-tracker/components/AddExercisePicker.tsx#L50) — still present until this phase lands.
+- [x] Persist the last-selected source as a nullable `preferredExerciseSource` text column on user preferences, holding the canonical key. Same channel as the compact log-card style. Default `null` (browse mode); dangling keys resolve to `null` and are cleared.
+- [x] Tooltip copy changes from "add recommended" to "add next from &lt;source&gt;".
+- [x] Fixes the empty-catalog crash — the picker no longer dereferences `exercises[selected]` anywhere.
+- [x] **Apply migration `0007_preferred_exercise_source.sql`** — generated by `drizzle-kit generate` (single `ALTER TABLE "user" ADD COLUMN "preferred_exercise_source" text`), **not yet run against any database**.
+
+**Implementation notes:**
+
+- **The preference rides on the session, not on a second fetch.** `preferredExerciseSource` is declared in better-auth `additionalFields` (backend `auth.ts` + frontend `inferAdditionalFields`) with `input: false`, so it comes back on `useSession()` and only ever changes through `PATCH /api/me/preferences`. This is deliberately *not* the card-style pattern, which keeps its value in `localStorage` and can therefore disagree with the column it writes to.
+- **One store, one guard.** [use-preferred-exercise-source.ts](../../apps/frontend/src/hooks/use-preferred-exercise-source.ts) is a small zustand store (shared, because two session panels must not disagree about a user preference) hydrated once from the session. The stored key is resolved against the descriptor list on every read: no descriptor ⇒ browse mode. Clearing a dangling key waits for descriptors to have actually loaded — a slow or failed `/exercise-sources` fetch must not wipe a valid preference.
+- **`useExerciseQueue` takes session logs, not a session id.** Pure inputs keep it out of the activity-tracker feature's dependency graph and make it reusable by the native picker; the caller resolves `sessionId → logs` from the tracker cache it already holds. A `404` resolves to `null` data rather than rejecting, so a deleted list produces browse mode instead of an error toast.
+- **Prescription pre-fill lands in `newPerformance`, not in `addExerciseLog`.** "Pre-fill the editor" cannot mean writing rows at log time — that is exactly the planned-sets-in-history failure the plan forbids. Instead `buildNewSetValues` resolves `log.listItemId → list item → prescription` and lets targets outrank `lastPerformance` for the set the user is actually recording. The same builder feeds the request and the optimistic update, so they can no longer show different numbers. `targetDuration` is seconds and `exercise_performances.duration` is milliseconds — the builder converts.
+- **List writes invalidate resolved queues.** `useExerciseLists.invalidateAll` now also drops the `['exercise-source']` prefix, so editing a list's items updates an open picker instead of serving a stale queue for the 30s TTL.
+- **The trigger holds a selection; Play adds it.** One model for both modes, which is what keeps the quick-add and the search popover distinct instead of overlapping. With a source, the selection is `entries[cursor]` and is derived from the logs, so each press walks the queue and an out-of-order pick from the popover just moves the cursor past that entry. In browse mode the selection is local state seeded from the last log in the session, so a resumed session finds Play already armed. Play is absent (never disabled) only when nothing is selected at all.
+- **Done entries are marked, not hidden.** The popover dims logged entries and shows a check; the cursor entry keeps the ring the old "recommended" row had. Hiding them would make the queue's own order unreadable mid-session.
 
 ### Phase 4: Programs — scheduling + prescriptions
 
