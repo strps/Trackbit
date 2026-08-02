@@ -8,6 +8,7 @@ import {
 } from '@/features/tracker/use-tracker';
 import { useActivityTrackerStore } from '../store/activityTrackerStore';
 import { useExercises } from '@/hooks/use-exercises';
+import { useExerciseLists } from '@/features/exercise-lists/use-exercise-lists';
 import { ApiError, parseApiError } from '@/shared/lib/api-error';
 import { toast } from 'sonner';
 import i18next from 'i18next';
@@ -53,6 +54,9 @@ export function useActivityTracker() {
 
     const { habitsWithLogs, isLoading } = useTracker();
     const { exercises, updateLastPerformance } = useExercises();
+    // Lists are where prescriptions live; a log's listItemId is the provenance
+    // that leads back to one.
+    const { lists } = useExerciseLists();
 
     const { selectedLogId: dayLogId, selectedSessionIndex, selectSessionIndex: setSessionIndex } =
         useActivityTrackerStore();
@@ -77,11 +81,11 @@ export function useActivityTracker() {
     // -------------------------------------------------------------------------
     // Lookup helpers — scoped to currentDayLog for efficiency
     // -------------------------------------------------------------------------
-    const getExerciseIdFromLogId = useCallback(
-        (logId: number): number | undefined => {
+    const findLog = useCallback(
+        (logId: number): OptimisticExerciseLog | undefined => {
             for (const session of currentDayLog?.exerciseSessions ?? []) {
                 const log = session.exerciseLogs.find((l) => l.id === logId);
-                if (log) return log.exerciseId;
+                if (log) return log;
             }
             return undefined;
         },
@@ -119,6 +123,48 @@ export function useActivityTracker() {
             return exercises.find((ex) => ex.id === exerciseId)?.lastPerformance;
         },
         [exercises],
+    );
+
+    const findPrescription = useCallback(
+        (listItemId: number | null | undefined) => {
+            if (listItemId == null) return undefined;
+            for (const list of lists) {
+                const item = list.items.find((i) => i.id === listItemId);
+                if (item) return item;
+            }
+            return undefined;
+        },
+        [lists],
+    );
+
+    // The values a new set starts with. A prescription wins over the last
+    // performance, because it is what the user was told to do today — but it only
+    // ever pre-fills the set the user is actually recording. Prescriptions are
+    // never materialized as rows of their own: planned-but-not-performed sets in
+    // performance history would corrupt PRs, volume and every downstream stat.
+    const buildNewSetValues = useCallback(
+        (exerciseLogId: number) => {
+            const log = findLog(exerciseLogId);
+            const prescription = findPrescription(log?.listItemId);
+            const lastPerf = findLastPerformance(log?.exerciseId);
+
+            return {
+                exerciseId: log?.exerciseId,
+                values: {
+                    reps: prescription?.targetReps ?? lastPerf?.reps ?? null,
+                    weight: prescription?.targetWeight ?? lastPerf?.weight ?? null,
+                    // Prescriptions store seconds; performances store milliseconds.
+                    duration:
+                        prescription?.targetDuration != null
+                            ? prescription.targetDuration * 1000
+                            : (lastPerf?.duration ?? null),
+                    distance: prescription?.targetDistance ?? lastPerf?.distance ?? null,
+                    // RPE is an outcome, never a prescription.
+                    rpe: lastPerf?.rpe ?? null,
+                },
+            };
+        },
+        [findLog, findPrescription, findLastPerformance],
     );
 
     // -------------------------------------------------------------------------
@@ -277,25 +323,16 @@ export function useActivityTracker() {
     // -------------------------------------------------------------------------
     const newPerformanceMutation = useMutation({
         mutationFn: async ({ exerciseLogId }: { exerciseLogId: number }) => {
-            const exerciseId = getExerciseIdFromLogId(exerciseLogId);
+            const { exerciseId, values } = buildNewSetValues(exerciseLogId);
             if (!exerciseId) throw new Error('Exercise not found for log');
 
-            const lastPerf = findLastPerformance(exerciseId);
             const number = getCurrentPerformanceCount(exerciseLogId) + 1;
 
             const res = await fetch(`${API_URL}/tracker/exercise-performances`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({
-                    exerciseLogId,
-                    reps: lastPerf?.reps ?? null,
-                    weight: lastPerf?.weight ?? null,
-                    duration: lastPerf?.duration ?? null,
-                    distance: lastPerf?.distance ?? null,
-                    rpe: lastPerf?.rpe ?? null,
-                    number,
-                }),
+                body: JSON.stringify({ exerciseLogId, ...values, number }),
             });
             if (!res.ok) throw new Error('Failed to create set');
             return res.json();
@@ -304,8 +341,9 @@ export function useActivityTracker() {
             await queryClient.cancelQueries({ queryKey: ['habit-logs'] });
             const previousData = queryClient.getQueryData(['habit-logs']);
 
-            const exerciseId = getExerciseIdFromLogId(exerciseLogId);
-            const lastPerf = findLastPerformance(exerciseId);
+            // Same builder as the request, so the optimistic set can never show
+            // different numbers than the ones being written.
+            const { exerciseId, values } = buildNewSetValues(exerciseLogId);
             const number = getCurrentPerformanceCount(exerciseLogId) + 1;
 
             updateCache((next) => {
@@ -317,13 +355,9 @@ export function useActivityTracker() {
                                 const tempSet: OptimisticExercisePerformance = {
                                     id: -Date.now(),
                                     exerciseLogId,
-                                    reps: lastPerf?.reps ?? null,
-                                    weight: lastPerf?.weight ?? null,
+                                    ...values,
                                     number,
-                                    duration: lastPerf?.duration ?? null,
-                                    distance: lastPerf?.distance ?? null,
                                     createdAt: null,
-                                    rpe: lastPerf?.rpe ?? null,
                                     tempId: `temp-${Date.now()}`,
                                 };
                                 log.exercisePerformances.push(tempSet);

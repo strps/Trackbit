@@ -106,6 +106,14 @@ export const auth = betterAuth({
         defaultValue: "UTC",
         input: true,
       },
+      // Declared so the picker's last-used source rides along on the session
+      // instead of costing a separate fetch on boot. Never client-supplied at
+      // signup — it only ever changes through PATCH /api/me/preferences.
+      preferredExerciseSource: {
+        type: "string",
+        required: false,
+        input: false,
+      },
     },
   },
 
