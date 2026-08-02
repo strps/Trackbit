@@ -5,7 +5,7 @@ import { NavLink } from "react-router-dom";
 import {
     Flame, Menu, X, Sun, Moon,
     User, Settings, LogOut,
-    LayoutDashboard, ListTodo, BarChart3, Dumbbell, CreditCard, ChevronDown, Bug, Scale
+    LayoutDashboard, ListTodo, ListChecks, BarChart3, Dumbbell, CreditCard, ChevronDown, Bug, Scale
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { useNavigate } from "react-router-dom";
@@ -32,6 +32,7 @@ const navItems: NavItem[] = [
 const configNavItems: NavItem[] = [
     { titleKey: "habits", to: "/config/habits", icon: ListTodo },
     { titleKey: "exercises", to: "/config/exercises", icon: Dumbbell },
+    { titleKey: "lists", to: "/config/lists", icon: ListChecks },
 ];
 
 export const AppHeader: React.FC = () => {

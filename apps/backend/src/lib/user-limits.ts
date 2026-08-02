@@ -3,10 +3,12 @@ import db from "../db/db.js";
 import { userLimits } from "../db/schema/app/settings.js";
 import { habits } from "../db/schema/app/habits.js";
 import { exercises } from "../db/schema/app/exercises.js";
+import { exerciseLists } from "../db/schema/app/exercise-lists.js";
 
 export interface EffectiveLimits {
     maxHabits: number | null;
     maxCustomExercises: number | null;
+    maxExerciseLists: number | null;
     allowedHabitTypes: string[];
 }
 
@@ -14,6 +16,7 @@ const DEFAULT_TESTER_LIMITS = {
     role: "tester",
     maxHabits: 10,
     maxCustomExercises: 5,
+    maxExerciseLists: 3,
     allowedHabitTypes: ["count", "complex"],
 };
 
@@ -22,6 +25,7 @@ const DEFAULT_TESTER_LIMITS = {
 const SECURE_DEFAULT_LIMITS: EffectiveLimits = {
     maxHabits: 10,
     maxCustomExercises: 5,
+    maxExerciseLists: 3,
     allowedHabitTypes: ["count", "complex"],
 };
 
@@ -135,6 +139,46 @@ export async function computeFrozenExercisesForUser(
     return computeFrozenExerciseIds(rows, limits);
 }
 
+interface ExerciseListForFreeze {
+    id: number;
+    position: number;
+}
+
+// Pure: freeze exercise lists starting from the highest `position` (= bottom of
+// the list) until the count is within maxExerciseLists. Same direction as the
+// habit freeze, so the user keeps the lists they put first.
+export function computeFrozenListIds(
+    items: ExerciseListForFreeze[],
+    limits: EffectiveLimits | null
+): Set<number> {
+    const frozen = new Set<number>();
+    if (!limits || limits.maxExerciseLists == null) return frozen;
+    if (items.length <= limits.maxExerciseLists) return frozen;
+
+    const excess = items.length - limits.maxExerciseLists;
+    const sortedDesc = [...items].sort((a, b) => b.position - a.position || b.id - a.id);
+    for (let i = 0; i < excess; i++) {
+        frozen.add(sortedDesc[i].id);
+    }
+
+    return frozen;
+}
+
+export async function computeFrozenListsForUser(
+    userId: string,
+    role: string | null | undefined
+): Promise<Set<number>> {
+    const limits = await getEffectiveLimits(role);
+    if (!limits || limits.maxExerciseLists == null) return new Set();
+
+    const rows = await db
+        .select({ id: exerciseLists.id, position: exerciseLists.position })
+        .from(exerciseLists)
+        .where(eq(exerciseLists.userId, userId));
+
+    return computeFrozenListIds(rows, limits);
+}
+
 // Returns the limits to enforce for a given role.
 // - admins: null (unlimited, skip enforcement)
 // - role with a configured row: that row's values
@@ -153,6 +197,7 @@ export async function getEffectiveLimits(role: string | null | undefined): Promi
             return {
                 maxHabits: row.maxHabits ?? null,
                 maxCustomExercises: row.maxCustomExercises ?? null,
+                maxExerciseLists: row.maxExerciseLists ?? null,
                 allowedHabitTypes: row.allowedHabitTypes ?? SECURE_DEFAULT_LIMITS.allowedHabitTypes,
             };
         }

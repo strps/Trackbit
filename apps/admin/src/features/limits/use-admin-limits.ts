@@ -10,6 +10,7 @@ export interface AdminLimits {
     role: string;
     maxHabits: number | null;
     maxCustomExercises: number | null;
+    maxExerciseLists: number | null;
     allowedHabitTypes: string[] | null;
 }
 
@@ -17,12 +18,14 @@ export interface CreateLimitsInput {
     role: string;
     maxHabits?: number | null;
     maxCustomExercises?: number | null;
+    maxExerciseLists?: number | null;
     allowedHabitTypes?: HabitType[];
 }
 
 export interface UpdateLimitsInput {
     maxHabits?: number | null;
     maxCustomExercises?: number | null;
+    maxExerciseLists?: number | null;
     allowedHabitTypes?: HabitType[];
 }
 

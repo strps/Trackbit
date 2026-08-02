@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import { boolean, foreignKey, integer, jsonb, numeric, pgTable, primaryKey, real, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { exerciseListItems } from "./exercise-lists";
 import { dayLogs } from "./habits";
 import { user } from "./user";
 
@@ -122,6 +123,12 @@ export const exerciseLogs = pgTable('exercise_log', {
     exerciseId: integer('exercise_id').references(() => exercises.id).notNull(),
     exerciseSessionId: integer('session_id').references(() => exerciseSessions.id, { onDelete: 'cascade' }).notNull(),
 
+    // Provenance: the list item this log was logged from, when it came from a
+    // source queue. Set null (not cascade) on item delete so history survives
+    // list edits. Null for ad-hoc logs and for computed sources.
+    listItemId: integer('list_item_id')
+        .references(() => exerciseListItems.id, { onDelete: 'set null' }),
+
     createdAt: timestamp('created_at').defaultNow(),
 
     // Cardio data
@@ -140,6 +147,10 @@ export const exerciseLogRelations = relations(exerciseLogs, ({ one, many }) => (
     exercise: one(exercises, {
         fields: [exerciseLogs.exerciseId],
         references: [exercises.id],
+    }),
+    listItem: one(exerciseListItems, {
+        fields: [exerciseLogs.listItemId],
+        references: [exerciseListItems.id],
     }),
     exercisePerformances: many(exercisePerformances),
 }));

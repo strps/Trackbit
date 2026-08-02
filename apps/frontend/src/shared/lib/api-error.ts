@@ -3,6 +3,9 @@ export type ApiErrorCode =
     | 'custom_exercise_frozen'
     | 'habit_limit_reached'
     | 'custom_exercise_limit_reached'
+    | 'exercise_list_frozen'
+    | 'exercise_list_limit_reached'
+    | 'exercise_list_name_taken'
     | 'habit_type_not_allowed'
     | string;
 
@@ -11,9 +14,11 @@ export interface ApiErrorPayload {
     message?: string;
     maxHabits?: number;
     maxCustomExercises?: number;
+    maxExerciseLists?: number;
     allowedHabitTypes?: string[];
     habitId?: number;
     exerciseId?: number;
+    listId?: number;
     frozenIds?: number[];
 }
 

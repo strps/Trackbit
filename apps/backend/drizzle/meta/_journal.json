@@ -43,6 +43,13 @@
       "when": 1783621208867,
       "tag": "0005_goofy_molten_man",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785699115049,
+      "tag": "0006_exercise_lists",
+      "breakpoints": true
     }
   ]
 }

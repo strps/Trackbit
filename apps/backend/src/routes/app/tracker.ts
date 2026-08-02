@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { eq, and, inArray, sql, gte, lte, desc, asc } from 'drizzle-orm'
 import { HTTPException } from 'hono/http-exception'
 import { requireAuth } from '../../middleware/auth'
-import { dayLogs, exerciseLogs, exercisePerformances, exerciseSessions, habits } from '../../db/schema'
+import { dayLogs, exerciseListItems, exerciseLists, exerciseLogs, exercisePerformances, exerciseSessions, habits } from '../../db/schema'
 import db from '../../db/db'
 import { defineCrudSchemas } from '../../lib/utilities/drizzle-crud-schemas'
 import { generateCrudRouter } from '../../lib/utilities/crud-router-factory'
@@ -327,10 +327,21 @@ const exerciseLogsSchemas = defineCrudSchemas(exerciseLogs, {
             ).optional(),
         }),
 });
+// Provenance is write-once. Without this omission a PATCH could re-point an
+// existing log at any list item — including another user's, since the ownership
+// check only guards creation — silently rewriting adherence history.
+const exerciseLogUpdateSchema = exerciseLogsSchemas.create
+    .omit({ listItemId: true })
+    .partial()
+    .refine(
+        (data: Record<string, unknown>) => Object.keys(data).length > 0,
+        { message: 'At least one field must be provided for update' }
+    );
+
 // TODO: exercise logs should be ordered by createdAt, similar exercise sets
 const exerciseLogsRouter = generateCrudRouter({
     table: exerciseLogs,
-    schemas: exerciseLogsSchemas,
+    schemas: { ...exerciseLogsSchemas, update: exerciseLogUpdateSchema },
     primaryKeyFields: ['id'],
 
     // Enforce ownership: log belongs to a session of a dayLog of a habit owned by the user
@@ -422,11 +433,42 @@ const exerciseLogsRouter = generateCrudRouter({
                 }
             }
 
+            // Provenance: only accept a list item that belongs to one of the
+            // user's own lists, otherwise the log would point at someone else's
+            // routine and skew their adherence reporting.
+            let listItemId: number | null = null;
+            if (body.listItemId != null) {
+                const [ownedItem] = await db
+                    .select({ id: exerciseListItems.id })
+                    .from(exerciseListItems)
+                    .innerJoin(exerciseLists, eq(exerciseLists.id, exerciseListItems.listId))
+                    .where(and(
+                        eq(exerciseListItems.id, body.listItemId),
+                        eq(exerciseLists.userId, user.id),
+                    ))
+                    .limit(1);
+
+                if (!ownedItem) {
+                    throw new HTTPException(400, {
+                        res: new Response(
+                            JSON.stringify({
+                                error: 'exercise_list_item_not_found',
+                                message: 'The referenced list item does not exist or is not yours.',
+                                listItemId: body.listItemId,
+                            }),
+                            { status: 400, headers: { 'content-type': 'application/json' } }
+                        ),
+                    });
+                }
+                listItemId = ownedItem.id;
+            }
+
             return await db.transaction(async (tx) => {
                 // 1. Create the Exercise Log Header
                 const logRes = await tx.insert(exerciseLogs).values({
                     exerciseSessionId: body.exerciseSessionId,
-                    exerciseId: body.exerciseId
+                    exerciseId: body.exerciseId,
+                    listItemId,
                 }).returning();
 
                 const newLogId = logRes[0].id;

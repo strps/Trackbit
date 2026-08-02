@@ -174,7 +174,8 @@ export function useActivityTracker() {
     // 3. Add Exercise Log
     // -------------------------------------------------------------------------
     const addExerciseLogMutation = useMutation({
-        mutationFn: async (payload: { exerciseSessionId: number; exerciseId: number }) => {
+        // listItemId carries provenance when the log came from a source queue.
+        mutationFn: async (payload: { exerciseSessionId: number; exerciseId: number; listItemId?: number | null }) => {
             const res = await fetch(`${API_URL}/tracker/exercise-logs`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -203,6 +204,7 @@ export function useActivityTracker() {
                                 duration: null,
                                 distanceUnit: null,
                                 weightUnit: null,
+                                listItemId: payload.listItemId ?? null,
                                 tempId: `temp-${Date.now()}`,
                                 exercisePerformances: [],
                             };

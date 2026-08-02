@@ -24,6 +24,7 @@ import {
 } from '@/shared/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { ApiError } from '@/shared/lib/api-error';
+import { AddToListMenu } from '@/features/exercise-lists/AddToListMenu';
 
 const ExerciseLibrary = () => {
     const { exercises, isLoading, deleteExercise } = useExercises();
@@ -189,6 +190,7 @@ const ExerciseLibrary = () => {
                                                 <Globe className="w-3 h-3" /> System
                                             </Badge>
                                         )}
+                                        <AddToListMenu exerciseId={exercise.id} />
                                     </div>
                                 </div>
 
