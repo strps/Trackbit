@@ -6,6 +6,7 @@ import db from '../../db/db.js'
 import { user } from '../../db/schema/app/user.js'
 import { habits } from '../../db/schema/app/habits.js'
 import { exercises } from '../../db/schema/app/exercises.js'
+import { exerciseLists } from '../../db/schema/app/exercise-lists.js'
 import { requireAuth } from '../../middleware/auth.js'
 import { localeMiddleware } from '../../middleware/locale.js'
 import { formatZodError } from '../../lib/utils.js'
@@ -76,11 +77,17 @@ app.get('/limits', async (c) => {
         .from(exercises)
         .where(eq(exercises.userId, sessionUser.id))
 
+    const [{ value: exerciseListsCount }] = await db
+        .select({ value: count() })
+        .from(exerciseLists)
+        .where(eq(exerciseLists.userId, sessionUser.id))
+
     return c.json({
         effective,
         counts: {
             habits: habitsCount,
             customExercises: customExercisesCount,
+            exerciseLists: exerciseListsCount,
         },
     })
 })

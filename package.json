@@ -3,6 +3,7 @@
     "private": true,
     "packageManager": "pnpm@10.24.0",
     "scripts": {
+        "prepare": "pnpm --filter @trackbit/types build",
         "dev": "pnpm -r dev",
         "dev:frontend": "pnpm --filter frontend dev",
         "dev:backend": "pnpm --filter backend dev",

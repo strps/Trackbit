@@ -4,6 +4,7 @@ import { parseApiError } from '@/shared/lib/api-error';
 export interface EffectiveLimits {
     maxHabits: number | null;
     maxCustomExercises: number | null;
+    maxExerciseLists: number | null;
     allowedHabitTypes: string[];
 }
 
@@ -12,6 +13,7 @@ export interface LimitsResponse {
     counts: {
         habits: number;
         customExercises: number;
+        exerciseLists: number;
     };
 }
 
@@ -44,6 +46,12 @@ export function useLimits() {
         counts.customExercises >= effective.maxCustomExercises
     );
 
+    const atListCap = !!(
+        effective?.maxExerciseLists != null &&
+        counts &&
+        counts.exerciseLists >= effective.maxExerciseLists
+    );
+
     const isHabitTypeAllowed = (type: string): boolean => {
         if (!effective) return true;
         return effective.allowedHabitTypes.includes(type);
@@ -54,6 +62,7 @@ export function useLimits() {
         counts,
         atHabitCap,
         atExerciseCap,
+        atListCap,
         isHabitTypeAllowed,
         isLoading: query.isLoading,
     };

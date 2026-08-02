@@ -191,13 +191,21 @@ Two endpoints are the entire abstraction boundary. Adding a source kind touches 
 
 ## Technical Implementation Plan
 
-### Phase 1: Data layer — lists
+| Phase | Status |
+|---|---|
+| 1 — Data layer, lists | ✅ Complete (2026-08-02) — migration `0006` applied |
+| 2 — Favorites UI | ✅ Complete (2026-08-02) |
+| 3 — Picker source dropdown | ⬜ Not started |
+| 4 — Programs | ⬜ Not started |
+| 5 — External authors & computed sources | ⬜ Not started |
+
+### Phase 1: Data layer — lists ✅
 
 New file `apps/backend/src/db/schema/app/exercise-lists.ts`, re-exported from [schema/index.ts](../../apps/backend/src/db/schema/index.ts) (`export * from './app/exercise-lists';` — extensionless, matching the existing lines). The barrel is what `db.ts` passes to `drizzle({ schema })`, so an unregistered file means no relational queries and no `drizzle-kit` diff.
 
 Lists get their own file rather than joining [exercises.ts](../../apps/backend/src/db/schema/app/exercises.ts) (already 177 lines / 5 tables): this is a distinct domain that grows in Phase 4 (`programs`, `program_entries`) and Phase 5 (sharing permissions). The circular import that would have argued for merging them is a non-issue — see the note below.
 
-- **`exercise_lists`**
+- [x] **`exercise_lists`**
   - `id` serial PK
   - `userId` → `user.id` (owner, cascade delete)
   - `authorId` → `user.id`, nullable — set when someone else (trainer) created it; equals owner for self-made lists. Nullable now so Phase 5 needs no migration.
@@ -206,7 +214,7 @@ Lists get their own file rather than joining [exercises.ts](../../apps/backend/s
   - `createdAt`, `updatedAt`
   - Unique index on `(userId, name)`.
   - **No `kind` column.** A "routine" is a list referenced by a `program_entry` or carrying prescriptions — both derivable. A stored hint is a second state that can disagree with the data, and it earns nothing: the shape is identical either way.
-- **`exercise_list_items`**
+- [x] **`exercise_list_items`**
   - `id` serial PK — **not** `(listId, exerciseId)`. A composite key silently forbids the same exercise twice in one list, which routines need (heavy set + backoff, circuits flattened into a single order).
   - `listId` → `exercise_lists.id` (cascade), `exerciseId` → `exercises.id` (cascade)
   - `position` integer not null
@@ -215,64 +223,83 @@ Lists get their own file rather than joining [exercises.ts](../../apps/backend/s
 
 Change to `exercise_log` ([exercises.ts:119](../../apps/backend/src/db/schema/app/exercises.ts#L119)):
 
-- `listItemId` integer nullable → `exercise_list_items.id` **on delete set null**. This is the provenance that (a) makes the queue cursor exact with repeated exercises and (b) makes Phase 4 adherence reporting ("did they follow the program?") possible at all. Free now, a backfill later.
+- [x] `listItemId` integer nullable → `exercise_list_items.id` **on delete set null**. This is the provenance that (a) makes the queue cursor exact with repeated exercises and (b) makes Phase 4 adherence reporting ("did they follow the program?") possible at all. Free now, a backfill later.
 - *Import cycle:* `exercise-lists.ts` imports `exercises.ts` (for `exerciseId`) and `exercises.ts` imports back (for `listItemId`). This is fine — verified against `drizzle-orm@0.45.1` with `tsc --strict`. `.references(() => …)` takes a lazy callback that runs after both modules finish evaluating, so no TDZ, and neither table appears in its own type initializer, so no `: any` annotation is needed (unlike `muscleGroups`' self-reference at [exercises.ts:41](../../apps/backend/src/db/schema/app/exercises.ts#L41)). Both files are re-exported from `schema/index.ts`, so load order is irrelevant. Declare the FK normally; no migration-level workaround.
 
 **Prescriptions never materialize.** Logging a prescribed exercise creates the `exercise_log` row and nothing else — no placeholder `exercise_performances`. The user logs what they actually did; targets are display hints and pre-fill values only. Materializing them would put planned-but-not-performed sets into performance history, corrupting PRs, volume totals and every downstream stat. Adherence is answered by joining logs to `listItemId`, not by pre-writing rows.
 
 API (Hono, `apps/backend`):
 
-- `GET /api/exercise-lists` (with items, ordered), `POST`, `PATCH /:id`, `DELETE /:id`
-- `PUT /api/exercise-lists/:id/items` — replace-all with positions (simplest correct reorder semantics; matches habit reordering).
-- `GET /api/exercise-sources`, `GET /api/exercise-sources/:key` — see above.
-- **Limits:** add `max_exercise_lists` to `user_limits` ([settings.ts:33](../../apps/backend/src/db/schema/app/settings.ts#L33), which today only has `maxHabits` / `maxCustomExercises`), extend `EffectiveLimits`, `DEFAULT_TESTER_LIMITS` and `SECURE_DEFAULT_LIMITS` in [user-limits.ts](../../apps/backend/src/lib/user-limits.ts), and add `computeFrozenListIds` mirroring `computeFrozenHabitIds` — freeze from the highest `position` down until within cap. Frozen lists are read-only and surface as `frozen: true` on the descriptor (which zeroes `canAppend` / `canReorder`). Reuse the tracker-freeze error codes.
+- [x] `GET /api/exercise-lists` (with items, ordered), `GET /:id`, `POST`, `PATCH /:id`, `DELETE /:id` — [exercise-lists.ts](../../apps/backend/src/routes/app/exercise-lists.ts)
+- [x] `PUT /api/exercise-lists/:id/items` — replace-all with positions (simplest correct reorder semantics; matches habit reordering).
+- [x] `GET /api/exercise-sources`, `GET /api/exercise-sources/:key` — see above. Resolution lives in [lib/exercise-sources.ts](../../apps/backend/src/lib/exercise-sources.ts) so a new kind is one branch there.
+- [x] Shared shapes in `packages/types`: `Prescription`, `ExerciseList`, `ExerciseSourceRef`, `SourceCapabilities`, `ExerciseSourceDescriptor`, `QueueEntry`, `ResolvedQueue`, `parseSourceKey` / `serializeSourceKey`.
+- [x] **Limits:** add `max_exercise_lists` to `user_limits` ([settings.ts:33](../../apps/backend/src/db/schema/app/settings.ts#L33), which today only has `maxHabits` / `maxCustomExercises`), extend `EffectiveLimits`, `DEFAULT_TESTER_LIMITS` and `SECURE_DEFAULT_LIMITS` in [user-limits.ts](../../apps/backend/src/lib/user-limits.ts), and add `computeFrozenListIds` mirroring `computeFrozenHabitIds` — freeze from the highest `position` down until within cap. Frozen lists are read-only and surface as `frozen: true` on the descriptor (which zeroes `canAppend` / `canReorder`). Reuse the tracker-freeze error codes.
+- [x] Cap wired through `/api/me/limits`, `/admin/limits` (+ admin UI field), and the frontend `useLimits` hook (`atListCap`).
+- [x] **Apply migration `0006_exercise_lists.sql`** — applied 2026-08-02. It went in via `drizzle-kit push`, which builds its DDL from the schema file and therefore dropped the hand-added `DEFERRABLE INITIALLY DEFERRED` clause; `exercise_list_items_list_position_uq` was recreated as deferrable afterwards. Any environment provisioned by `push` rather than by this migration file needs the same correction, or every reorder fails on the first swapped position.
 
-### Phase 2: Favorites UI
+**Implementation notes** (where the shipped code deviates from the plan above, and why):
 
-- New feature folder `apps/frontend/src/features/exercise-lists/`: create, rename, delete, drag-reorder lists and their items.
-- "Add to list" affordance wherever exercises are browsed (picker rows get an overflow/star action → submenu of the user's lists). Gated on `capabilities.canAppend`, not on source type.
-- Prescriptions stay hidden here: favorite-list editing shows only exercise + order. (Prescription editing arrives in Phase 4 — same entity, richer editor.)
-- Frozen lists render read-only with the existing frozen-resource treatment.
-- i18n: new keys in the `tracker` namespace (or a new `lists` namespace if it outgrows ~15 keys), added symmetrically to every locale bundle per the i18n conventions doc.
+- **`PUT /:id/items` diffs on item id instead of deleting every row.** Replace-all stays the client-facing contract, but `exercise_log.list_item_id` is `ON DELETE SET NULL`: a blind delete-and-reinsert would erase the provenance of every past log on each reorder, defeating both the cursor and Phase 4 adherence. Items carry an optional `id` — present means keep the row, absent means new, missing means delete.
+- **`listItemId` is write-once.** Creation validates the item belongs to one of the caller's own lists; the generated PATCH schema omits it, since otherwise a client could re-point an existing log at any item id, including another user's.
+- **List reads use explicit selects, not `db.query.*.with`.** Nested relational results infer as `{ [k: string]: any }` against this schema, which erases the item type at every call site. `loadOwnedListsWithItems` / `loadOwnedListWithItems` in the sources lib are the shared loaders.
+- **No `owner` / `author` relations on `exercise_lists`.** Both FKs target `user`, so pairing them needs matching `relationName`s on the user side; nothing traverses that direction until Phase 5, which can add both halves together.
+
+### Phase 2: Favorites UI ✅
+
+- [x] New feature folder `apps/frontend/src/features/exercise-lists/`: create, rename, delete, drag-reorder lists and their items. Page at `/config/lists`, reachable from the Configuration nav group.
+- [x] "Add to list" affordance wherever exercises are browsed — [AddToListMenu.tsx](../../apps/frontend/src/features/exercise-lists/AddToListMenu.tsx), mounted on exercise-library cards and picker rows. Gated on `capabilities.canAppend`, not on source type.
+- [x] Prescriptions stay hidden here: favorite-list editing shows only exercise + order. (Prescription editing arrives in Phase 4 — same entity, richer editor.)
+- [x] Frozen lists render read-only with the existing frozen-resource treatment.
+- [x] i18n: new `lists` namespace (~45 keys, past the ~15 threshold), `en` + `es` symmetric, registered in `i18n/index.ts` and `i18next.d.ts`. Nav gained `nav.lists`.
+
+**Implementation notes:**
+
+- **`useExerciseSources` lands here, not in Phase 3.** The add-to-list menu gates on `capabilities.canAppend` per the abstraction, so it needs descriptors — [use-exercise-sources.ts](../../apps/frontend/src/hooks/use-exercise-sources.ts) is shared (`hooks/`, alongside `use-limits`) and Phase 3's picker consumes the same query. The list *items* still come from the lists cache, since appending means re-sending the whole list to `PUT /:id/items`.
+- **Array order is the position.** `saveItems` numbers items by index before sending, so no call site can produce a non-permutation and trip the 400 the endpoint returns for duplicate positions.
+- **Existing items round-trip through `toItemInput`**, carrying `id` (keeps `exercise_log.list_item_id` provenance) and all seven prescription columns, so a Phase 2 reorder can never silently erase what a Phase 4 editor wrote.
+- **List reorder is n PATCHes, not a bulk endpoint.** `exercise_lists` has no unique constraint on `(userId, position)`, so intermediate duplicates are harmless — unlike list *items*, which is why only the items table needed the deferrable constraint.
+- **The selected list is derived, never corrected in an effect.** `lists.find(...) ?? lists[0] ?? null` means deleting the open list falls back on the same render.
 
 ### Phase 3: Picker source dropdown (the visible change)
 
 Rework [AddExercisePicker.tsx](../../apps/frontend/src/features/activity-tracker/components/AddExercisePicker.tsx):
 
-- Replace the static `activity_recommended` label with a **source dropdown** (small, ghost-style select above the exercise button): *All exercises* as the browse-mode default, then one entry per descriptor from `GET /api/exercise-sources`. Future kinds append themselves with no frontend change.
-- `useExerciseQueue(activeSource: ExerciseSourceRef | null, sessionId)`:
+- [ ] Replace the static `activity_recommended` label with a **source dropdown** (small, ghost-style select above the exercise button): *All exercises* as the browse-mode default, then one entry per descriptor from `GET /api/exercise-sources`. Future kinds append themselves with no frontend change.
+- [ ] `useExerciseQueue(activeSource: ExerciseSourceRef | null, sessionId)`:
   - `null` → browse mode; no queue, Play button hidden, popover searches the catalog.
   - otherwise → `ResolvedQueue` + a client-derived cursor (`nextQueueIndex`).
   - The popover lists queue entries in source order; searching outside the source falls back to the full catalog in a clearly separated group.
-  - The Play button logs `entries[cursor]` and advances. When the entry has a prescription, `addExerciseLog` receives `listItemId` (provenance) and the prescription is used to **pre-fill the editor** — no rows are written from it.
+  - The Play button logs `entries[cursor]` and advances. When the entry has a prescription, `addExerciseLog` receives `listItemId` (provenance) and the prescription is used to **pre-fill the editor** — no rows are written from it. *(The `addExerciseLog` mutation already accepts `listItemId`; the backend validates and stores it.)*
   - Empty queues render `emptyReason` ("Rest day", "Nothing scheduled today") instead of a broken control.
-- Persist the last-selected source as a nullable `preferredExerciseSource` text column on user preferences, holding the canonical key. Same channel as the compact log-card style. Default `null` (browse mode); dangling keys resolve to `null` and are cleared.
-- Tooltip copy changes from "add recommended" to "add next from &lt;source&gt;".
+- [ ] Persist the last-selected source as a nullable `preferredExerciseSource` text column on user preferences, holding the canonical key. Same channel as the compact log-card style. Default `null` (browse mode); dangling keys resolve to `null` and are cleared.
+- [ ] Tooltip copy changes from "add recommended" to "add next from &lt;source&gt;".
+- [ ] Fixes the empty-catalog crash at [AddExercisePicker.tsx:50](../../apps/frontend/src/features/activity-tracker/components/AddExercisePicker.tsx#L50) — still present until this phase lands.
 
 ### Phase 4: Programs — scheduling + prescriptions
 
 New file `apps/backend/src/db/schema/app/programs.ts` (registered in the schema barrel, same as Phase 1). It imports `exercise-lists.ts` for the routine FK; the reverse import is never needed, so this direction is acyclic.
 
-- **`programs`**: `id`, `userId` (owner), `authorId` (nullable, trainer), `name`, `description`, `isActive` boolean (one active program per user, partial unique index), `startDate` date nullable, `createdAt`.
-- **`program_entries`**: `programId`, `listId` (the routine), and either
+- [ ] **`programs`**: `id`, `userId` (owner), `authorId` (nullable, trainer), `name`, `description`, `isActive` boolean (one active program per user, partial unique index), `startDate` date nullable, `createdAt`.
+- [ ] **`program_entries`**: `programId`, `listId` (the routine), and either
   - `weekday` int 0–6 (recurring weekly split), or
   - `date` date (explicit calendar assignment, for trainer-built or periodized plans);
 
   exactly one of the two set (check constraint). Optional `week` int for multi-week blocks.
-- API: CRUD for programs/entries. "Today's routine" is **not** a separate endpoint — it is what `GET /api/exercise-sources/program:<id>` resolves to, populating `resolvedFrom` so the UI can show "Push Day · PPL". No routine today → `entries: []` with `emptyReason: 'rest_day'`.
-- **Today is the user's today.** Resolution uses the timezone already carried on the session (i18n Phase 2), not the server clock — otherwise the routine flips at the wrong midnight for anyone outside the server's zone.
-- `max_programs` registers in `user_limits` alongside `max_exercise_lists`.
-- Frontend: program builder page (assign existing lists to weekdays/dates); the routine editor now exposes prescription fields per item. When an active program has a routine today, the picker shows a non-blocking hint to switch sources — never auto-switches.
+- [ ] API: CRUD for programs/entries. "Today's routine" is **not** a separate endpoint — it is what `GET /api/exercise-sources/program:<id>` resolves to, populating `resolvedFrom` so the UI can show "Push Day · PPL". No routine today → `entries: []` with `emptyReason: 'rest_day'`. *(`resolveExerciseSource` currently returns `null` for the `program` kind → 404; this phase replaces that branch.)*
+- [ ] **Today is the user's today.** Resolution uses the timezone already carried on the session (i18n Phase 2), not the server clock — otherwise the routine flips at the wrong midnight for anyone outside the server's zone.
+- [ ] `max_programs` registers in `user_limits` alongside `max_exercise_lists`.
+- [ ] Frontend: program builder page (assign existing lists to weekdays/dates); the routine editor now exposes prescription fields per item. When an active program has a routine today, the picker shows a non-blocking hint to switch sources — never auto-switches.
 - Progression rules (e.g. +2.5 kg/week) are **out of scope** for v1; the `week` column and per-item prescriptions leave room.
 
 ### Phase 5: External authors & future sources
 
 Groundwork exists (`authorId` everywhere, `computed` kind reserved); this phase makes it real.
 
-- **Trainer sharing:** invitation/link between two users; trainer gets scoped write access to the trainee's lists/programs (`authorId` = trainer). Needs a permissions table (new `apps/backend/src/db/schema/app/coaching.ts`, barrel-registered) + API guards, and a read-only "who wrote this" view for the trainee. No new source kind — trainer-authored lists appear in the listing like any other.
-- **Computed sources:** each is a strategy string behind `GET /api/exercise-sources/computed:<strategy>`.
-  - `least-recent-muscle-group` — server-computed from history; `exercise_muscle_groups` data is already in place. Cheapest win, zero frontend changes.
-  - `agent-v1` — same contract, generated by an LLM from history + goals. Product decisions (cost, cadence, prompt inputs) deliberately deferred; only the endpoint shape is reserved. `expiresAt` on `ResolvedQueue` is what keeps regeneration cost bounded.
+- [ ] **Trainer sharing:** invitation/link between two users; trainer gets scoped write access to the trainee's lists/programs (`authorId` = trainer). Needs a permissions table (new `apps/backend/src/db/schema/app/coaching.ts`, barrel-registered) + API guards, and a read-only "who wrote this" view for the trainee. No new source kind — trainer-authored lists appear in the listing like any other. Also the point at which `exercise_lists` gains its `owner` / `author` relations.
+- [ ] **Computed sources:** each is a strategy string behind `GET /api/exercise-sources/computed:<strategy>`.
+  - [ ] `least-recent-muscle-group` — server-computed from history; `exercise_muscle_groups` data is already in place. Cheapest win, zero frontend changes.
+  - [ ] `agent-v1` — same contract, generated by an LLM from history + goals. Product decisions (cost, cadence, prompt inputs) deliberately deferred; only the endpoint shape is reserved. `expiresAt` on `ResolvedQueue` is what keeps regeneration cost bounded.
 - Marketplace/template sharing of programs between users: future work, out of scope.
 
 ---
@@ -299,6 +326,6 @@ Groundwork exists (`authorId` everywhere, `computed` kind reserved); this phase 
 
 ## Open questions
 
-- Should deleting an exercise that belongs to lists cascade out of the lists (current FK design: yes, via cascade on `exerciseId`) or block deletion with a warning?
+- Should deleting an exercise that belongs to lists cascade out of the lists or block deletion with a warning? *(Phase 1 shipped the cascade as designed — revisit in Phase 2 when the list UI makes the consequence visible; changing it later is a migration, not a rewrite.)*
 - When a trainer authors a program, can the trainee edit it, or is it read-only until the trainer relationship ends?
 - Does "one active program" hold, or can advanced users run overlapping programs (e.g. lifting + running)?

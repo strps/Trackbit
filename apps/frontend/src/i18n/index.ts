@@ -13,6 +13,8 @@ import enTracker from './locales/en/tracker.json';
 import esTracker from './locales/es/tracker.json';
 import enHabits from './locales/en/habits.json';
 import esHabits from './locales/es/habits.json';
+import enLists from './locales/en/lists.json';
+import esLists from './locales/es/lists.json';
 import enAnalytics from './locales/en/analytics.json';
 import esAnalytics from './locales/es/analytics.json';
 import enErrors from './locales/en/errors.json';
@@ -29,6 +31,7 @@ const enResources = {
   nav: enNav,
   tracker: enTracker,
   habits: enHabits,
+  lists: enLists,
   analytics: enAnalytics,
   errors: enErrors,
   issues: enIssues,
@@ -42,6 +45,7 @@ const resources: Resource = {
     nav: esNav,
     tracker: esTracker,
     habits: esHabits,
+    lists: esLists,
     analytics: esAnalytics,
     errors: esErrors,
     issues: esIssues,

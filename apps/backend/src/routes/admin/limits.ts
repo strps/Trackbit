@@ -24,12 +24,14 @@ const createSchema = z.object({
     role: z.string().min(1).max(64),
     maxHabits: z.number().int().min(0).nullable().optional(),
     maxCustomExercises: z.number().int().min(0).nullable().optional(),
+    maxExerciseLists: z.number().int().min(0).nullable().optional(),
     allowedHabitTypes: z.array(habitTypeSchema).optional(),
 })
 
 const updateSchema = z.object({
     maxHabits: z.number().int().min(0).nullable().optional(),
     maxCustomExercises: z.number().int().min(0).nullable().optional(),
+    maxExerciseLists: z.number().int().min(0).nullable().optional(),
     allowedHabitTypes: z.array(habitTypeSchema).optional(),
 })
 

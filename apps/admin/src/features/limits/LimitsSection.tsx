@@ -35,6 +35,7 @@ import {
 interface RowDraft {
     maxHabits: string;
     maxCustomExercises: string;
+    maxExerciseLists: string;
     allowedHabitTypes: HabitType[];
 }
 
@@ -42,6 +43,7 @@ function toDraft(limits: AdminLimits): RowDraft {
     return {
         maxHabits: limits.maxHabits == null ? "" : String(limits.maxHabits),
         maxCustomExercises: limits.maxCustomExercises == null ? "" : String(limits.maxCustomExercises),
+        maxExerciseLists: limits.maxExerciseLists == null ? "" : String(limits.maxExerciseLists),
         allowedHabitTypes: (limits.allowedHabitTypes ?? []).filter(
             (t): t is HabitType => (HABIT_TYPES as readonly string[]).includes(t)
         ),
@@ -51,6 +53,7 @@ function toDraft(limits: AdminLimits): RowDraft {
 function draftsEqual(a: RowDraft, b: RowDraft): boolean {
     if (a.maxHabits !== b.maxHabits) return false;
     if (a.maxCustomExercises !== b.maxCustomExercises) return false;
+    if (a.maxExerciseLists !== b.maxExerciseLists) return false;
     if (a.allowedHabitTypes.length !== b.allowedHabitTypes.length) return false;
     const sortedA = [...a.allowedHabitTypes].sort();
     const sortedB = [...b.allowedHabitTypes].sort();
@@ -66,7 +69,7 @@ function parseIntOrNull(value: string): number | null {
 
 interface LimitsCardProps {
     limits: AdminLimits;
-    onSave: (patch: { maxHabits: number | null; maxCustomExercises: number | null; allowedHabitTypes: HabitType[] }) => void;
+    onSave: (patch: { maxHabits: number | null; maxCustomExercises: number | null; maxExerciseLists: number | null; allowedHabitTypes: HabitType[] }) => void;
     onDelete: () => void;
     isSaving: boolean;
     isDeleting: boolean;
@@ -96,6 +99,7 @@ function LimitsCard({ limits, onSave, onDelete, isSaving, isDeleting }: LimitsCa
         onSave({
             maxHabits: parseIntOrNull(draft.maxHabits),
             maxCustomExercises: parseIntOrNull(draft.maxCustomExercises),
+            maxExerciseLists: parseIntOrNull(draft.maxExerciseLists),
             allowedHabitTypes: draft.allowedHabitTypes,
         });
     };
@@ -140,6 +144,18 @@ function LimitsCard({ limits, onSave, onDelete, isSaving, isDeleting }: LimitsCa
                             placeholder="Unlimited"
                             value={draft.maxCustomExercises}
                             onChange={(e) => setDraft({ ...draft, maxCustomExercises: e.target.value })}
+                        />
+                        <p className="text-xs text-muted-foreground">Leave blank for unlimited.</p>
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor={`max-lists-${limits.role}`}>Max exercise lists</Label>
+                        <Input
+                            id={`max-lists-${limits.role}`}
+                            type="number"
+                            min={0}
+                            placeholder="Unlimited"
+                            value={draft.maxExerciseLists}
+                            onChange={(e) => setDraft({ ...draft, maxExerciseLists: e.target.value })}
                         />
                         <p className="text-xs text-muted-foreground">Leave blank for unlimited.</p>
                     </div>
@@ -200,7 +216,7 @@ function LimitsCard({ limits, onSave, onDelete, isSaving, isDeleting }: LimitsCa
 
 interface CreateRoleDialogProps {
     existingRoles: string[];
-    onCreate: (input: { role: string; maxHabits: number | null; maxCustomExercises: number | null; allowedHabitTypes: HabitType[] }) => void;
+    onCreate: (input: { role: string; maxHabits: number | null; maxCustomExercises: number | null; maxExerciseLists: number | null; allowedHabitTypes: HabitType[] }) => void;
     isCreating: boolean;
 }
 
@@ -209,12 +225,14 @@ function CreateRoleDialog({ existingRoles, onCreate, isCreating }: CreateRoleDia
     const [role, setRole] = useState("");
     const [maxHabits, setMaxHabits] = useState("");
     const [maxCustomExercises, setMaxCustomExercises] = useState("");
+    const [maxExerciseLists, setMaxExerciseLists] = useState("");
     const [allowedHabitTypes, setAllowedHabitTypes] = useState<HabitType[]>(["count", "complex"]);
 
     const reset = () => {
         setRole("");
         setMaxHabits("");
         setMaxCustomExercises("");
+        setMaxExerciseLists("");
         setAllowedHabitTypes(["count", "complex"]);
     };
 
@@ -234,6 +252,7 @@ function CreateRoleDialog({ existingRoles, onCreate, isCreating }: CreateRoleDia
             role: trimmedRole,
             maxHabits: parseIntOrNull(maxHabits),
             maxCustomExercises: parseIntOrNull(maxCustomExercises),
+            maxExerciseLists: parseIntOrNull(maxExerciseLists),
             allowedHabitTypes,
         });
         setOpen(false);
@@ -292,6 +311,17 @@ function CreateRoleDialog({ existingRoles, onCreate, isCreating }: CreateRoleDia
                                 onChange={(e) => setMaxCustomExercises(e.target.value)}
                             />
                         </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="new-max-lists">Max exercise lists</Label>
+                            <Input
+                                id="new-max-lists"
+                                type="number"
+                                min={0}
+                                placeholder="Unlimited"
+                                value={maxExerciseLists}
+                                onChange={(e) => setMaxExerciseLists(e.target.value)}
+                            />
+                        </div>
                     </div>
                     <div className="grid gap-2">
                         <Label>Allowed habit types</Label>
@@ -332,8 +362,8 @@ export default function LimitsSection() {
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
-                    Per-role caps on habits, custom exercises, and allowed habit types. Roles without a row use a
-                    secure default.
+                    Per-role caps on habits, custom exercises, exercise lists, and allowed habit types. Roles
+                    without a row use a secure default.
                 </div>
                 <CreateRoleDialog
                     existingRoles={existingRoles}

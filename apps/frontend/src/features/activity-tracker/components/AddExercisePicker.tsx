@@ -8,6 +8,7 @@ import { Label } from '@/shared/components/ui/label';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/shared/components/ui/tooltip';
 import { Plus, Play, ChevronDown, Search } from 'lucide-react';
 import { Exercise } from '@trackbit/types';
+import { AddToListMenu } from '@/features/exercise-lists/AddToListMenu';
 import { useActivityTracker } from '../api/useActivityTracker';
 import { useTranslation } from 'react-i18next';
 
@@ -52,7 +53,19 @@ export const ExercisePicker = ({ sessionId, setEditing }: { sessionId: number; s
                                 <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-72 p-0" align="start" sideOffset={5} onOpenAutoFocus={(e) => e.preventDefault()}>
+                        <PopoverContent
+                            className="w-72 p-0"
+                            align="start"
+                            sideOffset={5}
+                            onOpenAutoFocus={(e) => e.preventDefault()}
+                            // The add-to-list menu portals to the body, so clicking it
+                            // reads as an interaction outside this popover and would
+                            // otherwise close the exercise list out from under it.
+                            onPointerDownOutside={(e) => {
+                                const target = e.detail.originalEvent.target as HTMLElement | null;
+                                if (target?.closest('[data-radix-menu-content]')) e.preventDefault();
+                            }}
+                        >
                             <div className="border-b border-border p-3">
                                 <div className="relative">
                                     <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -77,21 +90,26 @@ export const ExercisePicker = ({ sessionId, setEditing }: { sessionId: number; s
                                         filtered.map((ex: Exercise) => {
                                             const isTheSelected = ex.id === exercises[selected].id;
                                             return (
-                                                <button
+                                                <div
                                                     key={ex.id}
-                                                    onClick={() => {
-                                                        handleAddExerciseLog(ex.id);
-                                                        const idx = exercises.findIndex((e: Exercise) => e.id === ex.id);
-                                                        setSelected((idx + 1) % exercises.length);
-                                                    }}
-                                                    className={`w-full flex items-center justify-between rounded-md px-3 py-2.5 text-left text-sm hover:bg-accent transition-colors ${isTheSelected && 'ring ring-primary'}`}
+                                                    className={`flex w-full items-center rounded-md pr-1 hover:bg-accent transition-colors ${isTheSelected ? 'ring ring-primary' : ''}`}
                                                 >
-                                                    <div className="flex flex-col">
-                                                        <span className="font-medium">{ex.name}</span>
-                                                        <span className="text-xs text-muted-foreground uppercase">{ex.category}</span>
-                                                    </div>
-                                                    <Plus className="h-4 w-4 text-muted-foreground transition-opacity" />
-                                                </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            handleAddExerciseLog(ex.id);
+                                                            const idx = exercises.findIndex((e: Exercise) => e.id === ex.id);
+                                                            setSelected((idx + 1) % exercises.length);
+                                                        }}
+                                                        className="flex min-w-0 flex-1 items-center justify-between px-3 py-2.5 text-left text-sm"
+                                                    >
+                                                        <div className="flex min-w-0 flex-col">
+                                                            <span className="truncate font-medium">{ex.name}</span>
+                                                            <span className="text-xs text-muted-foreground uppercase">{ex.category}</span>
+                                                        </div>
+                                                        <Plus className="h-4 w-4 text-muted-foreground transition-opacity" />
+                                                    </button>
+                                                    <AddToListMenu exerciseId={ex.id} />
+                                                </div>
                                             );
                                         })
                                     )}

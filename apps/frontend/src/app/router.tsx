@@ -9,6 +9,7 @@ import SignUpPage from "@/features/auth/SignUp";
 import VerifyEmail from "@/features/auth/VerifyEmail";
 import ErrorPage from "@/features/errors/Error";
 import ExerciseLibrary from "@/features/exercise-library/ExerciseLibrary";
+import ExerciseLists from "@/features/exercise-lists/ExerciseLists";
 import HabitConfig from "@/features/habits-configuration/HabitsConfig";
 import Landing from "@/features/public/Landing";
 import ActivityTracker from "@/features/activity-tracker/ActivityTracker";
@@ -35,6 +36,7 @@ export const router = createBrowserRouter([
             { path: "stats", element: <Analytics /> },
             { path: "config/habits", element: <HabitConfig /> },
             { path: "config/exercises", element: <ExerciseLibrary /> },
+            { path: "config/lists", element: <ExerciseLists /> },
         ]
     },
     {

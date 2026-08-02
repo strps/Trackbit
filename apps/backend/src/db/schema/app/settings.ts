@@ -35,6 +35,7 @@ export const userLimits = pgTable("user_limits", {
     role: text("role").notNull().unique(), // 'tester', potentially others
     maxHabits: integer("max_habits").default(10),
     maxCustomExercises: integer("max_custom_exercises").default(5),
+    maxExerciseLists: integer("max_exercise_lists").default(3),
     allowedHabitTypes: text("allowed_habit_types").array().default(["count", "complex"]), // array of strings
     // Extend as needed
 });
