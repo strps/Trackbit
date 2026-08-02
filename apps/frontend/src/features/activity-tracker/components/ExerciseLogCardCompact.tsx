@@ -7,7 +7,7 @@ import { useExercises } from '@/hooks/use-exercises';
 import { Button } from '@/shared/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/shared/components/ui/dropdown-menu';
 import { Popover, PopoverTrigger, PopoverContent } from '@/shared/components/ui/popover';
-import { Info, MoreVertical, Trash2, Clock, Hash, Scale, MapPin, Plus, Play, Square } from 'lucide-react';
+import { Info, MoreVertical, Trash2, Clock, Hash, Scale, MapPin, Plus } from 'lucide-react';
 import { RPE_LABELS } from '@/shared/components/RpeSelector';
 import { OptimisticExercisePerformance } from '@/features/tracker/use-tracker';
 import { formatDuration, getAvgRpe, rpeColor } from '../utils';
@@ -158,13 +158,6 @@ export const ExerciseLogCardCompact = ({ exerciseLog, isSelected, index, setEdit
                     <Button variant="ghost"><Info /></Button>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button
-                        variant={isSelected ? 'default' : 'ghost'}
-                        onClick={() => onEditTrigger(isSelected ? null : index)}
-                    >
-                        {isSelected ? <Square className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                        {isSelected ? t('activity_finish') : t('activity_start')}
-                    </Button>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon-lg" className="h-8 w-8 self-start text-muted-foreground hover:text-foreground">
