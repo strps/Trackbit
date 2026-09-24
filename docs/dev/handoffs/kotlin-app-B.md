@@ -6,7 +6,7 @@
 
 ## Where we are
 
-`apps/android/` builds. `./gradlew assembleDebug testDebugUnitTest lintDebug` passes with zero lint issues. The debug APK installs and launches on the `Medium_Phone_API_36.1` emulator to an empty Compose nav host, and the launcher icon renders. The module stubs are empty: they have build files but no code, except `app` and `core:designsystem` (a placeholder `TrackbitTheme`). No tests exist yet. The CI workflow is written and validated as YAML but has **not run on GitHub yet**, because nothing is pushed. B1 is uncommitted in the working tree unless the run log says otherwise.
+`apps/android/` builds. `./gradlew assembleDebug testDebugUnitTest lintDebug` passes with zero lint issues. The debug APK installs and launches on the `Medium_Phone_API_36.1` emulator to an empty Compose nav host, and the launcher icon renders. The module stubs are empty: they have build files but no code, except `app` and `core:designsystem` (a placeholder `TrackbitTheme`). No tests exist yet. The CI workflow is written and validated as YAML but has **not run on GitHub yet**, because nothing is pushed. B1 is committed (`df314e2`) but not pushed.
 
 The API contract is the "As built" column of plan §3. That column is authoritative; do not use the older wording elsewhere in the plan.
 
