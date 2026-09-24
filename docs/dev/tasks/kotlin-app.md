@@ -9,7 +9,7 @@ A native Android client for Trackbit written in Kotlin + Jetpack Compose. It con
 Before any of these can ship, a thin foundation (auth, API client, local cache) and a few backend changes have to exist. Those are Phase 0 below, split so that several people or agents can work in parallel.
 
 **Branch:** `kotlin-app`
-**Status:** Phase 0 in progress. Workstream A done 2026-09-24; Workstream B next ([handoff](../handoffs/kotlin-app-B.md)).
+**Status:** Phase 0 in progress. Workstream A done 2026-09-24; Workstream B in progress, B1 done 2026-09-24 ([handoff](../handoffs/kotlin-app-B.md)).
 
 ---
 
@@ -21,7 +21,7 @@ Before any of these can ship, a thin foundation (auth, API client, local cache) 
 | D2 | **Android only, or iOS later?** | **Android only.** Plain Kotlin + Compose, no Kotlin Multiplatform. `core/*` stays free of Android UI code, so a future move to KMP remains possible, but that is not a goal. |
 | D3 | **Online-first or offline-first?** | **Offline-tolerant now, fully offline later.** Now: everything reads from a local cache (Room), and tracking writes (habit logs, sets) go through a queue of pending writes (the outbox), so they work without a connection. Configuration screens (habits, library, lists, account) require a connection. Later: full offline capability, deferred to Phase 4. |
 | D4 | **Where do the DTOs come from?** `@trackbit/types` is TypeScript and Kotlin cannot use it. | **Handwritten now, generated later.** Now: handwritten `@Serializable` DTOs in `core/model`, plus contract tests against a local backend. Later: generate them from an OpenAPI spec, deferred to Phase 4. |
-| D5 | **minSdk / targetSdk** | **minSdk 26** (Android 8), which Glance and modern Compose need. Target the latest stable SDK. |
+| D5 | **minSdk / targetSdk** | **minSdk 26** (Android 8), which Glance and modern Compose need. Target the latest stable SDK. As built (B1): compileSdk 37, because current AndroidX requires it; targetSdk 36. Raising targetSdk to 37 is a separate change, since it alters runtime behaviour. |
 | D6 | **Distribution** | **Play Console internal testing**, with a debug APK built in CI. Package id **`com.trackbit.app`**. |
 | D7 | **Where the project lives** | **`apps/android/`**, a standalone Gradle project in the monorepo. It is not a pnpm workspace and is not part of Turborepo's `build` pipeline. It gets its own `pnpm android:*` convenience scripts at the root. |
 
@@ -137,7 +137,7 @@ Each phase lists its **exit criteria**. A phase is done when those are met, not 
 **Goal:** a signed-in user's habits are synced into Room, and a debug build can show them on a plain screen.
 
 - [x] A1–A10 backend prerequisites (Workstream A), see §3
-- [ ] **B1** Gradle project in `apps/android`: version catalog, `build-logic` convention plugins (`trackbit.android.application/library/compose`, `trackbit.hilt`, `trackbit.room`, `trackbit.jvm.library`), module stubs from §2.1, `BuildConfig.API_BASE_URL` (`http://10.0.2.2:3000` in debug, with a debug-only cleartext network config), root `pnpm android:*` scripts, CI job `.github/workflows/android.yml` (assemble + unit tests + lint, debug APK artifact)
+- [x] **B1** Gradle project in `apps/android`: version catalog, `build-logic` convention plugins (`trackbit.android.application/library/compose`, `trackbit.hilt`, `trackbit.room`, `trackbit.jvm.library`), module stubs from §2.1, `BuildConfig.API_BASE_URL` (`http://10.0.2.2:3000` in debug, with a debug-only cleartext network config), root `pnpm android:*` scripts, CI job `.github/workflows/android.yml` (assemble + unit tests + lint, debug APK artifact)
 - [ ] **B2** `core/model`: `@Serializable` DTOs (Habit, DayLog with `localDay`, `TodayResponse`, Exercise, ExerciseSession/Log/Performance, ExerciseList/Item, session user with the 5 preferences, Limits, request bodies). Enums with an unknown fallback. Pure domain helpers with unit tests: `Streak.current(...)` (ports [streak.ts](../../../apps/backend/src/lib/streak.ts) `dayCounts`) and `HabitProgress` (timed ratings are ms against a goal in minutes)
 - [ ] **B3** `core/network`: Retrofit services (auth, tracker, habits, me), bearer + `Accept-Language` interceptors, `Idempotency-Key` from a request tag, `safeCall` mapping to a sealed `ApiError` (`Unauthorized`, `HabitFrozen`, `CustomExerciseFrozen`, `NotFound`, `Validation`, `Server`, `Network`, `Unknown`). MockWebServer tests
 - [ ] **B4** `core/auth`: Tink/Keystore-encrypted token in DataStore, `AuthState` StateFlow, sign-in reads `set-auth-token`, cached session user for offline boot, any 401 → signed out

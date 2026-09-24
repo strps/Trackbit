@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The mark from apps/frontend/public/logo-name-left.svg (frame + pulse check), centered in the 66dp safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.66"
+        android:scaleY="0.66"
+        android:translateX="80.51"
+        android:translateY="-164.43">
+        <path
+            android:fillColor="#000000"
+            android:pathData="m -57.583984,310.33203 c -4.414703,0 -8.001953,3.5853 -8.001953,8 v 20 h 2.00586 v -20 c 0,-3.3413 2.654796,-5.99609 5.996093,-5.99609 h 36.001952 c 2.817473,0 5.139673,1.89115 5.800783,4.48633 l 1.42578,-1.90235 c -1.283294,-2.7078 -4.03423,-4.58789 -7.226563,-4.58789 z m 44.003905,13.55274 -2.005857,2.67382 v 27.77735 c 0,3.3413 -2.6548,5.99609 -5.996096,5.99609 h -36.001952 c -3.341297,0 -5.996093,-2.65479 -5.996093,-5.99609 v -10 h -2.00586 v 10 c 0,4.4147 3.58725,8 8.001953,8 h 36.001952 c 4.414703,0 8.001953,-3.5853 8.001953,-8 z" />
+        <path
+            android:fillColor="#000000"
+            android:pathData="m 0.90429671,299.57422 -18.24804571,8.77344 c 2.682726,0.28093 5.343696,1.28281 7.7031228,2.78906 l -28.0156218,37.35937 -10.072267,-20.14453 -7.656249,11.48438 H -81.25 v 2.99609 h 27.466796 l 5.683596,-8.51562 9.929686,19.85547 30.9277357,-41.24024 c 2.1111433,1.84431 3.8170999,4.11954 4.8320298,6.61523 z" />
+    </group>
+</vector>
