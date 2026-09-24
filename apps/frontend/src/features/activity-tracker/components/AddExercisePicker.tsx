@@ -265,22 +265,22 @@ export const ExercisePicker = ({ sessionId, setEditing }: { sessionId: number; s
 
                 {/* The quick-add: it always logs whatever the trigger names. With a
                     source that is the cursor entry, so repeated presses walk the
-                    queue; in browse mode it repeats the current pick. Absent rather
-                    than disabled when there is nothing selected yet. */}
-                {selectedExercise && (
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button
-                                onClick={() =>
-                                    nextEntry
-                                        ? logExercise(nextEntry.exerciseId, nextEntry.listItemId)
-                                        : logExercise(selectedExercise.id, null)
-                                }
-                                className="flex justify-center items-center w-15 h-15 rounded-full aspect-square"
-                            >
-                                <Play className="w-full" />
-                            </Button>
-                        </TooltipTrigger>
+                    queue; in browse mode it repeats the current pick. Disabled
+                    while there is nothing selected yet. */}
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button
+                            disabled={!selectedExercise}
+                            onClick={() => {
+                                if (nextEntry) logExercise(nextEntry.exerciseId, nextEntry.listItemId);
+                                else if (selectedExercise) logExercise(selectedExercise.id, null);
+                            }}
+                            className="flex justify-center items-center w-15 h-15 rounded-full aspect-square"
+                        >
+                            <Play className="w-full" />
+                        </Button>
+                    </TooltipTrigger>
+                    {selectedExercise && (
                         <TooltipContent>
                             <p>
                                 {browsing
@@ -288,8 +288,8 @@ export const ExercisePicker = ({ sessionId, setEditing }: { sessionId: number; s
                                     : t('activity_add_next_from', { name: sourceLabel })}
                             </p>
                         </TooltipContent>
-                    </Tooltip>
-                )}
+                    )}
+                </Tooltip>
             </div>
         </div>
     );
