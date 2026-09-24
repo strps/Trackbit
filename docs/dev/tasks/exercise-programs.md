@@ -14,8 +14,8 @@ Two design decisions carry the whole thing:
 
 Current state (what changes):
 
-- [AddExercisePicker.tsx](../../apps/frontend/src/features/activity-tracker/components/AddExercisePicker.tsx) shows a `Label` with `t('activity_recommended')` and cycles `selected` through **all** exercises (`(idx + 1) % exercises.length`). Both the label and the queue logic get replaced.
-- [exercises.ts schema](../../apps/backend/src/db/schema/app/exercises.ts) has no list/program tables yet.
+- [AddExercisePicker.tsx](../../../apps/frontend/src/features/activity-tracker/components/AddExercisePicker.tsx) shows a `Label` with `t('activity_recommended')` and cycles `selected` through **all** exercises (`(idx + 1) % exercises.length`). Both the label and the queue logic get replaced.
+- [exercises.ts schema](../../../apps/backend/src/db/schema/app/exercises.ts) has no list/program tables yet.
 
 ---
 
@@ -42,7 +42,7 @@ The full catalog has no order, no owner, and nothing to advance through, so mode
 
 Play is **not** hidden in browse mode. The two controls divide as: Play is the quick "add another, one after the next" button, and the popover is for adding something out of order or outside the source via search. Hiding Play would remove the primary control for exactly the users who have not built a list yet. What browse mode lacks is a *queue*, not a selection — so the trigger holds the selection itself and Play stays meaningful in both modes.
 
-This is also what removes the current crash: there is no `exercises[selected]` to dereference when the catalog is empty ([AddExercisePicker.tsx:50](../../apps/frontend/src/features/activity-tracker/components/AddExercisePicker.tsx#L50), [:78](../../apps/frontend/src/features/activity-tracker/components/AddExercisePicker.tsx#L78), [:108](../../apps/frontend/src/features/activity-tracker/components/AddExercisePicker.tsx#L108)).
+This is also what removes the current crash: there is no `exercises[selected]` to dereference when the catalog is empty ([AddExercisePicker.tsx:50](../../../apps/frontend/src/features/activity-tracker/components/AddExercisePicker.tsx#L50), [:78](../../../apps/frontend/src/features/activity-tracker/components/AddExercisePicker.tsx#L78), [:108](../../../apps/frontend/src/features/activity-tracker/components/AddExercisePicker.tsx#L108)).
 
 ---
 
@@ -204,9 +204,9 @@ Two endpoints are the entire abstraction boundary. Adding a source kind touches 
 
 ### Phase 1: Data layer — lists ✅
 
-New file `apps/backend/src/db/schema/app/exercise-lists.ts`, re-exported from [schema/index.ts](../../apps/backend/src/db/schema/index.ts) (`export * from './app/exercise-lists';` — extensionless, matching the existing lines). The barrel is what `db.ts` passes to `drizzle({ schema })`, so an unregistered file means no relational queries and no `drizzle-kit` diff.
+New file `apps/backend/src/db/schema/app/exercise-lists.ts`, re-exported from [schema/index.ts](../../../apps/backend/src/db/schema/index.ts) (`export * from './app/exercise-lists';` — extensionless, matching the existing lines). The barrel is what `db.ts` passes to `drizzle({ schema })`, so an unregistered file means no relational queries and no `drizzle-kit` diff.
 
-Lists get their own file rather than joining [exercises.ts](../../apps/backend/src/db/schema/app/exercises.ts) (already 177 lines / 5 tables): this is a distinct domain that grows in Phase 4 (`programs`, `program_entries`) and Phase 5 (sharing permissions). The circular import that would have argued for merging them is a non-issue — see the note below.
+Lists get their own file rather than joining [exercises.ts](../../../apps/backend/src/db/schema/app/exercises.ts) (already 177 lines / 5 tables): this is a distinct domain that grows in Phase 4 (`programs`, `program_entries`) and Phase 5 (sharing permissions). The circular import that would have argued for merging them is a non-issue — see the note below.
 
 - [x] **`exercise_lists`**
   - `id` serial PK
@@ -222,22 +222,22 @@ Lists get their own file rather than joining [exercises.ts](../../apps/backend/s
   - `listId` → `exercise_lists.id` (cascade), `exerciseId` → `exercises.id` (cascade)
   - `position` integer not null
   - Prescription columns, **all nullable**: `targetSets` int, `targetReps` int, `targetWeight` real, `targetDuration` int (seconds), `targetDistance` real, `restSeconds` int, `notes` text
-  - `unique(listId, position)` declared **`DEFERRABLE INITIALLY DEFERRED`** in the migration, exactly like `habits_user_anti_order_uq` ([habits.ts:40-42](../../apps/backend/src/db/schema/app/habits.ts#L40-L42)). Replace-all reordering still passes through conflicting intermediate states inside the transaction; a non-deferrable constraint makes any reorder fail.
+  - `unique(listId, position)` declared **`DEFERRABLE INITIALLY DEFERRED`** in the migration, exactly like `habits_user_anti_order_uq` ([habits.ts:40-42](../../../apps/backend/src/db/schema/app/habits.ts#L40-L42)). Replace-all reordering still passes through conflicting intermediate states inside the transaction; a non-deferrable constraint makes any reorder fail.
 
-Change to `exercise_log` ([exercises.ts:119](../../apps/backend/src/db/schema/app/exercises.ts#L119)):
+Change to `exercise_log` ([exercises.ts:119](../../../apps/backend/src/db/schema/app/exercises.ts#L119)):
 
 - [x] `listItemId` integer nullable → `exercise_list_items.id` **on delete set null**. This is the provenance that (a) makes the queue cursor exact with repeated exercises and (b) makes Phase 4 adherence reporting ("did they follow the program?") possible at all. Free now, a backfill later.
-- *Import cycle:* `exercise-lists.ts` imports `exercises.ts` (for `exerciseId`) and `exercises.ts` imports back (for `listItemId`). This is fine — verified against `drizzle-orm@0.45.1` with `tsc --strict`. `.references(() => …)` takes a lazy callback that runs after both modules finish evaluating, so no TDZ, and neither table appears in its own type initializer, so no `: any` annotation is needed (unlike `muscleGroups`' self-reference at [exercises.ts:41](../../apps/backend/src/db/schema/app/exercises.ts#L41)). Both files are re-exported from `schema/index.ts`, so load order is irrelevant. Declare the FK normally; no migration-level workaround.
+- *Import cycle:* `exercise-lists.ts` imports `exercises.ts` (for `exerciseId`) and `exercises.ts` imports back (for `listItemId`). This is fine — verified against `drizzle-orm@0.45.1` with `tsc --strict`. `.references(() => …)` takes a lazy callback that runs after both modules finish evaluating, so no TDZ, and neither table appears in its own type initializer, so no `: any` annotation is needed (unlike `muscleGroups`' self-reference at [exercises.ts:41](../../../apps/backend/src/db/schema/app/exercises.ts#L41)). Both files are re-exported from `schema/index.ts`, so load order is irrelevant. Declare the FK normally; no migration-level workaround.
 
 **Prescriptions never materialize.** Logging a prescribed exercise creates the `exercise_log` row and nothing else — no placeholder `exercise_performances`. The user logs what they actually did; targets are display hints and pre-fill values only. Materializing them would put planned-but-not-performed sets into performance history, corrupting PRs, volume totals and every downstream stat. Adherence is answered by joining logs to `listItemId`, not by pre-writing rows.
 
 API (Hono, `apps/backend`):
 
-- [x] `GET /api/exercise-lists` (with items, ordered), `GET /:id`, `POST`, `PATCH /:id`, `DELETE /:id` — [exercise-lists.ts](../../apps/backend/src/routes/app/exercise-lists.ts)
+- [x] `GET /api/exercise-lists` (with items, ordered), `GET /:id`, `POST`, `PATCH /:id`, `DELETE /:id` — [exercise-lists.ts](../../../apps/backend/src/routes/app/exercise-lists.ts)
 - [x] `PUT /api/exercise-lists/:id/items` — replace-all with positions (simplest correct reorder semantics; matches habit reordering).
-- [x] `GET /api/exercise-sources`, `GET /api/exercise-sources/:key` — see above. Resolution lives in [lib/exercise-sources.ts](../../apps/backend/src/lib/exercise-sources.ts) so a new kind is one branch there.
+- [x] `GET /api/exercise-sources`, `GET /api/exercise-sources/:key` — see above. Resolution lives in [lib/exercise-sources.ts](../../../apps/backend/src/lib/exercise-sources.ts) so a new kind is one branch there.
 - [x] Shared shapes in `packages/types`: `Prescription`, `ExerciseList`, `ExerciseSourceRef`, `SourceCapabilities`, `ExerciseSourceDescriptor`, `QueueEntry`, `ResolvedQueue`, `parseSourceKey` / `serializeSourceKey`.
-- [x] **Limits:** add `max_exercise_lists` to `user_limits` ([settings.ts:33](../../apps/backend/src/db/schema/app/settings.ts#L33), which today only has `maxHabits` / `maxCustomExercises`), extend `EffectiveLimits`, `DEFAULT_TESTER_LIMITS` and `SECURE_DEFAULT_LIMITS` in [user-limits.ts](../../apps/backend/src/lib/user-limits.ts), and add `computeFrozenListIds` mirroring `computeFrozenHabitIds` — freeze from the highest `position` down until within cap. Frozen lists are read-only and surface as `frozen: true` on the descriptor (which zeroes `canAppend` / `canReorder`). Reuse the tracker-freeze error codes.
+- [x] **Limits:** add `max_exercise_lists` to `user_limits` ([settings.ts:33](../../../apps/backend/src/db/schema/app/settings.ts#L33), which today only has `maxHabits` / `maxCustomExercises`), extend `EffectiveLimits`, `DEFAULT_TESTER_LIMITS` and `SECURE_DEFAULT_LIMITS` in [user-limits.ts](../../../apps/backend/src/lib/user-limits.ts), and add `computeFrozenListIds` mirroring `computeFrozenHabitIds` — freeze from the highest `position` down until within cap. Frozen lists are read-only and surface as `frozen: true` on the descriptor (which zeroes `canAppend` / `canReorder`). Reuse the tracker-freeze error codes.
 - [x] Cap wired through `/api/me/limits`, `/admin/limits` (+ admin UI field), and the frontend `useLimits` hook (`atListCap`).
 - [x] **Apply migration `0006_exercise_lists.sql`** — applied 2026-08-02. It went in via `drizzle-kit push`, which builds its DDL from the schema file and therefore dropped the hand-added `DEFERRABLE INITIALLY DEFERRED` clause; `exercise_list_items_list_position_uq` was recreated as deferrable afterwards. Any environment provisioned by `push` rather than by this migration file needs the same correction, or every reorder fails on the first swapped position.
 
@@ -251,14 +251,14 @@ API (Hono, `apps/backend`):
 ### Phase 2: Favorites UI ✅
 
 - [x] New feature folder `apps/frontend/src/features/exercise-lists/`: create, rename, delete, drag-reorder lists and their items. Page at `/config/lists`, reachable from the Configuration nav group.
-- [x] "Add to list" affordance wherever exercises are browsed — [AddToListMenu.tsx](../../apps/frontend/src/features/exercise-lists/AddToListMenu.tsx), mounted on exercise-library cards and picker rows. Gated on `capabilities.canAppend`, not on source type.
+- [x] "Add to list" affordance wherever exercises are browsed — [AddToListMenu.tsx](../../../apps/frontend/src/features/exercise-lists/AddToListMenu.tsx), mounted on exercise-library cards and picker rows. Gated on `capabilities.canAppend`, not on source type.
 - [x] Prescriptions stay hidden here: favorite-list editing shows only exercise + order. (Prescription editing arrives in Phase 4 — same entity, richer editor.)
 - [x] Frozen lists render read-only with the existing frozen-resource treatment.
 - [x] i18n: new `lists` namespace (~45 keys, past the ~15 threshold), `en` + `es` symmetric, registered in `i18n/index.ts` and `i18next.d.ts`. Nav gained `nav.lists`.
 
 **Implementation notes:**
 
-- **`useExerciseSources` lands here, not in Phase 3.** The add-to-list menu gates on `capabilities.canAppend` per the abstraction, so it needs descriptors — [use-exercise-sources.ts](../../apps/frontend/src/hooks/use-exercise-sources.ts) is shared (`hooks/`, alongside `use-limits`) and Phase 3's picker consumes the same query. The list *items* still come from the lists cache, since appending means re-sending the whole list to `PUT /:id/items`.
+- **`useExerciseSources` lands here, not in Phase 3.** The add-to-list menu gates on `capabilities.canAppend` per the abstraction, so it needs descriptors — [use-exercise-sources.ts](../../../apps/frontend/src/hooks/use-exercise-sources.ts) is shared (`hooks/`, alongside `use-limits`) and Phase 3's picker consumes the same query. The list *items* still come from the lists cache, since appending means re-sending the whole list to `PUT /:id/items`.
 - **Array order is the position.** `saveItems` numbers items by index before sending, so no call site can produce a non-permutation and trip the 400 the endpoint returns for duplicate positions.
 - **Existing items round-trip through `toItemInput`**, carrying `id` (keeps `exercise_log.list_item_id` provenance) and all seven prescription columns, so a Phase 2 reorder can never silently erase what a Phase 4 editor wrote.
 - **List reorder is n PATCHes, not a bulk endpoint.** `exercise_lists` has no unique constraint on `(userId, position)`, so intermediate duplicates are harmless — unlike list *items*, which is why only the items table needed the deferrable constraint.
@@ -266,7 +266,7 @@ API (Hono, `apps/backend`):
 
 ### Phase 3: Picker source dropdown (the visible change) ✅
 
-Rework [AddExercisePicker.tsx](../../apps/frontend/src/features/activity-tracker/components/AddExercisePicker.tsx):
+Rework [AddExercisePicker.tsx](../../../apps/frontend/src/features/activity-tracker/components/AddExercisePicker.tsx):
 
 - [x] Replace the static `activity_recommended` label with a **source dropdown** (small, ghost-style select above the exercise button): *All exercises* as the browse-mode default, then one entry per descriptor from `GET /api/exercise-sources`. Future kinds append themselves with no frontend change.
 - [x] `useExerciseQueue(activeSource: ExerciseSourceRef | null, sessionId)`:
@@ -283,7 +283,7 @@ Rework [AddExercisePicker.tsx](../../apps/frontend/src/features/activity-tracker
 **Implementation notes:**
 
 - **The preference rides on the session, not on a second fetch.** `preferredExerciseSource` is declared in better-auth `additionalFields` (backend `auth.ts` + frontend `inferAdditionalFields`) with `input: false`, so it comes back on `useSession()` and only ever changes through `PATCH /api/me/preferences`. This is deliberately *not* the card-style pattern, which keeps its value in `localStorage` and can therefore disagree with the column it writes to.
-- **One store, one guard.** [use-preferred-exercise-source.ts](../../apps/frontend/src/hooks/use-preferred-exercise-source.ts) is a small zustand store (shared, because two session panels must not disagree about a user preference) hydrated once from the session. The stored key is resolved against the descriptor list on every read: no descriptor ⇒ browse mode. Clearing a dangling key waits for descriptors to have actually loaded — a slow or failed `/exercise-sources` fetch must not wipe a valid preference.
+- **One store, one guard.** [use-preferred-exercise-source.ts](../../../apps/frontend/src/hooks/use-preferred-exercise-source.ts) is a small zustand store (shared, because two session panels must not disagree about a user preference) hydrated once from the session. The stored key is resolved against the descriptor list on every read: no descriptor ⇒ browse mode. Clearing a dangling key waits for descriptors to have actually loaded — a slow or failed `/exercise-sources` fetch must not wipe a valid preference.
 - **`useExerciseQueue` takes session logs, not a session id.** Pure inputs keep it out of the activity-tracker feature's dependency graph and make it reusable by the native picker; the caller resolves `sessionId → logs` from the tracker cache it already holds. A `404` resolves to `null` data rather than rejecting, so a deleted list produces browse mode instead of an error toast.
 - **Prescription pre-fill lands in `newPerformance`, not in `addExerciseLog`.** "Pre-fill the editor" cannot mean writing rows at log time — that is exactly the planned-sets-in-history failure the plan forbids. Instead `buildNewSetValues` resolves `log.listItemId → list item → prescription` and lets targets outrank `lastPerformance` for the set the user is actually recording. The same builder feeds the request and the optimistic update, so they can no longer show different numbers. `targetDuration` is seconds and `exercise_performances.duration` is milliseconds — the builder converts.
 - **List writes invalidate resolved queues.** `useExerciseLists.invalidateAll` now also drops the `['exercise-source']` prefix, so editing a list's items updates an open picker instead of serving a stale queue for the 30s TTL.

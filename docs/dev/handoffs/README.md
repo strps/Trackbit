@@ -2,7 +2,7 @@
 
 A **handoff** is the document one run leaves behind so the next run can continue a task without re-reading the codebase to rediscover what was already decided. It exists to split a large task into several bounded runs — each starting with a small, precise context instead of a large, vague one.
 
-A plan (`docs/tasks/*.md`) says *what we intend to build*. A handoff says *where we actually are, and what the next run must do first*. The plan is written once and edited rarely; the handoff is rewritten at the end of every run.
+A plan (`docs/dev/tasks/*.md`) says *what we intend to build*. A handoff says *where we actually are, and what the next run must do first*. The plan is written once and edited rarely; the handoff is rewritten at the end of every run.
 
 ## The one rule
 
@@ -21,15 +21,15 @@ Write or update a handoff when any of these are true:
 - You made a decision that is not obvious from the code and not yet written in the plan doc.
 - You are about to be blocked (waiting on a migration, a product answer, a deploy).
 
-Do **not** write one for a task that finishes in the same run. A handoff for completed work is just noise in `docs/handoffs/`; fold anything durable into the plan doc or `AGENTS.md` and delete the handoff.
+Do **not** write one for a task that finishes in the same run. A handoff for completed work is just noise in `docs/dev/handoffs/`; fold anything durable into the plan doc or `AGENTS.md` and delete the handoff.
 
 ## File convention
 
 ```
-docs/handoffs/<task-slug>.md
+docs/dev/handoffs/<task-slug>.md
 ```
 
-One file per task, matching the plan doc's slug (`docs/tasks/exercise-programs.md` → `docs/handoffs/exercise-programs.md`). **Overwrite it each run** — do not create `-phase2`, `-v2`, or dated variants. A handoff describes the present, not history; a folder of stale handoffs costs the next run more than it saves. Keep history in the `Run log` section, one line per run.
+One file per task, matching the plan doc's slug (`docs/dev/tasks/exercise-programs.md` → `docs/dev/handoffs/exercise-programs.md`). **Overwrite it each run** — do not create `-phase2`, `-v2`, or dated variants. A handoff describes the present, not history; a folder of stale handoffs costs the next run more than it saves. Keep history in the `Run log` section, one line per run.
 
 Delete the file when the task ships.
 
@@ -51,8 +51,8 @@ someone can decide whether to trust the current state without running anything.>
 
 ## Done
 
-- <Shipped thing> — [file.ts](../../path/to/file.ts)
-- <Shipped thing> — [file.ts:88](../../path/to/file.ts#L88)
+- <Shipped thing> — [file.ts](../../../path/to/file.ts)
+- <Shipped thing> — [file.ts:88](../../../path/to/file.ts#L88)
 
 ## Next: <the single next objective>
 
@@ -60,7 +60,7 @@ someone can decide whether to trust the current state without running anything.>
 2. <Second step.>
 3. <Third step.>
 
-Start with [file.ts:120](../../path/to/file.ts#L120) — <why that exact line>.
+Start with [file.ts:120](../../../path/to/file.ts#L120) — <why that exact line>.
 
 ## Invariants — do not break these
 
@@ -99,7 +99,7 @@ Start with [file.ts:120](../../path/to/file.ts#L120) — <why that exact line>.
 
 **Where we are.** The honest state. If something is half-finished, say it is half-finished and name the file. If a test fails, say so. A handoff that overstates progress makes the next run debug the gap before it can start, which is strictly worse than saying nothing.
 
-**Done.** Facts with links, not a narrative. Each line should let the next run verify the claim in one click. Use `file:line` links (`[exercises.ts:119](../../apps/backend/src/db/schema/app/exercises.ts#L119)`) — paths are relative to `docs/handoffs/`, so app code is `../../apps/…`.
+**Done.** Facts with links, not a narrative. Each line should let the next run verify the claim in one click. Use `file:line` links (`[exercises.ts:119](../../../apps/backend/src/db/schema/app/exercises.ts#L119)`) — paths are relative to `docs/dev/handoffs/`, so app code is `../../../apps/…`.
 
 **Next.** *One* objective, broken into numbered steps that name files. "Continue phase 2" is not an objective. "Add `PUT /api/exercise-lists/:id/items` with replace-all semantics" is. Then point at the exact starting line — the difference between the next run opening one file and grepping ten.
 
@@ -128,7 +128,7 @@ Start with [file.ts:120](../../path/to/file.ts#L120) — <why that exact line>.
 
 ## Sizing
 
-Target **100–200 lines**. Under ~60 it is usually missing invariants or landmines. Over ~250 it has become a second plan doc — move the durable parts into `docs/tasks/<slug>.md` and link to them.
+Target **100–200 lines**. Under ~60 it is usually missing invariants or landmines. Over ~250 it has become a second plan doc — move the durable parts into `docs/dev/tasks/<slug>.md` and link to them.
 
 ## Starting a run from a handoff
 

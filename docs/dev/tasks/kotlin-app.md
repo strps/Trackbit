@@ -1,6 +1,6 @@
 # Kotlin Android App — Master Plan
 
-A native Android client for Trackbit written in Kotlin + Jetpack Compose. It consumes the existing Hono REST API ([apps/backend](../../apps/backend)) and is built **widgets-first**. The order of the work is:
+A native Android client for Trackbit written in Kotlin + Jetpack Compose. It consumes the existing Hono REST API ([apps/backend](../../../apps/backend)) and is built **widgets-first**. The order of the work is:
 
 1. **Android widgets.** These are the reason to go native and are the most useful to users day to day.
 2. **Main features.** Tracker, workout sessions and analytics.
@@ -100,7 +100,7 @@ Dependency rule: `feature/*` and `widget` depend on `core/*` only and never on e
 
 ### 2.3 Auth
 
-- Enable the Better-Auth **`bearer` plugin** on the backend. The `android` branch already did this: `bearer({ requireSignature: true })` in [auth.ts](../../apps/backend/src/lib/auth.ts).
+- Enable the Better-Auth **`bearer` plugin** on the backend. The `android` branch already did this: `bearer({ requireSignature: true })` in [auth.ts](../../../apps/backend/src/lib/auth.ts).
 - Sign-in calls `POST /api/auth/sign-in/email`. The app reads the `set-auth-token` response header and stores the token encrypted. An OkHttp interceptor adds `Authorization: Bearer …` to every request.
 - A 401 on any request clears the token and routes to sign-in. Widgets show a "Sign in to Trackbit" state.
 - Social login (Google) is deferred to Phase 3. It needs Credential Manager plus a Better-Auth `idToken` sign-in, or a custom-tab OAuth flow with an app deep link added to `trustedOrigins`.
@@ -114,7 +114,7 @@ These are **root-cause fixes**. Without them the native client has to work aroun
 | # | Change | Why |
 |---|---|---|
 | A1 | Add the `bearer` plugin to Better-Auth (reuse the change from `android`). | Native clients can't rely on cross-site cookies. |
-| A2 | **Ownership check on `POST /api/tracker/check`.** Today it only checks `frozen`. There is a `//TODO` at [tracker.ts:127](../../apps/backend/src/routes/app/tracker.ts#L127), and any user can write a log for any `habitId`. | Security bug. A second client makes it more exposed. Fix it before shipping anything. |
+| A2 | **Ownership check on `POST /api/tracker/check`.** Today it only checks `frozen`. There is a `//TODO` at [tracker.ts:127](../../../apps/backend/src/routes/app/tracker.ts#L127), and any user can write a log for any `habitId`. | Security bug. A second client makes it more exposed. Fix it before shipping anything. |
 | A3 | **Resolve `tz` from the user's stored timezone** (added in i18n Phase 2) instead of `c.req.query('tz') \|\| 'America/Costa_Rica'` in `/history` and `/check`. Keep `?tz=` only as an explicit override, if at all. | Widgets run in the background and should not have to know or send the timezone. One source of truth for "what day is it for this user". |
 | A4 | **Atomic increment endpoint**, e.g. `POST /api/tracker/check/increment { habitId, delta, timeStamp }`, which does `rating = rating + delta` in a single upsert. | `/check` takes an *absolute* rating. A widget "+1" would have to read, modify and write, and it would race with the web app or a second widget. A server-side increment makes the outbox op commutative, so retries and reordering are safe. |
 | A5 | **Lightweight today summary**: `GET /api/tracker/today` returns, per habit: id, name, type, icon, color stops, daily/weekly goal, today's rating, current streak, the last 7 days of ratings, and `frozen`. | `/history` returns *all* history with nested sessions, logs and performances. That is far too heavy for a widget refresh every 15 minutes. |
@@ -268,7 +268,7 @@ To avoid rework, freeze these before C/D/E fan out:
 
 ### 5.4 i18n
 
-- The web app has namespaced JSON under [apps/frontend/src/i18n/locales](../../apps/frontend/src/i18n/locales) (en, es). Don't hand-copy strings. Add a small script (`apps/android/scripts/gen-strings`) that converts the JSON into `values/strings.xml` and `values-es/strings.xml`, prefixing keys with their namespace (`tracker_…`). It converts ICU placeholders to Android format args.
+- The web app has namespaced JSON under [apps/frontend/src/i18n/locales](../../../apps/frontend/src/i18n/locales) (en, es). Don't hand-copy strings. Add a small script (`apps/android/scripts/gen-strings`) that converts the JSON into `values/strings.xml` and `values-es/strings.xml`, prefixing keys with their namespace (`tracker_…`). It converts ICU placeholders to Android format args.
 - Android-only strings (widget labels, notification actions) go in a separate hand-written `strings_android.xml`.
 - The in-app locale switcher uses per-app language (`AppCompatDelegate.setApplicationLocales`) and PATCHes `/api/me/preferences`, just as the web does.
 
