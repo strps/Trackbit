@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { admin } from "better-auth/plugins"
+import { admin, bearer } from "better-auth/plugins"
 import { user } from "../db/schema/app/user.js";
 import { account, session, verification } from "../db/schema/app/auth.js";
 import { invites } from "../db/schema/app/settings.js";
@@ -13,6 +13,15 @@ import { jsx } from "react/jsx-runtime";
 import db from "../db/db.js";
 import { t, negotiateFromHeader } from "../i18n/index.js";
 import { buildVerificationStrings, buildPasswordResetStrings } from "../i18n/email-strings.js";
+import { timezoneSchema } from "./user-day.js";
+
+// `timezone` is client-writable (signup, update-user) and decides what "today" is
+// for every tracker write, so it must be a real IANA zone.
+function assertValidTimezone(data: Record<string, unknown>) {
+  if ("timezone" in data && data.timezone !== undefined && !timezoneSchema.safeParse(data.timezone).success) {
+    throw new APIError("BAD_REQUEST", { message: "Invalid timezone" });
+  }
+}
 
 export const auth = betterAuth({
 
@@ -31,7 +40,8 @@ export const auth = betterAuth({
 
 
   plugins: [
-    admin()
+    admin(),
+    bearer({ requireSignature: true }),
   ],
 
   // Trusted origins for cross-site requests
@@ -106,6 +116,20 @@ export const auth = betterAuth({
         defaultValue: "UTC",
         input: true,
       },
+      // Declared (input: false) so every client gets them typed on the session;
+      // they only ever change through PATCH /api/me/preferences.
+      unitSystem: {
+        type: "string",
+        required: false,
+        defaultValue: "metric",
+        input: false,
+      },
+      exerciseLogCardStyle: {
+        type: "string",
+        required: false,
+        defaultValue: "classic",
+        input: false,
+      },
       // Declared so the picker's last-used source rides along on the session
       // instead of costing a separate fetch on boot. Never client-supplied at
       // signup — it only ever changes through PATCH /api/me/preferences.
@@ -119,8 +143,15 @@ export const auth = betterAuth({
 
   databaseHooks: {
     user: {
+      update: {
+        before: async (data) => {
+          assertValidTimezone(data);
+          return { data };
+        },
+      },
       create: {
         before: async (data, ctx) => {
+          assertValidTimezone(data);
           const locale = negotiateFromHeader(
             (ctx?.request as Request | undefined)?.headers?.get('accept-language') ?? undefined
           );

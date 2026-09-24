@@ -1,3 +1,5 @@
+import type { ColorTheme } from './habit-appearance.js';
+
 
 export interface ColorStop {
     position: number;
@@ -11,7 +13,7 @@ export interface Habit {
     description: string | null;
     type: 'count' | 'complex' | 'negative' | 'timed' | 'check';
     isAntiHabit: boolean;
-    colorTheme: 'green' | 'blue' | 'orange' | 'purple' | 'rose' | 'fire' | 'custom';
+    colorTheme: ColorTheme;
     colorStops: ColorStop[];
     icon: string;
     weeklyGoal: number;
@@ -180,3 +182,5 @@ export interface ResolvedQueue {
     generatedAt: string;             // ISO
     expiresAt?: string;              // computed sources only
 }
+
+export * from './habit-appearance.js';

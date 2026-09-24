@@ -4,6 +4,7 @@ import { z } from 'zod'
 import db from "../../db/db.js";
 import { habits } from '../../db/schema/index.js'
 import { DEFAULT_COLOR_STOPS } from '../../db/schema/app/habits.js'
+import { COLOR_THEMES, HABIT_ICON_IDS } from '@trackbit/types'
 import { eq, and, desc, count, sql } from 'drizzle-orm'
 import { requireAuth } from '../../middleware/auth.js'
 import { localeMiddleware } from '../../middleware/locale.js'
@@ -77,11 +78,11 @@ app.post(
         isAntiHabit: z.boolean().default(false),
         weeklyGoal: z.number().int().min(1).max(7).default(5),
         dailyGoal: z.number().default(1),
-        colorTheme: z.enum(['green', 'blue', 'orange', 'purple', 'rose', 'fire', 'custom']).optional(),
+        colorTheme: z.enum(COLOR_THEMES).optional(),
         // Always persist a non-empty gradient: fall back to the default when omitted.
         // Cast: ColorStop's color is a 3-or-4 tuple union, the schema pins it to rgba(4).
         colorStops: colorStopsSchema.default(DEFAULT_COLOR_STOPS as z.infer<typeof colorStopsSchema>),
-        icon: z.string().default('star'),
+        icon: z.enum(HABIT_ICON_IDS).default('star'),
     })),
     async (c) => {
         const user = c.get('user')
@@ -147,9 +148,9 @@ app.put(
         description: z.string().optional().nullable(),
         weeklyGoal: z.number().int().min(1).max(7).default(5),
         dailyGoal: z.number().default(1),
-        colorTheme: z.enum(['green', 'blue', 'orange', 'purple', 'rose', 'fire', 'custom']).optional(),
+        colorTheme: z.enum(COLOR_THEMES).optional(),
         colorStops: colorStopsSchema.optional(),
-        icon: z.string().optional(),
+        icon: z.enum(HABIT_ICON_IDS).optional(),
         type: z.enum(['count', 'complex', 'negative', 'timed', 'check']).optional(),
         isAntiHabit: z.boolean().optional(),
         order: z.number().int().min(0).optional(),

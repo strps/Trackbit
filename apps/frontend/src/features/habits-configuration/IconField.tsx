@@ -1,23 +1,5 @@
 import { Button } from "@/shared/components/ui/button";
-import { AlertTriangle, BookOpen, Briefcase, Code, Coffee, Droplet, Dumbbell, Heart, Home, Moon, Music, Star, Sun, Trees, XCircle } from "lucide-react";
-
-export const ICONS = [
-    { id: 'book', icon: BookOpen, label: 'Read' },
-    { id: 'dumbbell', icon: Dumbbell, label: 'Fitness' },
-    { id: 'code', icon: Code, label: 'Code' },
-    { id: 'water', icon: Droplet, label: 'Health' },
-    { id: 'sun', icon: Sun, label: 'Morning' },
-    { id: 'moon', icon: Moon, label: 'Sleep' },
-    { id: 'music', icon: Music, label: 'Creativity' },
-    { id: 'work', icon: Briefcase, label: 'Work' },
-    { id: 'coffee', icon: Coffee, label: 'Breaks' },
-    { id: 'ban', icon: XCircle, label: 'Quit' },
-    { id: 'alert', icon: AlertTriangle, label: 'Limit' },
-    { id: 'home', icon: Home, label: 'Chores' },
-    { id: 'star', icon: Star, label: 'Focus' },
-    { id: 'heart', icon: Heart, label: 'Wellness' },
-    { id: 'trees', icon: Trees, label: 'Nature' },
-];
+import { ICONS } from "./habit-icons";
 
 interface IconSelectorProps {
     selected: string;

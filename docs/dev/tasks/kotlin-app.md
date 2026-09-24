@@ -9,7 +9,7 @@ A native Android client for Trackbit written in Kotlin + Jetpack Compose. It con
 Before any of these can ship, a thin foundation (auth, API client, local cache) and a few backend changes have to exist. Those are Phase 0 below, split so that several people or agents can work in parallel.
 
 **Branch:** `kotlin-app`
-**Status:** planning. Decisions resolved 2026-09-24.
+**Status:** Phase 0 in progress. Workstream A done 2026-09-24; Workstream B next ([handoff](../handoffs/kotlin-app-B.md)).
 
 ---
 
@@ -111,18 +111,20 @@ Dependency rule: `feature/*` and `widget` depend on `core/*` only and never on e
 
 These are **root-cause fixes**. Without them the native client has to work around server behaviour, and every client would carry the same workaround. They benefit the web app too.
 
-| # | Change | Why |
-|---|---|---|
-| A1 | Add the `bearer` plugin to Better-Auth (reuse the change from `android`). | Native clients can't rely on cross-site cookies. |
-| A2 | **Ownership check on `POST /api/tracker/check`.** Today it only checks `frozen`. There is a `//TODO` at [tracker.ts:127](../../../apps/backend/src/routes/app/tracker.ts#L127), and any user can write a log for any `habitId`. | Security bug. A second client makes it more exposed. Fix it before shipping anything. |
-| A3 | **Resolve `tz` from the user's stored timezone** (added in i18n Phase 2) instead of `c.req.query('tz') \|\| 'America/Costa_Rica'` in `/history` and `/check`. Keep `?tz=` only as an explicit override, if at all. | Widgets run in the background and should not have to know or send the timezone. One source of truth for "what day is it for this user". |
-| A4 | **Atomic increment endpoint**, e.g. `POST /api/tracker/check/increment { habitId, delta, timeStamp }`, which does `rating = rating + delta` in a single upsert. | `/check` takes an *absolute* rating. A widget "+1" would have to read, modify and write, and it would race with the web app or a second widget. A server-side increment makes the outbox op commutative, so retries and reordering are safe. |
-| A5 | **Lightweight today summary**: `GET /api/tracker/today` returns, per habit: id, name, type, icon, color stops, daily/weekly goal, today's rating, current streak, the last 7 days of ratings, and `frozen`. | `/history` returns *all* history with nested sessions, logs and performances. That is far too heavy for a widget refresh every 15 minutes. |
-| A6 | **Bounded history**: make `/history` honour `start`/`end` from the client (it already supports them) and have the native client always pass a window, for example 26 weeks. | Keeps the sync payload bounded. |
-| A7 | **Idempotency key** on outbox-driven writes (an `Idempotency-Key` header, deduplicated server-side for 24h), at least for set/performance creation. | If a request succeeds but the response never arrives, the outbox resends it. Without a key that creates a duplicate set. |
-| A8 | CORS/origin audit: requests with no `Origin` from native must pass Better-Auth's CSRF check when bearer auth is used. Add a smoke test. | |
+**Status: A1–A10 shipped 2026-09-24** on `kotlin-app` (A6 client side is B's job). Tests: `pnpm --filter backend test` (Vitest against a throwaway Postgres, see [apps/backend/test](../../../apps/backend/test)). CI: [.github/workflows/backend.yml](../../../.github/workflows/backend.yml).
 
-A2–A5 are small and independent, so they can be separate PRs.
+| # | Change | As built |
+|---|---|---|
+| A1 | Better-Auth `bearer` plugin. | `bearer({ requireSignature: true })` in [auth.ts](../../../apps/backend/src/lib/auth.ts). Sign-in returns the token in the `set-auth-token` header. |
+| A2 | Ownership check on tracker writes. | `assertTrackableHabit` in [tracker.ts](../../../apps/backend/src/routes/app/tracker.ts): another user's habit → 404 `habit_not_found`, frozen → 403 `habit_frozen`. |
+| A3 | Server owns "today". | **`day_logs.local_day date NOT NULL` + `UNIQUE(habit_id, local_day)`** (migration `0008`, backfilled from the user's timezone). Writes take an optional `day: 'YYYY-MM-DD'`; when omitted the server uses today in `user.timezone` ([user-day.ts](../../../apps/backend/src/lib/user-day.ts)). `?tz=` is gone everywhere. `timezone` is validated as an IANA zone at every write boundary (signup, update-user, `PATCH /api/me/preferences`). |
+| A4 | Atomic increment. | `POST /api/tracker/check/increment { habitId, delta, day? }` → `INSERT … ON CONFLICT (habit_id, local_day) DO UPDATE SET rating = coalesce(rating,0) + delta`. `POST /check { habitId, rating, day? }` is the absolute upsert. `POST /day-logs/ensure { habitId, day? }` returns the day's row, creating an empty one (used to attach sessions). The CRUD `POST /day-logs` is removed; `PATCH /day-logs/:id` can no longer change `habitId`/`localDay`. All three return the `day_logs` row. |
+| A5 | Today summary. | `GET /api/tracker/today?day=` → `{ day, habits: [{ id, name, description, type, isAntiHabit, icon, colorTheme, colorStops (resolved), dailyGoal, weeklyGoal, order, frozen, firstLogDay, streakBeforeDay, recent: [{ day, rating, sessionCount }] ×7, oldest first }] }`. **Clients compute the current streak** as `dayCounts(today) ? streakBeforeDay + 1 : 0` with their own (optimistic) value for today; rules in [streak.ts](../../../apps/backend/src/lib/streak.ts), mirroring the web `computeStreak`. |
+| A6 | Bounded history. | `/history?start&end` filters on `local_day` and validates both. The native client must always pass a window. |
+| A7 | Idempotency keys. | **Required, not optional:** increments are commutative but *not* idempotent, so a lost response + retry would double-count. `Idempotency-Key` header (≤255 chars), opt-in per route via [idempotency.ts](../../../apps/backend/src/middleware/idempotency.ts); on `/check`, `/check/increment`, `/day-logs/ensure`. 2xx responses are stored per (user, key) for 24 h and replayed with `idempotent-replayed: true`; failures release the key; same key on another route → 422; concurrent duplicate → 409. Add it to set/performance creation in Phase 2. |
+| A8 | Origin-less native requests. | No config change needed: sign-in, get-session, API calls and sign-out all work with a bearer token and no `Origin` ([bearer-auth.test.ts](../../../apps/backend/test/bearer-auth.test.ts)). |
+| A9 | Typed preference fields on the session. | `unitSystem` and `exerciseLogCardStyle` declared in `additionalFields` (`input: false`); `get-session` returns all five preferences. |
+| A10 | Canonical habit appearance. | `HABIT_ICON_IDS`, `COLOR_THEMES`, `GRADIENT_PRESET_STOPS`, `resolveColorStops` in [@trackbit/types](../../../packages/types/src/habit-appearance.ts). The backend validates `icon` against the list; the web icon registry is [habit-icons.ts](../../../apps/frontend/src/features/habits-configuration/habit-icons.ts) (fixes 9 icons rendering as `Activity` and `alert` as `Trophy`). The Android generator reads the same module. |
 
 ---
 
@@ -134,16 +136,19 @@ Each phase lists its **exit criteria**. A phase is done when those are met, not 
 
 **Goal:** a signed-in user's habits are synced into Room, and a debug build can show them on a plain screen.
 
-- [ ] A1–A5 backend prerequisites (Workstream A)
-- [ ] Gradle project in `apps/android`, version catalog, `build-logic` conventions, CI job (assemble + unit tests + lint)
-- [ ] `core/model`: DTOs for Habit, DayLog, today summary, Exercise, ExerciseSession/Log/Performance, ExerciseList, Preferences, Limits
-- [ ] `core/network`: Retrofit services, bearer + `Accept-Language` interceptors, error mapping to a sealed `ApiError` (including `habit_frozen` and `custom_exercise_frozen`)
-- [ ] `core/auth`: encrypted token store, `AuthState` Flow, sign-in/sign-out
-- [ ] `core/database`: entities for habits, day logs and today summary; the outbox table
-- [ ] `core/data`: `HabitRepository`, `TrackerRepository`, `SyncWorker` (periodic + on-demand), `OutboxWorker` (with backoff and idempotency keys)
-- [ ] `core/designsystem`: theme tokens ported from the web (colors, gradient presets from `ColorThemeField`, habit icons mapped from lucide names to vector drawables)
-- [ ] Minimal sign-in screen (email + password) so the rest can be tested
-- [ ] Contract tests: each DTO decodes a real response from a local backend
+- [x] A1–A10 backend prerequisites (Workstream A), see §3
+- [ ] **B1** Gradle project in `apps/android`: version catalog, `build-logic` convention plugins (`trackbit.android.application/library/compose`, `trackbit.hilt`, `trackbit.room`, `trackbit.jvm.library`), module stubs from §2.1, `BuildConfig.API_BASE_URL` (`http://10.0.2.2:3000` in debug, with a debug-only cleartext network config), root `pnpm android:*` scripts, CI job `.github/workflows/android.yml` (assemble + unit tests + lint, debug APK artifact)
+- [ ] **B2** `core/model`: `@Serializable` DTOs (Habit, DayLog with `localDay`, `TodayResponse`, Exercise, ExerciseSession/Log/Performance, ExerciseList/Item, session user with the 5 preferences, Limits, request bodies). Enums with an unknown fallback. Pure domain helpers with unit tests: `Streak.current(...)` (ports [streak.ts](../../../apps/backend/src/lib/streak.ts) `dayCounts`) and `HabitProgress` (timed ratings are ms against a goal in minutes)
+- [ ] **B3** `core/network`: Retrofit services (auth, tracker, habits, me), bearer + `Accept-Language` interceptors, `Idempotency-Key` from a request tag, `safeCall` mapping to a sealed `ApiError` (`Unauthorized`, `HabitFrozen`, `CustomExerciseFrozen`, `NotFound`, `Validation`, `Server`, `Network`, `Unknown`). MockWebServer tests
+- [ ] **B4** `core/auth`: Tink/Keystore-encrypted token in DataStore, `AuthState` StateFlow, sign-in reads `set-auth-token`, cached session user for offline boot, any 401 → signed out
+- [ ] **B5** `core/database`: `HabitEntity` (+ `frozen`, `firstLogDay`, `streakBeforeDay`, `summaryDay`), `DayLogEntity` (PK `habitId, localDay`), `OutboxEntity` (UUID idempotency key fixed at enqueue). The today summary is a DAO projection (habit + today's log + last 7), not a table
+- [ ] **B6** `core/data`: repositories; every write = one Room transaction (optimistic change + outbox op), then enqueue `OutboxWorker` and call `WidgetUpdater` (no-op until Phase 1). `OutboxWorker`: FIFO, backoff on network/5xx, drop + resync on 4xx, stop on 401. `SyncWorker` (15 min + on demand): flush outbox → `GET /tracker/today` → write Room **without clobbering rows that still have pending ops**
+- [ ] **B7** Contract tests: a backend Vitest suite writes real, normalized responses to `apps/android/core/model/src/test/resources/contracts/`; CI fails if they change unexpectedly; a Kotlin test decodes each one
+- [ ] **B8** `core/designsystem`: M3 light/dark schemes from the web's oklch tokens, dynamic color with fallback, gradient presets generated from `@trackbit/types`, `colorAt(stops, t)`, the 15 `HABIT_ICON_IDS` as Lucide vector drawables (fallback `star`)
+- [ ] **B9** `scripts/gen-strings.mjs`: web locale JSON → `strings.xml` (en, es), ICU → format args, plurals; also emits the gradient presets. CI checks the output is current
+- [ ] **B10** Sign-in screen (email + password) and a placeholder Today screen (rows from Room, +1/toggle through the outbox, pull-to-refresh, sign-out)
+
+Order: B1 → B2 → (B3 ∥ B5 ∥ B8 ∥ B9) → B4 → B6 → B10; B7 after B2.
 
 **Exit:** sign in, and see today's habits (from Room) on a placeholder screen. Toggling airplane mode doesn't break reading.
 
@@ -279,5 +284,5 @@ To avoid rework, freeze these before C/D/E fan out:
 - **Type drift (D4).** Handwritten DTOs will drift from the backend. The contract tests catch it in CI until OpenAPI generation lands (Phase 4).
 - **Widget freshness.** Android limits widget update frequency. Updates driven by user action are immediate. Changes made on the web appear only on the next sync (≤15 min) unless push is added later (FCM, backlog).
 - **Timezone edge cases.** After A3 the server owns "today". The device timezone can still differ from the stored one while travelling. Proposal: when the device timezone changes, prompt the user and PATCH preferences.
-- **Outbox conflicts.** Increments are commutative (A4). Absolute edits (set editor) use last-write-wins. That's acceptable for a single-user app, but document it.
+- **Outbox conflicts.** Increments are commutative (A4), so reordering is safe, but they are not idempotent: every outbox op carries an `Idempotency-Key` fixed at enqueue time (A7). Absolute edits (set editor) use last-write-wins. That's acceptable for a single-user app, but document it.
 - **Frozen items** must be enforced locally for UX (disable the widget tap). The server stays authoritative.

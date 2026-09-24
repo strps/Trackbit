@@ -5,13 +5,11 @@ import { sql } from '@vercel/postgres'
 let db: NodePgDatabase<typeof schema> | null = null;
 
 
-if (process.env.NODE_ENV === 'development') {
-    console.log("DB connected to:", process.env.DATABASE_URL);
-    db = drizzle(process.env.DATABASE_URL!, { schema });
-}
-
 if (process.env.VERCEL) {
     db = drizzle(sql, { schema });
+} else if (process.env.DATABASE_URL) {
+    if (process.env.NODE_ENV === 'development') console.log("DB connected to:", process.env.DATABASE_URL);
+    db = drizzle(process.env.DATABASE_URL, { schema });
 }
 
 if (!db) {

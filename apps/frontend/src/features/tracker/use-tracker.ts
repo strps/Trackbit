@@ -53,12 +53,7 @@ export interface HabitWithLogs extends Habit {
 
 // --- Fetcher ---
 const fetchHistory = async (): Promise<Record<number, HabitWithLogs>> => {
-    const res = await fetch(
-        `${API_URL}/tracker/history?tz=${Intl.DateTimeFormat().resolvedOptions().timeZone}`,
-        {
-            credentials: 'include',
-        }
-    );
+    const res = await fetch(`${API_URL}/tracker/history`, { credentials: 'include' });
     if (!res.ok) throw new Error('Failed to fetch history');
     const data = await res.json();
 
@@ -151,22 +146,12 @@ export function useTracker() {
             const effectiveDay = payload.day || selectedDay;
             const effectiveHabitId = payload.habitId || selectedHabitId;
 
-            const timeStamp = DateTime.fromISO(effectiveDay)
-                .setZone('local')
-                .set({
-                    hour: DateTime.local().hour,
-                    minute: DateTime.local().minute,
-                    second: DateTime.local().second,
-                    millisecond: 0
-                }).toISO();
-
-            const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-            const res = await fetch(`${API_URL}/tracker/check?tz=${tz}`, {
+            const res = await fetch(`${API_URL}/tracker/check`, {
                 method: 'POST',
                 body: JSON.stringify({
                     habitId: Number(effectiveHabitId),
                     rating: Number(payload.rating),
-                    timeStamp
+                    day: effectiveDay,
                 }),
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',

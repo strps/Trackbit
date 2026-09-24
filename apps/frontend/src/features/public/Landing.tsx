@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { PerformanceCard } from "../activity-tracker/components/PerformanceCard";
 import { StatCard } from "../analytics/Stats";
-import { ICONS } from "../habits-configuration/IconField";
+import { ICONS } from "../habits-configuration/habit-icons";
 import { GRADIENT_PRESETS } from "../habits-configuration/ColorThemeField";
 import { ColorStop } from "@trackbit/types";
 import { cn } from "@/shared/utils/utils";

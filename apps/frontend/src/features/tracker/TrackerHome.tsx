@@ -10,7 +10,8 @@ import {
 import { useTracker, type HabitWithLogs } from './use-tracker';
 import { mapValueToColor, mapValueToColorOrdered } from '@/shared/utils/colorUtils';
 import { ColorStop } from '@trackbit/types';
-import { computeStreak, getColorAtOne, getHabitIcon } from './utils';
+import { computeStreak, getColorAtOne } from './utils';
+import { getHabitIcon } from '@/features/habits-configuration/habit-icons';
 import { Button } from '@/shared/components/ui/button';
 import { Timer } from '@/shared/components/Timer';
 import { DateSelector } from '@/shared/components/DateSelector';
@@ -52,12 +53,11 @@ const HabitRowWrapper = memo(({ habit, selectedDay, logSimple }: HabitRowWrapper
             return;
         }
         try {
-            const timeStamp = new Date().toISOString();
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/tracker/day-logs`, {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/tracker/day-logs/ensure`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ habitId: habit.id, timeStamp }),
+                body: JSON.stringify({ habitId: habit.id, day: selectedDay }),
             });
             if (!res.ok) throw new Error('Failed to create day log');
             const newDayLog = await res.json();
@@ -75,7 +75,7 @@ const HabitRowWrapper = memo(({ habit, selectedDay, logSimple }: HabitRowWrapper
                                 habitId: habit.id,
                                 date: selectedDay,
                                 localDay: selectedDay,
-                                timeStamp: newDayLog.timeStamp ?? timeStamp,
+                                timeStamp: newDayLog.timeStamp,
                                 createdAt: newDayLog.createdAt,
                                 rating: newDayLog.rating ?? undefined,
                                 notes: newDayLog.notes ?? undefined,

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { flushSync } from "react-dom";
 import { Plus, Pencil, ShieldAlert, Lock } from "lucide-react"
-import { ICONS } from "./IconField";
+import { ICONS } from "./habit-icons";
 import { GRADIENT_PRESETS } from "./ColorThemeField";
 import { mapValueToColor } from "@/shared/utils/colorUtils";
 import { Badge } from "@/shared/components/ui/badge";

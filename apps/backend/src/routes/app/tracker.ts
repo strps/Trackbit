@@ -1,4 +1,4 @@
-import { Hono } from 'hono'
+import { Hono, type Context } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import { eq, and, inArray, sql, gte, lte, desc, asc } from 'drizzle-orm'
@@ -8,11 +8,15 @@ import { dayLogs, exerciseListItems, exerciseLists, exerciseLogs, exercisePerfor
 import db from '../../db/db'
 import { defineCrudSchemas } from '../../lib/utilities/drizzle-crud-schemas'
 import { generateCrudRouter } from '../../lib/utilities/crud-router-factory'
-import { ExercisePerformance } from '@trackbit/types'
+import { ExercisePerformance, resolveColorStops } from '@trackbit/types'
 import {
     computeFrozenExercisesForUser,
     computeFrozenHabitsForUser,
 } from '../../lib/user-limits.js'
+import { addDays, localDaySchema, resolveDay } from '../../lib/user-day.js'
+import { MAX_STREAK_DAYS, streakEndingAt, type StreakDay } from '../../lib/streak.js'
+import { idempotency } from '../../middleware/idempotency.js'
+import { t, negotiateFromHeader } from '../../i18n/index.js'
 
 function frozenHabitException(habitId: number) {
     return new HTTPException(403, {
@@ -57,44 +61,34 @@ app.use('*', requireAuth)
 //--- HISTORY ROUTE ---
 //============================================================================================
 
-app.get('/history', async (c) => {
-    const user = c.get('user');
+app.get(
+    '/history',
+    zValidator('query', z.object({
+        start: localDaySchema.optional(),
+        end: localDaySchema.optional(),
+    })),
+    async (c) => {
+        const user = c.get('user');
+        const { start, end } = c.req.valid('query');
 
-    // Query params
-    const start = c.req.query('start');       // 'YYYY-MM-DD'
-    const end = c.req.query('end');
-    const tz = c.req.query('tz') || 'America/Costa_Rica'; // Later: from user profile
-
-    // Define the local day expression once (safe interpolation)
-    const localDayExpr = sql<string>`("time_stamp" AT TIME ZONE ${tz})::date`;
-
-    // Optional range filter on the derived local day
-    let dayLogWhere;
-    if (start || end) {
         const conditions = [];
-        if (start) conditions.push(gte(localDayExpr, start));
-        if (end) conditions.push(lte(localDayExpr, end));
-        dayLogWhere = and(...conditions);
-    }
+        if (start) conditions.push(gte(dayLogs.localDay, start));
+        if (end) conditions.push(lte(dayLogs.localDay, end));
 
-    const habitsWithLogs = await db.query.habits.findMany({
-        where: eq(habits.userId, user.id),
-        with: {
-            dayLogs: {
-                where: dayLogWhere,
-                // Order using the expression directly (no alias needed here)
-                orderBy: desc(localDayExpr),
-                // Add localDay to each dayLog object for frontend heatmap use
-                extras: {
-                    localDay: localDayExpr.as('local_day'),
-                },
-                with: {
-                    exerciseSessions: {
-                        with: {
-                            exerciseLogs: {
-                                with: {
-                                    exercisePerformances: {
-                                        orderBy: asc(exercisePerformances.createdAt),
+        const habitsWithLogs = await db.query.habits.findMany({
+            where: eq(habits.userId, user.id),
+            with: {
+                dayLogs: {
+                    where: conditions.length > 0 ? and(...conditions) : undefined,
+                    orderBy: desc(dayLogs.localDay),
+                    with: {
+                        exerciseSessions: {
+                            with: {
+                                exerciseLogs: {
+                                    with: {
+                                        exercisePerformances: {
+                                            orderBy: asc(exercisePerformances.createdAt),
+                                        },
                                     },
                                 },
                             },
@@ -102,85 +96,210 @@ app.get('/history', async (c) => {
                     },
                 },
             },
-        },
-        orderBy: [asc(habits.order), asc(habits.createdAt)],
-    });
-
-    const frozen = await computeFrozenHabitsForUser(user.id, user.role);
-    const annotated = habitsWithLogs.map((h) => ({ ...h, frozen: frozen.has(h.id) }));
-
-    return c.json(annotated.length > 0 ? annotated : []);
-});
-
-
-
-
-app.post(
-    '/check',
-    zValidator(
-        'json',
-        z.object({
-            habitId: z.number(),
-            rating: z.number(),
-            timeStamp: z.string(),
-        }).strict()
-    ),
-    //TODO: check for user id in habit in order to make sure the user can only update own.
-    async (c) => {
-        const user = c.get('user');
-        const { habitId, rating, timeStamp } = c.req.valid('json');
-        const tz = c.req.query('tz') || 'America/Costa_Rica';
+            orderBy: [asc(habits.order), asc(habits.createdAt)],
+        });
 
         const frozen = await computeFrozenHabitsForUser(user.id, user.role);
-        if (frozen.has(habitId)) {
-            return c.json({
-                error: 'habit_frozen',
-                message: 'This habit is frozen and cannot be tracked.',
-                habitId,
-            }, 403);
+        return c.json(habitsWithLogs.map((h) => ({ ...h, frozen: frozen.has(h.id) })));
+    }
+);
+
+//============================================================================================
+//--- TODAY SUMMARY ---
+// Lightweight per-habit state for one day (default: the user's today), sized for
+// widget refreshes. Clients show the current streak as
+//   dayCounts(today) ? streakBeforeDay + 1 : 0
+// using their own (possibly optimistic) value for today; see lib/streak.ts.
+//============================================================================================
+
+const RECENT_DAYS = 7;
+
+app.get(
+    '/today',
+    zValidator('query', z.object({ day: localDaySchema.optional() })),
+    async (c) => {
+        const user = c.get('user');
+        const day = resolveDay(user, c.req.valid('query').day);
+        const windowStart = addDays(day, -MAX_STREAK_DAYS);
+
+        const userHabits = await db
+            .select()
+            .from(habits)
+            .where(eq(habits.userId, user.id))
+            .orderBy(asc(habits.order), asc(habits.createdAt));
+        const habitIds = userHabits.map((h) => h.id);
+
+        const [logs, firstLogs, frozen] = habitIds.length === 0
+            ? [[], [], new Set<number>()] as const
+            : await Promise.all([
+                db
+                    .select({
+                        habitId: dayLogs.habitId,
+                        localDay: dayLogs.localDay,
+                        rating: dayLogs.rating,
+                        sessionCount: sql<number>`count(${exerciseSessions.id})::int`,
+                    })
+                    .from(dayLogs)
+                    .leftJoin(exerciseSessions, eq(exerciseSessions.dayLogId, dayLogs.id))
+                    .where(and(
+                        inArray(dayLogs.habitId, habitIds),
+                        gte(dayLogs.localDay, windowStart),
+                        lte(dayLogs.localDay, day),
+                    ))
+                    .groupBy(dayLogs.id),
+                db
+                    .select({ habitId: dayLogs.habitId, firstLogDay: sql<string>`min(${dayLogs.localDay})` })
+                    .from(dayLogs)
+                    .where(inArray(dayLogs.habitId, habitIds))
+                    .groupBy(dayLogs.habitId),
+                computeFrozenHabitsForUser(user.id, user.role),
+            ]);
+
+        const logsByHabit = new Map<number, Map<string, StreakDay>>();
+        for (const l of logs) {
+            if (!logsByHabit.has(l.habitId)) logsByHabit.set(l.habitId, new Map());
+            logsByHabit.get(l.habitId)!.set(l.localDay, { rating: l.rating, sessionCount: l.sessionCount });
         }
+        const firstLogDayByHabit = new Map(firstLogs.map((f) => [f.habitId, f.firstLogDay]));
+        const recentDays = Array.from({ length: RECENT_DAYS }, (_, i) => addDays(day, i - RECENT_DAYS + 1));
 
-        // Derive the local day from the provided timestamp
-        const localDayExpr = sql<string>`(${timeStamp}::timestamptz AT TIME ZONE ${tz})::date`;
+        return c.json({
+            day,
+            habits: userHabits.map((h) => {
+                const habitLogs = logsByHabit.get(h.id) ?? new Map<string, StreakDay>();
+                const firstLogDay = firstLogDayByHabit.get(h.id) ?? null;
+                return {
+                    id: h.id,
+                    name: h.name,
+                    description: h.description,
+                    type: h.type,
+                    isAntiHabit: h.isAntiHabit,
+                    icon: h.icon,
+                    colorTheme: h.colorTheme,
+                    colorStops: resolveColorStops(h),
+                    dailyGoal: h.dailyGoal,
+                    weeklyGoal: h.weeklyGoal,
+                    order: h.order,
+                    frozen: frozen.has(h.id),
+                    firstLogDay,
+                    streakBeforeDay: streakEndingAt(h, habitLogs, addDays(day, -1), firstLogDay),
+                    recent: recentDays.map((d) => ({
+                        day: d,
+                        rating: habitLogs.get(d)?.rating ?? null,
+                        sessionCount: habitLogs.get(d)?.sessionCount ?? 0,
+                    })),
+                };
+            }),
+        });
+    }
+);
 
-        // Check if log exists for this habit on the same local day
-        const existing = await db
-            .select({ id: dayLogs.id })
+//============================================================================================
+//--- DAY LOG WRITES ---
+// Every write targets one (habit, localDay) row, enforced by day_logs_habit_day_uq.
+// `day` is the user's calendar day; when omitted the server uses the user's today.
+//============================================================================================
+
+/** The habit must belong to the user and not be frozen. */
+async function assertTrackableHabit(c: Context, habitId: number) {
+    const user = c.get('user');
+    const [owned] = await db
+        .select({ id: habits.id })
+        .from(habits)
+        .where(and(eq(habits.id, habitId), eq(habits.userId, user.id)))
+        .limit(1);
+    if (!owned) {
+        const locale = negotiateFromHeader(c.req.header('accept-language'));
+        throw new HTTPException(404, {
+            res: Response.json({ error: t('errors', 'habit_not_found', locale) }, { status: 404 }),
+        });
+    }
+    const frozen = await computeFrozenHabitsForUser(user.id, user.role);
+    if (frozen.has(habitId)) throw frozenHabitException(habitId);
+}
+
+const habitIdSchema = z.number().int().positive();
+
+// Sets the day's rating to an absolute value.
+app.post(
+    '/check',
+    idempotency,
+    zValidator('json', z.object({
+        habitId: habitIdSchema,
+        rating: z.number().int(),
+        day: localDaySchema.optional(),
+    }).strict()),
+    async (c) => {
+        const { habitId, rating, day } = c.req.valid('json');
+        await assertTrackableHabit(c, habitId);
+        const localDay = resolveDay(c.get('user'), day);
+
+        const [row] = await db
+            .insert(dayLogs)
+            .values({ habitId, localDay, rating })
+            .onConflictDoUpdate({
+                target: [dayLogs.habitId, dayLogs.localDay],
+                set: { rating },
+            })
+            .returning();
+
+        return c.json(row);
+    }
+);
+
+// Adds `delta` to the day's rating atomically, so concurrent clients (web, widgets)
+// never lose an update. Not idempotent by itself: retries must send Idempotency-Key.
+app.post(
+    '/check/increment',
+    idempotency,
+    zValidator('json', z.object({
+        habitId: habitIdSchema,
+        delta: z.number().int().refine((d) => d !== 0, 'delta must not be 0'),
+        day: localDaySchema.optional(),
+    }).strict()),
+    async (c) => {
+        const { habitId, delta, day } = c.req.valid('json');
+        await assertTrackableHabit(c, habitId);
+        const localDay = resolveDay(c.get('user'), day);
+
+        const [row] = await db
+            .insert(dayLogs)
+            .values({ habitId, localDay, rating: delta })
+            .onConflictDoUpdate({
+                target: [dayLogs.habitId, dayLogs.localDay],
+                set: { rating: sql`coalesce(${dayLogs.rating}, 0) + excluded.rating` },
+            })
+            .returning();
+
+        return c.json(row);
+    }
+);
+
+// Returns the day's log, creating an empty one if needed (e.g. to attach a session).
+app.post(
+    '/day-logs/ensure',
+    idempotency,
+    zValidator('json', z.object({
+        habitId: habitIdSchema,
+        day: localDaySchema.optional(),
+    }).strict()),
+    async (c) => {
+        const { habitId, day } = c.req.valid('json');
+        await assertTrackableHabit(c, habitId);
+        const localDay = resolveDay(c.get('user'), day);
+
+        await db
+            .insert(dayLogs)
+            .values({ habitId, localDay })
+            .onConflictDoNothing({ target: [dayLogs.habitId, dayLogs.localDay] });
+
+        const [row] = await db
+            .select()
             .from(dayLogs)
-            .where(
-                and(
-                    eq(dayLogs.habitId, habitId),
-                    sql`(${dayLogs.timeStamp} AT TIME ZONE ${tz})::date = ${localDayExpr}`
-                )
-            )
+            .where(and(eq(dayLogs.habitId, habitId), eq(dayLogs.localDay, localDay)))
             .limit(1);
 
-        if (existing.length > 0) {
-            // Update existing
-            await db
-                .update(dayLogs)
-                .set({ rating })
-                .where(eq(dayLogs.id, existing[0].id));
-
-            return c.json({
-                success: true,
-                id: existing[0].id,
-                habitId,
-            });
-        } else {
-            // Insert new log
-            const [newLog] = await db.insert(dayLogs).values({
-                habitId,
-                rating,
-                timeStamp: new Date(timeStamp),
-            }).returning({ id: dayLogs.id });
-
-            return c.json({
-                success: true,
-                id: newLog.id,
-                habitId,
-            });
-        }
+        return c.json(row);
     }
 );
 
@@ -191,8 +310,10 @@ app.post(
 //============================================================================================
 
 // Zod Schemas for DayLogs
+// A log's (habitId, localDay) identity is immutable; rows are created only through
+// the upserts above, so the CRUD router omits create.
 const dayLogSchemas = defineCrudSchemas(dayLogs, {
-    omitFromCreateUpdate: ['id', 'createdAt'],
+    omitFromCreateUpdate: ['id', 'createdAt', 'habitId', 'localDay'],
     refine: (schema) =>
         schema.extend({
             timeStamp: z.coerce.date(),
@@ -212,15 +333,7 @@ const dayLogsRouter = generateCrudRouter({
         });
         return habit?.userId === user.id;
     },
-    beforeCreate: async (c, data) => {
-        const user = c.get('user');
-        const habitId = (data as any).habitId as number;
-        const frozen = await computeFrozenHabitsForUser(user.id, user.role);
-        if (frozen.has(habitId)) {
-            throw frozenHabitException(habitId);
-        }
-        return data;
-    },
+    ommitOperations: ['create'],
     beforeUpdate: async (c, data) => {
         const user = c.get('user');
         const id = Number(c.req.param('id'));

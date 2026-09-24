@@ -23,6 +23,14 @@ export const authClient = createAuthClient({
                     type: "string" as const,
                     required: false,
                 },
+                unitSystem: {
+                    type: "string" as const,
+                    required: false,
+                },
+                exerciseLogCardStyle: {
+                    type: "string" as const,
+                    required: false,
+                },
                 preferredExerciseSource: {
                     type: "string" as const,
                     required: false,

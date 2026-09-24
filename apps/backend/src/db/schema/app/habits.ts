@@ -1,23 +1,19 @@
-import { pgTable, serial, text, integer, timestamp, date, jsonb, primaryKey, pgEnum, boolean, unique } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, integer, timestamp, date, jsonb, primaryKey, pgEnum, boolean, unique, uniqueIndex } from 'drizzle-orm/pg-core';
 import { user } from './user';
 import { relations } from 'drizzle-orm';
 import { exerciseSessions } from './exercises';
-import { ColorStop } from '@trackbit/types';
+import { COLOR_THEMES, GRADIENT_PRESET_STOPS, type ColorStop } from '@trackbit/types';
 
 
 
 export const habitTypeEnum = pgEnum('habit_type', ['count', 'complex', 'negative', 'timed', 'check'])
 // Note: 'negative' type is deprecated. Use isAntiHabit boolean flag instead.
-export const colorThemeEnum = pgEnum('color_scale', ["green", "blue", "orange", "purple", "rose", "fire", "custom"])
+export const colorThemeEnum = pgEnum('color_scale', COLOR_THEMES)
 
 // Canonical fallback gradient. Used as the column default, the create-route
 // default, and the backfill for legacy rows so every habit always carries a
 // non-empty colorStops array (an empty one crashes the gradient renderer).
-export const DEFAULT_COLOR_STOPS: ColorStop[] = [
-  { position: 0, color: [255, 0, 0, 1] },
-  { position: 0.5, color: [255, 225, 0, 1] },
-  { position: 1, color: [12, 148, 62, 1] },
-]
+export const DEFAULT_COLOR_STOPS: ColorStop[] = GRADIENT_PRESET_STOPS.custom
 
 //Habits
 export const habits = pgTable('habits', {
@@ -62,9 +58,13 @@ export const dayLogs = pgTable('day_logs',
     habitId: integer('habit_id').references(() => habits.id, { onDelete: 'cascade' }).notNull(),
     rating: integer('rating'),
     notes: text('notes'),
+    // The user's calendar day this log belongs to, fixed at write time from the
+    // user's stored timezone (or an explicit day). One log per habit per day.
+    localDay: date('local_day', { mode: 'string' }).notNull(),
     timeStamp: timestamp('time_stamp', { withTimezone: true }).defaultNow().notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
+  (t) => [uniqueIndex('day_logs_habit_day_uq').on(t.habitId, t.localDay)],
 );
 
 export const habitLogsRelations = relations(dayLogs, ({ one, many }) => ({

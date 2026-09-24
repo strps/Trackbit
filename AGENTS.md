@@ -34,6 +34,7 @@ pnpm dev:frontend                    # Frontend only
 pnpm dev:backend                     # Backend only
 pnpm build                           # Build all
 pnpm lint:all                        # Lint all
+pnpm --filter backend test           # Backend tests (Vitest; needs apps/backend/.env.test with TEST_DATABASE_URL — schema is dropped/recreated)
 pnpm --filter backend db:generate    # Generate Drizzle migrations
 pnpm --filter backend db:migrate     # Apply migrations
 pnpm --filter backend db:studio      # Launch Drizzle Studio
@@ -102,7 +103,9 @@ Habit types: `count`, `complex`, `negative`, `timed`, `check`.
 | `/health` | GET | Health check |
 | `/api/auth/*` | * | Better-Auth handler |
 | `/api/habits` | GET, POST, PUT | Habit CRUD |
-| `/api/tracker/history` | GET | Tracking history (timezone-aware) |
+| `/api/tracker/history` | GET | Tracking history (`start`/`end` on stored `local_day`) |
+| `/api/tracker/today` | GET | Per-habit summary for one day (widgets) |
+| `/api/tracker/check`, `/check/increment`, `/day-logs/ensure` | POST | Upserts on `(habit_id, local_day)`; accept `Idempotency-Key` |
 | `/api/exercise-info/exercises` | GET, POST, PATCH, DELETE | Exercise CRUD |
 | `/api/exercise-info/musclegroups` | GET, POST | Muscle groups |
 | `/api/config/ui` | GET | UI configuration |

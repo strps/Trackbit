@@ -3,7 +3,7 @@ import { Check } from 'lucide-react';
 import { gradientToCSS, mapValueToColor, mapValueToCSSrgba } from '../../shared/utils/colorUtils';
 import { GradientPicker } from '@/shared/components/GradientPicker';
 import { BigButton } from '@/shared/components/BigButton';
-import { ColorStop } from "@trackbit/types";
+import { COLOR_THEMES, GRADIENT_PRESET_STOPS, type ColorStop, type ColorTheme } from "@trackbit/types";
 import { Field, FieldProps, InputProps } from '@/shared/components/Fields/FieldBase';
 import { CollapsibleSection } from '@/shared/components/Collapsible';
 import { BaseCell, GradientPreview } from '@/shared/components/Heatmap';
@@ -14,65 +14,19 @@ type Preset = {
     stops: ColorStop[];
 };
 
-export const GRADIENT_PRESETS: Record<string, Preset> = {
-    green: {
-        label: "Growth (Green)",
-        stops: [
-            { position: 0, color: [241, 245, 249, 0.1] },   // slate-100
-            { position: 0.4, color: [134, 239, 172, 0.4] }, // green-300
-            { position: 1, color: [21, 128, 61, 1] }      // green-700
-        ]
-    },
-    blue: {
-        label: "Focus (Blue)",
-        stops: [
-            { position: 0, color: [241, 245, 249, 0.1] },   // slate-100
-            { position: 0.4, color: [147, 197, 253, 0.4] }, // blue-300
-            { position: 1, color: [29, 78, 216, 1] }      // blue-700
-        ]
-    },
-    orange: {
-        label: "Energy (Orange)",
-        stops: [
-            { position: 0, color: [241, 245, 249, 0.1] },   // slate-100
-            { position: 0.4, color: [253, 186, 116, 0.4] }, // orange-300
-            { position: 1, color: [194, 65, 12, 1] }      // orange-700
-        ]
-    },
-    purple: {
-        label: "Deep Work (Purple)",
-        stops: [
-            { position: 0, color: [241, 245, 249, 0.1] },   // slate-100
-            { position: 0.4, color: [216, 180, 254, 0.4] }, // purple-300
-            { position: 1, color: [126, 34, 206, 1] }     // purple-700
-        ]
-    },
-    rose: {
-        label: "Passion (Rose)",
-        stops: [
-            { position: 0, color: [241, 245, 249, 0.1] },   // slate-100
-            { position: 0.4, color: [253, 164, 175, 0.4] }, // rose-300
-            { position: 1, color: [190, 18, 60, 1] }      // rose-700
-        ]
-    },
-    fire: {
-        label: "Intensity (Fire)",
-        stops: [
-            { position: 0, color: [255, 237, 213, 0.1] },   // orange-100
-            { position: 0.5, color: [249, 115, 22, 0.5] },  // orange-500
-            { position: 1, color: [185, 28, 28, 1] }      // red-700
-        ]
-    },
-    custom: {
-        label: "Custom Theme",
-        stops: [
-            { position: 0, color: [255, 0, 0, 1] },
-            { position: 0.5, color: [255, 225, 0, 1] },
-            { position: 1, color: [12, 148, 62, 1] }
-        ]
-    }
-
+const PRESET_LABELS: Record<ColorTheme, string> = {
+    green: "Growth (Green)",
+    blue: "Focus (Blue)",
+    orange: "Energy (Orange)",
+    purple: "Deep Work (Purple)",
+    rose: "Passion (Rose)",
+    fire: "Intensity (Fire)",
+    custom: "Custom Theme",
 };
+
+export const GRADIENT_PRESETS = Object.fromEntries(
+    COLOR_THEMES.map((theme) => [theme, { label: PRESET_LABELS[theme], stops: GRADIENT_PRESET_STOPS[theme] }]),
+) as Record<ColorTheme, Preset>;
 
 
 

@@ -12,6 +12,7 @@ import { requireAuth } from '../../middleware/auth.js'
 import { localeMiddleware } from '../../middleware/locale.js'
 import { formatZodError } from '../../lib/utils.js'
 import { getEffectiveLimits } from '../../lib/user-limits.js'
+import { timezoneSchema } from '../../lib/user-day.js'
 
 const SUPPORTED_LOCALES = ['en', 'es'] as const
 const SUPPORTED_UNIT_SYSTEMS = ['metric', 'imperial'] as const
@@ -31,7 +32,7 @@ app.use('*', localeMiddleware)
 
 const preferencesSchema = z.object({
     locale: z.enum(SUPPORTED_LOCALES).optional(),
-    timezone: z.string().min(1).optional(),
+    timezone: timezoneSchema.optional(),
     unitSystem: z.enum(SUPPORTED_UNIT_SYSTEMS).optional(),
     exerciseLogCardStyle: z.enum(SUPPORTED_CARD_STYLES).optional(),
     // Explicitly nullable: null is how the client returns to browse mode, and is
