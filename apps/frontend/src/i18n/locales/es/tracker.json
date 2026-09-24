@@ -17,6 +17,7 @@
   "activity_create_exercise": "+ Crear \"{{name}}\"",
   "activity_add_next_from": "Añadir siguiente de {{name}}",
   "activity_add_selected": "Añadir {{name}}",
+  "activity_no_lists_hint": "Aún no tienes listas. Crea una",
   "activity_source_empty_list": "Esta lista está vacía.",
   "activity_source_empty_rest_day": "Día de descanso.",
   "activity_source_empty_no_routine": "Nada programado para hoy.",

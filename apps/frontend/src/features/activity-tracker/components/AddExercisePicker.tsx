@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, ChevronDown, Layers, Play, Plus, Search } from 'lucide-react';
-import type { Exercise, ExerciseSourceDescriptor, QueueEmptyReason } from '@trackbit/types';
+import { useNavigate } from 'react-router-dom';
+import type { Exercise, ExerciseSourceDescriptor, QueueEmptyReason, QueueEntry } from '@trackbit/types';
 import { useExercises } from '@/hooks/use-exercises';
 import { useExerciseQueue } from '@/hooks/use-exercise-queue';
 import { usePreferredExerciseSource } from '@/hooks/use-preferred-exercise-source';
@@ -34,7 +35,8 @@ export const ExercisePicker = ({ sessionId, setEditing }: { sessionId: number; s
     const { t } = useTranslation('tracker');
     const { exercises } = useExercises();
     const { addExerciseLog, sessions } = useActivityTracker();
-    const { sources, descriptor, activeSource, selectSource } = usePreferredExerciseSource();
+    const { sources, descriptor, activeSource, selectSource, isLoadingSources } = usePreferredExerciseSource();
+    const navigate = useNavigate();
 
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
@@ -66,25 +68,32 @@ export const ExercisePicker = ({ sessionId, setEditing }: { sessionId: number; s
     const nameOf = (source: ExerciseSourceDescriptor): string =>
         source.name ?? (source.nameKey ? (t as (key: string) => string)(source.nameKey) : '');
 
-    const matchesSearch = (exercise: Exercise | undefined) =>
-        !!exercise && exercise.name.toLowerCase().includes(search.toLowerCase());
+    const searching = search.trim() !== '';
 
-    const queueRows = useMemo(
-        () =>
-            entries
-                .map((entry, index) => ({ entry, index, exercise: exerciseById.get(entry.exerciseId) }))
-                .filter((row) => matchesSearch(row.exercise)),
-        [entries, exerciseById, search],
-    );
-
-    // Searching never traps the user inside the source: the catalog is always
-    // reachable, just visually separated and only once a search narrows it.
-    const catalogRows = useMemo(() => {
-        if (browsing) return exercises.filter(matchesSearch);
-        if (search.trim() === '') return [];
-        const inQueue = new Set(entries.map((entry) => entry.exerciseId));
-        return exercises.filter((e) => matchesSearch(e) && !inQueue.has(e.id));
-    }, [browsing, exercises, entries, search]);
+    // Searching is always over the whole catalog: a source is short, so a search
+    // scoped to it would mostly come back empty. Exercises that are in the queue
+    // keep their link to it — the first entry not yet done — so picking one from
+    // the results still advances the cursor.
+    const rows = useMemo((): PickerRow[] => {
+        if (!browsing && !searching) {
+            return entries.flatMap((entry, index) => {
+                const exercise = exerciseById.get(entry.exerciseId);
+                return exercise ? [{ exercise, entry, index }] : [];
+            });
+        }
+        const queueIndexByExercise = new Map<number, number>();
+        entries.forEach((entry, index) => {
+            const current = queueIndexByExercise.get(entry.exerciseId);
+            if (current === undefined || (done[current] && !done[index])) {
+                queueIndexByExercise.set(entry.exerciseId, index);
+            }
+        });
+        const query = search.toLowerCase();
+        return exercises.filter((e) => e.name.toLowerCase().includes(query)).map((exercise) => {
+            const index = browsing ? undefined : queueIndexByExercise.get(exercise.id);
+            return index === undefined ? { exercise } : { exercise, entry: entries[index], index };
+        });
+    }, [browsing, searching, entries, done, exerciseById, exercises, search]);
 
     const logExercise = (exerciseId: number, listItemId: number | null) => {
         addExerciseLog({ exerciseSessionId: sessionId, exerciseId, listItemId });
@@ -143,6 +152,21 @@ export const ExercisePicker = ({ sessionId, setEditing }: { sessionId: number; s
                                 {t('activity_all_exercises')}
                             </DropdownMenuItem>
 
+                            {/* Lists are the only sources a user creates today, so no
+                                sources means no lists — point at where to make one. */}
+                            {!isLoadingSources && sources.length === 0 && (
+                                <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                        className="text-muted-foreground"
+                                        onSelect={() => navigate('/config/lists')}
+                                    >
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        {t('activity_no_lists_hint')}
+                                    </DropdownMenuItem>
+                                </>
+                            )}
+
                             {sources.map((source) => (
                                 <DropdownMenuItem
                                     key={source.key}
@@ -199,43 +223,33 @@ export const ExercisePicker = ({ sessionId, setEditing }: { sessionId: number; s
                                 <div className="p-2 flex flex-col gap-1">
                                     {/* An empty source states why it is empty instead of
                                         rendering a control that does nothing. */}
-                                    {!browsing && entries.length === 0 && (
+                                    {!browsing && !searching && entries.length === 0 && (
                                         <p className="py-8 text-center text-sm text-muted-foreground">
                                             {t(EMPTY_REASON_KEYS[emptyReason ?? 'no_data'] as 'activity_source_empty_no_data')}
                                         </p>
                                     )}
 
-                                    {!browsing && queueRows.length > 0 && (
+                                    {!browsing && !searching && rows.length > 0 && (
                                         <p className="px-2 py-1 text-xs font-medium uppercase text-muted-foreground">
                                             {sourceLabel}
                                         </p>
                                     )}
 
-                                    {queueRows.map(({ entry, index, exercise }) => (
+                                    {rows.map(({ exercise, entry, index }) => (
                                         <ExerciseRow
-                                            key={entry.listItemId ?? `${entry.exerciseId}-${entry.position}`}
-                                            exercise={exercise!}
-                                            highlighted={index === cursor}
-                                            done={done[index]}
-                                            onSelect={() => logExercise(entry.exerciseId, entry.listItemId)}
-                                        />
-                                    ))}
-
-                                    {!browsing && catalogRows.length > 0 && (
-                                        <p className="mt-2 border-t border-border px-2 pb-1 pt-3 text-xs font-medium uppercase text-muted-foreground">
-                                            {t('activity_all_exercises')}
-                                        </p>
-                                    )}
-
-                                    {catalogRows.map((exercise) => (
-                                        <ExerciseRow
-                                            key={exercise.id}
+                                            key={
+                                                entry && !searching
+                                                    ? (entry.listItemId ?? `${entry.exerciseId}-${entry.position}`)
+                                                    : exercise.id
+                                            }
                                             exercise={exercise}
-                                            onSelect={() => logExercise(exercise.id, null)}
+                                            highlighted={index !== undefined && index === cursor}
+                                            done={index !== undefined && done[index]}
+                                            onSelect={() => logExercise(exercise.id, entry?.listItemId ?? null)}
                                         />
                                     ))}
 
-                                    {queueRows.length === 0 && catalogRows.length === 0 && (browsing || entries.length > 0) && (
+                                    {rows.length === 0 && (browsing || searching || entries.length > 0) && (
                                         <div className="py-8 text-center">
                                             <p className="text-sm text-muted-foreground">{t('activity_no_exercises_found')}</p>
                                             <Button variant="link" size="sm" className="mt-2">
@@ -280,6 +294,13 @@ export const ExercisePicker = ({ sessionId, setEditing }: { sessionId: number; s
         </div>
     );
 };
+
+// `entry`/`index` are set when the exercise belongs to the active source's queue.
+interface PickerRow {
+    exercise: Exercise;
+    entry?: QueueEntry;
+    index?: number;
+}
 
 interface ExerciseRowProps {
     exercise: Exercise;
