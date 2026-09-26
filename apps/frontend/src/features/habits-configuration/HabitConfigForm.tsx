@@ -52,7 +52,7 @@ const formSchema = z.object({
             color: z.array(z.number().min(0).max(255)).length(4)
         })
     ),
-    dailyGoal: z.number().min(0).max(1440),
+    dailyGoal: z.number().int().min(1).max(1440),
     weeklyGoal: z.number().min(1).max(7),
 });
 
@@ -71,6 +71,7 @@ const defaultValues = {
 const TimeDurationField = ({ form }: { form: ReturnType<typeof useForm<z.infer<typeof formSchema>>> }) => {
     const { t } = useTranslation('habits');
     const totalMinutes = useWatch({ control: form.control, name: 'dailyGoal' });
+    const hasError = !!form.formState.errors.dailyGoal;
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
 
@@ -112,6 +113,7 @@ const TimeDurationField = ({ form }: { form: ReturnType<typeof useForm<z.infer<t
                     <span className="text-sm text-muted-foreground">{t('form.duration_minutes')}</span>
                 </div>
             </div>
+            {hasError && <p className="text-sm text-destructive">{t('form.daily_goal_duration_min')}</p>}
         </div>
     );
 };
@@ -228,7 +230,7 @@ export const HabitConfigForm = ({
                             name="dailyGoal"
                             label={t('form.daily_goal_times')}
                             form={form}
-                            min={0}
+                            min={1}
                             max={100}
                         />
                     ) : null}

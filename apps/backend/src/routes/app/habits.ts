@@ -77,7 +77,7 @@ app.post(
         type: z.enum(['count', 'complex', 'negative', 'timed', 'check']).default('count'),
         isAntiHabit: z.boolean().default(false),
         weeklyGoal: z.number().int().min(1).max(7).default(5),
-        dailyGoal: z.number().default(1),
+        dailyGoal: z.number().int().min(1).default(1),
         colorTheme: z.enum(COLOR_THEMES).optional(),
         // Always persist a non-empty gradient: fall back to the default when omitted.
         // Cast: ColorStop's color is a 3-or-4 tuple union, the schema pins it to rgba(4).
@@ -146,8 +146,8 @@ app.put(
         id: z.number().optional(),
         name: z.string().optional(),
         description: z.string().optional().nullable(),
-        weeklyGoal: z.number().int().min(1).max(7).default(5),
-        dailyGoal: z.number().default(1),
+        weeklyGoal: z.number().int().min(1).max(7).optional(),
+        dailyGoal: z.number().int().min(1).optional(),
         colorTheme: z.enum(COLOR_THEMES).optional(),
         colorStops: colorStopsSchema.optional(),
         icon: z.enum(HABIT_ICON_IDS).optional(),

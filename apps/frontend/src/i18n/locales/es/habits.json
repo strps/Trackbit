@@ -4,6 +4,7 @@
   "form.weekly_goal": "Meta semanal (días)",
   "form.daily_goal_times": "Meta diaria (veces)",
   "form.daily_goal_duration": "Meta diaria (duración)",
+  "form.daily_goal_duration_min": "Indica al menos 1 minuto.",
   "form.duration_hours": "h",
   "form.duration_minutes": "min",
   "form.tracking_method": "Método de seguimiento",

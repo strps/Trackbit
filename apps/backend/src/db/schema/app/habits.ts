@@ -1,6 +1,6 @@
-import { pgTable, serial, text, integer, timestamp, date, jsonb, primaryKey, pgEnum, boolean, unique, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, integer, timestamp, date, jsonb, primaryKey, pgEnum, boolean, unique, uniqueIndex, check } from 'drizzle-orm/pg-core';
 import { user } from './user';
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import { exerciseSessions } from './exercises';
 import { COLOR_THEMES, GRADIENT_PRESET_STOPS, type ColorStop } from '@trackbit/types';
 
@@ -40,6 +40,8 @@ export const habits = pgTable('habits', {
     // Enforced as DEFERRABLE INITIALLY DEFERRED in migration 0003 so PATCH /reorder
     // can swap orders inside a transaction without intermediate-state conflicts.
     unique('habits_user_anti_order_uq').on(table.userId, table.isAntiHabit, table.order),
+    // Progress divides by the goal; a zero goal has no meaning for any habit type.
+    check('habits_daily_goal_positive', sql`${table.dailyGoal} >= 1`),
   ]
 );
 

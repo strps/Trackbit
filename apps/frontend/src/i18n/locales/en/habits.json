@@ -4,6 +4,7 @@
   "form.weekly_goal": "Weekly Goal (Days)",
   "form.daily_goal_times": "Daily Goal (Times)",
   "form.daily_goal_duration": "Daily Goal (Duration)",
+  "form.daily_goal_duration_min": "Set at least 1 minute.",
   "form.duration_hours": "h",
   "form.duration_minutes": "min",
   "form.tracking_method": "Tracking Method",

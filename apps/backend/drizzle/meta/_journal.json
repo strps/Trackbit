@@ -71,6 +71,13 @@
       "when": 1790272583551,
       "tag": "0009_idempotency_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790435606187,
+      "tag": "0010_habits_daily_goal_positive",
+      "breakpoints": true
     }
   ]
 }

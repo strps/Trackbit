@@ -41,7 +41,7 @@ export const TimedHabitRow = ({
     const [localMs, setLocalMs] = useState(value);
 
     // dailyGoal is in minutes for timed habits, value is in ms
-    const goalMs = (dailyGoal || 1) * 60000;
+    const goalMs = dailyGoal * 60000;
     const timedProgress = Math.min(localMs / goalMs, 1);
     const inactive = localMs === 0 && !isRunning;
 
@@ -66,7 +66,7 @@ export const TimedHabitRow = ({
                     <StreakBadge streak={streak} />
                 </>
             }
-            subtitle={isAntiHabit && localMs === 0 && !isRunning ? 'Avoided' : `${formatMs(localMs)} / ${dailyGoal || 1}m`}
+            subtitle={isAntiHabit && localMs === 0 && !isRunning ? 'Avoided' : `${formatMs(localMs)} / ${dailyGoal}m`}
             right={
                 <div className="flex items-center gap-2 shrink-0">
                     <ControlledTimer

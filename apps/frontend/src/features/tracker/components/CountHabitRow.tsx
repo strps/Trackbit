@@ -31,7 +31,7 @@ export const CountHabitRow = ({
     icon,
     accentColor,
     colorStops,
-    dailyGoal,
+    dailyGoal: goal,
     value,
     streak,
     isAntiHabit,
@@ -40,7 +40,6 @@ export const CountHabitRow = ({
 }: SimpleHabitRowProps) => {
     const [isAnimating, setIsAnimating] = useState(false);
 
-    const goal = dailyGoal || 1;
     const progress = Math.min(value / goal, 1);
     const isGoalMet = value >= goal;
 

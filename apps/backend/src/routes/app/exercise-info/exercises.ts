@@ -1,5 +1,5 @@
 import { generateCrudRouter } from '../../../lib/utilities/crud-router-factory.js'; // Adjust path if necessary
-import { exerciseLogs, exercises, exercisePerformances, muscleGroups } from '../../../db/schema/index.js';
+import { dayLogs, exerciseLogs, exercises, exercisePerformances, exerciseSessions, habits, muscleGroups } from '../../../db/schema/index.js';
 import { defineCrudSchemas } from '../../../lib/utilities/drizzle-crud-schemas.js'; // Adjust path if necessary
 import { z } from 'zod';
 import db from "../../../db/db.js";
@@ -36,23 +36,26 @@ const exerciseRouter = generateCrudRouter({
             const user = c.get('user')
             const locale = (c.get('locale') as string | undefined) ?? 'en'
 
-            //Query exercise exercises with the lastest set.
-
+            // Each exercise's most recent set, from this user's own logs only: system
+            // exercises are shared, so an unscoped query would show other users' sets.
             const latestSetSubquery = db.$with("latest_sets").as(
                 db.select({
-                    exerciseId: sql<number>`el.exercise_id`.as('exerciseId'),
-                    setId: sql<number>`es.id`.as('setId'),
-                    weight: sql<number | null>`es.weight`.as('weight'),
-                    reps: sql<number | null>`es.reps`.as('reps'),
-                    distance: sql<number | null>`es.distance`.as('distance'),
-                    duration: sql<number | null>`es.duration_miliseconds`.as('durationMilliSeconds'),
-                    createdAt: sql<string | null>`es.created_at`.as('createdAt'),
-                    rowNumber: sql<number>`row_number() over (partition by el.exercise_id order by es.created_at desc)`.as('row_number'),
-                    rpe: sql<number | null>`es.rpe`.as('rpe'),
+                    exerciseId: exerciseLogs.exerciseId,
+                    setId: exercisePerformances.id,
+                    weight: exercisePerformances.weight,
+                    reps: exercisePerformances.reps,
+                    distance: exercisePerformances.distance,
+                    duration: exercisePerformances.duration,
+                    createdAt: exercisePerformances.createdAt,
+                    rpe: exercisePerformances.rpe,
+                    rowNumber: sql<number>`row_number() over (partition by ${exerciseLogs.exerciseId} order by ${exercisePerformances.createdAt} desc, ${exercisePerformances.id} desc)`.as('row_number'),
                 })
-                    .from(sql`${exerciseLogs} el`)
-                    .leftJoin(sql`${exercisePerformances} es`, sql`es.exercise_log_id = el.id`)
-                    .where(sql`es.id IS NOT NULL`)  // Optional: exclude rows without sets if desired
+                    .from(exercisePerformances)
+                    .innerJoin(exerciseLogs, eq(exerciseLogs.id, exercisePerformances.exerciseLogId))
+                    .innerJoin(exerciseSessions, eq(exerciseSessions.id, exerciseLogs.exerciseSessionId))
+                    .innerJoin(dayLogs, eq(dayLogs.id, exerciseSessions.dayLogId))
+                    .innerJoin(habits, eq(habits.id, dayLogs.habitId))
+                    .where(eq(habits.userId, user.id))
             );
 
             // Main query filters to only the latest (row_number = 1)
