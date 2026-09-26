@@ -93,6 +93,10 @@ internal class SessionStore @Inject constructor(
                 dataStore.data.first()
             } catch (_: IOException) {
                 null // Unreadable (not undecryptable: that is handled as corruption). Keep the file.
+            } catch (e: Throwable) {
+                // Anything else is a bug. Fail every waiter instead of blocking them forever.
+                loaded.completeExceptionally(e)
+                throw e
             }
             current = stored
             loaded.complete(Unit)

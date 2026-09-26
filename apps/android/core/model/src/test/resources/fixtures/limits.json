@@ -1,9 +1,0 @@
-{
-  "effective": {
-    "maxHabits": 10,
-    "maxCustomExercises": null,
-    "maxExerciseLists": 3,
-    "allowedHabitTypes": ["count", "complex", "teleport"]
-  },
-  "counts": { "habits": 4, "customExercises": 1, "exerciseLists": 0 }
-}

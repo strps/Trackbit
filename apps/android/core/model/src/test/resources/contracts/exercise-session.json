@@ -1,0 +1,9 @@
+{
+  "request": "POST /api/tracker/exercise-sessions",
+  "status": 201,
+  "body": {
+    "id": 1,
+    "dayLogId": 1,
+    "createdAt": "2026-01-01T00:00:00.000Z"
+  }
+}

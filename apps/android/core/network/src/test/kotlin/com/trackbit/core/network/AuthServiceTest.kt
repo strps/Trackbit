@@ -6,7 +6,6 @@ import com.trackbit.core.network.service.signIn
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -26,19 +25,6 @@ class AuthServiceTest {
         server.enqueue(200, """{"redirect":false,"token":"raw"}""")
         val error = (auth.signIn("a@b.c", "pw") as ApiResult.Failure).error
         assertTrue(error is ApiError.Unknown && error.status == 200)
-    }
-
-    @Test fun `wrong credentials carry Better-Auth's code`() = runTest {
-        server.enqueue(401, """{"code":"INVALID_EMAIL_OR_PASSWORD","message":"Invalid email or password"}""")
-        assertEquals(
-            ApiResult.Failure(ApiError.Unauthorized("INVALID_EMAIL_OR_PASSWORD", "Invalid email or password")),
-            auth.signIn("a@b.c", "nope"),
-        )
-    }
-
-    @Test fun `a null session body means signed out`() = runTest {
-        server.enqueue(200, "null")
-        assertNull((auth.session() as ApiResult.Success).value)
     }
 
     @Test fun `decodes a session with its preferences`() = runTest {

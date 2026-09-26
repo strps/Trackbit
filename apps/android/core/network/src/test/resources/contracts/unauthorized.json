@@ -1,0 +1,7 @@
+{
+  "request": "GET /api/tracker/today",
+  "status": 401,
+  "body": {
+    "error": "Unauthorized"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "request": "GET /api/exercise-lists",
+  "status": 200,
+  "body": [
+    {
+      "id": 1,
+      "userId": "user-id",
+      "authorId": "user-id",
+      "name": "Pull day",
+      "description": "Back and biceps",
+      "position": 0,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z",
+      "items": [
+        {
+          "id": 1,
+          "listId": 1,
+          "exerciseId": 2,
+          "position": 0,
+          "targetSets": 3,
+          "targetReps": 8,
+          "targetWeight": 60.5,
+          "targetDuration": 90,
+          "targetDistance": 1.5,
+          "restSeconds": 120,
+          "notes": "Pause at the top"
+        }
+      ],
+      "frozen": false
+    }
+  ]
+}

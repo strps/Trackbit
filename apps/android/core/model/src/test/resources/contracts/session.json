@@ -1,0 +1,35 @@
+{
+  "request": "GET /api/auth/get-session",
+  "status": 200,
+  "body": {
+    "session": {
+      "expiresAt": "2026-01-01T00:00:00.000Z",
+      "token": "session-token",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z",
+      "ipAddress": "127.0.0.1",
+      "userAgent": "",
+      "userId": "user-id",
+      "impersonatedBy": null,
+      "id": "session-id"
+    },
+    "user": {
+      "name": "session",
+      "email": "session@test.local",
+      "emailVerified": true,
+      "image": null,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z",
+      "role": "user",
+      "banned": false,
+      "banReason": null,
+      "banExpires": null,
+      "locale": "es",
+      "timezone": "America/Costa_Rica",
+      "unitSystem": "imperial",
+      "exerciseLogCardStyle": "compact",
+      "preferredExerciseSource": "list:1",
+      "id": "user-id"
+    }
+  }
+}

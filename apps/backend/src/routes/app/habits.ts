@@ -9,6 +9,7 @@ import { eq, and, desc, count, sql } from 'drizzle-orm'
 import { requireAuth } from '../../middleware/auth.js'
 import { localeMiddleware } from '../../middleware/locale.js'
 import { t } from '../../i18n/index.js'
+import { frozenHabitException } from '../../lib/frozen-errors.js'
 import {
     computeFrozenHabitIds,
     computeFrozenHabitsForUser,
@@ -167,10 +168,7 @@ app.put(
 
         const frozen = await computeFrozenHabitsForUser(user.id, user.role)
         if (frozen.has(id)) {
-            return c.json({
-                error: 'habit_frozen',
-                message: 'This habit is frozen because your role limits were reduced. Delete it or another to free a slot.',
-            }, 403)
+            throw frozenHabitException(id)
         }
 
         if (updates.type) {

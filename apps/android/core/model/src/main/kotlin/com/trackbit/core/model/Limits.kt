@@ -5,7 +5,8 @@ import kotlinx.serialization.Serializable
 /** `GET /api/me/limits`. */
 @Serializable
 data class LimitsResponse(
-    val effective: EffectiveLimits,
+    /** Null when nothing is capped (admins). */
+    val effective: EffectiveLimits?,
     val counts: LimitCounts,
 )
 

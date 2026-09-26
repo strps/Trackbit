@@ -1,0 +1,333 @@
+{
+  "request": "GET /api/tracker/today?day=2026-01-10",
+  "status": 200,
+  "body": {
+    "day": "2026-01-10",
+    "habits": [
+      {
+        "id": 1,
+        "name": "Read",
+        "description": "Ten pages",
+        "type": "count",
+        "isAntiHabit": false,
+        "icon": "book",
+        "colorTheme": "custom",
+        "colorStops": [
+          {
+            "color": [
+              255,
+              0,
+              0,
+              1
+            ],
+            "position": 0
+          },
+          {
+            "color": [
+              255,
+              225,
+              0,
+              0.5
+            ],
+            "position": 0.5
+          },
+          {
+            "color": [
+              12,
+              148,
+              62,
+              1
+            ],
+            "position": 1
+          }
+        ],
+        "dailyGoal": 3,
+        "weeklyGoal": 5,
+        "order": 0,
+        "frozen": false,
+        "firstLogDay": "2026-01-07",
+        "streakBeforeDay": 3,
+        "recent": [
+          {
+            "day": "2026-01-04",
+            "rating": null,
+            "sessionCount": 0
+          },
+          {
+            "day": "2026-01-05",
+            "rating": null,
+            "sessionCount": 0
+          },
+          {
+            "day": "2026-01-06",
+            "rating": null,
+            "sessionCount": 0
+          },
+          {
+            "day": "2026-01-07",
+            "rating": 1,
+            "sessionCount": 0
+          },
+          {
+            "day": "2026-01-08",
+            "rating": 3,
+            "sessionCount": 0
+          },
+          {
+            "day": "2026-01-09",
+            "rating": 4,
+            "sessionCount": 0
+          },
+          {
+            "day": "2026-01-10",
+            "rating": 2,
+            "sessionCount": 0
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "name": "No sugar",
+        "description": null,
+        "type": "count",
+        "isAntiHabit": true,
+        "icon": "ban",
+        "colorTheme": "rose",
+        "colorStops": [
+          {
+            "position": 0,
+            "color": [
+              241,
+              245,
+              249,
+              0.1
+            ]
+          },
+          {
+            "position": 0.4,
+            "color": [
+              253,
+              164,
+              175,
+              0.4
+            ]
+          },
+          {
+            "position": 1,
+            "color": [
+              190,
+              18,
+              60,
+              1
+            ]
+          }
+        ],
+        "dailyGoal": 1,
+        "weeklyGoal": 5,
+        "order": 0,
+        "frozen": false,
+        "firstLogDay": "2026-01-08",
+        "streakBeforeDay": 2,
+        "recent": [
+          {
+            "day": "2026-01-04",
+            "rating": null,
+            "sessionCount": 0
+          },
+          {
+            "day": "2026-01-05",
+            "rating": null,
+            "sessionCount": 0
+          },
+          {
+            "day": "2026-01-06",
+            "rating": null,
+            "sessionCount": 0
+          },
+          {
+            "day": "2026-01-07",
+            "rating": null,
+            "sessionCount": 0
+          },
+          {
+            "day": "2026-01-08",
+            "rating": 0,
+            "sessionCount": 0
+          },
+          {
+            "day": "2026-01-09",
+            "rating": null,
+            "sessionCount": 0
+          },
+          {
+            "day": "2026-01-10",
+            "rating": null,
+            "sessionCount": 0
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "name": "Gym",
+        "description": null,
+        "type": "complex",
+        "isAntiHabit": false,
+        "icon": "dumbbell",
+        "colorTheme": "blue",
+        "colorStops": [
+          {
+            "position": 0,
+            "color": [
+              241,
+              245,
+              249,
+              0.1
+            ]
+          },
+          {
+            "position": 0.4,
+            "color": [
+              147,
+              197,
+              253,
+              0.4
+            ]
+          },
+          {
+            "position": 1,
+            "color": [
+              29,
+              78,
+              216,
+              1
+            ]
+          }
+        ],
+        "dailyGoal": 1,
+        "weeklyGoal": 5,
+        "order": 1,
+        "frozen": false,
+        "firstLogDay": "2026-01-09",
+        "streakBeforeDay": 1,
+        "recent": [
+          {
+            "day": "2026-01-04",
+            "rating": null,
+            "sessionCount": 0
+          },
+          {
+            "day": "2026-01-05",
+            "rating": null,
+            "sessionCount": 0
+          },
+          {
+            "day": "2026-01-06",
+            "rating": null,
+            "sessionCount": 0
+          },
+          {
+            "day": "2026-01-07",
+            "rating": null,
+            "sessionCount": 0
+          },
+          {
+            "day": "2026-01-08",
+            "rating": null,
+            "sessionCount": 0
+          },
+          {
+            "day": "2026-01-09",
+            "rating": null,
+            "sessionCount": 1
+          },
+          {
+            "day": "2026-01-10",
+            "rating": null,
+            "sessionCount": 0
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "name": "Meditate",
+        "description": null,
+        "type": "timed",
+        "isAntiHabit": false,
+        "icon": "moon",
+        "colorTheme": "green",
+        "colorStops": [
+          {
+            "position": 0,
+            "color": [
+              241,
+              245,
+              249,
+              0.1
+            ]
+          },
+          {
+            "position": 0.4,
+            "color": [
+              134,
+              239,
+              172,
+              0.4
+            ]
+          },
+          {
+            "position": 1,
+            "color": [
+              21,
+              128,
+              61,
+              1
+            ]
+          }
+        ],
+        "dailyGoal": 20,
+        "weeklyGoal": 5,
+        "order": 10,
+        "frozen": true,
+        "firstLogDay": null,
+        "streakBeforeDay": 0,
+        "recent": [
+          {
+            "day": "2026-01-04",
+            "rating": null,
+            "sessionCount": 0
+          },
+          {
+            "day": "2026-01-05",
+            "rating": null,
+            "sessionCount": 0
+          },
+          {
+            "day": "2026-01-06",
+            "rating": null,
+            "sessionCount": 0
+          },
+          {
+            "day": "2026-01-07",
+            "rating": null,
+            "sessionCount": 0
+          },
+          {
+            "day": "2026-01-08",
+            "rating": null,
+            "sessionCount": 0
+          },
+          {
+            "day": "2026-01-09",
+            "rating": null,
+            "sessionCount": 0
+          },
+          {
+            "day": "2026-01-10",
+            "rating": null,
+            "sessionCount": 0
+          }
+        ]
+      }
+    ]
+  }
+}

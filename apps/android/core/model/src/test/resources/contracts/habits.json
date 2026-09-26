@@ -1,0 +1,182 @@
+{
+  "request": "GET /api/habits",
+  "status": 200,
+  "body": [
+    {
+      "id": 2,
+      "userId": "user-id",
+      "name": "No sugar",
+      "description": null,
+      "type": "count",
+      "isAntiHabit": true,
+      "colorTheme": "rose",
+      "colorStops": [
+        {
+          "color": [
+            255,
+            0,
+            0,
+            1
+          ],
+          "position": 0
+        },
+        {
+          "color": [
+            255,
+            225,
+            0,
+            1
+          ],
+          "position": 0.5
+        },
+        {
+          "color": [
+            12,
+            148,
+            62,
+            1
+          ],
+          "position": 1
+        }
+      ],
+      "icon": "ban",
+      "weeklyGoal": 5,
+      "dailyGoal": 1,
+      "order": 0,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "frozen": false
+    },
+    {
+      "id": 1,
+      "userId": "user-id",
+      "name": "Read",
+      "description": "Ten pages",
+      "type": "count",
+      "isAntiHabit": false,
+      "colorTheme": "custom",
+      "colorStops": [
+        {
+          "color": [
+            255,
+            0,
+            0,
+            1
+          ],
+          "position": 0
+        },
+        {
+          "color": [
+            255,
+            225,
+            0,
+            0.5
+          ],
+          "position": 0.5
+        },
+        {
+          "color": [
+            12,
+            148,
+            62,
+            1
+          ],
+          "position": 1
+        }
+      ],
+      "icon": "book",
+      "weeklyGoal": 5,
+      "dailyGoal": 3,
+      "order": 0,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "frozen": false
+    },
+    {
+      "id": 3,
+      "userId": "user-id",
+      "name": "Gym",
+      "description": null,
+      "type": "complex",
+      "isAntiHabit": false,
+      "colorTheme": "blue",
+      "colorStops": [
+        {
+          "color": [
+            255,
+            0,
+            0,
+            1
+          ],
+          "position": 0
+        },
+        {
+          "color": [
+            255,
+            225,
+            0,
+            1
+          ],
+          "position": 0.5
+        },
+        {
+          "color": [
+            12,
+            148,
+            62,
+            1
+          ],
+          "position": 1
+        }
+      ],
+      "icon": "dumbbell",
+      "weeklyGoal": 5,
+      "dailyGoal": 1,
+      "order": 1,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "frozen": false
+    },
+    {
+      "id": 4,
+      "userId": "user-id",
+      "name": "Meditate",
+      "description": null,
+      "type": "timed",
+      "isAntiHabit": false,
+      "colorTheme": "green",
+      "colorStops": [
+        {
+          "color": [
+            255,
+            0,
+            0,
+            1
+          ],
+          "position": 0
+        },
+        {
+          "color": [
+            255,
+            225,
+            0,
+            1
+          ],
+          "position": 0.5
+        },
+        {
+          "color": [
+            12,
+            148,
+            62,
+            1
+          ],
+          "position": 1
+        }
+      ],
+      "icon": "moon",
+      "weeklyGoal": 5,
+      "dailyGoal": 20,
+      "order": 10,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "frozen": true
+    }
+  ]
+}

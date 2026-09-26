@@ -10,6 +10,7 @@ import {
     computeFrozenExercisesForUser,
     getEffectiveLimits,
 } from '../../../lib/user-limits.js';
+import { frozenExerciseException } from '../../../lib/frozen-errors.js';
 
 
 // Generate schemas tailored for exercises
@@ -110,15 +111,7 @@ const exerciseRouter = generateCrudRouter({
         const id = Number(c.req.param('id'))
         const frozen = await computeFrozenExercisesForUser(user.id, user.role)
         if (frozen.has(id)) {
-            throw new HTTPException(403, {
-                res: new Response(
-                    JSON.stringify({
-                        error: 'custom_exercise_frozen',
-                        message: 'This custom exercise is frozen because your role limits were reduced. Delete it or another to free a slot.',
-                    }),
-                    { status: 403, headers: { 'content-type': 'application/json' } }
-                ),
-            })
+            throw frozenExerciseException(id)
         }
         return data
     },

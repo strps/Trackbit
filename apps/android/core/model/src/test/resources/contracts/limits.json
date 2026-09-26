@@ -1,0 +1,20 @@
+{
+  "request": "GET /api/me/limits",
+  "status": 200,
+  "body": {
+    "effective": {
+      "maxHabits": 10,
+      "maxCustomExercises": 5,
+      "maxExerciseLists": 3,
+      "allowedHabitTypes": [
+        "count",
+        "complex"
+      ]
+    },
+    "counts": {
+      "habits": 0,
+      "customExercises": 0,
+      "exerciseLists": 1
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "request": "POST /api/tracker/check",
+  "status": 404,
+  "body": {
+    "error": "Habit not found"
+  }
+}

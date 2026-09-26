@@ -1,0 +1,8 @@
+{
+  "request": "POST /api/tracker/check",
+  "status": 422,
+  "body": {
+    "error": "idempotency_key_reused",
+    "message": "This Idempotency-Key was already used for a different request"
+  }
+}

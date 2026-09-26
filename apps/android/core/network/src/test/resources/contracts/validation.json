@@ -1,0 +1,24 @@
+{
+  "request": "POST /api/tracker/check/increment",
+  "status": 400,
+  "body": {
+    "message": "Validation failed",
+    "errors": [
+      {
+        "path": "delta",
+        "message": "Invalid input: expected int, received number",
+        "code": "invalid_type"
+      },
+      {
+        "path": "day",
+        "message": "Expected YYYY-MM-DD",
+        "code": "invalid_format"
+      },
+      {
+        "path": "day",
+        "message": "Invalid date",
+        "code": "custom"
+      }
+    ]
+  }
+}

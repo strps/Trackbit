@@ -17,34 +17,7 @@ import { addDays, localDaySchema, resolveDay } from '../../lib/user-day.js'
 import { MAX_STREAK_DAYS, streakEndingAt, type StreakDay } from '../../lib/streak.js'
 import { idempotency } from '../../middleware/idempotency.js'
 import { t, negotiateFromHeader } from '../../i18n/index.js'
-
-function frozenHabitException(habitId: number) {
-    return new HTTPException(403, {
-        res: new Response(
-            JSON.stringify({
-                error: 'habit_frozen',
-                message: 'This habit is frozen because your role limits were reduced.',
-                habitId,
-            }),
-            { status: 403, headers: { 'content-type': 'application/json' } }
-        ),
-    })
-}
-
-function frozenExerciseException(exerciseId: number) {
-    return new HTTPException(403, {
-        res: new Response(
-            JSON.stringify({
-                error: 'custom_exercise_frozen',
-                message: 'This custom exercise is frozen because your role limits were reduced.',
-                exerciseId,
-            }),
-            { status: 403, headers: { 'content-type': 'application/json' } }
-        ),
-    })
-}
-
-
+import { frozenExerciseException, frozenHabitException } from '../../lib/frozen-errors.js'
 
 
 type AuthEnv = {

@@ -14,7 +14,9 @@ import com.trackbit.core.model.UnitSystem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.job
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.first
 import java.io.File
 
@@ -55,5 +57,6 @@ class StoreHarness(private val file: File, private val aead: Aead = testAead()) 
 
     suspend fun settled(): AuthState = store.state.first { it != AuthState.Loading }
 
-    override fun close() = scope.cancel()
+    /** Waits for the scope to finish, so the next harness can open a DataStore on the same file. */
+    override fun close() = runBlocking { scope.coroutineContext.job.cancelAndJoin() }
 }

@@ -1,0 +1,8 @@
+{
+  "request": "POST /api/tracker/check/increment",
+  "status": 400,
+  "body": {
+    "error": "idempotency_key_invalid",
+    "message": "Idempotency-Key must be at most 255 characters"
+  }
+}

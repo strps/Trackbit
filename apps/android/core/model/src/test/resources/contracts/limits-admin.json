@@ -1,0 +1,12 @@
+{
+  "request": "GET /api/me/limits",
+  "status": 200,
+  "body": {
+    "effective": null,
+    "counts": {
+      "habits": 0,
+      "customExercises": 0,
+      "exerciseLists": 0
+    }
+  }
+}

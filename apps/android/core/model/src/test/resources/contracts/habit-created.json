@@ -1,0 +1,47 @@
+{
+  "request": "POST /api/habits",
+  "status": 201,
+  "body": {
+    "id": 1,
+    "userId": "user-id",
+    "name": "Read",
+    "description": "Ten pages",
+    "type": "count",
+    "isAntiHabit": false,
+    "colorTheme": "custom",
+    "colorStops": [
+      {
+        "color": [
+          255,
+          0,
+          0,
+          1
+        ],
+        "position": 0
+      },
+      {
+        "color": [
+          255,
+          225,
+          0,
+          0.5
+        ],
+        "position": 0.5
+      },
+      {
+        "color": [
+          12,
+          148,
+          62,
+          1
+        ],
+        "position": 1
+      }
+    ],
+    "icon": "book",
+    "weeklyGoal": 5,
+    "dailyGoal": 3,
+    "order": 0,
+    "createdAt": "2026-01-01T00:00:00.000Z"
+  }
+}

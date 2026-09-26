@@ -1,0 +1,34 @@
+{
+  "request": "GET /api/exercise-info/exercises",
+  "status": 200,
+  "body": [
+    {
+      "id": 1,
+      "userId": null,
+      "name": "Bench Press",
+      "category": "strength",
+      "defaultWeightUnit": "kg",
+      "defaultDistanceUnit": "km",
+      "lastPerformance": null,
+      "frozen": false
+    },
+    {
+      "id": 2,
+      "userId": "user-id",
+      "name": "My row",
+      "category": "strength",
+      "defaultWeightUnit": "lbs",
+      "defaultDistanceUnit": "miles",
+      "lastPerformance": {
+        "id": 2,
+        "weight": 62.5,
+        "reps": 6,
+        "distance": 1.25,
+        "duration": 45000,
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "rpe": 8
+      },
+      "frozen": false
+    }
+  ]
+}

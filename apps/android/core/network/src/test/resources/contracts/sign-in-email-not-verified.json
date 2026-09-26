@@ -1,0 +1,8 @@
+{
+  "request": "POST /api/auth/sign-in/email",
+  "status": 403,
+  "body": {
+    "code": "EMAIL_NOT_VERIFIED",
+    "message": "Email not verified"
+  }
+}

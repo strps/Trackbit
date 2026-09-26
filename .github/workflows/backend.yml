@@ -3,9 +3,9 @@ name: Backend
 on:
   push:
     branches: [main, dev, kotlin-app]
-    paths: ['apps/backend/**', 'packages/types/**', 'pnpm-lock.yaml', '.github/workflows/backend.yml']
+    paths: ['apps/backend/**', 'packages/types/**', 'apps/android/core/*/src/test/resources/contracts/**', 'pnpm-lock.yaml', '.github/workflows/backend.yml']
   pull_request:
-    paths: ['apps/backend/**', 'packages/types/**', 'pnpm-lock.yaml', '.github/workflows/backend.yml']
+    paths: ['apps/backend/**', 'packages/types/**', 'apps/android/core/*/src/test/resources/contracts/**', 'pnpm-lock.yaml', '.github/workflows/backend.yml']
 
 jobs:
   test:
@@ -34,4 +34,5 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter backend exec tsc --noEmit -p .
+      # Includes the Android contracts: a response that no longer matches its recorded file fails here.
       - run: pnpm --filter backend test

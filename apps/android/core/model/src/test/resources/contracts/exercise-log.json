@@ -1,0 +1,15 @@
+{
+  "request": "PATCH /api/tracker/exercise-logs/:id",
+  "status": 200,
+  "body": {
+    "id": 1,
+    "exerciseId": 2,
+    "exerciseSessionId": 1,
+    "listItemId": 1,
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "distance": 5.25,
+    "duration": 1500,
+    "distanceUnit": "km",
+    "weightUnit": "kg"
+  }
+}

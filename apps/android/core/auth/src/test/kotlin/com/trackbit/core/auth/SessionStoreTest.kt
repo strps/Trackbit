@@ -1,6 +1,14 @@
 package com.trackbit.core.auth
 
+import androidx.datastore.core.DataStore
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -97,6 +105,24 @@ class SessionStoreTest {
             h.store.updateUser(ifToken = "new", user = user(name = "fresh"))
             assertEquals(AuthState.SignedIn(user(name = "fresh")), h.store.state.value)
             assertEquals("fresh", h.dataStore.data.first()!!.user.name)
+        }
+    }
+
+    @Test(timeout = 10_000)
+    fun `a session read that fails unexpectedly fails currentToken instead of blocking it`() {
+        val broken = object : DataStore<StoredSession?> {
+            override val data: Flow<StoredSession?> = flow { throw IllegalStateException("broken") }
+            override suspend fun updateData(transform: suspend (t: StoredSession?) -> StoredSession?) = error("unused")
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + CoroutineExceptionHandler { _, _ -> })
+        val store = SessionStore(broken, emptySet(), scope)
+        try {
+            store.currentToken()
+            throw AssertionError("expected the load failure")
+        } catch (e: IllegalStateException) {
+            assertEquals("broken", e.message)
+        } finally {
+            scope.cancel()
         }
     }
 }

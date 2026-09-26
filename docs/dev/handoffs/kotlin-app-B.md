@@ -1,7 +1,7 @@
 # Handoff: Kotlin app — Workstream B (Android core)
 
 - **Plan:** [kotlin-app.md](../tasks/kotlin-app.md). Read only §1, §2, §3 ("As built" column) and the Phase 0 checklist in §4.
-- **Status:** Phase 0. Workstream A (backend) is done. Workstream B: B1–B6, B8 and B9 are done. Next is B10; B7 can go any time.
+- **Status:** Phase 0. Workstream A (backend) is done. Workstream B: B1–B9 are done. Next is B10.
 - **Branch:** `kotlin-app` · **Last run:** 2026-09-26
 
 ## Where we are
@@ -16,7 +16,7 @@
 - `core:auth`: `AuthRepository`, `AuthState`, the encrypted `SessionStore` and `SignOutHook`.
 - `core:data`: `TrackerRepository` (reads + outbox writes), `TrackerSync` (flush/pull), `OutboxWorker`/`SyncWorker`, `PeriodicSync` and two sign-out hooks.
 
-The unit tests total 129: 48 in model, 26 in network (MockWebServer), 15 in database (Robolectric), 20 in auth (plain JVM: real Tink, a temp-file DataStore and MockWebServer) and 20 in data (Robolectric, in-memory Room, a fake `TrackerService`, `work-testing`). `feature:auth` and `widget` are still empty stubs. The signed-out cold start was checked on the emulator (WorkManager initializes via Hilt, no crash); **the signed-in sync path has only run in unit tests**, because nothing can sign in until B10. The CI workflow has **not run on GitHub yet**, because nothing is pushed.
+The unit tests total 126: 51 in model (incl. the recorded contracts), 19 in network (MockWebServer, incl. the recorded error bodies), 15 in database (Robolectric), 21 in auth (plain JVM: real Tink, a temp-file DataStore and MockWebServer) and 20 in data (Robolectric, in-memory Room, a fake `TrackerService`, `work-testing`). `feature:auth` and `widget` are still empty stubs. The signed-out cold start was checked on the emulator (WorkManager initializes via Hilt, no crash); **the signed-in sync path has only run in unit tests**, because nothing can sign in until B10. The CI workflow has **not run on GitHub yet**, because nothing is pushed.
 
 The API contract is the "As built" column of plan §3. That column is authoritative; do not use the older wording elsewhere in the plan.
 
@@ -41,7 +41,6 @@ The API contract is the "As built" column of plan §3. That column is authoritat
   - `ColorStop` / `Rgba` decode `[r,g,b]` or `[r,g,b,a]`.
   - DTOs follow the real responses, not `@trackbit/types`: `Exercise` has `lastPerformance` and no `muscleGroup`; `frozen` defaults to `false` because create/update responses omit it.
   - `TrackableHabit` (type, isAntiHabit, dailyGoal) is implemented by `Habit` and `TodayHabit` and is what `Streak` and `HabitProgress` take.
-  - Test fixtures in `core/model/src/test/resources/fixtures` are hand-built; B7 replaces them with recorded contracts.
 - **B2 backend fixes:**
   - `dailyGoal` must be an integer ≥ 1 (Zod on create/update + CHECK `habits_daily_goal_positive`, migration `0010`). The web's `dailyGoal || 1` patches are gone and the habit form enforces `min(1)`.
   - `PUT /api/habits/:id` no longer resets `dailyGoal`/`weeklyGoal` to defaults when they are omitted.
@@ -69,6 +68,7 @@ The API contract is the "As built" column of plan §3. That column is authoritat
   - Sign-in: `signIn()` → `session(token)` with the new token passed explicitly; saved only if the server returns a user. Signing in as a different user runs the sign-out hooks first.
   - Sign-out: clears locally at once, then revokes on the server in the auth scope with the old token passed explicitly (offline, the session just expires).
   - `refresh()`: `null` or 401 → signed out, network/5xx → keep the cached session (offline boot), success → update the cached user. **Nothing calls it yet: B10 should call it when the app starts.**
+  - `load()` fails every waiter (`currentToken()`, `locked {}`) if the read throws anything but `IOException`; before B7 it left them blocked forever. `StoreHarness.close()` joins its scope, because two DataStores open on one file throw.
   - **`SignOutHook`** (`@IntoSet`, declared with `@Multibinds`): runs before `SignedOut` is emitted and before another sign-in is saved, on sign-out, on a 401, and **at startup when there is no session**. So "signed out" always means "no cached data", even after a crash mid-sign-out. `core:data`'s `ClearDatabaseOnSignOut` runs `clearAllTables()` (outbox included).
 - **B4 changes elsewhere:**
   - `AuthService.getSession` / `signOut` take an explicit `Authorization` header; `session(token = null)` checks a token that isn't the session's yet. `AuthInterceptor` sends a request that already has `Authorization` as is and doesn't report its 401.
@@ -94,6 +94,12 @@ The API contract is the "As built" column of plan §3. That column is authoritat
   - Outputs: strings, `GradientPresets.kt`, `WebColors.kt` and the 15 `ic_habit_*.xml`.
   - Fails on enum drift from `@trackbit/types`, locale asymmetry, key collisions, or ICU it can't express on Android.
   - The CI job `generated` runs the check. See the [README](../../../apps/android/README.md#generated-from-the-web-app).
+- **B7 contracts** ([recorder](../../../apps/backend/test/contracts.test.ts)):
+  - The backend suite signs in like the app, seeds data through the real API, and records `{ request, status, body }` files with `toMatchFileSnapshot`. Success bodies go to `core/model/src/test/resources/contracts/`, error bodies to `core/network/src/test/resources/contracts/`.
+  - Normalizing: every timestamp becomes `2026-01-01T00:00:00…` in its original shape (so a format change still shows up), and tokens, session id and user id become placeholders. Numeric ids are stable because each test truncates with `RESTART IDENTITY`. Pass an explicit `order` to `createHabit` there: its counter depends on test order.
+  - A changed response fails the backend suite (CI never writes snapshots). Re-record with `pnpm --filter backend test:contracts:update` and review the diff. A file nothing records fails the last test.
+  - Kotlin: `DecodeTest` (model) decodes every file, and `ErrorContractTest` (network) maps every error body through Retrofit + `safeCall`. Both fail on a recorded file they have no entry for. Forward-compat cases (unknown enums, 3-channel stops) stay inline, since a real server can't send them.
+  - Drifts it found: `LimitsResponse.effective` is null for admins (now nullable). `habit_frozen` from `PUT /api/habits/:id` and `custom_exercise_frozen` from `PATCH` exercises had no id; both now come from [frozen-errors.ts](../../../apps/backend/src/lib/frozen-errors.ts).
 - **B3/B9 fixes outside Android:**
   - Idempotency errors now return `{ error: <code>, message: <localized> }`, so clients can match `idempotency_request_in_progress` ([idempotency.ts](../../../apps/backend/src/middleware/idempotency.ts)).
   - Every route validates through `validator()` ([lib/validator.ts](../../../apps/backend/src/lib/validator.ts)), so every 400 is `{ message, errors }`. Before, 26 validators had no hook and answered `{ success: false, error: <ZodError> }`, which the web showed as "[object Object]". A test fails if a route imports `@hono/zod-validator` directly. The unused `crudRouter.ts` was deleted, and the admin limits hooks now show `message`.
@@ -103,11 +109,10 @@ The API contract is the "As built" column of plan §3. That column is authoritat
   - [android.yml](../../../.github/workflows/android.yml)
   - [README](../../../apps/android/README.md)
 
-## Next: B10 (B7 any time)
+## Next: B10
 
 The details are in the plan's §4 checklist. Notes for each:
 
-- **B7:** when recording contracts, delete the hand-built fixtures and point `DecodeTest` at the recorded ones. Also record an idempotency 409/422 body and a validation 400 body.
 - **B10:**
   - Strings come from `com.trackbit.core.i18n.R.string.auth_sign_in_*`. Error copy is under `errors_*`.
   - Route on `AuthRepository.state`: `Loading` → nothing (or splash), `SignedOut` → sign-in, `SignedIn` → Today. Call `refresh()` once when the app starts.
@@ -137,6 +142,7 @@ The details are in the plan's §4 checklist. Notes for each:
 - **Tracker writes go through `TrackerRepository`**, never DAOs directly: it is what pairs the optimistic change with its outbox op in one transaction. `core:database` is `implementation` in `core:data` so features can't reach the DAOs.
 - **Every Room write made after a network call is fenced on the session token** (`TrackerSync.fenced`). New sync code must do the same.
 - **Sync runs under `TrackerSync`'s mutex.** A pull overlapping a flush could store a snapshot older than an op confirmed in between.
+- **Contract files are never hand-edited.** They are recorded from the real backend; change the backend (or the recorder) and re-record.
 - **Generated files are never hand-edited.** They carry a "Generated by" header; change the source and run `pnpm android:generate`.
 
 ## Decisions made in B1
@@ -201,9 +207,9 @@ The details are in the plan's §4 checklist. Notes for each:
 ## Verify
 
 ```bash
-pnpm android:build && pnpm android:test && pnpm android:lint   # all green, 0 lint issues, 129 unit tests
+pnpm android:build && pnpm android:test && pnpm android:lint   # all green, 0 lint issues, 126 unit tests
 pnpm android:generate:check                                     # 19 generated files up to date
-pnpm --filter backend test                                      # 46 passing
+pnpm --filter backend test                                      # 54 passing (8 record the Android contracts)
 pnpm --filter backend exec tsc --noEmit -p .
 ```
 
@@ -230,3 +236,4 @@ pnpm --filter backend exec tsc --noEmit -p .
   Next: B4 → B6 → B10.
 - 2026-09-26 — B4 done: `core:auth` (encrypted session DataStore, `SessionStore`, `AuthRepository`, sign-out hooks, 20 tests), `ClearDatabaseOnSignOut` in `core:data`, explicit-token `get-session`/`sign-out`, Room as `api`, backups off. Next: B6 → B10.
 - 2026-09-26 — B6 done: `core:data` (`TrackerRepository`, `TrackerSync` with session fence, `OutboxWorker`/`SyncWorker`, `PeriodicSync`, `CancelSyncOnSignOut`), `SyncDao.applyConfirmed`, `Streak.beforeDay`, WorkManager + Hilt in `app`, backup/transfer exclusion rules (29 new tests). Next: B10.
+- 2026-09-26 — B7 done: backend `contracts.test.ts` records 13 model and 11 error contracts; `DecodeTest` and the new `ErrorContractTest` decode them; hand-built fixtures deleted. Fixes it surfaced: nullable `LimitsResponse.effective` (admins), a shared frozen-error helper (ids on every frozen 403), and a `SessionStore.load()` hang on unexpected read errors (flaky auth test). Next: B10.

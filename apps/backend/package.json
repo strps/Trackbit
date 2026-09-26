@@ -14,7 +14,8 @@
     "db:pull": "pnpm drizzle-kit pull",
     "db:drop": "pnpm drizzle-kit drop",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:contracts:update": "vitest run test/contracts.test.ts --update"
   },
   "keywords": [],
   "author": "",

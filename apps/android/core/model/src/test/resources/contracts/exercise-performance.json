@@ -1,0 +1,15 @@
+{
+  "request": "POST /api/tracker/exercise-performances",
+  "status": 201,
+  "body": {
+    "id": 2,
+    "exerciseLogId": 1,
+    "number": 2,
+    "reps": 6,
+    "weight": 62.5,
+    "duration": 45000,
+    "distance": 1.25,
+    "rpe": 8,
+    "createdAt": "2026-01-01T00:00:00.000Z"
+  }
+}
