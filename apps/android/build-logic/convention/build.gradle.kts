@@ -31,6 +31,10 @@ gradlePlugin {
             id = libs.plugins.trackbit.android.compose.get().pluginId
             implementationClass = "AndroidComposeConventionPlugin"
         }
+        register("androidFeature") {
+            id = libs.plugins.trackbit.android.feature.get().pluginId
+            implementationClass = "AndroidFeatureConventionPlugin"
+        }
         register("hilt") {
             id = libs.plugins.trackbit.hilt.get().pluginId
             implementationClass = "HiltConventionPlugin"

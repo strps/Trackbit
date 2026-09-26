@@ -62,6 +62,8 @@ dependencies {
     implementation(projects.core.i18n)
     implementation(projects.core.network)
     implementation(projects.feature.auth)
+    implementation(projects.feature.tracker)
+    implementation(libs.androidx.hilt.lifecycle.viewmodel.compose)
     implementation(projects.widget)
 
     implementation(libs.androidx.activity.compose)

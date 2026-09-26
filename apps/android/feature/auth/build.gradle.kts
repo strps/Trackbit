@@ -1,7 +1,5 @@
 plugins {
-    alias(libs.plugins.trackbit.android.library)
-    alias(libs.plugins.trackbit.android.compose)
-    alias(libs.plugins.trackbit.hilt)
+    alias(libs.plugins.trackbit.android.feature)
 }
 
 android {
@@ -10,6 +8,4 @@ android {
 
 dependencies {
     implementation(projects.core.auth)
-    implementation(projects.core.designsystem)
-    implementation(projects.core.i18n)
 }

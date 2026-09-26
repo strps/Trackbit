@@ -37,6 +37,7 @@ androidx-compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
 androidx-compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
 androidx-datastore = { module = "androidx.datastore:datastore", version.ref = "datastore" }
+androidx-hilt-lifecycle-viewmodel-compose = { module = "androidx.hilt:hilt-lifecycle-viewmodel-compose", version.ref = "hiltAndroidx" }
 androidx-hilt-compiler = { module = "androidx.hilt:hilt-compiler", version.ref = "hiltAndroidx" }
 androidx-hilt-work = { module = "androidx.hilt:hilt-work", version.ref = "hiltAndroidx" }
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
@@ -82,6 +83,7 @@ room = { id = "androidx.room", version.ref = "room" }
 # Convention plugins, defined in build-logic
 trackbit-android-application = { id = "trackbit.android.application" }
 trackbit-android-compose = { id = "trackbit.android.compose" }
+trackbit-android-feature = { id = "trackbit.android.feature" }
 trackbit-android-library = { id = "trackbit.android.library" }
 trackbit-hilt = { id = "trackbit.hilt" }
 trackbit-jvm-library = { id = "trackbit.jvm.library" }

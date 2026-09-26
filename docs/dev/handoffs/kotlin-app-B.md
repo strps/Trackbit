@@ -1,12 +1,12 @@
 # Handoff: Kotlin app — Workstream B (Android core)
 
 - **Plan:** [kotlin-app.md](../tasks/kotlin-app.md). Read only §1, §2, §3 ("As built" column) and the Phase 0 checklist in §4.
-- **Status:** Phase 0. Workstream A (backend) is done. Workstream B: B1–B9 are done. Next is B10.
+- **Status:** Phase 0 is done (Workstream A and B1–B10). Next is Phase 1, Workstream C (widgets).
 - **Branch:** `kotlin-app` · **Last run:** 2026-09-26
 
 ## Where we are
 
-`apps/android/` builds. `./gradlew assembleDebug testDebugUnitTest lintDebug` passes with zero lint issues. These modules have code:
+`apps/android/` builds. `./gradlew assembleDebug testDebugUnitTest lintDebug` passes with zero lint issues. Every module except `widget` has code:
 
 - `core:model`: DTOs, request bodies, fallback enums, `Streak`, `HabitProgress`, `colorAt`, and the generated `GradientPresets`.
 - `core:network`: Retrofit services, interceptors, `ApiError` and `safeCall`.
@@ -15,8 +15,11 @@
 - `core:i18n`: generated `strings.xml` (en, es).
 - `core:auth`: `AuthRepository`, `AuthState`, the encrypted `SessionStore` and `SignOutHook`.
 - `core:data`: `TrackerRepository` (reads + outbox writes), `TrackerSync` (flush/pull), `OutboxWorker`/`SyncWorker`, `PeriodicSync` and two sign-out hooks.
+- `feature:auth`: `SignInScreen` + `SignInViewModel`.
+- `feature:tracker`: the placeholder `TodayScreen` + `TodayViewModel`, and `DayClock`.
+- `app`: `AppViewModel` (auth state, refresh at launch, sign-out) and `TrackbitNavHost` (routes on `AuthState`).
 
-The unit tests total 126: 51 in model (incl. the recorded contracts), 19 in network (MockWebServer, incl. the recorded error bodies), 15 in database (Robolectric), 21 in auth (plain JVM: real Tink, a temp-file DataStore and MockWebServer) and 20 in data (Robolectric, in-memory Room, a fake `TrackerService`, `work-testing`). `feature:auth` and `widget` are still empty stubs. The signed-out cold start was checked on the emulator (WorkManager initializes via Hilt, no crash); **the signed-in sync path has only run in unit tests**, because nothing can sign in until B10. The CI workflow has **not run on GitHub yet**, because nothing is pushed.
+The unit tests total 140: 51 in model (incl. the recorded contracts), 19 in network (MockWebServer, incl. the recorded error bodies), 15 in database (Robolectric), 21 in auth (plain JVM: real Tink, a temp-file DataStore and MockWebServer), 20 in data (Robolectric, in-memory Room, a fake `TrackerService`, `work-testing`), 7 in feature:auth and 7 in feature:tracker (plain JVM ViewModel tests with fakes). `widget` is still an empty stub. **The Phase 0 exit was checked on the emulator against the local backend** (2026-09-26): the unverified-email error, sign-in, the first pull, +1/toggle reaching the server, an offline write with the pending line and the offline snackbar, the flush after reconnecting, an offline cold start on the cached session, and sign-out (back to an empty form; Room's three tables empty). The CI workflow has **not run on GitHub yet**, because nothing is pushed.
 
 The API contract is the "As built" column of plan §3. That column is authoritative; do not use the older wording elsewhere in the plan.
 
@@ -67,7 +70,7 @@ The API contract is the "As built" column of plan §3. That column is authoritat
   - Every change runs under one mutex. Changes after a network call are conditional on the token they started with (`clear(ifToken)`, `updateUser(ifToken)`), so a stale 401 or response can't undo a newer sign-in.
   - Sign-in: `signIn()` → `session(token)` with the new token passed explicitly; saved only if the server returns a user. Signing in as a different user runs the sign-out hooks first.
   - Sign-out: clears locally at once, then revokes on the server in the auth scope with the old token passed explicitly (offline, the session just expires).
-  - `refresh()`: `null` or 401 → signed out, network/5xx → keep the cached session (offline boot), success → update the cached user. **Nothing calls it yet: B10 should call it when the app starts.**
+  - `refresh()`: `null` or 401 → signed out, network/5xx → keep the cached session (offline boot), success → update the cached user. `AppViewModel` calls it once per launch (B10).
   - `load()` fails every waiter (`currentToken()`, `locked {}`) if the read throws anything but `IOException`; before B7 it left them blocked forever. `StoreHarness.close()` joins its scope, because two DataStores open on one file throw.
   - **`SignOutHook`** (`@IntoSet`, declared with `@Multibinds`): runs before `SignedOut` is emitted and before another sign-in is saved, on sign-out, on a 401, and **at startup when there is no session**. So "signed out" always means "no cached data", even after a crash mid-sign-out. `core:data`'s `ClearDatabaseOnSignOut` runs `clearAllTables()` (outbox included).
 - **B4 changes elsewhere:**
@@ -104,22 +107,30 @@ The API contract is the "As built" column of plan §3. That column is authoritat
   - Idempotency errors now return `{ error: <code>, message: <localized> }`, so clients can match `idempotency_request_in_progress` ([idempotency.ts](../../../apps/backend/src/middleware/idempotency.ts)).
   - Every route validates through `validator()` ([lib/validator.ts](../../../apps/backend/src/lib/validator.ts)), so every 400 is `{ message, errors }`. Before, 26 validators had no hook and answered `{ success: false, error: <ZodError> }`, which the web showed as "[object Object]". A test fails if a route imports `@hono/zod-validator` directly. The unused `crudRouter.ts` was deleted, and the admin limits hooks now show `message`.
   - The es `list.items_count` gained CLDR's `many` form ("1.000.000 de ejercicios"). Lint flagged it as missing, and the web needed it too.
+- **B10 app shell** ([feature/auth](../../../apps/android/feature/auth/src/main/kotlin/com/trackbit/feature/auth), [feature/tracker](../../../apps/android/feature/tracker/src/main/kotlin/com/trackbit/feature/tracker), [TrackbitNavHost.kt](../../../apps/android/app/src/main/kotlin/com/trackbit/app/navigation/TrackbitNavHost.kt)):
+  - `trackbit.android.feature` (build-logic) = library + compose + hilt + designsystem + i18n + `hilt-lifecycle-viewmodel-compose` + `lifecycle-runtime-compose`. Every `feature/*` module applies only it.
+  - Routing: one NavHost, composed once `AuthState` leaves `Loading`, with a `SignedOutGraph` (sign-in; sign-up/forgot go here) and a `SignedInGraph` (Today). A state change navigates to the other graph with `popUpTo(graph) { inclusive = true }`, which clears the old back stack and its ViewModels. `startDestination` is `remember`ed, because changing it makes NavHost reset the graph by itself. Screens never navigate on sign-in/out themselves.
+  - `AppViewModel` calls `AuthRepository.refresh()` once per launch, and owns `signOut()`, passed down to Today as a callback, so `feature:tracker` doesn't depend on `core:auth`.
+  - Sign-in errors: 401 → invalid credentials, 403 `EMAIL_NOT_VERIFIED`, `Network` → offline, anything else → `auth_sign_in_error_unexpected`. The email is trimmed and shape-checked locally. On success the form stays "submitting" until routing replaces it.
+  - Today: `DayClock.today` (minute tick + time/timezone/date broadcasts, only while collected) → `flatMapLatest { observeDay(day) }`, so the day and its rows change together. Writes use the row's `TrackedHabit.day`. It refreshes once when opened and on pull. `Retry` → an offline snackbar, `Failed` → `errors_generic_title`, `HabitFrozen` → `errors_limits_habit_frozen_body`. It shows the pending-write count, `tracker_streak_badge` for streaks ≥ 2 (as the web does, and nothing for `null`), and the Frozen badge with disabled actions. Check rows toggle, count/negative rows get +1; timed and complex rows are read-only until Phase 2.
+  - Android-only strings live in hand-written `core/i18n/.../values[-es]/strings_android.xml` with an `android_` prefix. A clash with a generated key would fail the resource merge.
+- **B10 fixes outside Android:**
+  - The web `StreakBadge` hardcoded "day streak" in English. It now uses the new `tracker.streak_badge` plural (en, es with `many`), which Android shares.
+  - `lib/email.ts` built the Resend client at import, and the SDK throws without a key, so the backend couldn't start without `RESEND_API_KEY` and its "skip sending" branch was unreachable. The client is now created only when there is a key.
 - **B1 repo wiring:**
   - Root `pnpm android:build|test|lint` scripts
   - [android.yml](../../../.github/workflows/android.yml)
   - [README](../../../apps/android/README.md)
 
-## Next: B10
+## Next: Phase 1 (Workstream C, widgets)
 
-The details are in the plan's §4 checklist. Notes for each:
+Plan §4 Phase 1 has the widget list and the checklist. Start a `kotlin-app-C.md` handoff from it. Notes from Phase 0:
 
-- **B10:**
-  - Strings come from `com.trackbit.core.i18n.R.string.auth_sign_in_*`. Error copy is under `errors_*`.
-  - Route on `AuthRepository.state`: `Loading` → nothing (or splash), `SignedOut` → sign-in, `SignedIn` → Today. Call `refresh()` once when the app starts.
-  - Sign-in errors: `Unauthorized(code = "INVALID_EMAIL_OR_PASSWORD")`, `Network`, and Better-Auth's 403 `EMAIL_NOT_VERIFIED` (arrives as `Unknown(403, "EMAIL_NOT_VERIFIED", …)`).
-  - Today screen: `TrackerRepository.observeDay(LocalDate.now())`; +1 → `increment(id, day, 1)`, check → `toggle`; pull-to-refresh → `refresh()` (`Retry` = offline/server, show a hint; `SignedOut` = routing will follow). Show `WriteResult.HabitFrozen` with the `errors_limits_habit_frozen_*` strings. `streak == null` means "unknown until sync", so show no number. Also call `refresh()` when Today opens: nothing else pulls right after sign-in (the periodic sync can take 15 min).
-  - Recompute "today" when the date changes while the screen is open (midnight). The repository takes the day as a parameter and never assumes it.
-  - B10 is the first code to inject `AuthRepository` and the network services. The graph was checked once with a temporary injection this run; Dagger does not validate bindings nothing requests, even with `fullBindingGraphValidation`.
+- Widgets read `TrackerRepository.observeDay` / `observeHabit` and write through `increment` / `toggle` (`WriteResult` covers frozen and missing). Never touch DAOs.
+- `WidgetUpdater` isn't built. Plan §2.2: one class in `core:data` watches the DAOs and calls `updateAll`, so writes need no hook.
+- Midnight: `feature:tracker`'s `DayClock` only works while a screen collects it. Widgets need the plan's alarm or WorkManager job at the next local midnight. Consider moving a shared "current day" source into `core:data` then.
+- Auth changes: widgets must show "Sign in" when signed out. A `SignOutHook` or a collector of `AuthRepository.state` can trigger the update.
+- The timer engine (timed habits in W1, the Phase 2 rest timer) is new: persist a start timestamp + duration, not a ticking counter.
 
 ## Invariants — do not break these
 
@@ -134,7 +145,9 @@ The details are in the plan's §4 checklist. Notes for each:
 - Unknown server enum values decode to `Unknown` instead of crashing. An icon id outside `HABIT_ICON_IDS` falls back to `star`.
 - **`core:model` has no Android dependencies.** It uses `trackbit.jvm.library`.
 - **Module build files only apply plugins and declare dependencies.** Shared config (SDK levels, JVM 21, lint, test deps) belongs in `build-logic`, and versions belong in the catalog.
-- **`feature/*` and `widget` never depend on each other.** Only `app` wires modules together.
+- **`feature/*` and `widget` never depend on each other.** Only `app` wires modules together. Feature modules apply `trackbit.android.feature` and nothing else.
+- **Routing follows `AuthState`.** Screens never navigate on sign-in or sign-out; `TrackbitNavHost` swaps graphs and clears the back stack.
+- **Screens write to the day they show** (`TrackedHabit.day`), never to a separately computed "today".
 - **Signed out ⇒ Room is empty.** Anything that caches per-user data registers a `SignOutHook`.
 - **The session changes only through `SessionStore`**, and changes after a network call are conditional on the token they started with.
 - **Tracker writes take a non-null `IdempotencyKey`.** Don't add a default value or an overload without one.
@@ -144,6 +157,17 @@ The details are in the plan's §4 checklist. Notes for each:
 - **Sync runs under `TrackerSync`'s mutex.** A pull overlapping a flush could store a snapshot older than an op confirmed in between.
 - **Contract files are never hand-edited.** They are recorded from the real backend; change the backend (or the recorder) and re-record.
 - **Generated files are never hand-edited.** They carry a "Generated by" header; change the source and run `pnpm android:generate`.
+
+## Decisions made in B10
+
+| Question | Decision | Why |
+|---|---|---|
+| Where does Today live? | A new `feature:tracker` module (plan §2.1) | Phase 2 grows it into the real tracker. |
+| Who owns sign-out? | `AppViewModel`, passed to Today as `onSignOut` | Keeps `feature:tracker` off `core:auth`. Phase 3's account screen can take it over. |
+| How does routing react to auth? | One NavHost, one graph per state, `popUpTo(graph, inclusive)` on change | Separate hosts per state would leave the old back stack's ViewModels alive, and a changing `startDestination` makes NavHost reset the graph itself. |
+| How does "today" roll over on screen? | A `DayClock` flow from the minute tick and time/zone broadcasts, while collected | Rolls over at midnight and after a timezone change, and costs nothing in the background. |
+| Strings the web doesn't have (sign-in errors, offline, pending) | `strings_android.xml`, `android_` prefix | The web shows Better-Auth's raw English messages; Android maps codes to translated text. |
+| Streak text | A new web key `tracker.streak_badge`, shared | The web string was hardcoded English; fixing it at the source serves both apps. |
 
 ## Decisions made in B1
 
@@ -204,10 +228,16 @@ The details are in the plan's §4 checklist. Notes for each:
 - **Robolectric downloads `android-all` for SDK 36 on the first test run** (about 200 MB, cached in `~/.m2`). The first `:core:database:testDebugUnitTest` is slow.
 - **SQLite on minSdk 26 is 3.18, with no `UPSERT` syntax.** Use Room's `@Upsert` (insert, then update) or a `@Transaction`, never `INSERT … ON CONFLICT DO UPDATE` in a `@Query`. Never use `OnConflictStrategy.REPLACE` on `habits`: REPLACE deletes the row, and the FK cascade would delete its day logs.
 
+- **Local smoke user:** `b10-smoke@example.com` / `b10-smoke-pass` (role `tester`, verified by hand, 4 habits) exists in the **local dev DB only**. Delete it when it's no longer useful.
+- **Testing sign-up locally sends real email** when `RESEND_API_KEY` is set in `apps/backend/.env`. Start the backend with `RESEND_API_KEY= pnpm dev:backend` to skip sending. Node's `--env-file` doesn't override a variable that is already set, even to empty.
+- **`set-auth-token` appears twice in the sign-in headers** (`access-control-expose-headers` names it). Grep for `^set-auth-token:` when scripting.
+- **Emulator input:** `adb shell input text` goes to the focused field. Tap fields using bounds from `uiautomator dump`, since the keyboard moves the layout. Pull-to-refresh needs a slow, long swipe (`input swipe 540 1200 540 2000 1200`).
+- **Memory:** the emulator ran with `-memory 1536` while VS Code was open.
+
 ## Verify
 
 ```bash
-pnpm android:build && pnpm android:test && pnpm android:lint   # all green, 0 lint issues, 126 unit tests
+pnpm android:build && pnpm android:test && pnpm android:lint   # all green, 0 lint issues, 140 unit tests
 pnpm android:generate:check                                     # 19 generated files up to date
 pnpm --filter backend test                                      # 54 passing (8 record the Android contracts)
 pnpm --filter backend exec tsc --noEmit -p .
@@ -237,3 +267,4 @@ pnpm --filter backend exec tsc --noEmit -p .
 - 2026-09-26 — B4 done: `core:auth` (encrypted session DataStore, `SessionStore`, `AuthRepository`, sign-out hooks, 20 tests), `ClearDatabaseOnSignOut` in `core:data`, explicit-token `get-session`/`sign-out`, Room as `api`, backups off. Next: B6 → B10.
 - 2026-09-26 — B6 done: `core:data` (`TrackerRepository`, `TrackerSync` with session fence, `OutboxWorker`/`SyncWorker`, `PeriodicSync`, `CancelSyncOnSignOut`), `SyncDao.applyConfirmed`, `Streak.beforeDay`, WorkManager + Hilt in `app`, backup/transfer exclusion rules (29 new tests). Next: B10.
 - 2026-09-26 — B7 done: backend `contracts.test.ts` records 13 model and 11 error contracts; `DecodeTest` and the new `ErrorContractTest` decode them; hand-built fixtures deleted. Fixes it surfaced: nullable `LimitsResponse.effective` (admins), a shared frozen-error helper (ids on every frozen 403), and a `SessionStore.load()` hang on unexpected read errors (flaky auth test). Next: B10.
+- 2026-09-26 — B10 done: `feature:auth` sign-in, new `feature:tracker` Today (+ `DayClock`), auth-routed `TrackbitNavHost`, `AppViewModel`, `trackbit.android.feature` plugin, `strings_android.xml` (14 new tests). Fixes: the web streak badge is translated (`tracker.streak_badge`), and the backend boots without a Resend key. Phase 0 exit checked on the emulator. Next: Phase 1 (Workstream C).

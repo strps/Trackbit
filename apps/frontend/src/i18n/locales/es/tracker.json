@@ -1,6 +1,7 @@
 {
   "loading": "Cargando hábitos...",
   "empty": "No se encontraron hábitos. ¡Ve a Configuración para crear uno!",
+  "streak_badge": "{count, plural, one {Racha de # día} many {Racha de # de días} other {Racha de # días}}",
   "anti_habits": "Anti-Hábitos",
   "activity_loading": "Cargando sesiones...",
   "activity_no_sessions_title": "No se encontraron sesiones",

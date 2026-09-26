@@ -35,7 +35,7 @@ Release builds need the backend URL, which must end in `/`:
 ```
 app/                  Application, MainActivity, nav host, Hilt root
 build-logic/          convention plugins (trackbit.android.application, .library, .compose,
-                      trackbit.hilt, trackbit.room, trackbit.jvm.library)
+                      .feature, trackbit.hilt, trackbit.room, trackbit.jvm.library)
 core/model            DTOs + domain logic. Pure Kotlin/JVM, no Android
 core/network          Retrofit, interceptors, error mapping
 core/database         Room cache + outbox
@@ -43,7 +43,8 @@ core/data             repositories, sync, workers
 core/auth             session/token store
 core/designsystem     theme, colors, icons, shared composables
 core/i18n             generated string resources
-feature/*             one module per screen group
+feature/*             one module per screen group (trackbit.android.feature: Compose, Hilt
+                      ViewModels, designsystem, i18n)
 widget/               Glance widgets
 ```
 

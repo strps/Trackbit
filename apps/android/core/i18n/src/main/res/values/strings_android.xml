@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android-only strings, written by hand. Web strings are generated into strings.xml. -->
+<resources>
+    <string name="android_auth_sign_in_invalid_credentials">Invalid email or password.</string>
+    <string name="android_auth_sign_in_email_not_verified">Verify your email before signing in. Check your inbox for the link.</string>
+    <string name="android_errors_offline">Can\'t reach Trackbit. Check your connection and try again.</string>
+    <string name="android_tracker_offline">Offline. Showing saved data; changes sync when you\'re back online.</string>
+    <string name="android_tracker_increment">Add 1 to %1$s</string>
+    <plurals name="android_tracker_pending">
+        <item quantity="one">%1$d change waiting to sync</item>
+        <item quantity="other">%1$d changes waiting to sync</item>
+    </plurals>
+</resources>

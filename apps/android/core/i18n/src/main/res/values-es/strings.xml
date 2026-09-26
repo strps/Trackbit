@@ -254,6 +254,11 @@
     <string name="nav_sign_in">Iniciar sesión</string>
     <string name="tracker_loading">Cargando hábitos...</string>
     <string name="tracker_empty">No se encontraron hábitos. ¡Ve a Configuración para crear uno!</string>
+    <plurals name="tracker_streak_badge">
+        <item quantity="one">Racha de %1$d día</item>
+        <item quantity="many">Racha de %1$d de días</item>
+        <item quantity="other">Racha de %1$d días</item>
+    </plurals>
     <string name="tracker_anti_habits">Anti-Hábitos</string>
     <string name="tracker_activity_loading">Cargando sesiones...</string>
     <string name="tracker_activity_no_sessions_title">No se encontraron sesiones</string>

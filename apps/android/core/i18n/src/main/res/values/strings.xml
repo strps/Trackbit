@@ -253,6 +253,10 @@
     <string name="nav_sign_in">Sign In</string>
     <string name="tracker_loading">Loading habits...</string>
     <string name="tracker_empty">No habits found. Go to Settings to create one!</string>
+    <plurals name="tracker_streak_badge">
+        <item quantity="one">%1$d day streak</item>
+        <item quantity="other">%1$d day streak</item>
+    </plurals>
     <string name="tracker_anti_habits">Anti-Habits</string>
     <string name="tracker_activity_loading">Loading sessions...</string>
     <string name="tracker_activity_no_sessions_title">No Sessions Found</string>
