@@ -15,9 +15,10 @@ class RoomConventionPlugin : Plugin<Project> {
             extensions.configure<RoomExtension> {
                 schemaDirectory("$projectDir/schemas")
             }
+            // `api`: the database class extends RoomDatabase, and repositories use `withTransaction`.
             dependencies {
-                add("implementation", libs.library("androidx-room-runtime"))
-                add("implementation", libs.library("androidx-room-ktx"))
+                add("api", libs.library("androidx-room-runtime"))
+                add("api", libs.library("androidx-room-ktx"))
                 add("ksp", libs.library("androidx-room-compiler"))
             }
         }

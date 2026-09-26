@@ -12,6 +12,7 @@ import retrofit2.HttpException
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.Header
 import retrofit2.http.POST
 
 /** Better-Auth's endpoints under `/api/auth`. Prefer the extension functions below. */
@@ -20,12 +21,16 @@ interface AuthService {
     @POST("api/auth/sign-in/email")
     suspend fun signInEmail(@Body body: SignInRequest): Response<Unit>
 
-    /** A [SessionResponse], or JSON `null` when the token is not valid; see [session]. */
+    /**
+     * A [SessionResponse], or JSON `null` when the token is not valid; see [session].
+     * [authorization] overrides the current session's token.
+     */
     @GET("api/auth/get-session")
-    suspend fun getSession(): JsonElement
+    suspend fun getSession(@Header("Authorization") authorization: String?): JsonElement
 
+    /** Revokes the session [authorization] names, which may already be gone from the app. */
     @POST("api/auth/sign-out")
-    suspend fun signOut(): Response<Unit>
+    suspend fun signOut(@Header("Authorization") authorization: String): Response<Unit>
 }
 
 /** Signs in and returns the session token to send as the bearer token. */
@@ -47,9 +52,12 @@ suspend fun AuthService.signIn(email: String, password: String): ApiResult<Strin
 /**
  * The signed-in user and session, or null when the server no longer accepts the token.
  * Better-Auth answers that case with 200 and a `null` body rather than 401.
+ *
+ * [token] checks a token that isn't the current session's yet, e.g. one sign-in just returned.
+ * A 401 for it is not reported as a lost session.
  */
-suspend fun AuthService.session(): ApiResult<SessionResponse?> = safeCall {
-    when (val json = getSession()) {
+suspend fun AuthService.session(token: String? = null): ApiResult<SessionResponse?> = safeCall {
+    when (val json = getSession(token?.let { "Bearer $it" })) {
         JsonNull -> null
         else -> TrackbitJson.decodeFromJsonElement(SessionResponse.serializer(), json)
     }

@@ -1,7 +1,7 @@
 # Handoff: Kotlin app — Workstream B (Android core)
 
 - **Plan:** [kotlin-app.md](../tasks/kotlin-app.md). Read only §1, §2, §3 ("As built" column) and the Phase 0 checklist in §4.
-- **Status:** Phase 0. Workstream A (backend) is done. Workstream B: B1, B2, B3, B5, B8 and B9 are done. Next is B4 → B6 → B10; B7 can go any time.
+- **Status:** Phase 0. Workstream A (backend) is done. Workstream B: B1–B5, B8 and B9 are done. Next is B6 → B10; B7 can go any time.
 - **Branch:** `kotlin-app` · **Last run:** 2026-09-26
 
 ## Where we are
@@ -13,8 +13,10 @@
 - `core:database`: Room entities, DAOs, the `HabitDay` projection and the sync write.
 - `core:designsystem`: the M3 theme from the web tokens, habit icons and color helpers.
 - `core:i18n`: generated `strings.xml` (en, es).
+- `core:auth`: `AuthRepository`, `AuthState`, the encrypted `SessionStore` and `SignOutHook`.
+- `core:data`: only `ClearDatabaseOnSignOut` so far.
 
-The unit tests total 79: 42 in model, 25 in network (MockWebServer) and 12 in database (Robolectric). `core:auth`, `core:data`, `feature:auth` and `widget` are still empty stubs. The CI workflow has **not run on GitHub yet**, because nothing is pushed.
+The unit tests total 100: 42 in model, 26 in network (MockWebServer), 12 in database (Robolectric) and 20 in auth (plain JVM: real Tink, a temp-file DataStore and MockWebServer). `feature:auth` and `widget` are still empty stubs. The CI workflow has **not run on GitHub yet**, because nothing is pushed.
 
 The API contract is the "As built" column of plan §3. That column is authoritative; do not use the older wording elsewhere in the plan.
 
@@ -50,7 +52,7 @@ The API contract is the "As built" column of plan §3. That column is authoritat
   - `SessionTokenSource` is the seam for B4. `currentToken()` is called on OkHttp threads, so it must return from memory. `onUnauthorized(rejectedToken)` fires only on a 401 to a request that carried a token.
   - `ApiError`: `Unauthorized(code, message)`, `HabitFrozen`, `CustomExerciseFrozen`, `NotFound`, `Validation(message, issues)`, **`RequestInProgress`** (409 `idempotency_request_in_progress`, the one 4xx to retry), `Server`, `Network`, `Unknown(status, code, message, cause)`. The mapping reads status first and the body tolerantly.
   - `get-session` returns 200 with a JSON `null` body for an invalid token (not 401), so `session()` returns `ApiResult<SessionResponse?>`.
-  - `NetworkModule` needs `NetworkConfig` (provided by `app`'s `AppModule` from `BuildConfig`) and `SessionTokenSource` (**not bound yet: B4**).
+  - `NetworkModule` needs `NetworkConfig` (provided by `app`'s `AppModule` from `BuildConfig`) and `SessionTokenSource` (bound by `core:auth`).
 - **B5 `core:database`** ([source](../../../apps/android/core/database/src/main/kotlin/com/trackbit/core/database), schema exported to `core/database/schemas/`, version 1):
   - `HabitEntity` implements `TrackableHabit`, so `Streak` and `HabitProgress` take it directly. `summaryDay` is the day `streakBeforeDay` is valid for.
   - `DayLogEntity(habitId, localDay, rating, sessionCount)`, PK `(habitId, localDay)`, FK cascade to habits. It stores no server id.
@@ -58,6 +60,20 @@ The API contract is the "As built" column of plan §3. That column is authoritat
   - `HabitDayDao.observeDay(day)` / `observeHabitDay(id, day)` → `HabitDay(habit, recent: 7 × RecentDay)`. It runs as one LEFT JOIN query, so habits and logs are always consistent.
   - `DayLogDao.setRating` / `addToRating` / `ensure` mirror the server upserts. `HabitDao.extendFirstLogDay` covers the B2 note about anti-habits.
   - `SyncDao.applyToday(TodayResponse)` is the only path sync writes through. It skips day logs with pending outbox ops, and keeps a pending habit's earlier local `firstLogDay`.
+- **B4 `core:auth`** ([source](../../../apps/android/core/auth/src/main/kotlin/com/trackbit/core/auth)):
+  - `AuthRepository` (`state`, `signIn`, `signOut`, `refresh`) is the public API; `AuthState` is `Loading` → `SignedOut` | `SignedIn(user)`.
+  - `SessionStore` implements `SessionTokenSource`. It is separate from the repository because the OkHttp client needs the token source, and the repository needs `AuthService`, which needs the client; one class would be a DI cycle.
+  - On disk: one typed DataStore file `session.enc` holding `StoredSession(token, user)`, encrypted as a whole by a Tink AES-256-GCM key whose keyset is wrapped by a Keystore master key. Token and user are always written together. A file that doesn't decrypt (lost key) is corruption → signed out.
+  - `currentToken()` blocks only until the one startup read completes, then answers from a `@Volatile` field. This makes early requests (a worker in a cold process) send the token instead of going out unauthenticated.
+  - Every change runs under one mutex. Changes after a network call are conditional on the token they started with (`clear(ifToken)`, `updateUser(ifToken)`), so a stale 401 or response can't undo a newer sign-in.
+  - Sign-in: `signIn()` → `session(token)` with the new token passed explicitly; saved only if the server returns a user. Signing in as a different user runs the sign-out hooks first.
+  - Sign-out: clears locally at once, then revokes on the server in the auth scope with the old token passed explicitly (offline, the session just expires).
+  - `refresh()`: `null` or 401 → signed out, network/5xx → keep the cached session (offline boot), success → update the cached user. **Nothing calls it yet: B10 should call it when the app starts.**
+  - **`SignOutHook`** (`@IntoSet`, declared with `@Multibinds`): runs before `SignedOut` is emitted and before another sign-in is saved, on sign-out, on a 401, and **at startup when there is no session**. So "signed out" always means "no cached data", even after a crash mid-sign-out. `core:data`'s `ClearDatabaseOnSignOut` runs `clearAllTables()` (outbox included).
+- **B4 changes elsewhere:**
+  - `AuthService.getSession` / `signOut` take an explicit `Authorization` header; `session(token = null)` checks a token that isn't the session's yet. `AuthInterceptor` sends a request that already has `Authorization` as is and doesn't report its 401.
+  - Room is `api` in `trackbit.room` (the database class extends `RoomDatabase`; B6 needs `withTransaction`).
+  - `android:allowBackup="false"`: the Keystore key never survives a restore, and everything else local is a server cache.
 - **B8 `core:designsystem`**:
   - `TrackbitTheme` maps the generated `WebLight`/`WebDark` palettes onto M3 roles. Dynamic color still wins on Android 12+.
   - `HabitIcon.drawableRes` / `.painter()` give black stroked vectors; tint them.
@@ -75,17 +91,13 @@ The API contract is the "As built" column of plan §3. That column is authoritat
   - [android.yml](../../../.github/workflows/android.yml)
   - [README](../../../apps/android/README.md)
 
-## Next: B4 → B6 → B10 (B7 any time)
+## Next: B6 → B10 (B7 any time)
 
 The details are in the plan's §4 checklist. Notes for each:
 
-- **B4 `core:auth`:**
-  - Implement and `@Binds` `SessionTokenSource`. Keep the decrypted token in memory (a `@Volatile` field or `StateFlow`) that is loaded once at startup, because the interceptor reads it on every request.
-  - In `onUnauthorized`, clear only if the rejected token is still the current one.
-  - Sign-in is `authService.signIn(email, password)`. It returns the signed `set-auth-token`, not the body's raw token. Then call `session()` to cache the `SessionUser`.
-  - Sign-out must also clear Room (`TrackbitDatabase.clearAllTables()`, outbox included), or the next user sees the previous user's habits. The auth module can't see the database, so do it through a sign-out hook in `core:data` or `app`.
-  - Tink needs a catalog entry: `com.google.crypto.tink:tink-android` 1.23.0 and `androidx.datastore:datastore-preferences` 1.2.x (check the current version).
 - **B6 `core:data`:**
+  - Pending outbox ops are deleted on sign-out with the rest of Room. Also cancel the outbox/sync WorkManager work there: add a second `SignOutHook` next to `ClearDatabaseOnSignOut`, so a worker already running can't write the old user's data back.
+  - Workers only run when `AuthRepository.state` is `SignedIn`; a 401 inside a worker already signs out through the interceptor, so the worker just stops.
   - Write the optimistic change and the outbox op in one `db.withTransaction {}`, and call `habitDao.extendFirstLogDay` on every write.
   - Encode payloads with `TrackbitJson` and the request DTOs, keyed by `OutboxOpType`.
   - The worker sends `IdempotencyKey(op.idempotencyKey)`.
@@ -97,7 +109,11 @@ The details are in the plan's §4 checklist. Notes for each:
   - Sync is `trackerService.today()` → `syncDao.applyToday()`.
   - `HabitEntity.summaryDay` older than the displayed day means `streakBeforeDay` is stale, for example after midnight before a sync. Decide whether to show it or wait for a sync, and don't compute a wrong streak.
 - **B7:** when recording contracts, delete the hand-built fixtures and point `DecodeTest` at the recorded ones. Also record an idempotency 409/422 body and a validation 400 body.
-- **B10:** strings come from `com.trackbit.core.i18n.R.string.auth_sign_in_*`. Error copy is under `errors_*`.
+- **B10:**
+  - Strings come from `com.trackbit.core.i18n.R.string.auth_sign_in_*`. Error copy is under `errors_*`.
+  - Route on `AuthRepository.state`: `Loading` → nothing (or splash), `SignedOut` → sign-in, `SignedIn` → Today. Call `refresh()` once when the app starts.
+  - Sign-in errors: `Unauthorized(code = "INVALID_EMAIL_OR_PASSWORD")`, `Network`, and Better-Auth's 403 `EMAIL_NOT_VERIFIED` (arrives as `Unknown(403, "EMAIL_NOT_VERIFIED", …)`).
+  - B10 is the first code to inject `AuthRepository` and the network services. The graph was checked once with a temporary injection this run; Dagger does not validate bindings nothing requests, even with `fullBindingGraphValidation`.
 
 ## Invariants — do not break these
 
@@ -113,6 +129,8 @@ The details are in the plan's §4 checklist. Notes for each:
 - **`core:model` has no Android dependencies.** It uses `trackbit.jvm.library`.
 - **Module build files only apply plugins and declare dependencies.** Shared config (SDK levels, JVM 21, lint, test deps) belongs in `build-logic`, and versions belong in the catalog.
 - **`feature/*` and `widget` never depend on each other.** Only `app` wires modules together.
+- **Signed out ⇒ Room is empty.** Anything that caches per-user data registers a `SignOutHook`.
+- **The session changes only through `SessionStore`**, and changes after a network call are conditional on the token they started with.
 - **Tracker writes take a non-null `IdempotencyKey`.** Don't add a default value or an overload without one.
 - **Sync writes tracker tables only through `SyncDao.applyToday`.** That is where the pending-op guard lives.
 - **Generated files are never hand-edited.** They carry a "Generated by" header; change the source and run `pnpm android:generate`.
@@ -139,6 +157,15 @@ The details are in the plan's §4 checklist. Notes for each:
 | `preferredExerciseSource` in `PreferencesRequest`? | Left out | Clearing it needs an explicit `null` on the wire, which the "null = absent" encoding can't express. Add a tri-state type in Phase 3. |
 | `/api/tracker/history` service? | Not added | Phase 0 needs only `/today`. It needs its own nested DTOs (Phase 2 analytics). |
 
+## Decisions made in B4
+
+| Question | Decision | Why |
+|---|---|---|
+| DataStore Preferences or typed DataStore? | **Typed** `DataStore<StoredSession?>` with an encrypting serializer (`androidx.datastore:datastore` 1.2.1) | Token and user are encrypted and written as one unit, so they can never disagree; no per-field encoding. |
+| How does sign-in check the new token? | Pass it explicitly to `get-session`; the interceptor leaves an existing `Authorization` alone | The token is adopted only after the server confirms it. The alternative (set it in memory, then roll back) would briefly send an unconfirmed token with every request. |
+| Who clears Room on sign-out? | A `SignOutHook` multibinding, implemented in `core:data` | `core:auth` can't see the database. Hooks also run at a signed-out startup, which makes "signed out ⇒ no cached data" an invariant rather than a step that a crash can skip. |
+| Backups | `allowBackup="false"` | The Keystore key isn't restored, so a restored session file can't decrypt; all other local data is a server cache. |
+
 ## Landmines
 
 - **No system Gradle.** Use `./gradlew` only. The first run downloads Gradle 9.8.0.
@@ -157,7 +184,7 @@ The details are in the plan's §4 checklist. Notes for each:
 ## Verify
 
 ```bash
-pnpm android:build && pnpm android:test && pnpm android:lint   # all green, 0 lint issues, 79 unit tests
+pnpm android:build && pnpm android:test && pnpm android:lint   # all green, 0 lint issues, 100 unit tests
 pnpm android:generate:check                                     # 19 generated files up to date
 pnpm --filter backend test                                      # 46 passing
 pnpm --filter backend exec tsc --noEmit -p .
@@ -184,3 +211,4 @@ pnpm --filter backend exec tsc --noEmit -p .
   - Backend: idempotency error codes, and one `validator()` for every route (46 tests). Web: es `many` plural.
 
   Next: B4 → B6 → B10.
+- 2026-09-26 — B4 done: `core:auth` (encrypted session DataStore, `SessionStore`, `AuthRepository`, sign-out hooks, 20 tests), `ClearDatabaseOnSignOut` in `core:data`, explicit-token `get-session`/`sign-out`, Room as `api`, backups off. Next: B6 → B10.

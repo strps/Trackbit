@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.trackbit.android.library)
     alias(libs.plugins.trackbit.hilt)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -9,5 +10,10 @@ android {
 
 dependencies {
     api(projects.core.model)
-    implementation(projects.core.network)
+    api(projects.core.network)
+    implementation(libs.androidx.datastore)
+    implementation(libs.tink.android)
+
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.okhttp.mockwebserver)
 }

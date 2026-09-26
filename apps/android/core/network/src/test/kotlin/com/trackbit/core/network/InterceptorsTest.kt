@@ -2,8 +2,10 @@ package com.trackbit.core.network
 
 import com.trackbit.core.model.CheckRequest
 import com.trackbit.core.model.IncrementRequest
+import com.trackbit.core.network.service.AuthService
 import com.trackbit.core.network.service.HabitsService
 import com.trackbit.core.network.service.TrackerService
+import com.trackbit.core.network.service.session
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -42,6 +44,14 @@ class InterceptorsTest {
     @Test fun `a 401 without a token is not a lost session`() = runTest {
         server.enqueue(401, """{"code":"INVALID_EMAIL_OR_PASSWORD"}""")
         safeCall { server.service<HabitsService>().habits() }
+        assertTrue(tokens.rejected.isEmpty())
+    }
+
+    @Test fun `an explicit token is sent as is and its 401 is not a lost session`() = runTest {
+        tokens.token = "current"
+        server.enqueue(401, "")
+        server.service<AuthService>().session(token = "candidate")
+        assertEquals("Bearer candidate", server.takeRequest().headers["Authorization"])
         assertTrue(tokens.rejected.isEmpty())
     }
 
