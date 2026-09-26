@@ -38,6 +38,32 @@ object Streak {
     }
 
     /**
+     * The streak ending the day before [day], or null when it can't be known without a sync.
+     *
+     * The server's [streakBeforeDay] is only valid for [summaryDay]. For a later [day] (after
+     * midnight, before the next sync) the days from [summaryDay] up to [day] are judged on [logs],
+     * which must hold every known log from [summaryDay] on. For an earlier [day] it is unknown.
+     */
+    fun beforeDay(
+        habit: TrackableHabit,
+        logs: Map<LocalDate, StreakDay>,
+        day: LocalDate,
+        firstLogDay: LocalDate?,
+        summaryDay: LocalDate,
+        streakBeforeDay: Int,
+    ): Int? {
+        if (day.isBefore(summaryDay)) return null
+        var bridged = 0
+        var cursor = day.minusDays(1)
+        while (!cursor.isBefore(summaryDay)) {
+            if (!dayCounts(habit, logs[cursor], cursor, firstLogDay)) return bridged
+            bridged++
+            cursor = cursor.minusDays(1)
+        }
+        return minOf(streakBeforeDay + bridged, MAX_DAYS)
+    }
+
+    /**
      * The streak to display for [day]: the server's [streakBeforeDay] plus [day] itself, judged
      * on the local (possibly optimistic) [log] so a tap updates the streak before any sync.
      */

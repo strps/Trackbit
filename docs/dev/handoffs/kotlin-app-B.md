@@ -1,7 +1,7 @@
 # Handoff: Kotlin app — Workstream B (Android core)
 
 - **Plan:** [kotlin-app.md](../tasks/kotlin-app.md). Read only §1, §2, §3 ("As built" column) and the Phase 0 checklist in §4.
-- **Status:** Phase 0. Workstream A (backend) is done. Workstream B: B1–B5, B8 and B9 are done. Next is B6 → B10; B7 can go any time.
+- **Status:** Phase 0. Workstream A (backend) is done. Workstream B: B1–B6, B8 and B9 are done. Next is B10; B7 can go any time.
 - **Branch:** `kotlin-app` · **Last run:** 2026-09-26
 
 ## Where we are
@@ -14,9 +14,9 @@
 - `core:designsystem`: the M3 theme from the web tokens, habit icons and color helpers.
 - `core:i18n`: generated `strings.xml` (en, es).
 - `core:auth`: `AuthRepository`, `AuthState`, the encrypted `SessionStore` and `SignOutHook`.
-- `core:data`: only `ClearDatabaseOnSignOut` so far.
+- `core:data`: `TrackerRepository` (reads + outbox writes), `TrackerSync` (flush/pull), `OutboxWorker`/`SyncWorker`, `PeriodicSync` and two sign-out hooks.
 
-The unit tests total 100: 42 in model, 26 in network (MockWebServer), 12 in database (Robolectric) and 20 in auth (plain JVM: real Tink, a temp-file DataStore and MockWebServer). `feature:auth` and `widget` are still empty stubs. The CI workflow has **not run on GitHub yet**, because nothing is pushed.
+The unit tests total 129: 48 in model, 26 in network (MockWebServer), 15 in database (Robolectric), 20 in auth (plain JVM: real Tink, a temp-file DataStore and MockWebServer) and 20 in data (Robolectric, in-memory Room, a fake `TrackerService`, `work-testing`). `feature:auth` and `widget` are still empty stubs. The signed-out cold start was checked on the emulator (WorkManager initializes via Hilt, no crash); **the signed-in sync path has only run in unit tests**, because nothing can sign in until B10. The CI workflow has **not run on GitHub yet**, because nothing is pushed.
 
 The API contract is the "As built" column of plan §3. That column is authoritative; do not use the older wording elsewhere in the plan.
 
@@ -74,6 +74,18 @@ The API contract is the "As built" column of plan §3. That column is authoritat
   - `AuthService.getSession` / `signOut` take an explicit `Authorization` header; `session(token = null)` checks a token that isn't the session's yet. `AuthInterceptor` sends a request that already has `Authorization` as is and doesn't report its 401.
   - Room is `api` in `trackbit.room` (the database class extends `RoomDatabase`; B6 needs `withTransaction`).
   - `android:allowBackup="false"`: the Keystore key never survives a restore, and everything else local is a server cache.
+- **B6 `core:data`** ([source](../../../apps/android/core/data/src/main/kotlin/com/trackbit/core/data)):
+  - `TrackerRepository` is the public API: `observeDay(day)` / `observeHabit(id, day)` → `TrackedHabit` (habit fields, `recent`, `progress`, `streak: Int?`), `pendingWrites`, `setRating` / `increment` / `toggle` / `ensureDayLog` → `WriteResult` (`Queued`, `HabitFrozen`, `HabitNotFound`), and `refresh()` → `SyncResult` (`Done`, `Retry`, `Failed`, `SignedOut`) for pull-to-refresh.
+  - A write is one `withTransaction`: frozen/missing check → optimistic DAO change → `extendFirstLogDay` → enqueue the op. Then `SyncScheduler.flushOutbox()`. Frozen habits are refused locally, so they never reach the server.
+  - `toggle` sends an absolute `/check` (0 or 1), not an increment, so a replayed or reordered toggle can't flip it back.
+  - Payload encode/decode for every `OutboxOpType` is in one file: [OutboxOps.kt](../../../apps/android/core/data/src/main/kotlin/com/trackbit/core/data/sync/OutboxOps.kt). Ops always send `day`.
+  - [TrackerSync.kt](../../../apps/android/core/data/src/main/kotlin/com/trackbit/core/data/sync/TrackerSync.kt): `flush()` and `sync()` (flush, then `today(LocalDate.now())` → `applyToday`) run under one mutex. Flush is FIFO and stops at the first retryable op. `Network` → retry (never counted), `Server`/`RequestInProgress` → retry, counted, dropped after 10, `Unauthorized` → stop, anything else → drop. Any drop triggers a pull that undoes it.
+  - Every Room write in `TrackerSync` is **fenced**: inside the transaction it checks `SessionTokenSource.currentToken()` still equals the token it started with. The session store forgets the token before the sign-out hooks clear Room, so a late response can never write the old user's data back. Hook order doesn't matter.
+  - Confirmed ops go through the new `SyncDao.applyConfirmed(opId, log)`: delete the op, then store the server row (keeping `sessionCount`) only if no other op for that `(habitId, localDay)` is pending and the habit still exists.
+  - WorkManager: `OutboxWorker` (unique `tracker-outbox`, `APPEND_OR_REPLACE`, needs network, exponential backoff) and a 15 min periodic `SyncWorker` (`KEEP`). `PeriodicSync.start()` (called from `TrackbitApplication.onCreate`) schedules it on every `SignedIn`. `CancelSyncOnSignOut` cancels all work tagged `tracker-sync`.
+  - `app`: `TrackbitApplication` is a `Configuration.Provider` that takes `HiltWorkerFactory` from an `@EntryPoint`, not an injected field (a startup sign-out hook can initialize WorkManager during field injection). The manifest removes the default `WorkManagerInitializer`.
+  - Streak staleness ([TrackedHabit.kt](../../../apps/android/core/data/src/main/kotlin/com/trackbit/core/data/TrackedHabit.kt), `Streak.beforeDay` in `core:model`): for a day on or after `summaryDay`, the days in between are judged on local logs; `null` (unknown) if `summaryDay` is outside the 7-day window or after the displayed day. A day that doesn't count shows 0, as the invariant defines.
+- **B6 changes elsewhere:** `android:dataExtractionRules` + `fullBackupContent` exclude everything. On Android 12+, `allowBackup="false"` no longer stops device-to-device transfer. Lint flagged this once WorkManager was added.
 - **B8 `core:designsystem`**:
   - `TrackbitTheme` maps the generated `WebLight`/`WebDark` palettes onto M3 roles. Dynamic color still wins on Android 12+.
   - `HabitIcon.drawableRes` / `.painter()` give black stroked vectors; tint them.
@@ -91,33 +103,22 @@ The API contract is the "As built" column of plan §3. That column is authoritat
   - [android.yml](../../../.github/workflows/android.yml)
   - [README](../../../apps/android/README.md)
 
-## Next: B6 → B10 (B7 any time)
+## Next: B10 (B7 any time)
 
 The details are in the plan's §4 checklist. Notes for each:
 
-- **B6 `core:data`:**
-  - Pending outbox ops are deleted on sign-out with the rest of Room. Also cancel the outbox/sync WorkManager work there: add a second `SignOutHook` next to `ClearDatabaseOnSignOut`, so a worker already running can't write the old user's data back.
-  - Workers only run when `AuthRepository.state` is `SignedIn`; a 401 inside a worker already signs out through the interceptor, so the worker just stops.
-  - Write the optimistic change and the outbox op in one `db.withTransaction {}`, and call `habitDao.extendFirstLogDay` on every write.
-  - Encode payloads with `TrackbitJson` and the request DTOs, keyed by `OutboxOpType`.
-  - The worker sends `IdempotencyKey(op.idempotencyKey)`.
-  - Error handling in the worker:
-    - `Network`, `Server`, `RequestInProgress` → retry with backoff.
-    - `Unauthorized` → stop.
-    - Any other error → drop the op, then resync.
-  - After a successful op, write the returned `DayLog` into Room only if no other op for that `(habitId, localDay)` remains.
-  - Sync is `trackerService.today()` → `syncDao.applyToday()`.
-  - `HabitEntity.summaryDay` older than the displayed day means `streakBeforeDay` is stale, for example after midnight before a sync. Decide whether to show it or wait for a sync, and don't compute a wrong streak.
 - **B7:** when recording contracts, delete the hand-built fixtures and point `DecodeTest` at the recorded ones. Also record an idempotency 409/422 body and a validation 400 body.
 - **B10:**
   - Strings come from `com.trackbit.core.i18n.R.string.auth_sign_in_*`. Error copy is under `errors_*`.
   - Route on `AuthRepository.state`: `Loading` → nothing (or splash), `SignedOut` → sign-in, `SignedIn` → Today. Call `refresh()` once when the app starts.
   - Sign-in errors: `Unauthorized(code = "INVALID_EMAIL_OR_PASSWORD")`, `Network`, and Better-Auth's 403 `EMAIL_NOT_VERIFIED` (arrives as `Unknown(403, "EMAIL_NOT_VERIFIED", …)`).
+  - Today screen: `TrackerRepository.observeDay(LocalDate.now())`; +1 → `increment(id, day, 1)`, check → `toggle`; pull-to-refresh → `refresh()` (`Retry` = offline/server, show a hint; `SignedOut` = routing will follow). Show `WriteResult.HabitFrozen` with the `errors_limits_habit_frozen_*` strings. `streak == null` means "unknown until sync", so show no number. Also call `refresh()` when Today opens: nothing else pulls right after sign-in (the periodic sync can take 15 min).
+  - Recompute "today" when the date changes while the screen is open (midnight). The repository takes the day as a parameter and never assumes it.
   - B10 is the first code to inject `AuthRepository` and the network services. The graph was checked once with a temporary injection this run; Dagger does not validate bindings nothing requests, even with `fullBindingGraphValidation`.
 
 ## Invariants — do not break these
 
-- **Every tracker write sends `day`**, the local day the user is looking at. The only exception is widget or background writes meant for "today", which may omit it. The server never takes a timestamp or `tz`.
+- **Every tracker write sends `day`**, the local day the user is looking at. The server never takes a timestamp or `tz`. The API would allow omitting it for widget writes meant for "today", but `TrackerRepository` always sends it (see the B6 decisions).
 - **Every outbox op carries an `Idempotency-Key`**, generated once at enqueue and reused on every retry.
 - **Displayed streak** = `dayCounts(today) ? streakBeforeDay + 1 : 0`:
   - `dayCounts` uses the local, optimistic value for today.
@@ -132,7 +133,10 @@ The details are in the plan's §4 checklist. Notes for each:
 - **Signed out ⇒ Room is empty.** Anything that caches per-user data registers a `SignOutHook`.
 - **The session changes only through `SessionStore`**, and changes after a network call are conditional on the token they started with.
 - **Tracker writes take a non-null `IdempotencyKey`.** Don't add a default value or an overload without one.
-- **Sync writes tracker tables only through `SyncDao.applyToday`.** That is where the pending-op guard lives.
+- **Server data enters tracker tables only through `SyncDao` (`applyToday`, `applyConfirmed`).** That is where the pending-op guard lives.
+- **Tracker writes go through `TrackerRepository`**, never DAOs directly: it is what pairs the optimistic change with its outbox op in one transaction. `core:database` is `implementation` in `core:data` so features can't reach the DAOs.
+- **Every Room write made after a network call is fenced on the session token** (`TrackerSync.fenced`). New sync code must do the same.
+- **Sync runs under `TrackerSync`'s mutex.** A pull overlapping a flush could store a snapshot older than an op confirmed in between.
 - **Generated files are never hand-edited.** They carry a "Generated by" header; change the source and run `pnpm android:generate`.
 
 ## Decisions made in B1
@@ -157,6 +161,18 @@ The details are in the plan's §4 checklist. Notes for each:
 | `preferredExerciseSource` in `PreferencesRequest`? | Left out | Clearing it needs an explicit `null` on the wire, which the "null = absent" encoding can't express. Add a tri-state type in Phase 3. |
 | `/api/tracker/history` service? | Not added | Phase 0 needs only `/today`. It needs its own nested DTOs (Phase 2 analytics). |
 
+## Decisions made in B6
+
+| Question | Decision | Why |
+|---|---|---|
+| How does sign-out stop a worker that is already running? | Cancel the work (hook) **and** fence every sync write on the token | Cancellation is cooperative: a worker holding a response can still commit after `clearAllTables()`. The fence can't lose that race. |
+| Stale `streakBeforeDay` after midnight | Bridge from `summaryDay` with local logs; `null` only if unbridgeable | Offline widgets still get a streak as fresh as the logs they show. `null` is kept for real unknowns (a gap over 7 days, or a past day). |
+| Which day does sync pull? | `today(LocalDate.now())`, the device's day | `summaryDay` then matches the day the app shows, so the streak needs no bridge right after a sync. |
+| Server errors forever? | Drop after 10 counted 5xx/409, then resync | A poison op would otherwise block the FIFO for good. Network errors never count, because being offline for days is normal. |
+| Omit `day` for widget writes? | No: every op sends `day` | The optimistic row and the server row stay the same. Phase 1 can revisit this if a widget really needs "server today". |
+| On-demand `SyncWorker`? | Not built. `refresh()` runs in-process | No caller yet. Phase 1's midnight rollover can add a one-time sync request. |
+| `WidgetUpdater` | Not built | Plan §2.2 has it watch the DAOs, so writes need no hook. Phase 1 adds it. |
+
 ## Decisions made in B4
 
 | Question | Decision | Why |
@@ -168,6 +184,7 @@ The details are in the plan's §4 checklist. Notes for each:
 
 ## Landmines
 
+- **Memory is tight (11 GB, and VS Code's Java server takes about 3 GB).** A build ended with exit 137 (killed) while stale Kotlin daemons were still alive. Run `./gradlew --stop` first, and use `--max-workers=2` if it happens again. Stop Gradle before booting the emulator. Start the emulator with `run_in_background`; a `nohup … &` in a foreground command gets killed.
 - **No system Gradle.** Use `./gradlew` only. The first run downloads Gradle 9.8.0.
 - **`local.properties` is git-ignored.** Locally it holds `sdk.dir=/home/cj/Android/Sdk`, and `ANDROID_HOME` is also set. AGP auto-installed platform `android-37.0` into that SDK.
 - **The configuration cache is on.** In build scripts, never evaluate providers eagerly and never throw inside `providers.provider {}`. Capture providers into task actions instead (see `checkReleaseApiUrl`).
@@ -184,7 +201,7 @@ The details are in the plan's §4 checklist. Notes for each:
 ## Verify
 
 ```bash
-pnpm android:build && pnpm android:test && pnpm android:lint   # all green, 0 lint issues, 100 unit tests
+pnpm android:build && pnpm android:test && pnpm android:lint   # all green, 0 lint issues, 129 unit tests
 pnpm android:generate:check                                     # 19 generated files up to date
 pnpm --filter backend test                                      # 46 passing
 pnpm --filter backend exec tsc --noEmit -p .
@@ -212,3 +229,4 @@ pnpm --filter backend exec tsc --noEmit -p .
 
   Next: B4 → B6 → B10.
 - 2026-09-26 — B4 done: `core:auth` (encrypted session DataStore, `SessionStore`, `AuthRepository`, sign-out hooks, 20 tests), `ClearDatabaseOnSignOut` in `core:data`, explicit-token `get-session`/`sign-out`, Room as `api`, backups off. Next: B6 → B10.
+- 2026-09-26 — B6 done: `core:data` (`TrackerRepository`, `TrackerSync` with session fence, `OutboxWorker`/`SyncWorker`, `PeriodicSync`, `CancelSyncOnSignOut`), `SyncDao.applyConfirmed`, `Streak.beforeDay`, WorkManager + Hilt in `app`, backup/transfer exclusion rules (29 new tests). Next: B10.

@@ -7,10 +7,14 @@ import androidx.room.Upsert
 import com.trackbit.core.database.entity.DayLogEntity
 import com.trackbit.core.database.entity.HabitEntity
 import com.trackbit.core.database.entity.toEntity
+import com.trackbit.core.model.DayLog
 import com.trackbit.core.model.TodayResponse
 import java.time.LocalDate
 
-/** Writes server snapshots into Room. The only way sync touches tracker tables. */
+/**
+ * Writes server data into Room: `/today` snapshots and the rows tracker writes return. The only
+ * way server data reaches tracker tables, so the pending-op guard lives in one place.
+ */
 @Dao
 abstract class SyncDao {
     /**
@@ -46,8 +50,38 @@ abstract class SyncDao {
         }
     }
 
+    /**
+     * Outbox op [opId] reached the server, which answered with [log]. Removes the op and stores
+     * the server's row, unless more ops for that day log are still pending: their optimistic
+     * change is newer, and the last of them brings the final row.
+     */
+    @Transaction
+    open suspend fun applyConfirmed(opId: Long, log: DayLog) {
+        deleteOp(opId)
+        if (hasPending(log.habitId, log.localDay) || !habitExists(log.habitId)) return
+        // The row carries no session count; attaching sessions doesn't go through the outbox.
+        val sessionCount = log(log.habitId, log.localDay)?.sessionCount ?: 0
+        upsertLog(DayLogEntity(log.habitId, log.localDay, log.rating, sessionCount))
+        extendFirstLogDay(log.habitId, log.localDay)
+    }
+
     @Query("SELECT DISTINCT habitId, localDay FROM outbox")
     protected abstract suspend fun pendingDays(): List<PendingDay>
+
+    @Query("DELETE FROM outbox WHERE id = :id")
+    protected abstract suspend fun deleteOp(id: Long)
+
+    @Query("SELECT EXISTS(SELECT 1 FROM outbox WHERE habitId = :habitId AND localDay = :day)")
+    protected abstract suspend fun hasPending(habitId: Int, day: LocalDate): Boolean
+
+    @Query("SELECT EXISTS(SELECT 1 FROM habits WHERE id = :id)")
+    protected abstract suspend fun habitExists(id: Int): Boolean
+
+    @Query("SELECT * FROM day_logs WHERE habitId = :habitId AND localDay = :day")
+    protected abstract suspend fun log(habitId: Int, day: LocalDate): DayLogEntity?
+
+    @Query("UPDATE habits SET firstLogDay = :day WHERE id = :id AND (firstLogDay IS NULL OR firstLogDay > :day)")
+    protected abstract suspend fun extendFirstLogDay(id: Int, day: LocalDate)
 
     @Query("SELECT * FROM habits")
     protected abstract suspend fun habits(): List<HabitEntity>

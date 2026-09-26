@@ -3,6 +3,7 @@ package com.trackbit.core.database
 import com.trackbit.core.database.entity.DayLogEntity
 import com.trackbit.core.database.entity.OutboxEntity
 import com.trackbit.core.database.entity.OutboxOpType
+import com.trackbit.core.model.DayLog
 import com.trackbit.core.model.RecentDay
 import com.trackbit.core.model.TodayHabit
 import com.trackbit.core.model.TodayResponse
@@ -10,6 +11,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import java.time.Instant
 import java.time.LocalDate
 
 class SyncDaoTest : DatabaseTest() {
@@ -83,5 +85,43 @@ class SyncDaoTest : DatabaseTest() {
         assertEquals(2, keys.size)
         outbox.delete(first)
         assertEquals(DAY.minusDays(1), outbox.oldest()!!.localDay)
+    }
+
+    private fun serverLog(habitId: Int, day: LocalDate, rating: Int?) =
+        DayLog(id = 99, habitId = habitId, rating = rating, notes = null, localDay = day, timeStamp = Instant.EPOCH, createdAt = Instant.EPOCH)
+
+    @Test fun `a confirmed op stores the server's row and keeps the session count`() = runTest {
+        insertHabits(habit(1, isAntiHabit = true))
+        logs.upsert(DayLogEntity(1, DAY, rating = 1, sessionCount = 2))
+        val op = enqueue(1, DAY)
+
+        db.syncDao().applyConfirmed(op, serverLog(1, DAY, rating = 4))
+
+        assertEquals(DayLogEntity(1, DAY, rating = 4, sessionCount = 2), logs.get(1, DAY))
+        assertNull(db.outboxDao().oldest())
+        assertEquals(DAY, db.habitDao().get(1)!!.firstLogDay)
+    }
+
+    @Test fun `a confirmed op leaves the row alone while later ops for it are pending`() = runTest {
+        insertHabits(habit(1))
+        logs.upsert(DayLogEntity(1, DAY, rating = 2))
+        val first = enqueue(1, DAY)
+        enqueue(1, DAY)
+
+        db.syncDao().applyConfirmed(first, serverLog(1, DAY, rating = 1))
+
+        assertEquals(2, logs.get(1, DAY)!!.rating)
+        assertEquals(1, db.outboxDao().pendingDays().size)
+    }
+
+    @Test fun `a confirmed op for a habit sync has deleted writes nothing`() = runTest {
+        insertHabits(habit(1))
+        val op = enqueue(1, DAY)
+        sync()
+
+        db.syncDao().applyConfirmed(op, serverLog(1, DAY, rating = 1))
+
+        assertNull(logs.get(1, DAY))
+        assertNull(db.outboxDao().oldest())
     }
 }

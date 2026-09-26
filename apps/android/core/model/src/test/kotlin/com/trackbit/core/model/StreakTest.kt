@@ -3,7 +3,7 @@ package com.trackbit.core.model
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** Mirrors apps/backend/test/streak.test.ts, plus [Streak.current]. */
+/** Mirrors apps/backend/test/streak.test.ts, plus [Streak.beforeDay] and [Streak.current]. */
 class StreakTest {
     private val regular = TestHabit(HabitType.Count)
     private val complex = TestHabit(HabitType.Complex)
@@ -71,5 +71,33 @@ class StreakTest {
     @Test fun `current is 0 on an anti-habit slip or without a first log`() {
         assertEquals(0, Streak.current(anti, rated(1), day("2026-01-10"), day("2026-01-01"), streakBeforeDay = 5))
         assertEquals(0, Streak.current(anti, null, day("2026-01-10"), null, streakBeforeDay = 0))
+    }
+
+    @Test fun `beforeDay is the server's streak on the summary day`() {
+        assertEquals(3, Streak.beforeDay(regular, emptyMap(), day("2026-01-10"), null, summaryDay = day("2026-01-10"), streakBeforeDay = 3))
+    }
+
+    @Test fun `beforeDay bridges the days since the summary with local logs`() {
+        val l = logs("2026-01-10" to rated(1), "2026-01-11" to rated(2))
+        assertEquals(5, Streak.beforeDay(regular, l, day("2026-01-12"), null, summaryDay = day("2026-01-10"), streakBeforeDay = 3))
+    }
+
+    @Test fun `beforeDay restarts at a gap after the summary`() {
+        // 01-10 not done: the server's streak ended there; 01-11 alone counts.
+        val l = logs("2026-01-11" to rated(1))
+        assertEquals(1, Streak.beforeDay(regular, l, day("2026-01-12"), null, summaryDay = day("2026-01-10"), streakBeforeDay = 3))
+        assertEquals(0, Streak.beforeDay(regular, emptyMap(), day("2026-01-12"), null, summaryDay = day("2026-01-10"), streakBeforeDay = 3))
+    }
+
+    @Test fun `beforeDay counts unlogged anti-habit days after the summary`() {
+        assertEquals(7, Streak.beforeDay(anti, emptyMap(), day("2026-01-12"), day("2026-01-01"), summaryDay = day("2026-01-10"), streakBeforeDay = 5))
+    }
+
+    @Test fun `beforeDay is unknown for a day before the summary`() {
+        assertEquals(null, Streak.beforeDay(regular, emptyMap(), day("2026-01-09"), null, summaryDay = day("2026-01-10"), streakBeforeDay = 3))
+    }
+
+    @Test fun `beforeDay caps at a year`() {
+        assertEquals(365, Streak.beforeDay(anti, emptyMap(), day("2026-01-12"), day("2020-01-01"), summaryDay = day("2026-01-10"), streakBeforeDay = 365))
     }
 }
