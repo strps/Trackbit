@@ -1,0 +1,30 @@
+[
+  {
+    "id": 1,
+    "userId": null,
+    "name": "Press de banca",
+    "category": "strength",
+    "defaultWeightUnit": "kg",
+    "defaultDistanceUnit": "km",
+    "lastPerformance": {
+      "id": 12,
+      "weight": 22.5,
+      "reps": 10,
+      "distance": 1.25,
+      "duration": 90000,
+      "createdAt": "2026-09-26T09:14:29.658Z",
+      "rpe": 8
+    },
+    "frozen": false
+  },
+  {
+    "id": 30,
+    "userId": "u_1",
+    "name": "My row",
+    "category": "strength",
+    "defaultWeightUnit": null,
+    "defaultDistanceUnit": null,
+    "lastPerformance": null,
+    "frozen": true
+  }
+]

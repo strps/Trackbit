@@ -1,0 +1,39 @@
+[
+  {
+    "id": 7,
+    "userId": "u_1",
+    "name": "Read",
+    "description": null,
+    "type": "count",
+    "isAntiHabit": false,
+    "colorTheme": "custom",
+    "colorStops": [
+      { "position": 0, "color": [255, 0, 0, 1] },
+      { "position": 0.5, "color": [255, 225, 0] },
+      { "position": 1, "color": [12, 148, 62, 1] }
+    ],
+    "icon": "book",
+    "weeklyGoal": 5,
+    "dailyGoal": 3,
+    "order": 0,
+    "createdAt": "2026-09-20T08:30:00.000Z",
+    "frozen": false
+  },
+  {
+    "id": 8,
+    "userId": "u_1",
+    "name": "Levitate",
+    "description": "From a newer server",
+    "type": "levitation",
+    "isAntiHabit": false,
+    "colorTheme": "aurora",
+    "colorStops": [{ "position": 0, "color": [0, 0, 0, 1] }],
+    "icon": "Activity",
+    "weeklyGoal": 7,
+    "dailyGoal": 1,
+    "order": 1,
+    "createdAt": null,
+    "frozen": true,
+    "someNewField": { "nested": true }
+  }
+]

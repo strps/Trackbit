@@ -1,0 +1,28 @@
+[
+  {
+    "id": 2,
+    "userId": "u_1",
+    "authorId": "u_1",
+    "name": "Push day",
+    "description": null,
+    "position": 0,
+    "createdAt": "2026-09-01T10:00:00.000Z",
+    "updatedAt": "2026-09-02T10:00:00.000Z",
+    "items": [
+      {
+        "id": 20,
+        "listId": 2,
+        "exerciseId": 1,
+        "position": 0,
+        "targetSets": 3,
+        "targetReps": 8,
+        "targetWeight": 60,
+        "targetDuration": null,
+        "targetDistance": null,
+        "restSeconds": 120,
+        "notes": "Pause at the bottom"
+      }
+    ],
+    "frozen": false
+  }
+]

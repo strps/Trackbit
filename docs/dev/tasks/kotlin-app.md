@@ -9,7 +9,7 @@ A native Android client for Trackbit written in Kotlin + Jetpack Compose. It con
 Before any of these can ship, a thin foundation (auth, API client, local cache) and a few backend changes have to exist. Those are Phase 0 below, split so that several people or agents can work in parallel.
 
 **Branch:** `kotlin-app`
-**Status:** Phase 0 in progress. Workstream A done 2026-09-24; Workstream B in progress, B1 done 2026-09-24 ([handoff](../handoffs/kotlin-app-B.md)).
+**Status:** Phase 0 in progress. Workstream A done 2026-09-24; Workstream B in progress, B1 done 2026-09-24, B2 done 2026-09-26 ([handoff](../handoffs/kotlin-app-B.md)).
 
 ---
 
@@ -138,7 +138,7 @@ Each phase lists its **exit criteria**. A phase is done when those are met, not 
 
 - [x] A1–A10 backend prerequisites (Workstream A), see §3
 - [x] **B1** Gradle project in `apps/android`: version catalog, `build-logic` convention plugins (`trackbit.android.application/library/compose`, `trackbit.hilt`, `trackbit.room`, `trackbit.jvm.library`), module stubs from §2.1, `BuildConfig.API_BASE_URL` (`http://10.0.2.2:3000` in debug, with a debug-only cleartext network config), root `pnpm android:*` scripts, CI job `.github/workflows/android.yml` (assemble + unit tests + lint, debug APK artifact)
-- [ ] **B2** `core/model`: `@Serializable` DTOs (Habit, DayLog with `localDay`, `TodayResponse`, Exercise, ExerciseSession/Log/Performance, ExerciseList/Item, session user with the 5 preferences, Limits, request bodies). Enums with an unknown fallback. Pure domain helpers with unit tests: `Streak.current(...)` (ports [streak.ts](../../../apps/backend/src/lib/streak.ts) `dayCounts`) and `HabitProgress` (timed ratings are ms against a goal in minutes)
+- [x] **B2** `core/model`: `@Serializable` DTOs (Habit, DayLog with `localDay`, `TodayResponse`, Exercise, ExerciseSession/Log/Performance, ExerciseList/Item, session user with the 5 preferences, Limits, request bodies). Enums with an unknown fallback. Pure domain helpers with unit tests: `Streak.current(...)` (ports [streak.ts](../../../apps/backend/src/lib/streak.ts) `dayCounts`) and `HabitProgress` (timed ratings are ms against a goal in minutes)
 - [ ] **B3** `core/network`: Retrofit services (auth, tracker, habits, me), bearer + `Accept-Language` interceptors, `Idempotency-Key` from a request tag, `safeCall` mapping to a sealed `ApiError` (`Unauthorized`, `HabitFrozen`, `CustomExerciseFrozen`, `NotFound`, `Validation`, `Server`, `Network`, `Unknown`). MockWebServer tests
 - [ ] **B4** `core/auth`: Tink/Keystore-encrypted token in DataStore, `AuthState` StateFlow, sign-in reads `set-auth-token`, cached session user for offline boot, any 401 → signed out
 - [ ] **B5** `core/database`: `HabitEntity` (+ `frozen`, `firstLogDay`, `streakBeforeDay`, `summaryDay`), `DayLogEntity` (PK `habitId, localDay`), `OutboxEntity` (UUID idempotency key fixed at enqueue). The today summary is a DAO projection (habit + today's log + last 7), not a table

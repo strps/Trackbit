@@ -1,12 +1,12 @@
 # Handoff: Kotlin app — Workstream B (Android core)
 
 - **Plan:** [kotlin-app.md](../tasks/kotlin-app.md). Read only §1, §2, §3 ("As built" column) and the Phase 0 checklist in §4.
-- **Status:** Phase 0. Workstream A (backend) is done. Workstream B: B1 is done and B2 is next.
-- **Branch:** `kotlin-app` · **Last run:** 2026-09-24
+- **Status:** Phase 0. Workstream A (backend) is done. Workstream B: B1 and B2 are done; B3, B5, B8 and B9 are next (in parallel).
+- **Branch:** `kotlin-app` · **Last run:** 2026-09-26
 
 ## Where we are
 
-`apps/android/` builds. `./gradlew assembleDebug testDebugUnitTest lintDebug` passes with zero lint issues. The debug APK installs and launches on the `Medium_Phone_API_36.1` emulator to an empty Compose nav host, and the launcher icon renders. The module stubs are empty: they have build files but no code, except `app` and `core:designsystem` (a placeholder `TrackbitTheme`). No tests exist yet. The CI workflow is written and validated as YAML but has **not run on GitHub yet**, because nothing is pushed. B1 is committed (`df314e2`) but not pushed.
+`apps/android/` builds. `./gradlew assembleDebug testDebugUnitTest lintDebug` passes with zero lint issues. `core:model` has the DTOs, fallback enums, `Streak` and `HabitProgress`, with 37 JVM tests. The other module stubs are still empty, except `app` and `core:designsystem` (a placeholder `TrackbitTheme`). The CI workflow has **not run on GitHub yet**, because nothing is pushed.
 
 The API contract is the "As built" column of plan §3. That column is authoritative; do not use the older wording elsewhere in the plan.
 
@@ -25,30 +25,30 @@ The API contract is the "As built" column of plan §3. That column is authoritat
 - **B1 `app`:**
   - [app/build.gradle.kts](../../../apps/android/app/build.gradle.kts) sets up BuildConfig `API_BASE_URL` and the release URL check.
   - The cleartext config is debug-only: [debug manifest](../../../apps/android/app/src/debug/AndroidManifest.xml).
+- **B2 `core:model`** ([source](../../../apps/android/core/model/src/main/kotlin/com/trackbit/core/model)):
+  - `TrackbitJson` (`ignoreUnknownKeys`; a null `day` is omitted because it equals its default).
+  - `FallbackEnumSerializer` + `WireEnum`: `HabitType`, `ColorTheme`, `UnitSystem`, `ExerciseLogCardStyle` decode unknown strings to `Unknown`; `HabitIcon` falls back to `Star`. `wire` is the server string, so B5 can store it in Room.
+  - `ColorStop` / `Rgba` decode `[r,g,b]` or `[r,g,b,a]`.
+  - DTOs follow the real responses, not `@trackbit/types`: `Exercise` has `lastPerformance` and no `muscleGroup`; `frozen` defaults to `false` because create/update responses omit it.
+  - `TrackableHabit` (type, isAntiHabit, dailyGoal) is implemented by `Habit` and `TodayHabit` and is what `Streak` and `HabitProgress` take.
+  - Test fixtures in `core/model/src/test/resources/fixtures` are hand-built; B7 replaces them with recorded contracts.
+- **B2 backend fixes:**
+  - `dailyGoal` must be an integer ≥ 1 (Zod on create/update + CHECK `habits_daily_goal_positive`, migration `0010`). The web's `dailyGoal || 1` patches are gone and the habit form enforces `min(1)`.
+  - `PUT /api/habits/:id` no longer resets `dailyGoal`/`weeklyGoal` to defaults when they are omitted.
+  - `GET /api/exercise-info/exercises` `lastPerformance` is now scoped to the user's own logs (it leaked other users' sets on system exercises), and `distance`/`createdAt` are a number and ISO ([test](../../../apps/backend/test/exercise-last-performance.test.ts)).
 - **B1 repo wiring:**
   - Root `pnpm android:build|test|lint` scripts
   - [android.yml](../../../.github/workflows/android.yml)
   - [README](../../../apps/android/README.md)
 
-## Next: B2 — `core:model` DTOs + domain helpers
+## Next: B3 ∥ B5 ∥ B8 ∥ B9, then B4 → B6 → B10
 
-1. Add `alias(libs.plugins.kotlin.serialization)` and `implementation(libs.kotlinx.serialization.json)` to [core/model/build.gradle.kts](../../../apps/android/core/model/build.gradle.kts). Both catalog entries already exist. The module stays pure JVM, so use no `android.*` imports.
-2. Write `@Serializable` DTOs in the package `com.trackbit.core.model`:
-   - `Habit`
-   - `DayLog`, with `localDay`
-   - `TodayResponse` and `TodayHabit` (the shape is plan §3 row A5)
-   - `Exercise`, `ExerciseSession`, `ExerciseLog`, `ExercisePerformance`, `ExerciseList` and `ExerciseListItem`
-   - The session user with its 5 preferences (A9)
-   - `Limits`
-   - Request bodies: `CheckRequest { habitId, rating, day? }`, `IncrementRequest { habitId, delta, day? }` and `EnsureDayLogRequest { habitId, day? }`
+The details are in the plan's §4 checklist. B7 (contract tests) can start any time. Notes from B2 for them:
 
-   The TS shapes are in [packages/types/src/index.ts](../../../packages/types/src/index.ts). Check each field against the real backend response, not only the TS type.
-3. Add enums with an `Unknown` fallback: `HabitType` (`count`, `complex`, `negative`, `timed`, `check`) and `ColorTheme` (see `COLOR_THEMES`). Use a custom `KSerializer`, or `@JsonNames` plus a coercing decoder, so that an unrecognized string decodes to `Unknown`. Configure one shared `Json { ignoreUnknownKeys = true }`.
-4. Port `Streak.current(...)` from [streak.ts](../../../apps/backend/src/lib/streak.ts): `dayCounts` + `streakBeforeDay`. Use `java.time.LocalDate` for days. Write JUnit tests for each rule listed under Invariants.
-5. Add `HabitProgress`. Timed ratings are in **ms**, while the goal is in **minutes**. Write unit tests for it.
-6. Run `pnpm android:test`. The JVM `testDebugUnitTest` alias makes the `core:model` tests run.
-
-After B2, run B3 (network), B5 (database), B8 (designsystem) and B9 (strings generator) in parallel. Then B4 → B6 → B10. B7 (contract tests) can start any time after B2. The details are in the §4 checklist.
+- **B3:** decode with `TrackbitJson` (Retrofit's kotlinx converter). Error bodies (`{ error, message, habitId }`) are not modelled yet; they belong with `ApiError`.
+- **B5:** store enums by `wire`, and map unknown strings back through the same serializers so `Unknown`/`Star` stay consistent.
+- **B6:** after an optimistic write to an anti-habit with no `firstLogDay`, set `firstLogDay` locally to that day. Otherwise `Streak.current` shows 0 until the next sync.
+- **B7:** when recording contracts, delete the hand-built fixtures and point `DecodeTest` at the recorded ones.
 
 ## Invariants — do not break these
 
@@ -84,7 +84,7 @@ After B2, run B3 (network), B5 (database), B8 (designsystem) and B9 (strings gen
 - `lintRelease`, `testReleaseUnitTest` and `assembleRelease` need `TRACKBIT_API_URL`. That is by design. CI runs only debug tasks.
 - A `Configuration.setVisible` deprecation warning comes from AGP internals (`BasePlugin.createAndroidJdkImageConfiguration`), not from our code. Ignore it.
 - The emulator previously had the discontinued Expo build of `com.trackbit.app` with a different signing key. It was uninstalled in this run. On another emulator or device, `INSTALL_FAILED_UPDATE_INCOMPATIBLE` means you should `adb uninstall com.trackbit.app`.
-- **Backend migrations:** there is no `__drizzle_migrations` table, so apply them with `psql "$DATABASE_URL" -f apps/backend/drizzle/<file>.sql`. **Production still needs `0008` and `0009`.** Run the audit query at the top of `0008` there first.
+- **Backend migrations:** there is no `__drizzle_migrations` table, so apply them with `psql "$DATABASE_URL" -f apps/backend/drizzle/<file>.sql`. **Production still needs `0008`, `0009` and `0010`.** Run the audit queries at the top of `0008` and `0010` there first.
 - **Backend tests** need `apps/backend/.env.test` (`TEST_DATABASE_URL=…/trackbit_test`). Setup **drops the `public` schema** of that database, so never point it at the dev database.
 - After editing `packages/types`, run `pnpm --filter @trackbit/types build`. After `pnpm add`, run `pnpm install` at the root.
 
@@ -92,7 +92,7 @@ After B2, run B3 (network), B5 (database), B8 (designsystem) and B9 (strings gen
 
 ```bash
 pnpm android:build && pnpm android:test && pnpm android:lint   # all green, 0 lint issues
-pnpm --filter backend test                                      # 38 passing
+pnpm --filter backend test                                      # 42 passing
 pnpm --filter backend exec tsc --noEmit -p .
 ```
 
@@ -107,3 +107,4 @@ pnpm --filter backend exec tsc --noEmit -p .
 
 - 2026-09-24 — Workstream A (A0 Vitest harness + A1–A10) done. Next: B1.
 - 2026-09-24 — B1 done: Gradle skeleton, convention plugins, module stubs, BuildConfig URL, debug cleartext config, launcher icon, pnpm scripts, CI workflow, README. Next: B2.
+- 2026-09-26 — B2 done: `core:model` DTOs, fallback enums, Streak, HabitProgress (37 tests). Backend: dailyGoal ≥ 1 (migration 0010), PUT goal defaults, lastPerformance scoping and types. Next: B3 ∥ B5 ∥ B8 ∥ B9.
