@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { zValidator } from '@hono/zod-validator'
+import { validator } from '../../lib/validator.js'
 import { z } from 'zod'
 import { and, asc, count, eq, inArray, isNull, or, sql } from 'drizzle-orm'
 import db from '../../db/db.js'
@@ -106,7 +106,7 @@ app.get('/:id', async (c) => {
 // POST /api/exercise-lists
 app.post(
     '/',
-    zValidator('json', z.object({
+    validator('json', z.object({
         name: z.string().min(1).max(120),
         description: z.string().max(500).nullable().optional(),
     })),
@@ -161,7 +161,7 @@ app.post(
 // PATCH /api/exercise-lists/:id
 app.patch(
     '/:id',
-    zValidator('json', z.object({
+    validator('json', z.object({
         name: z.string().min(1).max(120).optional(),
         description: z.string().max(500).nullable().optional(),
         position: z.number().int().min(0).optional(),
@@ -209,7 +209,7 @@ app.patch(
 // past log each time the list is reordered.
 app.put(
     '/:id/items',
-    zValidator('json', z.object({
+    validator('json', z.object({
         items: z.array(itemInputSchema),
     })),
     async (c) => {

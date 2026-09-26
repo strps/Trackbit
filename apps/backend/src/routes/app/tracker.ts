@@ -1,5 +1,5 @@
 import { Hono, type Context } from 'hono'
-import { zValidator } from '@hono/zod-validator'
+import { validator } from '../../lib/validator.js'
 import { z } from 'zod'
 import { eq, and, inArray, sql, gte, lte, desc, asc } from 'drizzle-orm'
 import { HTTPException } from 'hono/http-exception'
@@ -63,7 +63,7 @@ app.use('*', requireAuth)
 
 app.get(
     '/history',
-    zValidator('query', z.object({
+    validator('query', z.object({
         start: localDaySchema.optional(),
         end: localDaySchema.optional(),
     })),
@@ -116,7 +116,7 @@ const RECENT_DAYS = 7;
 
 app.get(
     '/today',
-    zValidator('query', z.object({ day: localDaySchema.optional() })),
+    validator('query', z.object({ day: localDaySchema.optional() })),
     async (c) => {
         const user = c.get('user');
         const day = resolveDay(user, c.req.valid('query').day);
@@ -224,7 +224,7 @@ const habitIdSchema = z.number().int().positive();
 app.post(
     '/check',
     idempotency,
-    zValidator('json', z.object({
+    validator('json', z.object({
         habitId: habitIdSchema,
         rating: z.number().int(),
         day: localDaySchema.optional(),
@@ -252,7 +252,7 @@ app.post(
 app.post(
     '/check/increment',
     idempotency,
-    zValidator('json', z.object({
+    validator('json', z.object({
         habitId: habitIdSchema,
         delta: z.number().int().refine((d) => d !== 0, 'delta must not be 0'),
         day: localDaySchema.optional(),
@@ -279,7 +279,7 @@ app.post(
 app.post(
     '/day-logs/ensure',
     idempotency,
-    zValidator('json', z.object({
+    validator('json', z.object({
         habitId: habitIdSchema,
         day: localDaySchema.optional(),
     }).strict()),

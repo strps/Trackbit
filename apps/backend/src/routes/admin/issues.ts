@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { zValidator } from '@hono/zod-validator'
+import { validator } from '../../lib/validator.js'
 import { z } from 'zod'
 import { requireAdminAuth } from '../../middleware/require-admin-auth.js'
 import db from '../../db/db.js'
@@ -50,7 +50,7 @@ app.get('/', async (c) => {
 
 app.patch(
     '/:id',
-    zValidator('json', z.object({
+    validator('json', z.object({
         status: z.enum(['open', 'resolved', 'closed']),
     })),
     async (c) => {

@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { zValidator } from '@hono/zod-validator'
+import { validator } from '../../lib/validator.js'
 import { z } from 'zod'
 import db from "../../db/db.js";
 import { habits } from '../../db/schema/index.js'
@@ -71,7 +71,7 @@ app.get('/', async (c) => {
 // POST /api/habits
 app.post(
     '/',
-    zValidator('json', z.object({
+    validator('json', z.object({
         name: z.string().min(1),
         description: z.string().optional(),
         type: z.enum(['count', 'complex', 'negative', 'timed', 'check']).default('count'),
@@ -142,7 +142,7 @@ app.post(
 // PUT /api/habits/:id
 app.put(
     '/:id',
-    zValidator('json', z.object({
+    validator('json', z.object({
         id: z.number().optional(),
         name: z.string().optional(),
         description: z.string().optional().nullable(),
@@ -207,7 +207,7 @@ app.put(
 // PATCH /api/habits/reorder — Batch update order + isAntiHabit
 app.patch(
     '/reorder',
-    zValidator('json', z.object({
+    validator('json', z.object({
         items: z.array(z.object({
             id: z.number(),
             order: z.number().int().min(0),

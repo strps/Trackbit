@@ -11,14 +11,13 @@
 // Also safely execute beforeCreate hook and handle any exceptions (return 400 if hook fails)
 
 import { Hono, type Context, type Handler } from 'hono';
-import { zValidator } from '@hono/zod-validator';
+import { validator } from '../validator.js';
 import db from "../../db/db.js";
 import { eq, and } from 'drizzle-orm';
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import { requireAuth } from '../../middleware/auth.js';
 import { AnyPgTable } from 'drizzle-orm/pg-core';
-import z, { ZodError } from 'zod';
-import { formatZodError } from '../utils.js';
+import z from 'zod';
 import { t } from '../../i18n/index.js';
 
 type AppEnv = {
@@ -122,11 +121,7 @@ export function generateCrudRouter<
     const extractPkValues = (params: PkParamOut): any[] => pkParamNames.map(name => params[name as keyof PkParamOut]);
 
     // Param validator (shared where needed)
-    const paramValidator = zValidator('param', pkParamSchema, (result, c) => {
-        if (!result.success) {
-            return c.json(formatZodError(result.error as ZodError, ((c as any).get('locale') as string | undefined) ?? 'en'), 400);
-        }
-    });
+    const paramValidator = validator('param', pkParamSchema);
 
     // LIST - GET /
     if (shouldInclude('list')) {
@@ -176,11 +171,7 @@ export function generateCrudRouter<
 
     // CREATE - POST /
     if (shouldInclude('create')) {
-        const jsonValidator = zValidator('json', schemas.create, (result, c) => {
-            if (!result.success) {
-                return c.json(formatZodError(result.error as ZodError, ((c as any).get('locale') as string | undefined) ?? 'en'), 400);
-            }
-        });
+        const jsonValidator = validator('json', schemas.create);
 
         if (overrides?.create) {
             router.post('/', jsonValidator, overrides.create);
@@ -202,11 +193,7 @@ export function generateCrudRouter<
     // UPDATE - PATCH /:field1/:field2/...
     if (shouldInclude('update')) {
         const path = `/${pkRouteSegment}`;
-        const updateJsonValidator = zValidator('json', schemas.update, (result, c) => {
-            if (!result.success) {
-                return c.json(formatZodError(result.error as ZodError, ((c as any).get('locale') as string | undefined) ?? 'en'), 400);
-            }
-        });
+        const updateJsonValidator = validator('json', schemas.update);
 
         if (overrides?.update) {
             router.patch(path, paramValidator, updateJsonValidator, overrides.update);

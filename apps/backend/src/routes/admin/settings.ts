@@ -3,7 +3,7 @@ import { requireAdminAuth } from '../../middleware/require-admin-auth.js'
 import db from '../../db/db.js'
 import { appSettings } from '../../db/schema/app/settings.js'
 import { eq } from 'drizzle-orm'
-import { zValidator } from '@hono/zod-validator'
+import { validator } from '../../lib/validator.js'
 import { z } from 'zod'
 import { getOrCreateAppSettings } from '../../lib/app-settings.js'
 
@@ -30,7 +30,7 @@ const updateSettingsSchema = z.object({
 })
 
 // PUT /admin/settings — update app settings
-app.put('/', zValidator('json', updateSettingsSchema), async (c) => {
+app.put('/', validator('json', updateSettingsSchema), async (c) => {
     const body = c.req.valid('json')
 
     const settings = await getOrCreateAppSettings()

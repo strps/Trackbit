@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { eq } from 'drizzle-orm'
-import { zValidator } from '@hono/zod-validator'
+import { validator } from '../../lib/validator.js'
 import { z } from 'zod'
 import { requireAdminAuth } from '../../middleware/require-admin-auth.js'
 import db from '../../db/db.js'
@@ -42,7 +42,7 @@ app.get('/', async (c) => {
 })
 
 // POST /admin/limits — create a new role limits row
-app.post('/', zValidator('json', createSchema), async (c) => {
+app.post('/', validator('json', createSchema), async (c) => {
     const body = c.req.valid('json')
 
     const [existing] = await db
@@ -60,7 +60,7 @@ app.post('/', zValidator('json', createSchema), async (c) => {
 })
 
 // PUT /admin/limits/:role — update limits for a role
-app.put('/:role', zValidator('json', updateSchema), async (c) => {
+app.put('/:role', validator('json', updateSchema), async (c) => {
     const role = c.req.param('role')
     const body = c.req.valid('json')
 

@@ -45,7 +45,7 @@ pnpm --filter backend db:studio      # Launch Drizzle Studio
 ### Backend
 
 - **Framework:** Hono with typed middleware. Routes use `new Hono<AuthEnv>()`.
-- **Validation:** Zod schemas via `@hono/zod-validator`. Validate at route level.
+- **Validation:** Zod schemas via `validator(target, schema)` from `lib/validator.ts`, at route level. It wraps `@hono/zod-validator` so every failure is a 400 `{ message, errors }`; never import `zValidator` directly (a test enforces it).
 - **Responses:** `c.json(data, statusCode)`. Errors: `{ error: string }` or `{ message: string, errors: [...] }`.
 - **Auth middleware:** `requireAuth` sets `user` and `session` on context. `requireAdminAuth` adds role check.
 - **CORS:** `/api/auth/*` allows both frontend + admin origins. `/api/*` allows frontend only. `/admin/*` allows admin only.

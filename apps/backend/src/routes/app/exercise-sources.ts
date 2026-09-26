@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { zValidator } from '@hono/zod-validator'
+import { validator } from '../../lib/validator.js'
 import { z } from 'zod'
 import { EXERCISE_SOURCE_KEY_PATTERN, parseSourceKey } from '@trackbit/types'
 import { requireAuth } from '../../middleware/auth.js'
@@ -35,7 +35,7 @@ app.get('/', async (c) => {
 // Unknown, unowned and dangling refs all answer 404 rather than throwing: the
 // client treats that as "fall back to browse mode" and clears its stored
 // preference, which is what keeps a deleted list from wedging the picker.
-app.get('/:key', zValidator('param', sourceKeySchema), async (c) => {
+app.get('/:key', validator('param', sourceKeySchema), async (c) => {
     const user = c.get('user')
     const { key } = c.req.valid('param')
 

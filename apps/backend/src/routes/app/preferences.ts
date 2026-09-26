@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
-import { zValidator } from '@hono/zod-validator'
-import { z, type ZodError } from 'zod'
+import { validator } from '../../lib/validator.js'
+import { z } from 'zod'
 import { eq, count } from 'drizzle-orm'
 import { EXERCISE_SOURCE_KEY_PATTERN } from '@trackbit/types'
 import db from '../../db/db.js'
@@ -10,7 +10,6 @@ import { exercises } from '../../db/schema/app/exercises.js'
 import { exerciseLists } from '../../db/schema/app/exercise-lists.js'
 import { requireAuth } from '../../middleware/auth.js'
 import { localeMiddleware } from '../../middleware/locale.js'
-import { formatZodError } from '../../lib/utils.js'
 import { getEffectiveLimits } from '../../lib/user-limits.js'
 import { timezoneSchema } from '../../lib/user-day.js'
 
@@ -48,11 +47,7 @@ const preferencesSchema = z.object({
     { message: 'At least one preference field must be provided' },
 )
 
-app.patch('/preferences', zValidator('json', preferencesSchema, (result, c) => {
-    if (!result.success) {
-        return c.json(formatZodError(result.error as ZodError, ((c as any).get('locale') as string | undefined) ?? 'en'), 400)
-    }
-}), async (c) => {
+app.patch('/preferences', validator('json', preferencesSchema), async (c) => {
     const sessionUser = c.get('user')
     const { locale, timezone, unitSystem, exerciseLogCardStyle, preferredExerciseSource } = c.req.valid('json')
 

@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { zValidator } from '@hono/zod-validator'
+import { validator } from '../../lib/validator.js'
 import { z } from 'zod'
 import { requireAdminAuth } from '../../middleware/require-admin-auth.js'
 import db from '../../db/db.js'
@@ -82,7 +82,7 @@ app.get('/', async (c) => {
 })
 
 // Create a system exercise (userId = null)
-app.post('/', zValidator('json', exerciseBodySchema), async (c) => {
+app.post('/', validator('json', exerciseBodySchema), async (c) => {
     const { muscleGroups: mgIds, name, description, ...rest } = c.req.valid('json')
 
     const [created] = await db
@@ -110,7 +110,7 @@ app.post('/', zValidator('json', exerciseBodySchema), async (c) => {
 })
 
 // Update any exercise
-app.patch('/:id', zValidator('json', exerciseBodySchema.partial()), async (c) => {
+app.patch('/:id', validator('json', exerciseBodySchema.partial()), async (c) => {
     const id = parseInt(c.req.param('id'), 10)
     if (isNaN(id)) return c.json({ error: 'Invalid id' }, 400)
 
@@ -196,7 +196,7 @@ app.get('/muscle-groups', async (c) => {
 })
 
 // Create a muscle group
-app.post('/muscle-groups', zValidator('json', muscleGroupBodySchema), async (c) => {
+app.post('/muscle-groups', validator('json', muscleGroupBodySchema), async (c) => {
     const { name, description, ...rest } = c.req.valid('json')
     const slug = rest.slug ?? toSlug(name.en)
     const level = rest.parentId ? 2 : 1
@@ -211,7 +211,7 @@ app.post('/muscle-groups', zValidator('json', muscleGroupBodySchema), async (c) 
 })
 
 // Update a muscle group
-app.patch('/muscle-groups/:id', zValidator('json', muscleGroupBodySchema.partial()), async (c) => {
+app.patch('/muscle-groups/:id', validator('json', muscleGroupBodySchema.partial()), async (c) => {
     const id = parseInt(c.req.param('id'), 10)
     if (isNaN(id)) return c.json({ error: 'Invalid id' }, 400)
 

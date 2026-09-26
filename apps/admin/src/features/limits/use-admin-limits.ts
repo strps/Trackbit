@@ -44,7 +44,7 @@ async function createLimits(input: CreateLimitsInput): Promise<AdminLimits> {
     });
     if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? "Failed to create limits");
+        throw new Error(data.message ?? data.error ?? "Failed to create limits");
     }
     return res.json();
 }
@@ -58,7 +58,7 @@ async function updateLimits({ role, ...patch }: UpdateLimitsInput & { role: stri
     });
     if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? "Failed to update limits");
+        throw new Error(data.message ?? data.error ?? "Failed to update limits");
     }
     return res.json();
 }
@@ -70,7 +70,7 @@ async function deleteLimits(role: string): Promise<void> {
     });
     if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? "Failed to delete limits");
+        throw new Error(data.message ?? data.error ?? "Failed to delete limits");
     }
 }
 
