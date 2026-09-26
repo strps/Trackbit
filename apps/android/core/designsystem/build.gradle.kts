@@ -6,3 +6,7 @@ plugins {
 android {
     namespace = "com.trackbit.core.designsystem"
 }
+
+dependencies {
+    api(projects.core.model)
+}

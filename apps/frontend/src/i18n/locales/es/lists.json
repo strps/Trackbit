@@ -10,7 +10,7 @@
   "list.empty_title": "Aún no hay listas",
   "list.empty_desc": "Crea una lista para tener juntos tus ejercicios favoritos.",
   "list.select_prompt": "Elige una lista para editar sus ejercicios.",
-  "list.items_count": "{count, plural, one {# ejercicio} other {# ejercicios}}",
+  "list.items_count": "{count, plural, one {# ejercicio} many {# de ejercicios} other {# ejercicios}}",
   "form.create_title": "Nueva lista",
   "form.edit_title": "Renombrar lista",
   "form.name_label": "Nombre",

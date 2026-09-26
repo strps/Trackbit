@@ -9,7 +9,7 @@ A native Android client for Trackbit written in Kotlin + Jetpack Compose. It con
 Before any of these can ship, a thin foundation (auth, API client, local cache) and a few backend changes have to exist. Those are Phase 0 below, split so that several people or agents can work in parallel.
 
 **Branch:** `kotlin-app`
-**Status:** Phase 0 in progress. Workstream A done 2026-09-24; Workstream B in progress, B1 done 2026-09-24, B2 done 2026-09-26 ([handoff](../handoffs/kotlin-app-B.md)).
+**Status:** Phase 0 in progress. Workstream A done 2026-09-24; Workstream B in progress, B1 done 2026-09-24, B2, B3, B5, B8 and B9 done 2026-09-26 ([handoff](../handoffs/kotlin-app-B.md)).
 
 ---
 
@@ -139,13 +139,13 @@ Each phase lists its **exit criteria**. A phase is done when those are met, not 
 - [x] A1–A10 backend prerequisites (Workstream A), see §3
 - [x] **B1** Gradle project in `apps/android`: version catalog, `build-logic` convention plugins (`trackbit.android.application/library/compose`, `trackbit.hilt`, `trackbit.room`, `trackbit.jvm.library`), module stubs from §2.1, `BuildConfig.API_BASE_URL` (`http://10.0.2.2:3000` in debug, with a debug-only cleartext network config), root `pnpm android:*` scripts, CI job `.github/workflows/android.yml` (assemble + unit tests + lint, debug APK artifact)
 - [x] **B2** `core/model`: `@Serializable` DTOs (Habit, DayLog with `localDay`, `TodayResponse`, Exercise, ExerciseSession/Log/Performance, ExerciseList/Item, session user with the 5 preferences, Limits, request bodies). Enums with an unknown fallback. Pure domain helpers with unit tests: `Streak.current(...)` (ports [streak.ts](../../../apps/backend/src/lib/streak.ts) `dayCounts`) and `HabitProgress` (timed ratings are ms against a goal in minutes)
-- [ ] **B3** `core/network`: Retrofit services (auth, tracker, habits, me), bearer + `Accept-Language` interceptors, `Idempotency-Key` from a request tag, `safeCall` mapping to a sealed `ApiError` (`Unauthorized`, `HabitFrozen`, `CustomExerciseFrozen`, `NotFound`, `Validation`, `Server`, `Network`, `Unknown`). MockWebServer tests
+- [x] **B3** `core/network`: Retrofit services (auth, tracker, habits, me), bearer + `Accept-Language` interceptors, `Idempotency-Key` from a request tag, `safeCall` mapping to a sealed `ApiError` (`Unauthorized`, `HabitFrozen`, `CustomExerciseFrozen`, `NotFound`, `Validation`, `Server`, `Network`, `Unknown`). MockWebServer tests
 - [ ] **B4** `core/auth`: Tink/Keystore-encrypted token in DataStore, `AuthState` StateFlow, sign-in reads `set-auth-token`, cached session user for offline boot, any 401 → signed out
-- [ ] **B5** `core/database`: `HabitEntity` (+ `frozen`, `firstLogDay`, `streakBeforeDay`, `summaryDay`), `DayLogEntity` (PK `habitId, localDay`), `OutboxEntity` (UUID idempotency key fixed at enqueue). The today summary is a DAO projection (habit + today's log + last 7), not a table
+- [x] **B5** `core/database`: `HabitEntity` (+ `frozen`, `firstLogDay`, `streakBeforeDay`, `summaryDay`), `DayLogEntity` (PK `habitId, localDay`), `OutboxEntity` (UUID idempotency key fixed at enqueue). The today summary is a DAO projection (habit + today's log + last 7), not a table
 - [ ] **B6** `core/data`: repositories; every write = one Room transaction (optimistic change + outbox op), then enqueue `OutboxWorker` and call `WidgetUpdater` (no-op until Phase 1). `OutboxWorker`: FIFO, backoff on network/5xx, drop + resync on 4xx, stop on 401. `SyncWorker` (15 min + on demand): flush outbox → `GET /tracker/today` → write Room **without clobbering rows that still have pending ops**
 - [ ] **B7** Contract tests: a backend Vitest suite writes real, normalized responses to `apps/android/core/model/src/test/resources/contracts/`; CI fails if they change unexpectedly; a Kotlin test decodes each one
-- [ ] **B8** `core/designsystem`: M3 light/dark schemes from the web's oklch tokens, dynamic color with fallback, gradient presets generated from `@trackbit/types`, `colorAt(stops, t)`, the 15 `HABIT_ICON_IDS` as Lucide vector drawables (fallback `star`)
-- [ ] **B9** `scripts/gen-strings.mjs`: web locale JSON → `strings.xml` (en, es), ICU → format args, plurals; also emits the gradient presets. CI checks the output is current
+- [x] **B8** `core/designsystem`: M3 light/dark schemes from the web's oklch tokens, dynamic color with fallback, gradient presets generated from `@trackbit/types`, `colorAt(stops, t)`, the 15 `HABIT_ICON_IDS` as Lucide vector drawables (fallback `star`)
+- [x] **B9** `scripts/gen-strings.mjs` (as built: `apps/android/scripts/generate.mjs`, which also emits B8's presets, colors and icons): web locale JSON → `strings.xml` (en, es), ICU → format args, plurals; also emits the gradient presets. CI checks the output is current
 - [ ] **B10** Sign-in screen (email + password) and a placeholder Today screen (rows from Room, +1/toggle through the outbox, pull-to-refresh, sign-out)
 
 Order: B1 → B2 → (B3 ∥ B5 ∥ B8 ∥ B9) → B4 → B6 → B10; B7 after B2.
@@ -273,7 +273,7 @@ To avoid rework, freeze these before C/D/E fan out:
 
 ### 5.4 i18n
 
-- The web app has namespaced JSON under [apps/frontend/src/i18n/locales](../../../apps/frontend/src/i18n/locales) (en, es). Don't hand-copy strings. Add a small script (`apps/android/scripts/gen-strings`) that converts the JSON into `values/strings.xml` and `values-es/strings.xml`, prefixing keys with their namespace (`tracker_…`). It converts ICU placeholders to Android format args.
+- The web app has namespaced JSON under [apps/frontend/src/i18n/locales](../../../apps/frontend/src/i18n/locales) (en, es). Don't hand-copy strings. A small script ([apps/android/scripts/generate.mjs](../../../apps/android/scripts/generate.mjs))  converts the JSON into `values/strings.xml` and `values-es/strings.xml`, prefixing keys with their namespace (`tracker_…`). It converts ICU placeholders to Android format args.
 - Android-only strings (widget labels, notification actions) go in a separate hand-written `strings_android.xml`.
 - The in-app locale switcher uses per-app language (`AppCompatDelegate.setApplicationLocales`) and PATCHes `/api/me/preferences`, just as the web does.
 

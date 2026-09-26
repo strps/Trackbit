@@ -49,6 +49,26 @@ widget/               Glance widgets
 
 `feature/*` and `widget` depend only on `core/*`, never on each other. `app` wires everything together. Library versions live in [gradle/libs.versions.toml](gradle/libs.versions.toml). Module build files apply convention plugins and declare their dependencies, and nothing else.
 
+## Generated from the web app
+
+[scripts/generate.mjs](scripts/generate.mjs) writes these files from the web sources, so that nothing is copied by hand. Never edit the outputs; change the source and regenerate.
+
+| Output | Source |
+|---|---|
+| `core/i18n` `values[-es]/strings.xml` | `apps/frontend/src/i18n/locales/{en,es}/*.json`. `ns:key.sub` becomes `ns_key_sub`, ICU `{arg}` becomes `%N$s`, and a plural becomes `<plurals>` |
+| `core/model` `GradientPresets.kt` | `GRADIENT_PRESET_STOPS` in `@trackbit/types` |
+| `core/designsystem` `WebColors.kt` | the oklch tokens in `apps/frontend/src/index.css`, converted to sRGB |
+| `core/designsystem` `drawable/ic_habit_*.xml` | `HABIT_ICON_IDS`, drawn with the lucide icons from the web's `habit-icons.ts` |
+
+It also fails if the handwritten `HabitIcon` / `ColorTheme` enums drift from `@trackbit/types`. It needs `pnpm install` first.
+
+```bash
+pnpm android:generate          # regenerate after changing a source
+pnpm android:generate:check    # what CI runs: fails if an output is stale
+```
+
+Android-only strings (widget labels, notification actions) go in a hand-written `strings_android.xml`, not in the generated file.
+
 ## CI
 
-[.github/workflows/android.yml](../../.github/workflows/android.yml) runs `assembleDebug testDebugUnitTest lintDebug` and uploads the debug APK. It triggers on changes to this directory, to the web locale files, and to `packages/types`, because string resources and design presets are generated from those.
+[.github/workflows/android.yml](../../.github/workflows/android.yml) has two jobs. `generated` runs `pnpm android:generate:check`. `build` runs `assembleDebug testDebugUnitTest lintDebug` and uploads the debug APK. The workflow triggers on changes to this directory and to each of the generator's sources.

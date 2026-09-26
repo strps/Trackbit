@@ -10,4 +10,9 @@ android {
 
 dependencies {
     api(projects.core.model)
+    implementation(libs.kotlinx.serialization.json)
+
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.robolectric)
 }

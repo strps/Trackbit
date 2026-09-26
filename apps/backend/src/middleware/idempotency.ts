@@ -15,6 +15,9 @@ const MAX_KEY_LENGTH = 255
  * `Idempotency-Key`, the first successful (2xx) response is stored per
  * (user, key) and replayed verbatim for any retry with the same key.
  * Requests without the header run normally.
+ *
+ * Errors carry a stable `error` code plus a localized `message`, so clients can
+ * tell a retryable `idempotency_request_in_progress` (409) apart from the rest.
  */
 export const idempotency = createMiddleware<{ Variables: { user: any } }>(async (c, next) => {
     const key = c.req.header('idempotency-key')
@@ -22,7 +25,7 @@ export const idempotency = createMiddleware<{ Variables: { user: any } }>(async 
 
     const locale = negotiateFromHeader(c.req.header('accept-language'))
     if (key.length > MAX_KEY_LENGTH) {
-        return c.json({ error: t('errors', 'idempotency_key_invalid', locale) }, 400)
+        return c.json({ error: 'idempotency_key_invalid', message: t('errors', 'idempotency_key_invalid', locale) }, 400)
     }
 
     const userId: string = c.get('user').id
@@ -46,10 +49,10 @@ export const idempotency = createMiddleware<{ Variables: { user: any } }>(async 
     if (reserved.length === 0) {
         const [existing] = await db.select().from(idempotencyKeys).where(match).limit(1)
         if (existing.method !== method || existing.path !== path) {
-            return c.json({ error: t('errors', 'idempotency_key_reused', locale) }, 422)
+            return c.json({ error: 'idempotency_key_reused', message: t('errors', 'idempotency_key_reused', locale) }, 422)
         }
         if (existing.status === null) {
-            return c.json({ error: t('errors', 'idempotency_request_in_progress', locale) }, 409)
+            return c.json({ error: 'idempotency_request_in_progress', message: t('errors', 'idempotency_request_in_progress', locale) }, 409)
         }
         return new Response(existing.body, {
             status: existing.status,

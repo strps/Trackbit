@@ -56,5 +56,6 @@ describe('Idempotency-Key', () => {
         await increment(u.token, habit.id, 'k')
         const res = await post(u.token, '/api/tracker/check', { habitId: habit.id, rating: 1 }, { 'idempotency-key': 'k' })
         expect(res.status).toBe(422)
+        expect((await res.json()).error).toBe('idempotency_key_reused')
     })
 })

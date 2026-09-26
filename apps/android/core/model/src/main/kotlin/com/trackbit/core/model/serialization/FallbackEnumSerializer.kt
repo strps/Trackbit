@@ -27,7 +27,10 @@ abstract class FallbackEnumSerializer<E>(
 
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor(serialName, PrimitiveKind.STRING)
 
-    override fun deserialize(decoder: Decoder): E = byWire[decoder.decodeString()] ?: fallback
+    /** The constant for [wire], or the fallback when it is unknown or null. Also used to read Room columns. */
+    fun fromWire(wire: String?): E = byWire[wire] ?: fallback
+
+    override fun deserialize(decoder: Decoder): E = fromWire(decoder.decodeString())
 
     override fun serialize(encoder: Encoder, value: E) {
         val wire = value.wire ?: throw SerializationException("$value is a client-only fallback and cannot be sent")

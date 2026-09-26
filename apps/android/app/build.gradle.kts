@@ -60,6 +60,7 @@ dependencies {
     implementation(projects.core.auth)
     implementation(projects.core.designsystem)
     implementation(projects.core.i18n)
+    implementation(projects.core.network)
     implementation(projects.feature.auth)
     implementation(projects.widget)
 
