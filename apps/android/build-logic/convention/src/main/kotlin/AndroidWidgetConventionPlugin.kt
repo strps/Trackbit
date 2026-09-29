@@ -5,8 +5,8 @@ import org.gradle.api.Project
 import org.gradle.kotlin.dsl.dependencies
 
 /**
- * The home-screen widget module: a Glance library with Hilt, the design system and strings,
- * tested with Robolectric and Glance's unit-test APIs.
+ * The home-screen widget module: a Glance library with Hilt, the design system and strings, plus
+ * Compose activities for widget configuration. Tested with Robolectric and Glance's unit-test APIs.
  */
 class AndroidWidgetConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) {
@@ -19,6 +19,9 @@ class AndroidWidgetConventionPlugin : Plugin<Project> {
                 add("implementation", project(":core:i18n"))
                 add("implementation", libs.library("androidx-glance-appwidget"))
                 add("implementation", libs.library("androidx-glance-material3"))
+                add("implementation", libs.library("androidx-activity-compose"))
+                add("implementation", libs.library("androidx-hilt-lifecycle-viewmodel-compose"))
+                add("implementation", libs.library("androidx-lifecycle-runtime-compose"))
                 add("testImplementation", libs.library("androidx-glance-appwidget-testing"))
                 add("testImplementation", libs.library("androidx-test-core"))
                 add("testImplementation", libs.library("kotlinx-coroutines-test"))

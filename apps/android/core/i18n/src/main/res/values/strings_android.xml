@@ -6,6 +6,8 @@
     <string name="android_errors_offline">Can\'t reach Trackbit. Check your connection and try again.</string>
     <string name="android_tracker_offline">Offline. Showing saved data; changes sync when you\'re back online.</string>
     <string name="android_tracker_increment">Add 1 to %1$s</string>
+    <string name="android_tracker_mark_done">Mark %1$s as done</string>
+    <string name="android_tracker_mark_not_done">Mark %1$s as not done</string>
     <plurals name="android_tracker_pending">
         <item quantity="one">%1$d change waiting to sync</item>
         <item quantity="other">%1$d changes waiting to sync</item>
@@ -13,4 +15,9 @@
     <string name="android_widget_today_label">Today\'s habits</string>
     <string name="android_widget_today_description">Log today\'s habits from your home screen.</string>
     <string name="android_widget_sign_in">Sign in to Trackbit to see your habits.</string>
+    <string name="android_widget_sign_in_short">Sign in</string>
+    <string name="android_widget_quick_log_label">Quick log</string>
+    <string name="android_widget_quick_log_description">Log one habit with a single tap.</string>
+    <string name="android_widget_quick_log_choose">Choose a habit</string>
+    <string name="android_widget_quick_log_removed">Habit removed. Tap to choose another.</string>
 </resources>

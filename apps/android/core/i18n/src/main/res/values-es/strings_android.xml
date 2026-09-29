@@ -6,6 +6,8 @@
     <string name="android_errors_offline">No se puede conectar con Trackbit. Revisa tu conexión e inténtalo de nuevo.</string>
     <string name="android_tracker_offline">Sin conexión. Se muestran los datos guardados; los cambios se sincronizarán al volver a estar en línea.</string>
     <string name="android_tracker_increment">Sumar 1 a %1$s</string>
+    <string name="android_tracker_mark_done">Marcar %1$s como hecho</string>
+    <string name="android_tracker_mark_not_done">Marcar %1$s como no hecho</string>
     <plurals name="android_tracker_pending">
         <item quantity="one">%1$d cambio pendiente de sincronizar</item>
         <item quantity="many">%1$d de cambios pendientes de sincronizar</item>
@@ -14,4 +16,9 @@
     <string name="android_widget_today_label">Hábitos de hoy</string>
     <string name="android_widget_today_description">Registra los hábitos de hoy desde la pantalla de inicio.</string>
     <string name="android_widget_sign_in">Inicia sesión en Trackbit para ver tus hábitos.</string>
+    <string name="android_widget_sign_in_short">Inicia sesión</string>
+    <string name="android_widget_quick_log_label">Registro rápido</string>
+    <string name="android_widget_quick_log_description">Registra un hábito con un solo toque.</string>
+    <string name="android_widget_quick_log_choose">Elige un hábito</string>
+    <string name="android_widget_quick_log_removed">Hábito eliminado. Toca para elegir otro.</string>
 </resources>

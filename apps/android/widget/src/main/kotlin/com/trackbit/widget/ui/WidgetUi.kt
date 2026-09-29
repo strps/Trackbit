@@ -3,6 +3,7 @@ package com.trackbit.widget.ui
 import android.content.Context
 import android.os.Build
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceModifier
@@ -36,16 +37,20 @@ internal fun WidgetTheme(content: @Composable () -> Unit) {
     GlanceTheme(colors = colors, content = content)
 }
 
-/** The widget's surface: themed background, the launcher's corner radius, standard padding. */
+/** The widget's surface: themed background, the launcher's corner radius, padding. */
 @Composable
-internal fun WidgetSurface(content: @Composable () -> Unit) {
+internal fun WidgetSurface(
+    horizontalPadding: Dp = 12.dp,
+    verticalPadding: Dp = 10.dp,
+    content: @Composable () -> Unit,
+) {
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
             .appWidgetBackground()
             .background(GlanceTheme.colors.widgetBackground)
             .launcherCornerRadius()
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = horizontalPadding, vertical = verticalPadding),
     ) { content() }
 }
 

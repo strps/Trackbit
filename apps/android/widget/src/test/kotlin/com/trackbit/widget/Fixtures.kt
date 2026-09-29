@@ -1,5 +1,9 @@
 package com.trackbit.widget
 
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import com.trackbit.core.data.SyncResult
 import com.trackbit.core.data.TrackedHabit
 import com.trackbit.core.data.TrackerRepository
@@ -18,6 +22,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
+import org.robolectric.Shadows.shadowOf
 import java.time.LocalDate
 
 val DAY: LocalDate = LocalDate.of(2026, 9, 28)
@@ -62,6 +67,19 @@ fun user(id: String = "u_1") = SessionUser(
     exerciseLogCardStyle = ExerciseLogCardStyle.Compact,
     preferredExerciseSource = null,
 )
+
+/**
+ * Registers the app's launcher activity, which `openAppAction` needs (the widget module has no
+ * activity of its own), and returns its launch intent.
+ */
+fun registerLauncherActivity(context: Context): Intent {
+    val main = ComponentName(context, "com.trackbit.app.MainActivity")
+    shadowOf(context.packageManager).apply {
+        addActivityIfNotPresent(main)
+        addIntentFilterForActivity(main, IntentFilter(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_LAUNCHER) })
+    }
+    return context.packageManager.getLaunchIntentForPackage(context.packageName)!!
+}
 
 /** Habits per day; only what the widgets read. */
 class FakeTrackerRepository : TrackerRepository {

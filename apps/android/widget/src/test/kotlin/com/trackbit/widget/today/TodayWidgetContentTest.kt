@@ -1,9 +1,7 @@
 package com.trackbit.widget.today
 
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import androidx.glance.appwidget.testing.unit.hasRunCallbackClickAction
 import androidx.glance.appwidget.testing.unit.hasStartActivityClickAction
 import androidx.glance.appwidget.testing.unit.runGlanceAppWidgetUnitTest
@@ -18,28 +16,20 @@ import com.trackbit.widget.DAY
 import com.trackbit.widget.action.IncrementHabitAction
 import com.trackbit.widget.action.habitParameters
 import com.trackbit.widget.habit
+import com.trackbit.widget.registerLauncherActivity
 import com.trackbit.widget.ui.WidgetTheme
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.Shadows.shadowOf
 
 @RunWith(RobolectricTestRunner::class)
 class TodayWidgetContentTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
     private lateinit var launchIntent: Intent
 
-    @Before fun registerLauncherActivity() {
-        val main = ComponentName(context, "com.trackbit.app.MainActivity")
-        shadowOf(context.packageManager).apply {
-            addActivityIfNotPresent(main)
-            addIntentFilterForActivity(
-                main,
-                IntentFilter(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_LAUNCHER) },
-            )
-        }
-        launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)!!
+    @Before fun registerLauncher() {
+        launchIntent = registerLauncherActivity(context)
     }
 
     private fun render(state: TodayWidgetState, test: androidx.glance.appwidget.testing.unit.GlanceAppWidgetUnitTest.() -> Unit) =

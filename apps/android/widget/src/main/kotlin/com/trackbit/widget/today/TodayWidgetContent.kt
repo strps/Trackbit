@@ -15,7 +15,6 @@ import androidx.glance.action.clickable
 import androidx.glance.action.Action
 import androidx.glance.appwidget.CheckBox
 import androidx.glance.appwidget.LinearProgressIndicator
-import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.components.CircleIconButton
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
@@ -34,16 +33,14 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.trackbit.core.data.TrackedHabit
 import com.trackbit.core.designsystem.color.colorAt
-import com.trackbit.core.designsystem.format.displayText
 import com.trackbit.core.designsystem.icon.drawableRes
 import com.trackbit.core.i18n.R as I18nR
 import com.trackbit.core.model.HabitType
 import com.trackbit.widget.R
-import com.trackbit.widget.action.IncrementHabitAction
-import com.trackbit.widget.action.ToggleHabitAction
-import com.trackbit.widget.action.habitParameters
+import com.trackbit.widget.action.logAction
 import com.trackbit.widget.ui.WidgetMessage
 import com.trackbit.widget.ui.WidgetSurface
+import com.trackbit.widget.ui.detailsText
 import com.trackbit.widget.ui.openAppAction
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -110,10 +107,6 @@ private fun HabitList(habits: List<TrackedHabit>, openApp: Action) {
     }
 }
 
-/** Types the widget logs by itself; a tap on any other row opens the app. */
-private val HabitType.loggableFromWidget: Boolean
-    get() = this == HabitType.Check || this == HabitType.Count || this == HabitType.Negative
-
 @Composable
 private fun HabitRow(habit: TrackedHabit, openApp: Action) {
     val context = LocalContext.current
@@ -122,7 +115,7 @@ private fun HabitRow(habit: TrackedHabit, openApp: Action) {
     // Timers and workout sessions live in the app (timed habits get widget controls with the
     // timer engine). Frozen rows do nothing at all: the lock says why.
     val rowModifier = GlanceModifier.fillMaxWidth().padding(vertical = 5.dp).let {
-        if (habit.frozen || habit.type.loggableFromWidget) it else it.clickable(openApp)
+        if (habit.frozen || logAction(habit) != null) it else it.clickable(openApp)
     }
     Row(modifier = rowModifier, verticalAlignment = Alignment.CenterVertically) {
         Image(
@@ -138,16 +131,9 @@ private fun HabitRow(habit: TrackedHabit, openApp: Action) {
                 maxLines = 1,
                 style = TextStyle(color = if (habit.frozen) muted else GlanceTheme.colors.onSurface, fontSize = 14.sp),
             )
-            val details = listOfNotNull(
-                habit.progress.displayText(habit.type),
-                habit.streak?.takeIf { it >= 2 }?.let {
-                    context.resources.getQuantityString(I18nR.plurals.tracker_streak_badge, it, it)
-                },
-                context.getString(I18nR.string.errors_limits_frozen_badge).takeIf { habit.frozen },
-            )
-            if (details.isNotEmpty()) {
+            habit.detailsText(context)?.let { details ->
                 Text(
-                    text = details.joinToString(" · "),
+                    text = details,
                     maxLines = 1,
                     style = TextStyle(color = muted, fontSize = 12.sp),
                 )
@@ -171,6 +157,7 @@ private fun HabitRow(habit: TrackedHabit, openApp: Action) {
 @Composable
 private fun TrailingControl(habit: TrackedHabit) {
     val context = LocalContext.current
+    val log = logAction(habit)
     when {
         habit.frozen -> Image(
             provider = ImageProvider(R.drawable.ic_widget_lock),
@@ -178,18 +165,15 @@ private fun TrailingControl(habit: TrackedHabit) {
             colorFilter = ColorFilter.tint(GlanceTheme.colors.onSurfaceVariant),
             modifier = GlanceModifier.size(20.dp),
         )
-        habit.type == HabitType.Check -> CheckBox(
-            checked = habit.progress.isGoalMet,
-            onCheckedChange = actionRunCallback<ToggleHabitAction>(habitParameters(habit)),
-        )
-        habit.type == HabitType.Count || habit.type == HabitType.Negative -> CircleIconButton(
+        log == null -> Unit
+        habit.type == HabitType.Check -> CheckBox(checked = habit.progress.isGoalMet, onCheckedChange = log)
+        else -> CircleIconButton(
             imageProvider = ImageProvider(R.drawable.ic_widget_plus),
             contentDescription = context.getString(I18nR.string.android_tracker_increment, habit.name),
-            onClick = actionRunCallback<IncrementHabitAction>(habitParameters(habit)),
+            onClick = log,
             backgroundColor = GlanceTheme.colors.secondaryContainer,
             contentColor = GlanceTheme.colors.onSecondaryContainer,
             modifier = GlanceModifier.size(36.dp),
         )
-        else -> Unit
     }
 }

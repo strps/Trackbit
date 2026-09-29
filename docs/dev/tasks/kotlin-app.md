@@ -9,7 +9,8 @@ A native Android client for Trackbit written in Kotlin + Jetpack Compose. It con
 Before any of these can ship, a thin foundation (auth, API client, local cache) and a few backend changes have to exist. Those are Phase 0 below, split so that several people or agents can work in parallel.
 
 **Branch:** `kotlin-app`
-**Status:** Phase 0 done 2026-09-26 ([handoff](../handoffs/kotlin-app-B.md)). Phase 1 in progress: C1 (widget foundation + W2 Today list) done 2026-09-28 ([handoff](../handoffs/kotlin-app-C.md)).
+**Status:** Phase 0 done 2026-09-26 ([handoff](../handoffs/kotlin-app-B.md)). Phase 1 in progress: C1 (widget foundation + W2 Today list) done 2026-09-28, C2 (W1 quick-log) done 2026-09-29 ([handoff](../handoffs/kotlin-app-C.md)).
+**Deferred follow-ups:** [kotlin-app-followups.md](kotlin-app-followups.md) (non-blocking issues and checks, to pick up after Phase 1).
 
 ---
 

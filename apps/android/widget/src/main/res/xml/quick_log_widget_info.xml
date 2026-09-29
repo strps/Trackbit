@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- W1: 2×1 by default, 1×1 to 2×2 (QuickLogWidget's responsive sizes). A habit must be chosen
+     before it's placed, so configuration isn't optional; Android 12+ can reconfigure it. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:configure="com.trackbit.widget.quicklog.QuickLogConfigActivity"
+    android:description="@string/android_widget_quick_log_description"
+    android:initialLayout="@layout/glance_default_loading_layout"
+    android:minWidth="110dp"
+    android:minHeight="40dp"
+    android:minResizeWidth="40dp"
+    android:minResizeHeight="40dp"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="2"
+    android:targetCellHeight="1"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen"
+    android:widgetFeatures="reconfigurable"
+    tools:ignore="UnusedAttribute" />
