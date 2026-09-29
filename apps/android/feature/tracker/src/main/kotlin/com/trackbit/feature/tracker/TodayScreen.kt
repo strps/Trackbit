@@ -40,6 +40,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.trackbit.core.data.TrackedHabit
 import com.trackbit.core.designsystem.color.colorAt
+import com.trackbit.core.designsystem.format.displayText
 import com.trackbit.core.designsystem.icon.painter
 import com.trackbit.core.i18n.R
 import com.trackbit.core.model.HabitType
@@ -171,7 +172,7 @@ private fun HabitRow(
         headlineContent = { Text(habit.name) },
         supportingContent = {
             val details = listOfNotNull(
-                habit.progressText(),
+                habit.progress.displayText(habit.type),
                 habit.streak?.takeIf { it >= 2 }?.let {
                     pluralStringResource(R.plurals.tracker_streak_badge, it, it)
                 },
@@ -196,21 +197,6 @@ private fun HabitRow(
             }
         },
     )
-}
-
-/** "3 / 8", or durations for timed habits; nothing for check habits, whose box says it all. */
-private fun TrackedHabit.progressText(): String? = when (type) {
-    HabitType.Check -> null
-    HabitType.Timed -> "${formatDuration(progress.value)} / ${formatDuration(progress.goal)}"
-    else -> "${progress.value} / ${progress.goal}"
-}
-
-internal fun formatDuration(ms: Long): String {
-    val totalSeconds = ms / 1000
-    val hours = totalSeconds / 3600
-    val minutes = totalSeconds % 3600 / 60
-    val seconds = totalSeconds % 60
-    return if (hours > 0) "%d:%02d:%02d".format(hours, minutes, seconds) else "%d:%02d".format(minutes, seconds)
 }
 
 @Composable

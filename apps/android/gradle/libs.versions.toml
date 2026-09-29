@@ -9,6 +9,7 @@ activityCompose = "1.13.0"
 composeBom = "2026.09.00"
 coreKtx = "1.19.1"
 datastore = "1.2.1"
+glance = "1.2.0"
 hiltAndroidx = "1.4.0"
 lifecycle = "2.11.0"
 navigation = "2.10.2"
@@ -37,6 +38,8 @@ androidx-compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
 androidx-compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
 androidx-datastore = { module = "androidx.datastore:datastore", version.ref = "datastore" }
+androidx-glance-appwidget = { module = "androidx.glance:glance-appwidget", version.ref = "glance" }
+androidx-glance-material3 = { module = "androidx.glance:glance-material3", version.ref = "glance" }
 androidx-hilt-lifecycle-viewmodel-compose = { module = "androidx.hilt:hilt-lifecycle-viewmodel-compose", version.ref = "hiltAndroidx" }
 androidx-hilt-compiler = { module = "androidx.hilt:hilt-compiler", version.ref = "hiltAndroidx" }
 androidx-hilt-work = { module = "androidx.hilt:hilt-work", version.ref = "hiltAndroidx" }
@@ -56,6 +59,7 @@ okhttp-mockwebserver = { module = "com.squareup.okhttp3:mockwebserver3", version
 retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
 retrofit-converter-kotlinx-serialization = { module = "com.squareup.retrofit2:converter-kotlinx-serialization", version.ref = "retrofit" }
 tink-android = { module = "com.google.crypto.tink:tink-android", version.ref = "tink" }
+androidx-glance-appwidget-testing = { module = "androidx.glance:glance-appwidget-testing", version.ref = "glance" }
 androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTestCore" }
 androidx-work-testing = { module = "androidx.work:work-testing", version.ref = "work" }
 junit = { module = "junit:junit", version.ref = "junit" }
@@ -85,6 +89,7 @@ trackbit-android-application = { id = "trackbit.android.application" }
 trackbit-android-compose = { id = "trackbit.android.compose" }
 trackbit-android-feature = { id = "trackbit.android.feature" }
 trackbit-android-library = { id = "trackbit.android.library" }
+trackbit-android-widget = { id = "trackbit.android.widget" }
 trackbit-hilt = { id = "trackbit.hilt" }
 trackbit-jvm-library = { id = "trackbit.jvm.library" }
 trackbit-room = { id = "trackbit.room" }

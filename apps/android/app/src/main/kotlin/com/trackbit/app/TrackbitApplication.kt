@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.trackbit.core.data.sync.PeriodicSync
+import com.trackbit.widget.WidgetUpdater
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -14,10 +15,12 @@ import javax.inject.Inject
 @HiltAndroidApp
 class TrackbitApplication : Application(), Configuration.Provider {
     @Inject lateinit var periodicSync: PeriodicSync
+    @Inject lateinit var widgetUpdater: WidgetUpdater
 
     override fun onCreate() {
         super.onCreate()
         periodicSync.start()
+        widgetUpdater.start()
     }
 
     // From the component, not an injected field: WorkManager may initialize (a sign-out hook

@@ -14,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -133,6 +134,7 @@ private class FakeTrackerRepository : TrackerRepository {
     /** Habits as they'd be on any day; [observeDay] stamps the requested day on them. */
     val habits = MutableStateFlow<List<TrackedHabit>>(emptyList())
     override val pendingWrites = MutableStateFlow(0)
+    override val changes = emptyFlow<Unit>()
     val writes = mutableListOf<String>()
     var writeResult = WriteResult.Queued
     var refreshes = 0

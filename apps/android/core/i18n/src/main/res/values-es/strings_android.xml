@@ -11,4 +11,7 @@
         <item quantity="many">%1$d de cambios pendientes de sincronizar</item>
         <item quantity="other">%1$d cambios pendientes de sincronizar</item>
     </plurals>
+    <string name="android_widget_today_label">Hábitos de hoy</string>
+    <string name="android_widget_today_description">Registra los hábitos de hoy desde la pantalla de inicio.</string>
+    <string name="android_widget_sign_in">Inicia sesión en Trackbit para ver tus hábitos.</string>
 </resources>

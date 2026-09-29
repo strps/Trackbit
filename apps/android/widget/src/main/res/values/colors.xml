@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The web palette's background and muted-foreground, for widget_error.xml: a plain layout
+     that Glance's theme doesn't reach. -->
+<resources>
+    <color name="widget_error_background">#FFFFFFFF</color>
+    <color name="widget_error_text">#FF737373</color>
+</resources>

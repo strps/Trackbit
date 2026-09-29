@@ -7,6 +7,8 @@ import com.trackbit.core.data.sync.checkOp
 import com.trackbit.core.data.sync.ensureDayLogOp
 import com.trackbit.core.data.sync.incrementOp
 import com.trackbit.core.database.TrackbitDatabase
+import com.trackbit.core.database.entity.DayLogEntity
+import com.trackbit.core.database.entity.HabitEntity
 import com.trackbit.core.database.entity.OutboxEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -28,6 +30,12 @@ interface TrackerRepository {
 
     /** Writes not yet confirmed by the server, for a "not synced" indicator. */
     val pendingWrites: Flow<Int>
+
+    /**
+     * Emits after anything [observeDay] or [observeHabit] reads may have changed, for any day: a
+     * write, a sync, or sign-out clearing it all. For widgets, which can't keep collecting.
+     */
+    val changes: Flow<Unit>
 
     /** Sets the day's value: a count, 0/1 for check habits, milliseconds for timed ones. */
     suspend fun setRating(habitId: Int, day: LocalDate, rating: Int): WriteResult
@@ -87,6 +95,10 @@ internal class DefaultTrackerRepository @Inject constructor(
         habitDayDao.observeHabitDay(habitId, day).map { it?.toTrackedHabit() }
 
     override val pendingWrites: Flow<Int> get() = outboxDao.observeCount()
+
+    override val changes: Flow<Unit>
+        get() = db.invalidationTracker.createFlow(HabitEntity.TABLE, DayLogEntity.TABLE, emitInitialState = false)
+            .map { }
 
     override suspend fun setRating(habitId: Int, day: LocalDate, rating: Int) = write(habitId) {
         dayLogDao.setRating(habitId, day, rating)

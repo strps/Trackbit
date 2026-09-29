@@ -29,8 +29,9 @@ fun TrackbitTheme(
     MaterialTheme(colorScheme = colorScheme, content = content)
 }
 
-internal val TrackbitLightColors: ColorScheme = WebLight.toColorScheme(lightColorScheme())
-internal val TrackbitDarkColors: ColorScheme = WebDark.toColorScheme(darkColorScheme())
+/** The web app's palette as M3 schemes: the fallback without dynamic color, in the app and widgets. */
+val TrackbitLightColors: ColorScheme = WebLight.toColorScheme(lightColorScheme())
+val TrackbitDarkColors: ColorScheme = WebDark.toColorScheme(darkColorScheme())
 
 /**
  * shadcn's neutral roles onto Material 3's. shadcn's "secondary" is a quiet filled surface, which

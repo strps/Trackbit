@@ -12,7 +12,7 @@ import java.time.LocalDate
  * outbox ops for the same key are pending.
  */
 @Entity(
-    tableName = "day_logs",
+    tableName = DayLogEntity.TABLE,
     primaryKeys = ["habitId", "localDay"],
     foreignKeys = [
         ForeignKey(entity = HabitEntity::class, parentColumns = ["id"], childColumns = ["habitId"], onDelete = ForeignKey.CASCADE),
@@ -28,4 +28,8 @@ data class DayLogEntity(
     val sessionCount: Int = 0,
 ) {
     fun toRecentDay() = RecentDay(day = localDay, rating = rating, sessionCount = sessionCount)
+
+    companion object {
+        const val TABLE = "day_logs"
+    }
 }

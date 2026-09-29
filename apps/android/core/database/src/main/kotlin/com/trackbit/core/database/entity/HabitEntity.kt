@@ -11,7 +11,7 @@ import com.trackbit.core.model.TrackableHabit
 import java.time.LocalDate
 
 /** A habit as of the last `GET /api/tracker/today`. */
-@Entity(tableName = "habits")
+@Entity(tableName = HabitEntity.TABLE)
 data class HabitEntity(
     @PrimaryKey val id: Int,
     val name: String,
@@ -32,7 +32,11 @@ data class HabitEntity(
     val streakBeforeDay: Int,
     /** The day the summary was fetched for. [streakBeforeDay] is only valid for this day. */
     val summaryDay: LocalDate,
-) : TrackableHabit
+) : TrackableHabit {
+    companion object {
+        const val TABLE = "habits"
+    }
+}
 
 fun TodayHabit.toEntity(summaryDay: LocalDate) = HabitEntity(
     id = id,

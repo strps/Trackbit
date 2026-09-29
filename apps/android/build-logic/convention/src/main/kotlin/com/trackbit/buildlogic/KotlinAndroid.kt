@@ -22,6 +22,9 @@ internal fun Project.configureKotlinAndroid(android: CommonExtension) {
         compileOptions.sourceCompatibility = JavaVersion.toVersion(TrackbitSdk.JVM)
         compileOptions.targetCompatibility = JavaVersion.toVersion(TrackbitSdk.JVM)
         lint.abortOnError = true
+        // Robolectric sets up Android 16+ (API 36) through FileDescriptor internals that JDK 17+
+        // only exposes on request.
+        testOptions.unitTests.all { it.jvmArgs("--add-exports=java.base/jdk.internal.access=ALL-UNNAMED") }
     }
     configureKotlin()
     dependencies {

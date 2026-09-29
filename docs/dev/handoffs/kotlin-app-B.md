@@ -1,7 +1,7 @@
 # Handoff: Kotlin app — Workstream B (Android core)
 
 - **Plan:** [kotlin-app.md](../tasks/kotlin-app.md). Read only §1, §2, §3 ("As built" column) and the Phase 0 checklist in §4.
-- **Status:** Phase 0 is done (Workstream A and B1–B10). Next is Phase 1, Workstream C (widgets).
+- **Status:** Phase 0 is done (Workstream A and B1–B10). Phase 1 continues in [kotlin-app-C.md](kotlin-app-C.md); this file stays as the reference for Phase 0 invariants and landmines.
 - **Branch:** `kotlin-app` · **Last run:** 2026-09-26
 
 ## Where we are
@@ -225,7 +225,7 @@ Plan §4 Phase 1 has the widget list and the checklist. Start a `kotlin-app-C.md
 - **Backend tests** need `apps/backend/.env.test` (`TEST_DATABASE_URL=…/trackbit_test`). Setup **drops the `public` schema** of that database, so never point it at the dev database.
 - After editing `packages/types`, run `pnpm --filter @trackbit/types build`. After `pnpm add`, run `pnpm install` at the root.
 - **The generator reads `packages/types/dist`**, not `src`. `pnpm android:generate` builds the package first; calling `node apps/android/scripts/generate.mjs` directly does not.
-- **Robolectric downloads `android-all` for SDK 36 on the first test run** (about 200 MB, cached in `~/.m2`). The first `:core:database:testDebugUnitTest` is slow.
+- **Robolectric runs on API 36** (targetSdk) since C1. Before that it silently ran on API 23: see the C handoff's landmines.
 - **SQLite on minSdk 26 is 3.18, with no `UPSERT` syntax.** Use Room's `@Upsert` (insert, then update) or a `@Transaction`, never `INSERT … ON CONFLICT DO UPDATE` in a `@Query`. Never use `OnConflictStrategy.REPLACE` on `habits`: REPLACE deletes the row, and the FK cascade would delete its day logs.
 
 - **Local smoke user:** `b10-smoke@example.com` / `b10-smoke-pass` (role `tester`, verified by hand, 4 habits) exists in the **local dev DB only**. Delete it when it's no longer useful.

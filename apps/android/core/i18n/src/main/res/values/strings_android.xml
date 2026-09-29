@@ -10,4 +10,7 @@
         <item quantity="one">%1$d change waiting to sync</item>
         <item quantity="other">%1$d changes waiting to sync</item>
     </plurals>
+    <string name="android_widget_today_label">Today\'s habits</string>
+    <string name="android_widget_today_description">Log today\'s habits from your home screen.</string>
+    <string name="android_widget_sign_in">Sign in to Trackbit to see your habits.</string>
 </resources>

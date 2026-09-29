@@ -9,6 +9,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -121,6 +122,25 @@ class SessionStoreTest {
             throw AssertionError("expected the load failure")
         } catch (e: IllegalStateException) {
             assertEquals("broken", e.message)
+        } finally {
+            scope.cancel()
+        }
+    }
+
+    @Test(timeout = 10_000)
+    fun `a session read that already failed keeps failing currentToken instead of reading as signed out`() {
+        val broken = object : DataStore<StoredSession?> {
+            override val data: Flow<StoredSession?> = flow { throw IllegalStateException("broken") }
+            override suspend fun updateData(transform: suspend (t: StoredSession?) -> StoredSession?) = error("unused")
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + CoroutineExceptionHandler { _, _ -> })
+        val store = SessionStore(broken, emptySet(), scope)
+        try {
+            // Wait for the load to fail first, so currentToken takes its already-loaded path.
+            val failure = runCatching { runBlocking { store.token() } }.exceptionOrNull()
+            assertEquals("broken", failure?.message)
+            val again = runCatching { store.currentToken() }.exceptionOrNull()
+            assertEquals("broken", again?.message)
         } finally {
             scope.cancel()
         }

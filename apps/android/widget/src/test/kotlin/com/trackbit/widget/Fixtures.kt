@@ -1,0 +1,84 @@
+package com.trackbit.widget
+
+import com.trackbit.core.data.SyncResult
+import com.trackbit.core.data.TrackedHabit
+import com.trackbit.core.data.TrackerRepository
+import com.trackbit.core.data.WriteResult
+import com.trackbit.core.model.ColorStop
+import com.trackbit.core.model.ColorTheme
+import com.trackbit.core.model.ExerciseLogCardStyle
+import com.trackbit.core.model.HabitIcon
+import com.trackbit.core.model.HabitProgress
+import com.trackbit.core.model.HabitType
+import com.trackbit.core.model.RecentDay
+import com.trackbit.core.model.Rgba
+import com.trackbit.core.model.SessionUser
+import com.trackbit.core.model.UnitSystem
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
+import java.time.LocalDate
+
+val DAY: LocalDate = LocalDate.of(2026, 9, 28)
+
+fun habit(
+    id: Int,
+    type: HabitType = HabitType.Count,
+    day: LocalDate = DAY,
+    value: Long = 0,
+    goal: Long = 2,
+    isAntiHabit: Boolean = false,
+    frozen: Boolean = false,
+    streak: Int? = 0,
+) = TrackedHabit(
+    id = id,
+    name = "Habit $id",
+    description = null,
+    type = type,
+    isAntiHabit = isAntiHabit,
+    icon = HabitIcon.Water,
+    colorTheme = ColorTheme.Green,
+    colorStops = listOf(ColorStop(0f, Rgba(0f, 128f, 0f)), ColorStop(1f, Rgba(0f, 255f, 0f))),
+    dailyGoal = goal.toInt(),
+    weeklyGoal = 5,
+    frozen = frozen,
+    day = day,
+    recent = listOf(RecentDay(day, rating = value.toInt(), sessionCount = 0)),
+    progress = HabitProgress(value = value, goal = goal, isAntiHabit = isAntiHabit),
+    streak = streak,
+)
+
+fun user(id: String = "u_1") = SessionUser(
+    id = id,
+    name = "cj",
+    email = "$id@test.local",
+    emailVerified = true,
+    image = null,
+    role = "tester",
+    locale = "en",
+    timezone = "America/Costa_Rica",
+    unitSystem = UnitSystem.Metric,
+    exerciseLogCardStyle = ExerciseLogCardStyle.Compact,
+    preferredExerciseSource = null,
+)
+
+/** Habits per day; only what the widgets read. */
+class FakeTrackerRepository : TrackerRepository {
+    val days = MutableStateFlow<Map<LocalDate, List<TrackedHabit>>>(emptyMap())
+    override val changes = MutableSharedFlow<Unit>()
+    override val pendingWrites = MutableStateFlow(0)
+
+    override fun observeDay(day: LocalDate): Flow<List<TrackedHabit>> = days.map { it[day].orEmpty() }
+
+    override fun observeHabit(habitId: Int, day: LocalDate): Flow<TrackedHabit?> =
+        days.map { days -> days[day]?.find { it.id == habitId } }
+
+    override suspend fun setRating(habitId: Int, day: LocalDate, rating: Int) = unused()
+    override suspend fun increment(habitId: Int, day: LocalDate, delta: Int) = unused()
+    override suspend fun toggle(habitId: Int, day: LocalDate) = unused()
+    override suspend fun ensureDayLog(habitId: Int, day: LocalDate) = unused()
+    override suspend fun refresh(): SyncResult = throw UnsupportedOperationException()
+
+    private fun unused(): WriteResult = throw UnsupportedOperationException()
+}

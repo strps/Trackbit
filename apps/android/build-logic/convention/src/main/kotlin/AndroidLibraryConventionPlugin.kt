@@ -13,6 +13,9 @@ class AndroidLibraryConventionPlugin : Plugin<Project> {
                 configureKotlinAndroid(this)
                 lint.targetSdk = TrackbitSdk.TARGET
                 testOptions.targetSdk = TrackbitSdk.TARGET
+                // Robolectric reads the SDK to run on from the merged manifest. Without it, it
+                // falls back to its oldest SDK (API 23, below minSdk); with it, targetSdk.
+                testOptions.unitTests.isIncludeAndroidResources = true
             }
         }
     }

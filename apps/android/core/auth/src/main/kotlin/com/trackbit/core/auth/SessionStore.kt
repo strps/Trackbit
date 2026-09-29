@@ -45,7 +45,9 @@ internal class SessionStore @Inject constructor(
 
     /** Waits for the one read at startup, which only happens once; after that it is memory only. */
     override fun currentToken(): String? {
-        if (!loaded.isCompleted) runBlocking { loaded.await() }
+        // A failed read also counts as completed (and cancelled); awaiting rethrows it, so a
+        // broken store never reads as "signed out".
+        if (!loaded.isCompleted || loaded.isCancelled) runBlocking { loaded.await() }
         return current?.token
     }
 
