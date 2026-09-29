@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A running timer's time, then the rest of the details line. Glance has no chronometer, so
+     this is a plain RemoteViews layout; the chronometer ticks on its own in the launcher while
+     the widget only re-renders on changes. The suffix lives here too: next to a Glance Text,
+     Glance's container for these views would take the whole row. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_timer_row"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal">
+
+    <Chronometer
+        android:id="@+id/widget_timer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:maxLines="1"
+        android:textColor="@color/widget_timer_text"
+        android:textSize="12sp" />
+
+    <TextView
+        android:id="@+id/widget_timer_suffix"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textColor="@color/widget_timer_text"
+        android:textSize="12sp" />
+</LinearLayout>

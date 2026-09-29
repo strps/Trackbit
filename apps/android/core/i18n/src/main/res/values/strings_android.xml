@@ -8,6 +8,13 @@
     <string name="android_tracker_increment">Add 1 to %1$s</string>
     <string name="android_tracker_mark_done">Mark %1$s as done</string>
     <string name="android_tracker_mark_not_done">Mark %1$s as not done</string>
+    <string name="android_tracker_start_timer">Start the timer for %1$s</string>
+    <string name="android_tracker_stop_timer">Stop the timer for %1$s</string>
+    <string name="android_timer_channel_name">Timers</string>
+    <string name="android_timer_channel_description">Habit timers while they run, with Stop and +30s.</string>
+    <string name="android_timer_stop">Stop</string>
+    <string name="android_timer_add_30s">+30s</string>
+    <string name="android_timer_goal">Goal %1$s</string>
     <plurals name="android_tracker_pending">
         <item quantity="one">%1$d change waiting to sync</item>
         <item quantity="other">%1$d changes waiting to sync</item>

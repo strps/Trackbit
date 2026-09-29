@@ -155,6 +155,14 @@ private class FakeTrackerRepository : TrackerRepository {
 
     override suspend fun ensureDayLog(habitId: Int, day: LocalDate) = record("ensure $habitId $day")
 
+    override fun observeRunningTimers(): Flow<List<TrackedHabit>> = throw UnsupportedOperationException()
+
+    override suspend fun startTimer(habitId: Int, day: LocalDate) = record("start $habitId $day")
+
+    override suspend fun stopTimer(habitId: Int) = record("stop $habitId")
+
+    override suspend fun addToTimer(habitId: Int, ms: Long) = record("add $habitId $ms")
+
     override suspend fun refresh(): SyncResult {
         refreshes++
         return refreshResult.await()

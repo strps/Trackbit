@@ -9,7 +9,7 @@ A native Android client for Trackbit written in Kotlin + Jetpack Compose. It con
 Before any of these can ship, a thin foundation (auth, API client, local cache) and a few backend changes have to exist. Those are Phase 0 below, split so that several people or agents can work in parallel.
 
 **Branch:** `kotlin-app`
-**Status:** Phase 0 done 2026-09-26 ([handoff](../handoffs/kotlin-app-B.md)). Phase 1 in progress: C1 (widget foundation + W2 Today list) done 2026-09-28, C2 (W1 quick-log) done 2026-09-29 ([handoff](../handoffs/kotlin-app-C.md)).
+**Status:** Phase 0 done 2026-09-26 ([handoff](../handoffs/kotlin-app-B.md)). Phase 1 in progress: C1 (widget foundation + W2 Today list) done 2026-09-28, C2 (W1 quick-log) and C3 (timer engine + notification) done 2026-09-29 ([handoff](../handoffs/kotlin-app-C.md)).
 **Deferred follow-ups:** [kotlin-app-followups.md](kotlin-app-followups.md) (non-blocking issues and checks, to pick up after Phase 1).
 
 ---
@@ -169,8 +169,8 @@ There is no workout widget, by design. Exercise sessions are handled inside the 
 
 This phase also builds the **timer infrastructure** that W1 (timed habits) needs. Phase 2 reuses it for the rest timer:
 
-- [ ] **Timer engine** in `core/data`: timer state is persisted locally as a start timestamp plus a duration, not as a ticking counter, so it survives process death. The web `ControlledTimer` keeps state in memory only, so this is new behaviour.
-- [ ] **Ongoing timer notification**: a Chronometer notification with Stop / +30s actions. It uses a foreground service only while a timer is actually running.
+- [x] **Timer engine** in `core/data`: timer state is persisted locally as a start timestamp plus a duration, not as a ticking counter, so it survives process death. The web `ControlledTimer` keeps state in memory only, so this is new behaviour.
+- [x] **Ongoing timer notification**: a Chronometer notification with Stop / +30s actions. Built without a foreground service (C3 decision: nothing needs to run while the stored timer ticks in SystemUI).
 
 Tasks:
 

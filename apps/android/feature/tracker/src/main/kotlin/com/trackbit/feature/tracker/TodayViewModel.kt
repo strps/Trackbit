@@ -89,7 +89,7 @@ class TodayViewModel @Inject constructor(
             when (block()) {
                 WriteResult.HabitFrozen -> message.value = TodayMessage.HabitFrozen
                 // A missing habit was deleted by a sync; its row is already gone.
-                WriteResult.Queued, WriteResult.HabitNotFound -> Unit
+                WriteResult.Queued, WriteResult.HabitNotFound, WriteResult.NoChange -> Unit
             }
         }
     }

@@ -8,6 +8,13 @@
     <string name="android_tracker_increment">Sumar 1 a %1$s</string>
     <string name="android_tracker_mark_done">Marcar %1$s como hecho</string>
     <string name="android_tracker_mark_not_done">Marcar %1$s como no hecho</string>
+    <string name="android_tracker_start_timer">Iniciar el temporizador de %1$s</string>
+    <string name="android_tracker_stop_timer">Detener el temporizador de %1$s</string>
+    <string name="android_timer_channel_name">Temporizadores</string>
+    <string name="android_timer_channel_description">Temporizadores de hábitos en marcha, con Detener y +30 s.</string>
+    <string name="android_timer_stop">Detener</string>
+    <string name="android_timer_add_30s">+30 s</string>
+    <string name="android_timer_goal">Meta %1$s</string>
     <plurals name="android_tracker_pending">
         <item quantity="one">%1$d cambio pendiente de sincronizar</item>
         <item quantity="many">%1$d de cambios pendientes de sincronizar</item>

@@ -16,13 +16,18 @@ These are covered by unit tests but were not exercised on the emulator for W1. R
 - W1 at midnight: it moves to the next day (the 7-day strip shifts).
 - W1 signed out shows "Sign in" / "Sign in to Trackbit…". After signing in again with the same account, the widget shows its habit again.
 - W1 "Habit removed": delete the habit on the web, sync, and the widget offers to choose another. The tap opens the picker for that widget.
-- W1 and W2 in dark mode and without dynamic color (API < 31).
+- W1 and W2 in dark mode and without dynamic color (API < 31), including the timer text (`widget_timer_text`).
+- W2 timed rows: the play/stop button and the running chronometer (only W1 was exercised for timers).
+- Timers: the notification reappears after a reboot once anything wakes the app (widget update); swiping it away on 14+ leaves the timer running in the widgets; denying the notification permission leaves timers working in the widgets.
 
 ## Polish
 
 - **The W1 picker doesn't mark the current habit when reconfiguring.** It would need the widget's Glance state read in `QuickLogConfigViewModel`.
 - **The W1 7-day strip doesn't mark an anti-habit's clean days**, only slips. `TrackedHabit` doesn't carry `firstLogDay`, so a clean day can't be told apart from a day before tracking started. Expose it from `core:data` if the strip should show clean days.
 - **The ring arc is a fixed 288 px bitmap.** It's sharp at 2×2 on xxxhdpi. Size it from the widget's actual size if a larger layout is ever added.
+
+- **Chronometer format differs from ours:** the RemoteViews/notification chronometer shows "02:53", while `formatDuration` writes "1:00" (no leading zero). A `Chronometer` format string can't drop the zero. Live with it, or format the goal the same way.
+- **The app's Today screen has no timer controls** yet: timed rows show only progress. Phase 2's tracker home adds them (the notification's tap opens the app, where the running timer isn't visible yet).
 
 ## Housekeeping
 

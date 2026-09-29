@@ -26,7 +26,7 @@ class TrackerSyncTest {
     private val tokens = FakeTokens()
     private val scheduler = FakeScheduler()
     private val sync = TrackerSync(db, service, tokens)
-    private val repository = DefaultTrackerRepository(db, sync, scheduler)
+    private val repository = DefaultTrackerRepository(db, sync, scheduler, FakeClock())
     private val outbox = db.outboxDao()
 
     @Before fun seed() = runTest {

@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- The ongoing timer notification (Android 13+). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".TrackbitApplication"
@@ -22,6 +24,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- The timer notification's Stop and +30s buttons. -->
+        <receiver
+            android:name=".timer.TimerActionReceiver"
+            android:exported="false" />
 
         <!-- WorkManager initializes on demand from TrackbitApplication, with Hilt's worker factory. -->
         <provider

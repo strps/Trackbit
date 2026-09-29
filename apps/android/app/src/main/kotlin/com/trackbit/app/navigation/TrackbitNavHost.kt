@@ -13,6 +13,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
+import com.trackbit.app.timer.RequestNotificationPermission
 import com.trackbit.core.auth.AuthState
 import com.trackbit.feature.auth.SignInScreen
 import com.trackbit.feature.tracker.TodayScreen
@@ -37,7 +38,7 @@ data object TodayRoute
  * clearing the back stack (and its ViewModels), so one user's screens never outlive a sign-out.
  */
 @Composable
-fun TrackbitNavHost(authState: AuthState, onSignOut: () -> Unit) {
+fun TrackbitNavHost(authState: AuthState, onSignOut: () -> Unit, onNotificationsAllowed: () -> Unit) {
     // Reading the stored session takes a moment at startup; draw nothing rather than guess.
     // Loading never comes back, so the host below is composed once and navigates between graphs.
     if (authState == AuthState.Loading) {
@@ -45,6 +46,7 @@ fun TrackbitNavHost(authState: AuthState, onSignOut: () -> Unit) {
         return
     }
     AuthNavHost(if (authState is AuthState.SignedIn) SignedInGraph else SignedOutGraph, onSignOut)
+    if (authState is AuthState.SignedIn) RequestNotificationPermission(onGranted = onNotificationsAllowed)
 }
 
 @Composable

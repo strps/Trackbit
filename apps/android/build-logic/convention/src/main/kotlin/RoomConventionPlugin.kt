@@ -1,4 +1,5 @@
 import androidx.room.gradle.RoomExtension
+import com.android.build.api.variant.LibraryAndroidComponentsExtension
 import com.trackbit.buildlogic.library
 import com.trackbit.buildlogic.libs
 import org.gradle.api.Plugin
@@ -14,6 +15,13 @@ class RoomConventionPlugin : Plugin<Project> {
             // Exported schemas are committed; they are what migration tests diff against.
             extensions.configure<RoomExtension> {
                 schemaDirectory("$projectDir/schemas")
+            }
+            // The Room plugin hands the schemas to instrumented tests only; migration tests run
+            // under Robolectric and read them as unit-test assets.
+            extensions.configure<LibraryAndroidComponentsExtension> {
+                onVariants { variant ->
+                    variant.hostTests.values.forEach { it.sources.assets?.addStaticSourceDirectory("$projectDir/schemas") }
+                }
             }
             // `api`: the database class extends RoomDatabase, and repositories use `withTransaction`.
             dependencies {

@@ -15,7 +15,11 @@ import androidx.glance.testing.unit.hasText
 import androidx.glance.testing.unit.hasTextEqualTo
 import androidx.test.core.app.ApplicationProvider
 import com.trackbit.core.model.HabitType
+import com.trackbit.core.data.HabitTimer
+import com.trackbit.widget.DAY
 import com.trackbit.widget.action.IncrementHabitAction
+import com.trackbit.widget.action.StartTimerAction
+import com.trackbit.widget.action.StopTimerAction
 import com.trackbit.widget.action.ToggleHabitAction
 import com.trackbit.widget.action.habitParameters
 import com.trackbit.widget.habit
@@ -25,6 +29,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.time.Instant
 
 @RunWith(RobolectricTestRunner::class)
 class QuickLogWidgetContentTest {
@@ -80,8 +85,28 @@ class QuickLogWidgetContentTest {
         }
     }
 
+    @Test fun `a timed habit starts its timer at any size`() {
+        val idle = habit(1, type = HabitType.Timed, goal = 600_000)
+        render(QuickLogState.Tracking(idle), QuickLogWidget.SMALL) {
+            onNode(
+                hasRunCallbackClickAction<StartTimerAction>(habitParameters(idle)) and
+                    hasContentDescriptionEqualTo("Start the timer for Habit 1"),
+            ).assertExists()
+        }
+    }
+
+    @Test fun `a running timer stops on tap`() {
+        val running = habit(1, type = HabitType.Timed, goal = 600_000, timer = HabitTimer(Instant.now(), DAY))
+        render(QuickLogState.Tracking(running), QuickLogWidget.SQUARE) {
+            onNode(
+                hasRunCallbackClickAction<StopTimerAction>(habitParameters(running)) and
+                    hasContentDescriptionEqualTo("Stop the timer for Habit 1"),
+            ).assertExists()
+        }
+    }
+
     @Test fun `a habit the widget can't log opens the app`() {
-        render(QuickLogState.Tracking(habit(1, type = HabitType.Timed, goal = 10)), QuickLogWidget.WIDE) {
+        render(QuickLogState.Tracking(habit(1, type = HabitType.Complex)), QuickLogWidget.WIDE) {
             onNode(hasStartActivityClickAction(launchIntent) and hasAnyDescendant(hasTextEqualTo("Habit 1"))).assertExists()
         }
     }

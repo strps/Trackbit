@@ -19,8 +19,11 @@ import com.trackbit.core.model.TodayResponse
 import com.trackbit.core.network.IdempotencyKey
 import com.trackbit.core.network.SessionTokenSource
 import com.trackbit.core.network.service.TrackerService
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
+import java.time.ZoneOffset
 
 val DAY: LocalDate = LocalDate.of(2026, 9, 26)
 
@@ -59,6 +62,17 @@ fun todayResponse(day: LocalDate = DAY, vararg habits: TodayHabit) = TodayRespon
 
 fun dayLog(habitId: Int, day: LocalDate, rating: Int?) =
     DayLog(id = 1, habitId = habitId, rating = rating, notes = null, localDay = day, timeStamp = Instant.EPOCH, createdAt = Instant.EPOCH)
+
+/** A clock that stands still until a test moves it. */
+class FakeClock(var now: Instant = Instant.parse("2026-09-26T10:00:00Z")) : Clock() {
+    override fun instant(): Instant = now
+    override fun getZone(): ZoneId = ZoneOffset.UTC
+    override fun withZone(zone: ZoneId): Clock = this
+
+    fun advanceMs(ms: Long) {
+        now = now.plusMillis(ms)
+    }
+}
 
 class FakeTokens(var token: String? = "t1") : SessionTokenSource {
     override fun currentToken() = token

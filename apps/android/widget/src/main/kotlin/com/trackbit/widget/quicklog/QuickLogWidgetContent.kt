@@ -46,11 +46,13 @@ import com.trackbit.core.model.HabitType
 import com.trackbit.core.model.RecentDay
 import com.trackbit.widget.R
 import com.trackbit.widget.action.logAction
+import com.trackbit.widget.ui.HabitDetails
 import com.trackbit.widget.ui.ProgressRing
 import com.trackbit.widget.ui.WidgetMessage
 import com.trackbit.widget.ui.WidgetSurface
 import com.trackbit.widget.ui.detailsText
 import com.trackbit.widget.ui.openAppAction
+import java.time.Instant
 
 /** The three layouts, one per [QuickLogWidget] size: ring; ring + text; ring + text + week. */
 private enum class Layout { Small, Wide, Square }
@@ -86,8 +88,9 @@ internal fun QuickLogWidgetContent(state: QuickLogState, chooseHabit: Action) {
 }
 
 /**
- * The whole widget is one tap target: it logs the habit, opens the app for types the widget
- * can't log, and does nothing while the habit is frozen (the lock says why).
+ * The whole widget is one tap target: it logs the habit (or starts/stops its timer), opens the
+ * app for types the widget can't log, and does nothing while the habit is frozen (the lock says
+ * why).
  */
 @Composable
 private fun HabitContent(habit: TrackedHabit, layout: Layout) {
@@ -121,22 +124,32 @@ private fun tapDescription(context: Context, habit: TrackedHabit, logs: Boolean)
         if (habit.progress.isGoalMet) I18nR.string.android_tracker_mark_not_done else I18nR.string.android_tracker_mark_done,
         habit.name,
     )
+    habit.type == HabitType.Timed -> context.getString(
+        if (habit.timer != null) I18nR.string.android_tracker_stop_timer else I18nR.string.android_tracker_start_timer,
+        habit.name,
+    )
     else -> context.getString(I18nR.string.android_tracker_increment, habit.name)
 }
 
 /**
  * Today's progress in the habit's color. Anti-habits have no goal to fill toward: the ring is
  * full while the day is clean and turns to the error color on a slip. Frozen: the bare track
- * and a lock.
+ * and a lock. A running timer counts as of this render and swaps the icon for a stop glyph.
  */
 @Composable
 private fun HabitRing(habit: TrackedHabit, iconSize: Dp, modifier: GlanceModifier) {
     val color = habit.colorStops.colorAt(1f)
-    val slipped = habit.isAntiHabit && habit.progress.value > 0
+    val progress = habit.progressAt(Instant.now())
+    val slipped = habit.isAntiHabit && progress.value > 0
     val fraction = when {
         habit.frozen || slipped -> 0f
         habit.isAntiHabit -> 1f
-        else -> habit.progress.fraction
+        else -> progress.fraction
+    }
+    val icon = when {
+        habit.frozen -> R.drawable.ic_widget_lock
+        habit.timer != null -> R.drawable.ic_widget_stop
+        else -> habit.icon.drawableRes
     }
     ProgressRing(
         fraction = fraction,
@@ -145,7 +158,7 @@ private fun HabitRing(habit: TrackedHabit, iconSize: Dp, modifier: GlanceModifie
         modifier = modifier,
     ) {
         Image(
-            provider = ImageProvider(if (habit.frozen) R.drawable.ic_widget_lock else habit.icon.drawableRes),
+            provider = ImageProvider(icon),
             contentDescription = null,
             colorFilter = ColorFilter.tint(if (habit.frozen) GlanceTheme.colors.onSurfaceVariant else ColorProvider(color)),
             modifier = GlanceModifier.size(iconSize),
@@ -155,7 +168,6 @@ private fun HabitRing(habit: TrackedHabit, iconSize: Dp, modifier: GlanceModifie
 
 @Composable
 private fun HabitText(habit: TrackedHabit, align: TextAlign) {
-    val context = LocalContext.current
     Text(
         text = habit.name,
         maxLines = 1,
@@ -167,14 +179,11 @@ private fun HabitText(habit: TrackedHabit, align: TextAlign) {
         ),
         modifier = GlanceModifier.fillMaxWidth(),
     )
-    habit.detailsText(context)?.let {
-        Text(
-            text = it,
-            maxLines = 1,
-            style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 12.sp, textAlign = align),
-            modifier = GlanceModifier.fillMaxWidth(),
-        )
-    }
+    HabitDetails(
+        habit,
+        style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 12.sp, textAlign = align),
+        modifier = GlanceModifier.fillMaxWidth(),
+    )
 }
 
 /**

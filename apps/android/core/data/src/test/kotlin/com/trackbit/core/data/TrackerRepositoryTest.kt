@@ -21,7 +21,8 @@ import org.robolectric.RobolectricTestRunner
 class TrackerRepositoryTest {
     private val db = inMemoryDatabase()
     private val scheduler = FakeScheduler()
-    private val repository = DefaultTrackerRepository(db, TrackerSync(db, FakeTrackerService(), FakeTokens()), scheduler)
+    private val clock = FakeClock()
+    private val repository = DefaultTrackerRepository(db, TrackerSync(db, FakeTrackerService(), FakeTokens()), scheduler, clock)
     private val outbox = db.outboxDao()
 
     @After fun close() = db.close()
@@ -103,5 +104,90 @@ class TrackerRepositoryTest {
 
         assertNull(repository.observeHabit(1, weekLater).first()!!.streak)
         assertNull(repository.observeHabit(1, DAY.minusDays(1)).first()!!.streak)
+    }
+
+    @Test fun `stopping a timer adds its time to the day it started on, once`() = runTest {
+        seed(todayHabit(1, type = HabitType.Timed, recent = listOf(RecentDay(DAY, 60_000, 0))))
+
+        assertEquals(WriteResult.Queued, repository.startTimer(1, DAY))
+        assertEquals(0, scheduler.flushes) // nothing to send while it runs
+        clock.advanceMs(90_000)
+        assertEquals(WriteResult.Queued, repository.stopTimer(1))
+        assertEquals(WriteResult.NoChange, repository.stopTimer(1))
+
+        assertEquals(150_000, db.dayLogDao().get(1, DAY)!!.rating)
+        val op = outbox.oldest()!!
+        assertEquals(IncrementRequest(1, 90_000, DAY), TrackbitJson.decodeFromString<IncrementRequest>(op.payload))
+        outbox.delete(op.id)
+        assertNull(outbox.oldest())
+        assertEquals(1, scheduler.flushes)
+        assertNull(repository.observeHabit(1, DAY).first()!!.timer)
+    }
+
+    @Test fun `a timer that runs past midnight logs to the day it started on`() = runTest {
+        seed(todayHabit(1, type = HabitType.Timed))
+        repository.startTimer(1, DAY)
+        clock.advanceMs(60_000)
+
+        repository.stopTimer(1)
+
+        assertEquals(60_000, db.dayLogDao().get(1, DAY)!!.rating)
+        assertNull(db.dayLogDao().get(1, DAY.plusDays(1)))
+    }
+
+    @Test fun `one timer per habit, only for timed habits that aren't frozen`() = runTest {
+        seed(todayHabit(1, type = HabitType.Timed), todayHabit(2), todayHabit(3, type = HabitType.Timed, frozen = true))
+
+        repository.startTimer(1, DAY)
+        val started = repository.observeHabit(1, DAY).first()!!.timer
+        clock.advanceMs(5_000)
+
+        assertEquals(WriteResult.NoChange, repository.startTimer(1, DAY))
+        assertEquals(started, repository.observeHabit(1, DAY).first()!!.timer)
+        assertEquals(WriteResult.NoChange, repository.startTimer(2, DAY))
+        assertEquals(WriteResult.HabitFrozen, repository.startTimer(3, DAY))
+        assertEquals(WriteResult.HabitNotFound, repository.startTimer(9, DAY))
+        assertEquals(listOf(1), repository.observeRunningTimers().first().map { it.id })
+    }
+
+    @Test fun `a running timer shows its time live on its own day only`() = runTest {
+        seed(todayHabit(1, type = HabitType.Timed, recent = listOf(RecentDay(DAY, 60_000, 0))))
+        repository.startTimer(1, DAY)
+        val start = clock.now
+        clock.advanceMs(30_000)
+
+        val today = repository.observeDay(DAY).first().single()
+        assertEquals(HabitTimer(start, DAY), today.timer)
+        assertEquals(90_000, today.progressAt(clock.now).value)
+        assertEquals(start.minusMillis(60_000), today.timerBase)
+
+        val tomorrow = repository.observeHabit(1, DAY.plusDays(1)).first()!!
+        assertEquals(0, tomorrow.progressAt(clock.now).value)
+        assertEquals(start, tomorrow.timerBase)
+    }
+
+    @Test fun `adding to a timer moves its start back`() = runTest {
+        seed(todayHabit(1, type = HabitType.Timed))
+        repository.startTimer(1, DAY)
+
+        assertEquals(WriteResult.Queued, repository.addToTimer(1, 30_000))
+        assertEquals(WriteResult.NoChange, repository.addToTimer(2, 30_000))
+        repository.stopTimer(1)
+
+        assertEquals(30_000, db.dayLogDao().get(1, DAY)!!.rating)
+    }
+
+    @Test fun `a timer is dropped with its habit, or without logging once the habit is frozen`() = runTest {
+        seed(todayHabit(1, type = HabitType.Timed), todayHabit(2, type = HabitType.Timed))
+        repository.startTimer(1, DAY)
+        repository.startTimer(2, DAY)
+        clock.advanceMs(1_000)
+
+        seed(todayHabit(2, type = HabitType.Timed, frozen = true)) // habit 1 deleted on the server
+        assertEquals(listOf(2), repository.observeRunningTimers().first().map { it.id })
+        assertEquals(WriteResult.HabitFrozen, repository.stopTimer(2))
+
+        assertEquals(emptyList<TrackedHabit>(), repository.observeRunningTimers().first())
+        assertNull(outbox.oldest())
     }
 }

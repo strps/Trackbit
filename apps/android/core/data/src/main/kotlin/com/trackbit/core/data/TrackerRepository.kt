@@ -10,8 +10,15 @@ import com.trackbit.core.database.TrackbitDatabase
 import com.trackbit.core.database.entity.DayLogEntity
 import com.trackbit.core.database.entity.HabitEntity
 import com.trackbit.core.database.entity.OutboxEntity
+import com.trackbit.core.database.entity.TimerEntity
+import com.trackbit.core.model.HabitType
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import java.time.Clock
 import java.time.LocalDate
 import javax.inject.Inject
 
@@ -27,6 +34,9 @@ interface TrackerRepository {
 
     /** One habit on [day], or null once it no longer exists. */
     fun observeHabit(habitId: Int, day: LocalDate): Flow<TrackedHabit?>
+
+    /** Habits with a running timer, oldest timer first, each on the day its timer logs to. */
+    fun observeRunningTimers(): Flow<List<TrackedHabit>>
 
     /** Writes not yet confirmed by the server, for a "not synced" indicator. */
     val pendingWrites: Flow<Int>
@@ -49,6 +59,23 @@ interface TrackerRepository {
     /** Makes sure the day has a log, e.g. before attaching an exercise session. */
     suspend fun ensureDayLog(habitId: Int, day: LocalDate): WriteResult
 
+    /**
+     * Timed habits: starts a timer that logs to [day] when it stops. Nothing reaches the server
+     * until then. [WriteResult.Queued] means it runs; [WriteResult.NoChange] that one already ran,
+     * or that the habit isn't timed.
+     */
+    suspend fun startTimer(habitId: Int, day: LocalDate): WriteResult
+
+    /**
+     * Stops the habit's timer and adds its time to the timer's day, in one transaction, so a
+     * second stop (the notification and a widget at once) finds nothing to log. The time is
+     * dropped if the habit has been frozen since. [WriteResult.NoChange]: no timer was running.
+     */
+    suspend fun stopTimer(habitId: Int): WriteResult
+
+    /** Adds [ms] (> 0) to the habit's running timer. [WriteResult.NoChange]: none was running. */
+    suspend fun addToTimer(habitId: Int, ms: Long): WriteResult
+
     /** Sends pending writes, then reloads today from the server. For pull-to-refresh. */
     suspend fun refresh(): SyncResult
 }
@@ -62,6 +89,9 @@ enum class WriteResult {
 
     /** Nothing changed: the habit isn't in Room (deleted, or not synced yet). */
     HabitNotFound,
+
+    /** Nothing changed: it was already done, e.g. a timer stopped twice. */
+    NoChange,
 }
 
 /** Ordered from best to worst. */
@@ -78,15 +108,18 @@ enum class SyncResult {
     SignedOut,
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 internal class DefaultTrackerRepository @Inject constructor(
     private val db: TrackbitDatabase,
     private val sync: TrackerSync,
     private val scheduler: SyncScheduler,
+    private val clock: Clock,
 ) : TrackerRepository {
     private val habitDao = db.habitDao()
     private val dayLogDao = db.dayLogDao()
     private val habitDayDao = db.habitDayDao()
     private val outboxDao = db.outboxDao()
+    private val timerDao = db.timerDao()
 
     override fun observeDay(day: LocalDate): Flow<List<TrackedHabit>> =
         habitDayDao.observeDay(day).map { days -> days.map { it.toTrackedHabit() } }
@@ -94,10 +127,19 @@ internal class DefaultTrackerRepository @Inject constructor(
     override fun observeHabit(habitId: Int, day: LocalDate): Flow<TrackedHabit?> =
         habitDayDao.observeHabitDay(habitId, day).map { it?.toTrackedHabit() }
 
+    override fun observeRunningTimers(): Flow<List<TrackedHabit>> = timerDao.observeAll().flatMapLatest { timers ->
+        val habitTimers = timers.mapNotNull { timer -> timer.habitId?.let { id -> timer.localDay?.let { id to it } } }
+        if (habitTimers.isEmpty()) {
+            flowOf(emptyList())
+        } else {
+            combine(habitTimers.map { (id, day) -> observeHabit(id, day) }) { habits -> habits.filterNotNull() }
+        }
+    }
+
     override val pendingWrites: Flow<Int> get() = outboxDao.observeCount()
 
     override val changes: Flow<Unit>
-        get() = db.invalidationTracker.createFlow(HabitEntity.TABLE, DayLogEntity.TABLE, emitInitialState = false)
+        get() = db.invalidationTracker.createFlow(HabitEntity.TABLE, DayLogEntity.TABLE, TimerEntity.TABLE, emitInitialState = false)
             .map { }
 
     override suspend fun setRating(habitId: Int, day: LocalDate, rating: Int) = write(habitId) {
@@ -125,19 +167,60 @@ internal class DefaultTrackerRepository @Inject constructor(
         ensureDayLogOp(habitId, day)
     }
 
+    override suspend fun startTimer(habitId: Int, day: LocalDate): WriteResult = db.withTransaction {
+        val habit = habitDao.get(habitId) ?: return@withTransaction WriteResult.HabitNotFound
+        when {
+            habit.frozen -> WriteResult.HabitFrozen
+            habit.type != HabitType.Timed -> WriteResult.NoChange
+            timerDao.start(TimerEntity(habitId = habitId, localDay = day, startedAt = clock.instant())) == -1L ->
+                WriteResult.NoChange
+            else -> WriteResult.Queued
+        }
+    }
+
+    override suspend fun stopTimer(habitId: Int): WriteResult = flushIfQueued(
+        db.withTransaction {
+            val timer = timerDao.forHabit(habitId) ?: return@withTransaction WriteResult.NoChange
+            timerDao.delete(timer.id)
+            val habitTimer = timer.toHabitTimer() ?: return@withTransaction WriteResult.NoChange
+            // Timed values are milliseconds in an Int column.
+            val elapsed = habitTimer.elapsedMs(clock.instant()).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+            if (elapsed == 0) return@withTransaction WriteResult.NoChange
+            queue(habitId) {
+                dayLogDao.addToRating(habitId, habitTimer.day, elapsed)
+                incrementOp(habitId, habitTimer.day, elapsed)
+            }
+        },
+    )
+
+    override suspend fun addToTimer(habitId: Int, ms: Long): WriteResult {
+        require(ms > 0) { "ms must be positive" }
+        return db.withTransaction {
+            val timer = timerDao.forHabit(habitId) ?: return@withTransaction WriteResult.NoChange
+            // Counting up: an earlier start is more time.
+            timerDao.setStartedAt(timer.id, timer.startedAt.minusMillis(ms))
+            WriteResult.Queued
+        }
+    }
+
     override suspend fun refresh(): SyncResult = sync.sync()
 
     /** Applies [change] and queues the op it returns, in one transaction, then starts a flush. */
-    private suspend fun write(habitId: Int, change: suspend () -> OutboxEntity): WriteResult {
-        val result = db.withTransaction {
-            val habit = habitDao.get(habitId) ?: return@withTransaction WriteResult.HabitNotFound
-            if (habit.frozen) return@withTransaction WriteResult.HabitFrozen
-            val op = change()
-            // The server's first log day is its earliest row; an anti-habit streak starts there.
-            habitDao.extendFirstLogDay(habitId, op.localDay)
-            outboxDao.enqueue(op)
-            WriteResult.Queued
-        }
+    private suspend fun write(habitId: Int, change: suspend () -> OutboxEntity): WriteResult =
+        flushIfQueued(db.withTransaction { queue(habitId, change) })
+
+    /** Inside a transaction: applies [change] and queues its op, unless the habit is frozen or gone. */
+    private suspend fun queue(habitId: Int, change: suspend () -> OutboxEntity): WriteResult {
+        val habit = habitDao.get(habitId) ?: return WriteResult.HabitNotFound
+        if (habit.frozen) return WriteResult.HabitFrozen
+        val op = change()
+        // The server's first log day is its earliest row; an anti-habit streak starts there.
+        habitDao.extendFirstLogDay(habitId, op.localDay)
+        outboxDao.enqueue(op)
+        return WriteResult.Queued
+    }
+
+    private fun flushIfQueued(result: WriteResult): WriteResult {
         if (result == WriteResult.Queued) scheduler.flushOutbox()
         return result
     }

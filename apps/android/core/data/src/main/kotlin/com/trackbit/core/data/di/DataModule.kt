@@ -19,6 +19,7 @@ import dagger.multibindings.IntoSet
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import java.time.Clock
 import javax.inject.Qualifier
 import javax.inject.Singleton
 
@@ -49,6 +50,10 @@ internal abstract class DataModule {
         @Singleton
         @DataScope
         fun scope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+        /** Wall-clock time, for timers: a start instant survives reboots, elapsed-realtime doesn't. */
+        @Provides
+        fun clock(): Clock = Clock.systemUTC()
 
         /** Initialized on demand with the app's `Configuration.Provider` (Hilt's worker factory). */
         @Provides

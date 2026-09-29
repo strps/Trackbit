@@ -49,12 +49,32 @@ internal class IncrementHabitAction : HabitAction() {
     }
 }
 
+/** Timed habits: starts a timer that logs to the row's day when it stops. */
+internal class StartTimerAction : HabitAction() {
+    override suspend fun write(tracker: TrackerRepository, habitId: Int, day: LocalDate) {
+        tracker.startTimer(habitId, day)
+    }
+}
+
+/** Timed habits: stops the running timer, which logs to the day it started for. */
+internal class StopTimerAction : HabitAction() {
+    override suspend fun write(tracker: TrackerRepository, habitId: Int, day: LocalDate) {
+        tracker.stopTimer(habitId)
+    }
+}
+
 /**
- * The widget tap that logs [habit] (it writes to the habit's own day), or null for the types
- * that are logged in the app: timers and workout sessions. Frozen habits are the caller's call.
+ * The widget tap that logs [habit] (it writes to the habit's own day): toggle, +1, or start/stop
+ * its timer. Null for workout sessions, which are logged in the app. Frozen habits are the
+ * caller's call.
  */
 internal fun logAction(habit: TrackedHabit): Action? = when (habit.type) {
     HabitType.Check -> actionRunCallback<ToggleHabitAction>(habitParameters(habit))
     HabitType.Count, HabitType.Negative -> actionRunCallback<IncrementHabitAction>(habitParameters(habit))
-    HabitType.Timed, HabitType.Complex, HabitType.Unknown -> null
+    HabitType.Timed -> if (habit.timer != null) {
+        actionRunCallback<StopTimerAction>(habitParameters(habit))
+    } else {
+        actionRunCallback<StartTimerAction>(habitParameters(habit))
+    }
+    HabitType.Complex, HabitType.Unknown -> null
 }

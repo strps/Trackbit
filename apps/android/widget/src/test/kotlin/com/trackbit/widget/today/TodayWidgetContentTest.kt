@@ -13,7 +13,10 @@ import androidx.glance.testing.unit.hasTextEqualTo
 import androidx.test.core.app.ApplicationProvider
 import com.trackbit.core.model.HabitType
 import com.trackbit.widget.DAY
+import com.trackbit.core.data.HabitTimer
 import com.trackbit.widget.action.IncrementHabitAction
+import com.trackbit.widget.action.StartTimerAction
+import com.trackbit.widget.action.StopTimerAction
 import com.trackbit.widget.action.habitParameters
 import com.trackbit.widget.habit
 import com.trackbit.widget.registerLauncherActivity
@@ -22,6 +25,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.time.Instant
 
 @RunWith(RobolectricTestRunner::class)
 class TodayWidgetContentTest {
@@ -68,9 +72,25 @@ class TodayWidgetContentTest {
         }
     }
 
+    @Test fun `a timed habit starts its timer, and a running one stops it`() {
+        val idle = habit(1, type = HabitType.Timed, goal = 600_000)
+        val running = habit(2, type = HabitType.Timed, goal = 600_000, streak = 3, timer = HabitTimer(Instant.now(), DAY))
+        render(TodayWidgetState.Tracking(DAY, listOf(idle, running))) {
+            onNode(
+                hasRunCallbackClickAction<StartTimerAction>(habitParameters(idle)) and
+                    hasAnyDescendant(hasContentDescriptionEqualTo("Start the timer for Habit 1")),
+            ).assertExists()
+            onNode(hasTextEqualTo("0:00 / 10:00")).assertExists()
+            onNode(
+                hasRunCallbackClickAction<StopTimerAction>(habitParameters(running)) and
+                    hasAnyDescendant(hasContentDescriptionEqualTo("Stop the timer for Habit 2")),
+            ).assertExists()
+        }
+    }
+
     @Test fun `a habit the widget can't log opens the app`() {
-        val timed = habit(1, type = HabitType.Timed, goal = 10)
-        render(TodayWidgetState.Tracking(DAY, listOf(timed))) {
+        val workout = habit(1, type = HabitType.Complex)
+        render(TodayWidgetState.Tracking(DAY, listOf(workout))) {
             onNode(hasStartActivityClickAction(launchIntent) and hasAnyDescendant(hasTextEqualTo("Habit 1"))).assertExists()
         }
     }

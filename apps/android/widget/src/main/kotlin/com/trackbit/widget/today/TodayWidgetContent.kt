@@ -2,6 +2,7 @@ package com.trackbit.widget.today
 
 import android.content.Context
 import android.text.format.DateFormat
+import androidx.annotation.DrawableRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,10 +39,11 @@ import com.trackbit.core.i18n.R as I18nR
 import com.trackbit.core.model.HabitType
 import com.trackbit.widget.R
 import com.trackbit.widget.action.logAction
+import com.trackbit.widget.ui.HabitDetails
 import com.trackbit.widget.ui.WidgetMessage
 import com.trackbit.widget.ui.WidgetSurface
-import com.trackbit.widget.ui.detailsText
 import com.trackbit.widget.ui.openAppAction
+import java.time.Instant
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -112,8 +114,7 @@ private fun HabitRow(habit: TrackedHabit, openApp: Action) {
     val context = LocalContext.current
     val muted = GlanceTheme.colors.onSurfaceVariant
     val habitColor = if (habit.frozen) muted else ColorProvider(habit.colorStops.colorAt(1f))
-    // Timers and workout sessions live in the app (timed habits get widget controls with the
-    // timer engine). Frozen rows do nothing at all: the lock says why.
+    // Workout sessions live in the app. Frozen rows do nothing at all: the lock says why.
     val rowModifier = GlanceModifier.fillMaxWidth().padding(vertical = 5.dp).let {
         if (habit.frozen || logAction(habit) != null) it else it.clickable(openApp)
     }
@@ -131,18 +132,13 @@ private fun HabitRow(habit: TrackedHabit, openApp: Action) {
                 maxLines = 1,
                 style = TextStyle(color = if (habit.frozen) muted else GlanceTheme.colors.onSurface, fontSize = 14.sp),
             )
-            habit.detailsText(context)?.let { details ->
-                Text(
-                    text = details,
-                    maxLines = 1,
-                    style = TextStyle(color = muted, fontSize = 12.sp),
-                )
-            }
+            HabitDetails(habit, style = TextStyle(color = muted, fontSize = 12.sp), modifier = GlanceModifier.fillMaxWidth())
             // Check habits show done-ness in their box; for anti-habits more isn't better.
             if (habit.type != HabitType.Check && !habit.isAntiHabit) {
                 Spacer(GlanceModifier.height(3.dp))
                 LinearProgressIndicator(
-                    progress = habit.progress.fraction,
+                    // A running timer counts as of this render; its time ticks in the details.
+                    progress = habit.progressAt(Instant.now()).fraction,
                     color = habitColor,
                     backgroundColor = GlanceTheme.colors.surfaceVariant,
                     modifier = GlanceModifier.fillMaxWidth().height(3.dp),
@@ -167,13 +163,30 @@ private fun TrailingControl(habit: TrackedHabit) {
         )
         log == null -> Unit
         habit.type == HabitType.Check -> CheckBox(checked = habit.progress.isGoalMet, onCheckedChange = log)
-        else -> CircleIconButton(
-            imageProvider = ImageProvider(R.drawable.ic_widget_plus),
-            contentDescription = context.getString(I18nR.string.android_tracker_increment, habit.name),
+        habit.type == HabitType.Timed -> RowButton(
+            icon = if (habit.timer != null) R.drawable.ic_widget_stop else R.drawable.ic_widget_play,
+            description = context.getString(
+                if (habit.timer != null) I18nR.string.android_tracker_stop_timer else I18nR.string.android_tracker_start_timer,
+                habit.name,
+            ),
             onClick = log,
-            backgroundColor = GlanceTheme.colors.secondaryContainer,
-            contentColor = GlanceTheme.colors.onSecondaryContainer,
-            modifier = GlanceModifier.size(36.dp),
+        )
+        else -> RowButton(
+            icon = R.drawable.ic_widget_plus,
+            description = context.getString(I18nR.string.android_tracker_increment, habit.name),
+            onClick = log,
         )
     }
+}
+
+@Composable
+private fun RowButton(@DrawableRes icon: Int, description: String, onClick: Action) {
+    CircleIconButton(
+        imageProvider = ImageProvider(icon),
+        contentDescription = description,
+        onClick = onClick,
+        backgroundColor = GlanceTheme.colors.secondaryContainer,
+        contentColor = GlanceTheme.colors.onSecondaryContainer,
+        modifier = GlanceModifier.size(36.dp),
+    )
 }

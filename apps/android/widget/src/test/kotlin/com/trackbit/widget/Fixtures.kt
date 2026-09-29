@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import com.trackbit.core.data.HabitTimer
 import com.trackbit.core.data.SyncResult
 import com.trackbit.core.data.TrackedHabit
 import com.trackbit.core.data.TrackerRepository
@@ -36,6 +37,7 @@ fun habit(
     isAntiHabit: Boolean = false,
     frozen: Boolean = false,
     streak: Int? = 0,
+    timer: HabitTimer? = null,
 ) = TrackedHabit(
     id = id,
     name = "Habit $id",
@@ -52,6 +54,7 @@ fun habit(
     recent = listOf(RecentDay(day, rating = value.toInt(), sessionCount = 0)),
     progress = HabitProgress(value = value, goal = goal, isAntiHabit = isAntiHabit),
     streak = streak,
+    timer = timer,
 )
 
 fun user(id: String = "u_1") = SessionUser(
@@ -96,6 +99,10 @@ class FakeTrackerRepository : TrackerRepository {
     override suspend fun increment(habitId: Int, day: LocalDate, delta: Int) = unused()
     override suspend fun toggle(habitId: Int, day: LocalDate) = unused()
     override suspend fun ensureDayLog(habitId: Int, day: LocalDate) = unused()
+    override fun observeRunningTimers(): Flow<List<TrackedHabit>> = throw UnsupportedOperationException()
+    override suspend fun startTimer(habitId: Int, day: LocalDate) = unused()
+    override suspend fun stopTimer(habitId: Int) = unused()
+    override suspend fun addToTimer(habitId: Int, ms: Long) = unused()
     override suspend fun refresh(): SyncResult = throw UnsupportedOperationException()
 
     private fun unused(): WriteResult = throw UnsupportedOperationException()

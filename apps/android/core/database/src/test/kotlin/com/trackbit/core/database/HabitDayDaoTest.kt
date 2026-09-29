@@ -1,6 +1,7 @@
 package com.trackbit.core.database
 
 import com.trackbit.core.database.entity.DayLogEntity
+import com.trackbit.core.database.entity.TimerEntity
 import com.trackbit.core.model.ColorTheme
 import com.trackbit.core.model.HabitIcon
 import com.trackbit.core.model.HabitType
@@ -10,6 +11,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import java.time.Instant
 
 class HabitDayDaoTest : DatabaseTest() {
     private val dao = db.habitDayDao()
@@ -29,6 +31,21 @@ class HabitDayDaoTest : DatabaseTest() {
         assertEquals(RecentDay(DAY, 3, 0), one.current)
         assertEquals(RecentDay(DAY.minusDays(6), 1, 2), one.recent.first())
         assertEquals(listOf(null, null, null, null, null, null, null), days[0].recent.map { it.rating })
+    }
+
+    @Test fun `a running timer joins its habit once, whatever the number of logs`() = runTest {
+        insertHabits(habit(1), habit(2, order = 1))
+        db.dayLogDao().upsert(DayLogEntity(1, DAY, rating = 3))
+        db.dayLogDao().upsert(DayLogEntity(1, DAY.minusDays(1), rating = 2))
+        val timer = TimerEntity(habitId = 1, localDay = DAY.minusDays(1), startedAt = Instant.ofEpochMilli(1_000))
+        db.timerDao().start(timer)
+
+        val days = dao.observeDay(DAY).first()
+
+        assertEquals(listOf(1, 2), days.map { it.habit.id })
+        assertEquals(timer.copy(id = 1), days[0].timer)
+        assertEquals(listOf(2, 3), days[0].recent.mapNotNull { it.rating })
+        assertNull(days[1].timer)
     }
 
     @Test fun `one habit, or null when it is gone`() = runTest {

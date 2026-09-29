@@ -8,6 +8,7 @@ import com.trackbit.core.database.dao.HabitDao
 import com.trackbit.core.database.dao.HabitDayDao
 import com.trackbit.core.database.dao.OutboxDao
 import com.trackbit.core.database.dao.SyncDao
+import com.trackbit.core.database.dao.TimerDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -28,4 +29,5 @@ object DatabaseModule {
     @Provides fun habitDayDao(db: TrackbitDatabase): HabitDayDao = db.habitDayDao()
     @Provides fun outboxDao(db: TrackbitDatabase): OutboxDao = db.outboxDao()
     @Provides fun syncDao(db: TrackbitDatabase): SyncDao = db.syncDao()
+    @Provides fun timerDao(db: TrackbitDatabase): TimerDao = db.timerDao()
 }
