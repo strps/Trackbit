@@ -7,8 +7,8 @@ import com.trackbit.core.database.entity.OutboxEntity
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 
-/** A day log with at least one op still in the outbox. */
-data class PendingDay(val habitId: Int, val localDay: LocalDate)
+/** Identifies a day log: one habit on one day. */
+data class HabitDayKey(val habitId: Int, val localDay: LocalDate)
 
 @Dao
 interface OutboxDao {
@@ -30,7 +30,7 @@ interface OutboxDao {
     suspend fun hasPending(habitId: Int, day: LocalDate): Boolean
 
     @Query("SELECT DISTINCT habitId, localDay FROM outbox")
-    suspend fun pendingDays(): List<PendingDay>
+    suspend fun pendingDays(): List<HabitDayKey>
 
     /** For a "not synced yet" indicator. */
     @Query("SELECT COUNT(*) FROM outbox")

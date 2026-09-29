@@ -26,9 +26,21 @@
                 android:resource="@xml/quick_log_widget_info" />
         </receiver>
 
+        <receiver
+            android:name=".heatmap.HeatmapWidgetReceiver"
+            android:exported="false"
+            android:label="@string/android_widget_heatmap_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/heatmap_widget_info" />
+        </receiver>
+
         <!-- Exported for the launcher. Its own task, so it never lands on top of the app's. -->
         <activity
-            android:name=".quicklog.QuickLogConfigActivity"
+            android:name=".habit.HabitPickerActivity"
             android:excludeFromRecents="true"
             android:exported="true"
             android:taskAffinity=""

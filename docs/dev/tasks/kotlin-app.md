@@ -174,13 +174,14 @@ This phase also builds the **timer infrastructure** that W1 (timed habits) needs
 
 Tasks:
 
-- [ ] `widget` module: `GlanceAppWidget` + receiver per widget, `GlanceStateDefinition` backed by Room
-- [ ] Widget configuration activities (habit picker) for W1 and W3
-- [ ] `ActionCallback`s → `TrackerRepository.increment/toggle` → outbox. No network call inside the callback.
-- [ ] Refresh triggers: after any tracker DAO change (via `WidgetUpdater`), periodic `SyncWorker` (15 min), **local-midnight rollover** (exact alarm or WorkManager at the next local midnight, so "today" resets on time), and on auth change
-- [ ] Signed-out, empty, frozen and error states for every widget
+- [x] `widget` module: `GlanceAppWidget` + receiver per widget. Everything shown is read from Room through `TrackerRepository`; Glance state holds only a habit widget's chosen habit (C1–C2 decision).
+- [x] Widget configuration activity (one habit picker, `HabitPickerActivity`) for W1 and W3
+- [x] `ActionCallback`s → `TrackerRepository.increment/toggle` → outbox. No network call inside the callback.
+- [x] Refresh triggers: after any tracker DAO change (via `WidgetUpdater`), periodic `SyncWorker` (15 min), **local-midnight rollover** (non-wakeup alarm at the next local midnight), and on auth change
+- [x] Signed-out, empty, frozen and error states for every widget
+- [x] W3 history beyond the week: `GET /api/tracker/days` (added in C4), kept in `day_logs` while a heatmap is placed
 - [ ] Widget previews (`previewLayout` / generated previews on Android 15+)
-- [ ] Dark mode + dynamic color in widgets
+- [x] Dark mode + dynamic color in widgets
 
 **Exit:** W1 + W2 installed on a real device. Logging from the widget while offline appears on the web after reconnecting, with no duplicates. The widgets reset correctly at midnight.
 

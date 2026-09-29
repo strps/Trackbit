@@ -1,6 +1,7 @@
 package com.trackbit.core.network.service
 
 import com.trackbit.core.model.CheckRequest
+import com.trackbit.core.model.DaysResponse
 import com.trackbit.core.model.DayLog
 import com.trackbit.core.model.EnsureDayLogRequest
 import com.trackbit.core.model.IncrementRequest
@@ -21,6 +22,10 @@ interface TrackerService {
     /** [day] null means the server's today for the user. */
     @GET("api/tracker/today")
     suspend fun today(@Query("day") day: LocalDate? = null): TodayResponse
+
+    /** Logged days from [start] to [end] (at most 371 days), for every habit. */
+    @GET("api/tracker/days")
+    suspend fun days(@Query("start") start: LocalDate, @Query("end") end: LocalDate): DaysResponse
 
     @POST("api/tracker/check")
     suspend fun check(@Body body: CheckRequest, @Tag key: IdempotencyKey): DayLog

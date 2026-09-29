@@ -7,11 +7,13 @@ import androidx.room.TypeConverters
 import com.trackbit.core.database.dao.DayLogDao
 import com.trackbit.core.database.dao.HabitDao
 import com.trackbit.core.database.dao.HabitDayDao
+import com.trackbit.core.database.dao.HistoryDao
 import com.trackbit.core.database.dao.OutboxDao
 import com.trackbit.core.database.dao.SyncDao
 import com.trackbit.core.database.dao.TimerDao
 import com.trackbit.core.database.entity.DayLogEntity
 import com.trackbit.core.database.entity.HabitEntity
+import com.trackbit.core.database.entity.HistoryEntity
 import com.trackbit.core.database.entity.OutboxEntity
 import com.trackbit.core.database.entity.TimerEntity
 
@@ -20,12 +22,14 @@ import com.trackbit.core.database.entity.TimerEntity
  * Schema changes need a migration: dropping the database would lose the outbox.
  */
 @Database(
-    entities = [HabitEntity::class, DayLogEntity::class, OutboxEntity::class, TimerEntity::class],
-    version = 2,
+    entities = [HabitEntity::class, DayLogEntity::class, OutboxEntity::class, TimerEntity::class, HistoryEntity::class],
+    version = 3,
     exportSchema = true,
     autoMigrations = [
         // 2: timers.
         AutoMigration(from = 1, to = 2),
+        // 3: history.
+        AutoMigration(from = 2, to = 3),
     ],
 )
 @TypeConverters(Converters::class)
@@ -36,6 +40,7 @@ abstract class TrackbitDatabase : RoomDatabase() {
     abstract fun outboxDao(): OutboxDao
     abstract fun syncDao(): SyncDao
     abstract fun timerDao(): TimerDao
+    abstract fun historyDao(): HistoryDao
 
     companion object {
         const val NAME = "trackbit.db"

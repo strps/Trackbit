@@ -19,7 +19,7 @@ internal class OutboxWorker @AssistedInject constructor(
     override suspend fun doWork(): Result = sync.flush().toWorkResult()
 }
 
-/** Sends the outbox and pulls today's state. Runs periodically. */
+/** Sends the outbox and pulls today's state (and history when due). Runs periodically. */
 @HiltWorker
 internal class SyncWorker @AssistedInject constructor(
     @Assisted context: Context,
@@ -27,6 +27,16 @@ internal class SyncWorker @AssistedInject constructor(
     private val sync: TrackerSync,
 ) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result = sync.sync().toWorkResult()
+}
+
+/** Pulls requested history. Queued when a heatmap asks for more than Room has. */
+@HiltWorker
+internal class HistoryWorker @AssistedInject constructor(
+    @Assisted context: Context,
+    @Assisted params: WorkerParameters,
+    private val sync: TrackerSync,
+) : CoroutineWorker(context, params) {
+    override suspend fun doWork(): Result = sync.syncHistory().toWorkResult()
 }
 
 private fun SyncResult.toWorkResult(): ListenableWorker.Result = when (this) {

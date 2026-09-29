@@ -8,7 +8,9 @@ import com.trackbit.core.database.entity.DayLogEntity
 import com.trackbit.core.database.entity.HabitEntity
 import com.trackbit.core.database.entity.toEntity
 import com.trackbit.core.model.DayLog
+import com.trackbit.core.model.DaysResponse
 import com.trackbit.core.model.TodayResponse
+import java.time.Instant
 import java.time.LocalDate
 
 /**
@@ -40,7 +42,7 @@ abstract class SyncDao {
         )
         for (habit in today.habits) {
             for (day in habit.recent) {
-                if (PendingDay(habit.id, day.day) in pending) continue
+                if (HabitDayKey(habit.id, day.day) in pending) continue
                 if (day.rating == null && day.sessionCount == 0) {
                     deleteLog(habit.id, day.day)
                 } else {
@@ -65,8 +67,39 @@ abstract class SyncDao {
         extendFirstLogDay(log.habitId, log.localDay)
     }
 
+    /**
+     * Makes Room's logs from [DaysResponse.start] to [DaysResponse.end] match a
+     * `/api/tracker/days` response, and records the pull on the history request made at
+     * [syncedAt] (if it still exists). Days with pending ops keep their optimistic value, and
+     * days of habits Room doesn't have are skipped: the next `/today` brings the habit.
+     */
+    @Transaction
+    open suspend fun applyDays(days: DaysResponse, syncedAt: Instant) {
+        val pending = pendingDays().toSet()
+        val habitIds = habits().mapTo(HashSet()) { it.id }
+        val server = days.days.associateBy { HabitDayKey(it.habitId, it.day) }
+        for (local in logDaysBetween(days.start, days.end)) {
+            if (local !in server && local !in pending) deleteLog(local.habitId, local.localDay)
+        }
+        for ((key, day) in server) {
+            if (key in pending || day.habitId !in habitIds) continue
+            if (day.rating == null && day.sessionCount == 0) {
+                deleteLog(day.habitId, day.day)
+            } else {
+                upsertLog(DayLogEntity(day.habitId, day.day, day.rating, day.sessionCount))
+            }
+        }
+        recordHistorySync(days.start, syncedAt)
+    }
+
     @Query("SELECT DISTINCT habitId, localDay FROM outbox")
-    protected abstract suspend fun pendingDays(): List<PendingDay>
+    protected abstract suspend fun pendingDays(): List<HabitDayKey>
+
+    @Query("SELECT habitId, localDay FROM day_logs WHERE localDay BETWEEN :start AND :end")
+    protected abstract suspend fun logDaysBetween(start: LocalDate, end: LocalDate): List<HabitDayKey>
+
+    @Query("UPDATE history SET syncedStart = :start, syncedAt = :at")
+    protected abstract suspend fun recordHistorySync(start: LocalDate, at: Instant)
 
     @Query("DELETE FROM outbox WHERE id = :id")
     protected abstract suspend fun deleteOp(id: Long)

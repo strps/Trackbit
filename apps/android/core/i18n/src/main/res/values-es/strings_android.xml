@@ -26,6 +26,8 @@
     <string name="android_widget_sign_in_short">Inicia sesión</string>
     <string name="android_widget_quick_log_label">Registro rápido</string>
     <string name="android_widget_quick_log_description">Registra un hábito con un solo toque.</string>
-    <string name="android_widget_quick_log_choose">Elige un hábito</string>
-    <string name="android_widget_quick_log_removed">Hábito eliminado. Toca para elegir otro.</string>
+    <string name="android_widget_choose_habit">Elige un hábito</string>
+    <string name="android_widget_habit_removed">Hábito eliminado. Toca para elegir otro.</string>
+    <string name="android_widget_heatmap_label">Mapa de calor</string>
+    <string name="android_widget_heatmap_description">Mira los últimos meses de un hábito de un vistazo.</string>
 </resources>

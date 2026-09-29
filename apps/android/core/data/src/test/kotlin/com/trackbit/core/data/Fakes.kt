@@ -8,6 +8,7 @@ import com.trackbit.core.model.CheckRequest
 import com.trackbit.core.model.ColorStop
 import com.trackbit.core.model.ColorTheme
 import com.trackbit.core.model.DayLog
+import com.trackbit.core.model.DaysResponse
 import com.trackbit.core.model.EnsureDayLogRequest
 import com.trackbit.core.model.HabitIcon
 import com.trackbit.core.model.HabitType
@@ -82,8 +83,10 @@ class FakeTokens(var token: String? = "t1") : SessionTokenSource {
 class FakeScheduler : SyncScheduler {
     var flushes = 0
     var periodic = 0
+    var historySyncs = 0
     var cancelled = 0
     override fun flushOutbox() { flushes++ }
+    override fun syncHistory() { historySyncs++ }
     override fun schedulePeriodicSync() { periodic++ }
     override suspend fun cancelAll() { cancelled++ }
 }
@@ -103,6 +106,13 @@ class FakeTrackerService : TrackerService {
         }
     }
     val todayDays = mutableListOf<LocalDate?>()
+    var daysAnswer: (LocalDate, LocalDate) -> DaysResponse = { start, end -> DaysResponse(start, end, emptyList()) }
+    val daysRequests = mutableListOf<Pair<LocalDate, LocalDate>>()
+
+    override suspend fun days(start: LocalDate, end: LocalDate): DaysResponse {
+        daysRequests += start to end
+        return daysAnswer(start, end)
+    }
 
     override suspend fun today(day: LocalDate?): TodayResponse {
         todayDays += day

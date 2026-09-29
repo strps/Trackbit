@@ -92,8 +92,18 @@ class FakeTrackerRepository : TrackerRepository {
 
     override fun observeDay(day: LocalDate): Flow<List<TrackedHabit>> = days.map { it[day].orEmpty() }
 
-    override fun observeHabit(habitId: Int, day: LocalDate): Flow<TrackedHabit?> =
-        days.map { days -> days[day]?.find { it.id == habitId } }
+    override fun observeHabit(habitId: Int, day: LocalDate, days: Int): Flow<TrackedHabit?> {
+        observed += Triple(habitId, day, days)
+        return this.days.map { byDay -> byDay[day]?.find { it.id == habitId } }
+    }
+
+    /** Every [observeHabit] call: habit, day and how many days. */
+    val observed = mutableListOf<Triple<Int, LocalDate, Int>>()
+    val historyRequests = mutableListOf<LocalDate>()
+    var historyReleases = 0
+
+    override suspend fun requestHistory(start: LocalDate) { historyRequests += start }
+    override suspend fun releaseHistory() { historyReleases++ }
 
     override suspend fun setRating(habitId: Int, day: LocalDate, rating: Int) = unused()
     override suspend fun increment(habitId: Int, day: LocalDate, delta: Int) = unused()

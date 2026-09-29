@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- W1: 2×1 by default, 1×1 to 2×2 (QuickLogWidget's responsive sizes). A habit must be chosen
-     before it's placed, so configuration isn't optional; Android 12+ can reconfigure it. -->
+<!-- W3: 4×2 by default, resizable (4×3 gives bigger cells). A habit must be chosen before it's
+     placed; Android 12+ can reconfigure it. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:configure="com.trackbit.widget.habit.HabitPickerActivity"
-    android:description="@string/android_widget_quick_log_description"
+    android:description="@string/android_widget_heatmap_description"
     android:initialLayout="@layout/glance_default_loading_layout"
-    android:minWidth="110dp"
-    android:minHeight="40dp"
-    android:minResizeWidth="40dp"
-    android:minResizeHeight="40dp"
+    android:minWidth="250dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="180dp"
+    android:minResizeHeight="110dp"
     android:resizeMode="horizontal|vertical"
-    android:targetCellWidth="2"
-    android:targetCellHeight="1"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
     android:updatePeriodMillis="0"
     android:widgetCategory="home_screen"
     android:widgetFeatures="reconfigurable"

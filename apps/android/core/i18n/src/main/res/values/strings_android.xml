@@ -25,6 +25,8 @@
     <string name="android_widget_sign_in_short">Sign in</string>
     <string name="android_widget_quick_log_label">Quick log</string>
     <string name="android_widget_quick_log_description">Log one habit with a single tap.</string>
-    <string name="android_widget_quick_log_choose">Choose a habit</string>
-    <string name="android_widget_quick_log_removed">Habit removed. Tap to choose another.</string>
+    <string name="android_widget_choose_habit">Choose a habit</string>
+    <string name="android_widget_habit_removed">Habit removed. Tap to choose another.</string>
+    <string name="android_widget_heatmap_label">Habit heatmap</string>
+    <string name="android_widget_heatmap_description">See one habit\'s last months at a glance.</string>
 </resources>

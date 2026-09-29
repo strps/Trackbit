@@ -1,7 +1,7 @@
 import { Hono, type Context } from 'hono'
 import { validator } from '../../lib/validator.js'
 import { z } from 'zod'
-import { eq, and, inArray, sql, gte, lte, desc, asc } from 'drizzle-orm'
+import { eq, and, inArray, sql, gte, lte, desc, asc, type SQL } from 'drizzle-orm'
 import { HTTPException } from 'hono/http-exception'
 import { requireAuth } from '../../middleware/auth'
 import { dayLogs, exerciseListItems, exerciseLists, exerciseLogs, exercisePerformances, exerciseSessions, habits } from '../../db/schema'
@@ -87,6 +87,22 @@ app.get(
 
 const RECENT_DAYS = 7;
 
+/** Every day log of the habits matching `habitFilter` from `start` to `end`, with its session count. */
+function daySummaries(habitFilter: SQL, start: string, end: string) {
+    return db
+        .select({
+            habitId: dayLogs.habitId,
+            localDay: dayLogs.localDay,
+            rating: dayLogs.rating,
+            sessionCount: sql<number>`count(${exerciseSessions.id})::int`,
+        })
+        .from(dayLogs)
+        .leftJoin(exerciseSessions, eq(exerciseSessions.dayLogId, dayLogs.id))
+        .where(and(habitFilter, gte(dayLogs.localDay, start), lte(dayLogs.localDay, end)))
+        .groupBy(dayLogs.id)
+        .orderBy(asc(dayLogs.habitId), asc(dayLogs.localDay));
+}
+
 app.get(
     '/today',
     validator('query', z.object({ day: localDaySchema.optional() })),
@@ -105,21 +121,7 @@ app.get(
         const [logs, firstLogs, frozen] = habitIds.length === 0
             ? [[], [], new Set<number>()] as const
             : await Promise.all([
-                db
-                    .select({
-                        habitId: dayLogs.habitId,
-                        localDay: dayLogs.localDay,
-                        rating: dayLogs.rating,
-                        sessionCount: sql<number>`count(${exerciseSessions.id})::int`,
-                    })
-                    .from(dayLogs)
-                    .leftJoin(exerciseSessions, eq(exerciseSessions.dayLogId, dayLogs.id))
-                    .where(and(
-                        inArray(dayLogs.habitId, habitIds),
-                        gte(dayLogs.localDay, windowStart),
-                        lte(dayLogs.localDay, day),
-                    ))
-                    .groupBy(dayLogs.id),
+                daySummaries(inArray(dayLogs.habitId, habitIds), windowStart, day),
                 db
                     .select({ habitId: dayLogs.habitId, firstLogDay: sql<string>`min(${dayLogs.localDay})` })
                     .from(dayLogs)
@@ -163,6 +165,36 @@ app.get(
                     })),
                 };
             }),
+        });
+    }
+);
+
+//============================================================================================
+//--- DAYS ---
+// The per-day values behind /today's `recent`, for any range: what heatmaps need without the
+// exercise session trees /history carries. Sparse: a day without a log is left out.
+//============================================================================================
+
+const MAX_DAYS_RANGE = 371;
+
+app.get(
+    '/days',
+    validator('query', z.object({
+        start: localDaySchema,
+        end: localDaySchema,
+    }).refine(({ start, end }) => start <= end, { message: 'start must not be after end', path: ['start'] })
+        .refine(({ start, end }) => addDays(start, MAX_DAYS_RANGE - 1) >= end, {
+            message: `At most ${MAX_DAYS_RANGE} days`, path: ['end'],
+        })),
+    async (c) => {
+        const user = c.get('user');
+        const { start, end } = c.req.valid('query');
+        const owned = db.select({ id: habits.id }).from(habits).where(eq(habits.userId, user.id));
+        const days = await daySummaries(inArray(dayLogs.habitId, owned), start, end);
+        return c.json({
+            start,
+            end,
+            days: days.map((d) => ({ habitId: d.habitId, day: d.localDay, rating: d.rating, sessionCount: d.sessionCount })),
         });
     }
 );

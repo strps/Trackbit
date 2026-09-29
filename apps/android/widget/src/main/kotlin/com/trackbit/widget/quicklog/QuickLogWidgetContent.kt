@@ -41,15 +41,15 @@ import com.trackbit.core.data.TrackedHabit
 import com.trackbit.core.designsystem.color.colorAt
 import com.trackbit.core.designsystem.icon.drawableRes
 import com.trackbit.core.i18n.R as I18nR
-import com.trackbit.core.model.HabitProgress
 import com.trackbit.core.model.HabitType
-import com.trackbit.core.model.RecentDay
 import com.trackbit.widget.R
 import com.trackbit.widget.action.logAction
+import com.trackbit.widget.habit.HabitWidgetState
 import com.trackbit.widget.ui.HabitDetails
 import com.trackbit.widget.ui.ProgressRing
 import com.trackbit.widget.ui.WidgetMessage
 import com.trackbit.widget.ui.WidgetSurface
+import com.trackbit.widget.ui.dayColor
 import com.trackbit.widget.ui.detailsText
 import com.trackbit.widget.ui.openAppAction
 import java.time.Instant
@@ -65,24 +65,24 @@ private fun layoutFor(size: DpSize): Layout = when {
 
 /** [chooseHabit] opens the configuration activity for this widget. */
 @Composable
-internal fun QuickLogWidgetContent(state: QuickLogState, chooseHabit: Action) {
+internal fun QuickLogWidgetContent(state: HabitWidgetState, chooseHabit: Action) {
     val context = LocalContext.current
     val layout = layoutFor(LocalSize.current)
     val padding = if (layout == Layout.Square) 12.dp else 8.dp
     WidgetSurface(horizontalPadding = padding, verticalPadding = padding) {
         val small = layout == Layout.Small
         when (state) {
-            QuickLogState.SignedOut -> WidgetMessage(
+            HabitWidgetState.SignedOut -> WidgetMessage(
                 context.getString(if (small) I18nR.string.android_widget_sign_in_short else I18nR.string.android_widget_sign_in),
                 openAppAction(context),
             )
-            QuickLogState.Unconfigured ->
-                WidgetMessage(context.getString(I18nR.string.android_widget_quick_log_choose), chooseHabit)
-            QuickLogState.HabitRemoved -> WidgetMessage(
-                context.getString(if (small) I18nR.string.android_widget_quick_log_choose else I18nR.string.android_widget_quick_log_removed),
+            HabitWidgetState.Unconfigured ->
+                WidgetMessage(context.getString(I18nR.string.android_widget_choose_habit), chooseHabit)
+            HabitWidgetState.HabitRemoved -> WidgetMessage(
+                context.getString(if (small) I18nR.string.android_widget_choose_habit else I18nR.string.android_widget_habit_removed),
                 chooseHabit,
             )
-            is QuickLogState.Tracking -> HabitContent(state.habit, layout)
+            is HabitWidgetState.Tracking -> HabitContent(state.habit, layout)
         }
     }
 }
@@ -186,10 +186,7 @@ private fun HabitText(habit: TrackedHabit, align: TextAlign) {
     )
 }
 
-/**
- * The last seven days, oldest first, ending today. Each day on the heatmap's scale (the habit's
- * gradient at that day's progress); for anti-habits only slips are marked.
- */
+/** The last seven days, oldest first, ending today, each on the heatmap's scale ([dayColor]). */
 @Composable
 private fun WeekStrip(habit: TrackedHabit) {
     // Gaps are padding, not Spacers: Glance drops a Row's children past the tenth.
@@ -201,19 +198,10 @@ private fun WeekStrip(habit: TrackedHabit) {
                         .fillMaxWidth()
                         .height(6.dp)
                         .cornerRadius(3.dp)
-                        .background(dayColor(habit, day)),
+                        .background(habit.dayColor(day) ?: GlanceTheme.colors.surfaceVariant),
                 ) {}
             }
         }
     }
 }
 
-@Composable
-private fun dayColor(habit: TrackedHabit, day: RecentDay): ColorProvider {
-    val progress = HabitProgress.of(habit, day.rating, day.sessionCount)
-    return when {
-        habit.isAntiHabit -> if (progress.value > 0) GlanceTheme.colors.error else GlanceTheme.colors.surfaceVariant
-        progress.fraction > 0f -> ColorProvider(habit.colorStops.colorAt(progress.fraction))
-        else -> GlanceTheme.colors.surfaceVariant
-    }
-}

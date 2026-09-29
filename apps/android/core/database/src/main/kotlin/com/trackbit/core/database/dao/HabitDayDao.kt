@@ -17,7 +17,7 @@ import java.time.LocalDate
  */
 data class HabitDay(
     val habit: HabitEntity,
-    /** [RECENT_DAYS] days ending at the requested day, oldest first. Days without a log are empty. */
+    /** The days ending at the requested day ([RECENT_DAYS] by default), oldest first. Days without a log are empty. */
     val recent: List<RecentDay>,
     /** The habit's running timer, whichever day it logs to. */
     val timer: TimerEntity?,
@@ -35,11 +35,17 @@ data class HabitDay(
 abstract class HabitDayDao {
     /** Every habit, in display order, on [day]. */
     fun observeDay(day: LocalDate): Flow<List<HabitDay>> =
-        observeWithLogs(windowStart(day), day, habitId = null).map { rows -> rows.toHabitDays(day) }
+        observeWithLogs(windowStart(day, HabitDay.RECENT_DAYS), day, habitId = null)
+            .map { rows -> rows.toHabitDays(day, HabitDay.RECENT_DAYS) }
 
-    /** One habit on [day], or null if it doesn't exist (any more). */
-    fun observeHabitDay(habitId: Int, day: LocalDate): Flow<HabitDay?> =
-        observeWithLogs(windowStart(day), day, habitId).map { rows -> rows.toHabitDays(day).firstOrNull() }
+    /**
+     * One habit on [day] with the [days] days ending at it, or null if it doesn't exist (any
+     * more). Room has logs before the recent week only while history is kept ([HistoryDao]).
+     */
+    fun observeHabitDay(habitId: Int, day: LocalDate, days: Int = HabitDay.RECENT_DAYS): Flow<HabitDay?> {
+        require(days >= 1) { "days must be at least 1" }
+        return observeWithLogs(windowStart(day, days), day, habitId).map { rows -> rows.toHabitDays(day, days).firstOrNull() }
+    }
 
     // One query, so habits, logs and timers always come from the same database state: stopping a
     // timer deletes it and logs its time in one transaction, and no frame may show only half of it.
@@ -60,12 +66,12 @@ abstract class HabitDayDao {
     )
     protected abstract fun observeWithLogs(start: LocalDate, end: LocalDate, habitId: Int?): Flow<List<HabitDayRow>>
 
-    private fun windowStart(day: LocalDate) = day.minusDays(HabitDay.RECENT_DAYS - 1L)
+    private fun windowStart(day: LocalDate, days: Int) = day.minusDays(days - 1L)
 
-    private fun List<HabitDayRow>.toHabitDays(day: LocalDate): List<HabitDay> =
+    private fun List<HabitDayRow>.toHabitDays(day: LocalDate, days: Int): List<HabitDay> =
         groupBy { it.habit.id }.values.map { rows ->
             val byDay = rows.mapNotNull { it.log }.associateBy { it.localDay }
-            val recent = (HabitDay.RECENT_DAYS - 1 downTo 0).map { back ->
+            val recent = (days - 1 downTo 0).map { back ->
                 val d = day.minusDays(back.toLong())
                 byDay[d]?.toRecentDay() ?: RecentDay(day = d, rating = null, sessionCount = 0)
             }

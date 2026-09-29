@@ -1,12 +1,12 @@
 # Handoff: Kotlin app — Workstream C (widgets)
 
 - **Plan:** [kotlin-app.md](../tasks/kotlin-app.md). Read only §2.2 and §4 "Phase 1". Phase 0 context (core modules, their invariants, landmines) is in [kotlin-app-B.md](kotlin-app-B.md): read its "Invariants" and "Landmines" sections, nothing else.
-- **Status:** Phase 1 — C1, C2 and C3 of C1–C5 done (widget foundation, W2 Today list, W1 quick-log, timer engine). Next is C4 (W3 heatmap).
-- **Branch:** `kotlin-app` · **Last run:** 2026-09-29 (C3 uncommitted at end of run)
+- **Status:** Phase 1 — C1–C4 of C1–C5 done (widget foundation, W2 Today list, W1 quick-log, timer engine, W3 heatmap). Next is C5 (previews and the real-device exit check).
+- **Branch:** `kotlin-app` · **Last run:** 2026-09-29 (C4 uncommitted at end of run)
 
 ## Where we are
 
-W2 (Today list) works end to end on the emulator (API 36, Pixel Launcher, local backend): dynamic color, check toggle, count +1, offline taps reach the server exactly once after reconnecting, midnight rollover, sign-out/in. W1 (quick-log) works on the emulator too: placing it opens the habit picker, and a tap logs +1 at 2×1, 2×2 and 1×1 (checked on the server). Reconfiguring with the launcher's pencil switches the habit on a live session, and resizing switches the layout. Not verified on the emulator for W1: the offline, midnight, signed-out and habit-removed states (unit-tested; queued in [kotlin-app-followups.md](../tasks/kotlin-app-followups.md) for the C5 device pass). Timed habits (C3) work on the emulator too: a W1 tap starts a timer, the widget shows a live chronometer against the goal, and an ongoing notification appears with Stop / +30s. The timer survived a reinstall, +30s moved it forward, and Stop from either the notification or the widget added the elapsed ms to the server's day log (a second session added to the first). The 1→2 Room migration kept the emulator's data. `./gradlew assembleDebug testDebugUnitTest lintDebug` passes with 0 lint issues and 174 unit tests (13 new). Not done yet: W3, widget previews, a real-device run.
+W2 (Today list) works end to end on the emulator (API 36, Pixel Launcher, local backend): dynamic color, check toggle, count +1, offline taps reach the server exactly once after reconnecting, midnight rollover, sign-out/in. W1 (quick-log) works on the emulator too: placing it opens the habit picker, and a tap logs +1 at 2×1, 2×2 and 1×1 (checked on the server). Reconfiguring with the launcher's pencil switches the habit on a live session, and resizing switches the layout. Not verified on the emulator for W1: the offline, midnight, signed-out and habit-removed states (unit-tested; queued in [kotlin-app-followups.md](../tasks/kotlin-app-followups.md) for the C5 device pass). Timed habits (C3) work on the emulator too: a W1 tap starts a timer, the widget shows a live chronometer against the goal, and an ongoing notification appears with Stop / +30s. The timer survived a reinstall, +30s moved it forward, and Stop from either the notification or the widget added the elapsed ms to the server's day log (a second session added to the first). The 1→2 Room migration kept the emulator's data. W3 (heatmap, C4) works on the emulator: placing it opens the shared habit picker, and within seconds the grid shows the habit's days from months back (pulled from the new `/api/tracker/days`), matching the server's rows day by day, with Sunday-first weeks from the en-US locale. Not verified on the emulator for W3: releasing history when the last one is removed, dark mode, 4×3 (unit-tested or queued in the follow-ups). `./gradlew assembleDebug testDebugUnitTest lintDebug` passes with 0 lint issues and 196 unit tests (22 new); backend Vitest 56 passing. Not done yet: widget previews, a real-device run.
 
 ## Phase 1 task split (C1–C5)
 
@@ -15,8 +15,8 @@ W2 (Today list) works end to end on the emulator (API 36, Pixel Launcher, local 
 | **C1** | Glance setup, `WidgetDay` + midnight alarm, `WidgetUpdater`, theme, W2 with signed-out/empty/frozen/error states | ✅ 2026-09-28 |
 | **C2** | W1 habit quick-log: config activity (habit picker), 1×1 / 2×1 / 2×2 (`SizeMode.Responsive`), progress ring + streak, 7-day strip at 2×2; check/count only | ✅ 2026-09-29 |
 | **C3** | Timer engine in `core:data` (persisted start + duration), ongoing Chronometer notification (Stop / +30s), timed habits start/stop in W1 and W2 | ✅ 2026-09-29 |
-| **C4** | W3 heatmap + config activity. Needs history beyond Room's 7 days: `/api/tracker/history` service + storage | next |
-| **C5** | Previews (`previewLayout` < 35, generated previews 35+), final exit check on a real device | |
+| **C4** | W3 heatmap + shared habit picker; history beyond Room's 7 days via a new lean `/api/tracker/days` | ✅ 2026-09-29 |
+| **C5** | Previews (`previewLayout` < 35, generated previews 35+), final exit check on a real device | next |
 
 ## Done (C1)
 
@@ -61,11 +61,22 @@ W2 (Today list) works end to end on the emulator (API 36, Pixel Launcher, local 
 - **Strings** (en, es): `android_tracker_{start,stop}_timer`, `android_timer_{channel_name,channel_description,stop,add_30s,goal}`.
 - **Tests:** repository (start/stop once, past midnight, one per habit, live progress/base, +30s, cascade and frozen), DAO join, migration, W1/W2 timed actions, `timerSuffix`.
 
-## Next: C4 — W3 heatmap
+## Done (C4)
 
-1. `/api/tracker/history` (`start`/`end` on `local_day`) service in `core:network` + storage for more than Room's 7 days (a history table, or widen `day_logs`; keep the pending-op guard in `SyncDao`).
-2. W3 (4×2, 4×3): last N weeks on the habit's gradient, the web `Heatmap` scale (`colorStops.colorAt`). Read-only; a tap opens the app (analytics comes in Phase 2). Config activity: reuse W1's picker.
-3. Remember Glance's 10-children limit per Row/Column: a week column of 7 is fine, but a row of N weeks needs chunking or a bitmap.
+- **Backend** (user decision: a lean endpoint rather than `/history`, which carries full exercise session trees): `GET /api/tracker/days?start&end` → `{ start, end, days: [{ habitId, day, rating, sessionCount }] }`, sparse, both bounds required, at most 371 days. It shares `daySummaries()` with `/today`, so `sessionCount` means the same thing. Tests in `tracker-today.test.ts`; contract `days.json` (core:model) recorded. **Production needs this deployed before the app ships** (with 0008–0010).
+- **Model/network:** `DaysResponse` + `HabitDayValue` ([Days.kt](../../../apps/android/core/model/src/main/kotlin/com/trackbit/core/model/Days.kt)), `TrackerService.days(start, end)`.
+- **Storage:** history lives in `day_logs` itself (same key and shape). A one-row `history` table ([HistoryEntity.kt](../../../apps/android/core/database/src/main/kotlin/com/trackbit/core/database/entity/HistoryEntity.kt), Room v3 via `AutoMigration(2, 3)`) says how far back to keep (`start`) and what the last pull covered (`syncedStart`, `syncedAt`). `SyncDao.applyDays` makes the range match the server, keeping pending-op days and skipping habits Room doesn't have, and records the pull only if the request still exists. `HistoryDao.release(keepFrom)` deletes the request and the logs before the recent week (pending ones stay). `PendingDay` is now `HabitDayKey`.
+- **Sync:** `TrackerSync.syncHistory()` (under the mutex, fenced) pulls `[start, device today]` when due: never pulled, pulled from a later start, or older than `HISTORY_MAX_AGE` (6 h). `sync()` (periodic + pull-to-refresh) also pulls when due. `HistoryWorker` = unique `tracker-history`, `APPEND_OR_REPLACE`, tagged `tracker-sync`, so sign-out cancels it. `TrackerSync` now takes the `Clock`.
+- **Repository:** `observeHabit(habitId, day, days = RECENT_DAYS)` (`HabitDayDao.observeHabitDay` takes the window length; still one query), `requestHistory(start)` (stores it, schedules a pull only if due), `releaseHistory()`.
+- **Shared habit widget code** ([habit/](../../../apps/android/widget/src/main/kotlin/com/trackbit/widget/habit)): `HabitWidgetState` + `habitWidgetState(auth, day, habitId, observe)` (was W1's `QuickLogState`), `HabitIdKey`, `chosenHabitId`/`chooseHabit`, and `HabitPickerActivity` (was `QuickLogConfigActivity`), which maps the provider to W1 or W3 and finishes for anything else. Strings `android_widget_choose_habit`, `android_widget_habit_removed` (renamed from `quick_log_*`). `dayColor` ([ui/DayColor.kt](../../../apps/android/widget/src/main/kotlin/com/trackbit/widget/ui/DayColor.kt)) is shared by W1's strip and W3.
+- **W3** ([heatmap/](../../../apps/android/widget/src/main/kotlin/com/trackbit/widget/heatmap)): `HeatmapWindow` = 26 weeks ending with today's, weeks from the locale's first day. The window is fixed whatever the size, so all instances ask for the same history. Its `observe` calls `requestHistory(window.start)` then reads `window.days` days, so a new day or a sign-in re-asserts the request. `SizeMode.Exact`: `gridFor(size)` makes cells as big as the height allows (8–18 dp pitch), then fits as many weeks as the width takes. Week columns go in Rows of ≤ 10 (Glance's limit). Each cell is a tinted rounded-square vector (`ic_widget_cell`) whose padding is the gap: one view when empty, and a colored day is drawn over the empty cell like the web. Header: icon, name, `HabitDetails`. The whole widget opens the app. `HeatmapWidgetReceiver.onDisabled` → `releaseHistory()`. Provider: 4×2 default, resizable from 180×110 dp, reconfigurable.
+- **Strings** (en, es): `android_widget_heatmap_{label,description}`.
+- **Tests:** `HistoryTest` (applyDays, pending guard, release, longer window), migration 2→3, `HistorySyncTest` (request/pull/stale/earlier start/offline/fence/release), scheduler cancel, `DaysResponse` decode, `HeatmapWindowTest` (window, weeks, sizing, history request), `HeatmapWidgetContentTest`, `HabitWidgetStateTest` (moved).
+
+## Next: C5 — previews and the exit check
+
+1. Widget previews for W1, W2, W3: `previewLayout` (static XML) below API 35, generated previews (`GlanceAppWidget.providePreview` + `setWidgetPreviews`) on 35+.
+2. The phase exit on a real device: W1 + W2 installed; offline logging reaches the web once after reconnecting; midnight reset. Work through the "To check on a device" list in [kotlin-app-followups.md](../tasks/kotlin-app-followups.md) at the same time.
 
 ## Invariants — do not break these
 
@@ -75,12 +86,27 @@ W2 (Today list) works end to end on the emulator (API 36, Pixel Launcher, local 
 - **Widget composables collect their flows inside `provideContent`.** A value captured in `provideGlance` goes stale on a live session.
 - **The widget day comes from `WidgetDay.today`**, never `LocalDate.now()` in a composable, and writes use the row's `TrackedHabit.day`.
 - **Every widget is listed in `TrackbitWidgets.all()`**, or it misses rollover and data refreshes.
-- **Per-widget Glance state holds only the user's choice** (W1's habit id). Everything it shows is derived from Room, so deletion and sign-out need no cleanup.
+- **Per-widget Glance state holds only the user's choice** (a habit widget's id, `HabitIdKey`). Everything it shows is derived from Room, so deletion and sign-out need no cleanup.
 - **What a tap logs comes from `logAction(habit)`**, for every widget.
 - **Hilt reaches Glance classes only through `WidgetEntryPoint`** (Glance instantiates widgets, receivers and callbacks itself). The entry point must stay public.
 - **Strings come from `com.trackbit.core.i18n.R`**, not the widget's `R` (R classes are non-transitive).
 - **A timer is a stored start instant, never a ticking count.** Stopping it deletes the row and logs in the same transaction.
 - **Timer notifications follow Room** (`TimerNotifier`). Never post or cancel them from an action: change the timer and let the reconciler catch up.
+- **History is asked for, never fetched by a widget.** A widget calls `requestHistory(start)`, and the pull happens in `TrackerSync` (worker or periodic sync). Logs older than the recent week exist in Room only while a `history` request does; `releaseHistory()` drops them.
+- **A new habit widget is added to `HabitPickerActivity.habitWidgetFor`**, or the picker refuses to configure it.
+
+## Decisions made in C4
+
+| Question | Decision | Why |
+|---|---|---|
+| Where history comes from | New `GET /api/tracker/days` (user decision) | `/history` sends every session → log → performance tree; the heatmap needs one number per day. |
+| Where it's stored | `day_logs`, plus a one-row `history` request | Same key and shape, so the pending-op guard and optimistic writes cover old days for free; the request row gives freshness and a clean release. |
+| How much | 26 weeks for every instance, whatever the size | One request for all instances; the small size only shows fewer of the weeks. |
+| Freshness | Pull when not covered or older than 6 h; periodic sync checks | Past days rarely change, and `/today` refreshes the last week every 15 min. |
+| When history stops | `onDisabled` of the last W3 | Otherwise every install pulls history forever after one heatmap. |
+| Cells | Tinted vector per cell, padding = gap; colored days over the empty cell | One view per empty cell (up to 182 cells), rounded on every API level, follows day/night; the gradient's low end is translucent, as on the web. |
+| Labels | None (no months, weekdays or today marker) | The 10-child limit makes aligned label rows awkward; queued as polish. |
+| Week start | The locale's first day | The web hardcodes Monday; the device's convention reads better on a home screen. |
 
 ## Decisions made in C3
 
@@ -125,7 +151,8 @@ W2 (Today list) works end to end on the emulator (API 36, Pixel Launcher, local 
 - **Emulator:**
   - Setting the clock: `date` is refused on the Play image, even after `adb root`. Use `adb shell settings put global auto_time 0` and `adb shell cmd alarm set-time <epoch ms>`. Restore with `auto_time 1`. Inspect the alarm with `adb shell dumpsys alarm | grep -A3 DAY_ROLLOVER`.
   - Adding a widget: long-press the home screen → Widgets → search "Trackbit" → tap the entry → tap the preview → "Add". Find the coordinates with `uiautomator dump`.
-- The emulator is signed in as a different local user (habits "Check", "Morning Run", "Otroer", "Timed", "Ejercicio"), not the B10 smoke user. Its password isn't recorded, so sign-out wasn't tested for W1. A W1 widget (1×1, "Otroer") is on the home screen.
+- The emulator is signed in as a different local user (habits "Check", "Morning Run", "Otroer", "Timed", "Ejercicio"), not the B10 smoke user. Its password isn't recorded, so sign-out wasn't tested for W1 or W3. A W3 widget (4×2, "Check") is on the home screen; its habit has logs from May, which show the history pull. The W1 widget is no longer on the first page.
+- **The backend's history endpoint is `/days`, not `/history`.** A backend that isn't running the C4 code answers 404, which the app treats as `Failed`: W3 then shows only the last week.
 - **`uiautomator dump` fails ("could not get idle state") while a chronometer is ticking** on screen (widget or notification shade). Use screenshots, or stop the timer first.
 - **Widget UI helper:** find a node's center with `uiautomator dump` and grep its bounds (text or content-desc). The launcher's resize handles sit at the middle of each edge; dragging one about 300 px changes the size by one cell.
 
@@ -133,8 +160,9 @@ W2 (Today list) works end to end on the emulator (API 36, Pixel Launcher, local 
 
 ```bash
 cd apps/android && ./gradlew --stop
-./gradlew assembleDebug testDebugUnitTest lintDebug --max-workers=2   # green, 0 lint issues, 174 tests
+./gradlew assembleDebug testDebugUnitTest lintDebug --max-workers=2   # green, 0 lint issues, 196 tests
 pnpm android:generate:check                                          # 19 generated files up to date
+pnpm --filter backend test                                           # 56 tests (re-record contracts: test:contracts:update)
 ```
 
 ## Open questions
@@ -147,3 +175,4 @@ pnpm android:generate:check                                          # 19 genera
 - 2026-09-28 — C1: widget foundation (Glance 1.2.0, `WidgetDay` + midnight alarm, `WidgetUpdater` + `TrackerRepository.changes`, theme, actions) and W2 Today list; verified on the emulator (online/offline logging without duplicates, midnight, sign-out/in, toggle). Moved all Robolectric tests from API 23 to 36 (user decision), which exposed and fixed a `SessionStore.currentToken()` race. Next: C2.
 - 2026-09-29 — C2: W1 quick-log (config activity, responsive 1×1/2×1/2×2, bitmap progress ring, 7-day strip, removed/unconfigured states) plus shared `logAction`/`detailsText`. Verified on the emulator: placement, +1 at every size, reconfigure on a live session, resize. Found and fixed Glance's 10-child limit dropping strip cells. Next: C3.
 - 2026-09-29 — C3: timer engine (`timers` table, Room v2 auto-migration, start/stop/+30s in `TrackerRepository`, stop = increment in one transaction), `TimerNotifier` + Stop/+30s receiver in `app` with no foreground service, one-time notification permission, timed start/stop with a live chronometer in W1 and W2. Verified on the emulator: start from W1, survives reinstall, +30s, stop from the notification and from W1 reach the server as increments. Next: C4.
+- 2026-09-29 — C4: backend `GET /api/tracker/days` (user chose it over `/history`) + contract; Room v3 `history` request with pulls in `TrackerSync` (due/stale logic, `HistoryWorker`, release on the last W3's removal); W1's picker and state generalized into `habit/` for W1 and W3; W3 heatmap (26-week window, exact-size grid, tinted cells). Verified on the emulator: placing W3 via the picker, with the cells matching the server's logs back to May. Next: C5.

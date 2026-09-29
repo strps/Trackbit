@@ -30,6 +30,26 @@ class MigrationTest {
         }
     }
 
+    @Test fun `2 to 3 adds history and keeps pending writes`() {
+        helper.createDatabase(NAME, 2).use { db ->
+            db.execSQL(
+                "INSERT INTO outbox (type, habitId, localDay, payload, idempotencyKey, createdAt, attempts) " +
+                    "VALUES ('Check', 1, '2026-09-26', '{}', 'key-1', 0, 0)",
+            )
+        }
+
+        helper.runMigrationsAndValidate(NAME, 3, true).use { db ->
+            db.query("SELECT idempotencyKey FROM outbox").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals("key-1", cursor.getString(0))
+            }
+            db.query("SELECT COUNT(*) FROM history").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(0, cursor.getInt(0))
+            }
+        }
+    }
+
     private companion object {
         const val NAME = "migration-test.db"
     }

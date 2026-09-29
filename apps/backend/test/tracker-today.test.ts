@@ -59,3 +59,41 @@ describe('GET /api/tracker/today', () => {
         expect(day).toBe(new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tokyo' }).format(new Date()))
     })
 })
+
+describe('GET /api/tracker/days', () => {
+    const days = (token: string, query: string) => app.request(`/api/tracker/days?${query}`, bearer(token))
+
+    it('returns the user\'s logged days in the range, with session counts', async () => {
+        const u = await signedInUser()
+        const other = await signedInUser()
+        const read = await createHabit(u.id)
+        const gym = await createHabit(u.id, { type: 'complex' })
+        const foreign = await createHabit(other.id)
+        for (const day of ['2025-12-31', '2026-01-01', '2026-01-05', '2026-01-11']) {
+            await post(u.token, '/api/tracker/check', { habitId: read.id, rating: 2, day })
+        }
+        const log = await (await post(u.token, '/api/tracker/day-logs/ensure', { habitId: gym.id, day: '2026-01-03' })).json()
+        await db.insert(exerciseSessions).values([{ dayLogId: log.id }, { dayLogId: log.id }])
+        await post(other.token, '/api/tracker/check', { habitId: foreign.id, rating: 1, day: '2026-01-02' })
+
+        const res = await days(u.token, 'start=2026-01-01&end=2026-01-10')
+        expect(res.status).toBe(200)
+        expect(await res.json()).toEqual({
+            start: '2026-01-01',
+            end: '2026-01-10',
+            days: [
+                { habitId: read.id, day: '2026-01-01', rating: 2, sessionCount: 0 },
+                { habitId: read.id, day: '2026-01-05', rating: 2, sessionCount: 0 },
+                { habitId: gym.id, day: '2026-01-03', rating: null, sessionCount: 2 },
+            ],
+        })
+    })
+
+    it('rejects a missing, reversed or too long range', async () => {
+        const u = await signedInUser()
+        expect((await days(u.token, 'start=2026-01-01')).status).toBe(400)
+        expect((await days(u.token, 'start=2026-01-10&end=2026-01-01')).status).toBe(400)
+        expect((await days(u.token, 'start=2025-01-01&end=2026-01-07')).status).toBe(400)
+        expect((await days(u.token, 'start=2025-01-01&end=2026-01-06')).status).toBe(200)
+    })
+})

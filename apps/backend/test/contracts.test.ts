@@ -113,6 +113,8 @@ describe('Android contracts', () => {
             u.secrets)
         await record(MODEL, 'today.json', 'GET /api/tracker/today?day=2026-01-10',
             await get(u.token, '/api/tracker/today?day=2026-01-10'), u.secrets)
+        await record(MODEL, 'days.json', 'GET /api/tracker/days?start=2026-01-01&end=2026-01-10',
+            await get(u.token, '/api/tracker/days?start=2026-01-01&end=2026-01-10'), u.secrets)
 
         await record(NETWORK, 'habit-frozen.json', 'POST /api/tracker/check',
             await post(u.token, '/api/tracker/check', { habitId: meditate.id, rating: 60_000 }))

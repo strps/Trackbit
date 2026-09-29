@@ -18,6 +18,9 @@ internal interface SyncScheduler {
     /** Sends the outbox as soon as there is a connection. Call it after queuing an op. */
     fun flushOutbox()
 
+    /** Pulls the requested history as soon as there is a connection, if it's still due then. */
+    fun syncHistory()
+
     /** Syncs every 15 minutes while there is a connection. Idempotent. */
     fun schedulePeriodicSync()
 
@@ -41,6 +44,16 @@ internal class WorkManagerSyncScheduler @Inject constructor(
         workManager.enqueueUniqueWork(OUTBOX_WORK, ExistingWorkPolicy.APPEND_OR_REPLACE, request)
     }
 
+    override fun syncHistory() {
+        val request = OneTimeWorkRequestBuilder<HistoryWorker>()
+            .setConstraints(online)
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, WorkRequest.DEFAULT_BACKOFF_DELAY_MILLIS, TimeUnit.MILLISECONDS)
+            .addTag(TAG)
+            .build()
+        // Append: a pull that is finishing may have read the request before it changed.
+        workManager.enqueueUniqueWork(HISTORY_WORK, ExistingWorkPolicy.APPEND_OR_REPLACE, request)
+    }
+
     override fun schedulePeriodicSync() {
         val request = PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES)
             .setConstraints(online)
@@ -57,5 +70,6 @@ internal class WorkManagerSyncScheduler @Inject constructor(
         const val TAG = "tracker-sync"
         const val OUTBOX_WORK = "tracker-outbox"
         const val PERIODIC_SYNC_WORK = "tracker-sync-periodic"
+        const val HISTORY_WORK = "tracker-history"
     }
 }

@@ -1,4 +1,4 @@
-package com.trackbit.widget.quicklog
+package com.trackbit.widget.habit
 
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -47,6 +48,10 @@ import com.trackbit.core.designsystem.icon.painter
 import com.trackbit.core.designsystem.theme.TrackbitTheme
 import com.trackbit.core.i18n.R as I18nR
 import com.trackbit.widget.WidgetDay
+import com.trackbit.widget.heatmap.HeatmapWidget
+import com.trackbit.widget.heatmap.HeatmapWidgetReceiver
+import com.trackbit.widget.quicklog.QuickLogWidget
+import com.trackbit.widget.quicklog.QuickLogWidgetReceiver
 import com.trackbit.widget.today.TodayWidgetState
 import com.trackbit.widget.today.todayWidgetState
 import com.trackbit.widget.ui.detailsText
@@ -59,37 +64,46 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * W1's habit picker. The launcher opens it when the widget is placed (backing out removes the
- * widget) and on reconfigure (Android 12+); the widget opens it too once its habit is gone.
+ * The habit picker of every habit widget (W1, W3). The launcher opens it when the widget is
+ * placed (backing out removes the widget) and on reconfigure (Android 12+); the widget opens it
+ * too once its habit is gone.
  */
 @AndroidEntryPoint
-class QuickLogConfigActivity : ComponentActivity() {
-    private val viewModel: QuickLogConfigViewModel by viewModels()
+class HabitPickerActivity : ComponentActivity() {
+    private val viewModel: HabitPickerViewModel by viewModels()
     private var choosing = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val appWidgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
         setResult(RESULT_CANCELED, result(appWidgetId))
-        // Exported for the launcher, so anyone can start it: only configure our own widget.
+        // Exported for the launcher, so anyone can start it: only configure our own widgets.
         val provider = AppWidgetManager.getInstance(this).getAppWidgetInfo(appWidgetId)?.provider
-        if (provider != ComponentName(this, QuickLogWidgetReceiver::class.java)) {
+        val widget = provider?.let(::habitWidgetFor)
+        if (widget == null) {
             finish()
             return
         }
         enableEdgeToEdge()
         setContent {
             val state by viewModel.state.collectAsStateWithLifecycle()
-            TrackbitTheme { HabitPicker(state, onPick = { choose(appWidgetId, it) }) }
+            TrackbitTheme { HabitPicker(state, onPick = { choose(widget, appWidgetId, it) }) }
         }
     }
 
-    private fun choose(appWidgetId: Int, habit: TrackedHabit) {
+    /** The habit widget [provider] renders, if it is one of ours. */
+    private fun habitWidgetFor(provider: ComponentName): GlanceAppWidget? = when (provider) {
+        ComponentName(this, QuickLogWidgetReceiver::class.java) -> QuickLogWidget()
+        ComponentName(this, HeatmapWidgetReceiver::class.java) -> HeatmapWidget()
+        else -> null
+    }
+
+    private fun choose(widget: GlanceAppWidget, appWidgetId: Int, habit: TrackedHabit) {
         if (choosing) return
         choosing = true
         lifecycleScope.launch {
-            val glanceId = GlanceAppWidgetManager(this@QuickLogConfigActivity).getGlanceIdBy(appWidgetId)
-            QuickLogWidget.choose(applicationContext, glanceId, habit.id)
+            val glanceId = GlanceAppWidgetManager(this@HabitPickerActivity).getGlanceIdBy(appWidgetId)
+            widget.chooseHabit(applicationContext, glanceId, habit.id)
             setResult(RESULT_OK, result(appWidgetId))
             finish()
         }
@@ -99,14 +113,14 @@ class QuickLogConfigActivity : ComponentActivity() {
 
     companion object {
         internal fun intent(context: Context, appWidgetId: Int): Intent =
-            Intent(context, QuickLogConfigActivity::class.java)
+            Intent(context, HabitPickerActivity::class.java)
                 .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
     }
 }
 
 /** The habits on the widget's day, or the signed-out state; null while loading. */
 @HiltViewModel
-internal class QuickLogConfigViewModel @Inject constructor(
+internal class HabitPickerViewModel @Inject constructor(
     tracker: TrackerRepository,
     auth: AuthRepository,
     widgetDay: WidgetDay,
@@ -123,7 +137,7 @@ internal class QuickLogConfigViewModel @Inject constructor(
 @Composable
 private fun HabitPicker(state: TodayWidgetState?, onPick: (TrackedHabit) -> Unit) {
     Scaffold(
-        topBar = { TopAppBar(title = { Text(stringResource(I18nR.string.android_widget_quick_log_choose)) }) },
+        topBar = { TopAppBar(title = { Text(stringResource(I18nR.string.android_widget_choose_habit)) }) },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             when {

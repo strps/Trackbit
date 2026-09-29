@@ -143,7 +143,7 @@ private class FakeTrackerRepository : TrackerRepository {
     override fun observeDay(day: LocalDate): Flow<List<TrackedHabit>> =
         habits.map { list -> list.map { it.copy(day = day) } }
 
-    override fun observeHabit(habitId: Int, day: LocalDate): Flow<TrackedHabit?> =
+    override fun observeHabit(habitId: Int, day: LocalDate, days: Int): Flow<TrackedHabit?> =
         observeDay(day).map { list -> list.find { it.id == habitId } }
 
     override suspend fun setRating(habitId: Int, day: LocalDate, rating: Int) = record("set $habitId $day $rating")
@@ -156,6 +156,8 @@ private class FakeTrackerRepository : TrackerRepository {
     override suspend fun ensureDayLog(habitId: Int, day: LocalDate) = record("ensure $habitId $day")
 
     override fun observeRunningTimers(): Flow<List<TrackedHabit>> = throw UnsupportedOperationException()
+    override suspend fun requestHistory(start: LocalDate) = throw UnsupportedOperationException()
+    override suspend fun releaseHistory() = throw UnsupportedOperationException()
 
     override suspend fun startTimer(habitId: Int, day: LocalDate) = record("start $habitId $day")
 

@@ -34,6 +34,7 @@ class DecodeTest {
         "habit-created.json" to Habit.serializer(),
         "day-log.json" to DayLog.serializer(),
         "today.json" to TodayResponse.serializer(),
+        "days.json" to DaysResponse.serializer(),
         "exercises.json" to ListSerializer(Exercise.serializer()),
         "exercise-session.json" to ExerciseSession.serializer(),
         "exercise-log-created.json" to ExerciseLog.serializer(),
@@ -93,6 +94,15 @@ class DecodeTest {
         val meditate = habits.getValue("Meditate")
         assertTrue(meditate.frozen)
         assertNull(meditate.firstLogDay)
+    }
+
+    @Test fun days() {
+        val days = contract<DaysResponse>("days.json")
+        assertEquals(day("2026-01-01"), days.start)
+        assertEquals(day("2026-01-10"), days.end)
+        val gym = days.days.single { it.sessionCount > 0 }
+        assertEquals(HabitDayValue(gym.habitId, day("2026-01-09"), rating = null, sessionCount = 1), gym)
+        assertEquals(listOf(1, 3, 4, 2), days.days.filter { it.habitId == days.days.first().habitId }.map { it.rating })
     }
 
     @Test fun exercises() {

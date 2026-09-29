@@ -7,6 +7,7 @@ import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.updateAll
 import com.trackbit.core.auth.AuthRepository
 import com.trackbit.core.data.TrackerRepository
+import com.trackbit.widget.heatmap.HeatmapWidget
 import com.trackbit.widget.quicklog.QuickLogWidget
 import com.trackbit.widget.today.TodayWidget
 import dagger.hilt.EntryPoint
@@ -19,7 +20,7 @@ import kotlinx.coroutines.launch
 
 /** Every widget the app provides. Add new widgets here, so they share rollover and refresh. */
 internal object TrackbitWidgets {
-    private fun all(): List<GlanceAppWidget> = listOf(TodayWidget(), QuickLogWidget())
+    private fun all(): List<GlanceAppWidget> = listOf(TodayWidget(), QuickLogWidget(), HeatmapWidget())
 
     suspend fun updateAll(context: Context) = all().forEach { it.updateAll(context) }
 

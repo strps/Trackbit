@@ -1,0 +1,46 @@
+{
+  "request": "GET /api/tracker/days?start=2026-01-01&end=2026-01-10",
+  "status": 200,
+  "body": {
+    "start": "2026-01-01",
+    "end": "2026-01-10",
+    "days": [
+      {
+        "habitId": 1,
+        "day": "2026-01-07",
+        "rating": 1,
+        "sessionCount": 0
+      },
+      {
+        "habitId": 1,
+        "day": "2026-01-08",
+        "rating": 3,
+        "sessionCount": 0
+      },
+      {
+        "habitId": 1,
+        "day": "2026-01-09",
+        "rating": 4,
+        "sessionCount": 0
+      },
+      {
+        "habitId": 1,
+        "day": "2026-01-10",
+        "rating": 2,
+        "sessionCount": 0
+      },
+      {
+        "habitId": 2,
+        "day": "2026-01-08",
+        "rating": 0,
+        "sessionCount": 0
+      },
+      {
+        "habitId": 3,
+        "day": "2026-01-09",
+        "rating": null,
+        "sessionCount": 1
+      }
+    ]
+  }
+}

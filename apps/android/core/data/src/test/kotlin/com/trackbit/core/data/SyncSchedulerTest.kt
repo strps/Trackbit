@@ -23,16 +23,19 @@ class SyncSchedulerTest {
 
     private fun states(name: String) = workManager.getWorkInfosForUniqueWork(name).get().map { it.state }
 
-    @Test fun `sign-out cancels queued flushes and the periodic sync`() = runTest {
+    @Test fun `sign-out cancels queued flushes, history pulls and the periodic sync`() = runTest {
         scheduler.flushOutbox()
         scheduler.flushOutbox()
+        scheduler.syncHistory()
         scheduler.schedulePeriodicSync()
         scheduler.schedulePeriodicSync()
         assertEquals(1, states(WorkManagerSyncScheduler.PERIODIC_SYNC_WORK).size)
+        assertEquals(1, states(WorkManagerSyncScheduler.HISTORY_WORK).size)
 
         CancelSyncOnSignOut(scheduler).onSignedOut()
 
-        val all = states(WorkManagerSyncScheduler.OUTBOX_WORK) + states(WorkManagerSyncScheduler.PERIODIC_SYNC_WORK)
+        val all = states(WorkManagerSyncScheduler.OUTBOX_WORK) + states(WorkManagerSyncScheduler.HISTORY_WORK) +
+            states(WorkManagerSyncScheduler.PERIODIC_SYNC_WORK)
         assertEquals(List(all.size) { WorkInfo.State.CANCELLED }, all)
     }
 }

@@ -18,12 +18,14 @@ These are covered by unit tests but were not exercised on the emulator for W1. R
 - W1 "Habit removed": delete the habit on the web, sync, and the widget offers to choose another. The tap opens the picker for that widget.
 - W1 and W2 in dark mode and without dynamic color (API < 31), including the timer text (`widget_timer_text`).
 - W2 timed rows: the play/stop button and the running chronometer (only W1 was exercised for timers).
+- W3: removing the last heatmap releases history (the `history` row goes, logs older than a week are dropped, no more `/days` pulls). Also dark mode, a 4×3 size, and a running timer in the header (its chronometer shares the row with the name).
 - Timers: the notification reappears after a reboot once anything wakes the app (widget update); swiping it away on 14+ leaves the timer running in the widgets; denying the notification permission leaves timers working in the widgets.
 
 ## Polish
 
 - **The W1 picker doesn't mark the current habit when reconfiguring.** It would need the widget's Glance state read in `QuickLogConfigViewModel`.
 - **The W1 7-day strip doesn't mark an anti-habit's clean days**, only slips. `TrackedHabit` doesn't carry `firstLogDay`, so a clean day can't be told apart from a day before tracking started. Expose it from `core:data` if the strip should show clean days.
+- **W3 has no month or weekday labels and no today marker** (the web has all three). Glance's 10-child limit makes a label row that lines up with the week columns awkward; a small bitmap or a label column would do it.
 - **The ring arc is a fixed 288 px bitmap.** It's sharp at 2×2 on xxxhdpi. Size it from the widget's actual size if a larger layout is ever added.
 
 - **Chronometer format differs from ours:** the RemoteViews/notification chronometer shows "02:53", while `formatDuration` writes "1:00" (no leading zero). A `Chronometer` format string can't drop the zero. Live with it, or format the goal the same way.

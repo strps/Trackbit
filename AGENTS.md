@@ -105,6 +105,7 @@ Habit types: `count`, `complex`, `negative`, `timed`, `check`.
 | `/api/habits` | GET, POST, PUT | Habit CRUD |
 | `/api/tracker/history` | GET | Tracking history (`start`/`end` on stored `local_day`) |
 | `/api/tracker/today` | GET | Per-habit summary for one day (widgets) |
+| `/api/tracker/days` | GET | Per-day values (`rating`, `sessionCount`) of every habit, `start`–`end` (≤ 371 days; heatmap widget) |
 | `/api/tracker/check`, `/check/increment`, `/day-logs/ensure` | POST | Upserts on `(habit_id, local_day)`; accept `Idempotency-Key` |
 | `/api/exercise-info/exercises` | GET, POST, PATCH, DELETE | Exercise CRUD |
 | `/api/exercise-info/musclegroups` | GET, POST | Muscle groups |

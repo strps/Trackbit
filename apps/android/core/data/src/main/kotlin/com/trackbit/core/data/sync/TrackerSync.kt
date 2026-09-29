@@ -3,6 +3,7 @@ package com.trackbit.core.data.sync
 import androidx.room.withTransaction
 import com.trackbit.core.data.SyncResult
 import com.trackbit.core.database.TrackbitDatabase
+import com.trackbit.core.database.entity.HistoryEntity
 import com.trackbit.core.database.entity.OutboxEntity
 import com.trackbit.core.network.ApiError
 import com.trackbit.core.network.ApiResult
@@ -11,13 +12,17 @@ import com.trackbit.core.network.safeCall
 import com.trackbit.core.network.service.TrackerService
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.time.Clock
+import java.time.Duration
+import java.time.Instant
 import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
  * Moves tracker data between Room and the server: [flush] sends the outbox, [sync] also pulls
- * `/today`. Both workers and pull-to-refresh go through here.
+ * `/today` (and history when it's due), [syncHistory] pulls only history. Workers and
+ * pull-to-refresh go through here.
  *
  * One at a time: a pull that overlapped a flush could store a snapshot taken before an op that
  * was confirmed meanwhile, and two flushes would send the same op twice.
@@ -31,6 +36,7 @@ internal class TrackerSync @Inject constructor(
     private val db: TrackbitDatabase,
     private val trackerService: TrackerService,
     private val tokens: SessionTokenSource,
+    private val clock: Clock,
 ) {
     private val mutex = Mutex()
     private val outbox = db.outboxDao()
@@ -48,7 +54,14 @@ internal class TrackerSync @Inject constructor(
         val flushed = flushLocked(token)
         if (flushed.result == SyncResult.SignedOut) return SyncResult.SignedOut
         // Ops still waiting to be retried are safe: the pull leaves their day logs alone.
-        worse(flushed.result, pullLocked(token))
+        val pulled = worse(flushed.result, pullLocked(token))
+        if (pulled == SyncResult.SignedOut) pulled else worse(pulled, pullHistoryLocked(token))
+    }
+
+    /** Pulls the requested history if it's due (see [HistoryEntity]). */
+    suspend fun syncHistory(): SyncResult = mutex.withLock {
+        val token = tokens.currentToken() ?: return SyncResult.SignedOut
+        pullHistoryLocked(token)
     }
 
     private class Flushed(val result: SyncResult, val dropped: Boolean)
@@ -83,12 +96,24 @@ internal class TrackerSync @Inject constructor(
         // The device's day, so the summary is for the day the app shows as today.
         return when (val today = safeCall { trackerService.today(LocalDate.now()) }) {
             is ApiResult.Success -> if (fenced(token) { db.syncDao().applyToday(today.value) }) SyncResult.Done else SyncResult.SignedOut
-            is ApiResult.Failure -> when (today.error) {
-                is ApiError.Network, is ApiError.Server, ApiError.RequestInProgress -> SyncResult.Retry
-                is ApiError.Unauthorized -> SyncResult.SignedOut
-                else -> SyncResult.Failed
-            }
+            is ApiResult.Failure -> today.error.toPullResult()
         }
+    }
+
+    private suspend fun pullHistoryLocked(token: String): SyncResult {
+        val history = db.historyDao().get()
+        val now = clock.instant()
+        if (history == null || !history.isDue(now)) return SyncResult.Done
+        return when (val days = safeCall { trackerService.days(history.start, LocalDate.now()) }) {
+            is ApiResult.Success -> if (fenced(token) { db.syncDao().applyDays(days.value, now) }) SyncResult.Done else SyncResult.SignedOut
+            is ApiResult.Failure -> days.error.toPullResult()
+        }
+    }
+
+    private fun ApiError.toPullResult(): SyncResult = when (this) {
+        is ApiError.Network, is ApiError.Server, ApiError.RequestInProgress -> SyncResult.Retry
+        is ApiError.Unauthorized -> SyncResult.SignedOut
+        else -> SyncResult.Failed
     }
 
     private enum class FailureAction { Retry, RetryCounted, Drop, Stop }
@@ -116,5 +141,18 @@ internal class TrackerSync @Inject constructor(
     companion object {
         /** Hours of retrying under WorkManager's exponential backoff (30 s, doubling). */
         const val MAX_SERVER_ATTEMPTS = 10
+
+        /**
+         * How long pulled history counts as fresh. Past days rarely change, and the last week
+         * comes with every `/today`.
+         */
+        val HISTORY_MAX_AGE: Duration = Duration.ofHours(6)
     }
+}
+
+/** Whether history must be pulled: never pulled, pulled from a later start, or stale. */
+internal fun HistoryEntity.isDue(now: Instant): Boolean {
+    val pulledFrom = syncedStart ?: return true
+    val pulledAt = syncedAt ?: return true
+    return pulledFrom.isAfter(start) || Duration.between(pulledAt, now) >= TrackerSync.HISTORY_MAX_AGE
 }

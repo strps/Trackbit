@@ -1,4 +1,4 @@
-package com.trackbit.widget.quicklog
+package com.trackbit.widget.habit
 
 import com.trackbit.core.auth.AuthState
 import com.trackbit.widget.DAY
@@ -12,57 +12,57 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class QuickLogStateTest {
+class HabitWidgetStateTest {
     private val tracker = FakeTrackerRepository()
     private val auth = MutableStateFlow<AuthState>(AuthState.Loading)
     private val day = MutableStateFlow(DAY)
     private val habitId = MutableStateFlow<Int?>(null)
 
     @Test fun `follows the session, the chosen habit and the day`() = runTest {
-        val states = mutableListOf<QuickLogState>()
+        val states = mutableListOf<HabitWidgetState>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            quickLogState(auth, day, tracker, habitId).collect { states += it }
+            habitWidgetState(auth, day, habitId) { id, d -> tracker.observeHabit(id, d) }.collect { states += it }
         }
         val tomorrow = DAY.plusDays(1)
         tracker.days.value = mapOf(
             DAY to listOf(habit(1), habit(2)),
             tomorrow to listOf(habit(1, day = tomorrow, value = 1)),
         )
-        assertEquals("nothing while the session is loading", emptyList<QuickLogState>(), states)
+        assertEquals("nothing while the session is loading", emptyList<HabitWidgetState>(), states)
 
         auth.value = AuthState.SignedIn(user())
-        assertEquals(QuickLogState.Unconfigured, states.last())
+        assertEquals(HabitWidgetState.Unconfigured, states.last())
 
         habitId.value = 1
-        assertEquals(QuickLogState.Tracking(habit(1)), states.last())
+        assertEquals(HabitWidgetState.Tracking(habit(1)), states.last())
 
         habitId.value = 2
-        assertEquals("reconfigured", QuickLogState.Tracking(habit(2)), states.last())
+        assertEquals("reconfigured", HabitWidgetState.Tracking(habit(2)), states.last())
 
         day.value = tomorrow
-        assertEquals("habit 2 has no row tomorrow", QuickLogState.HabitRemoved, states.last())
+        assertEquals("habit 2 has no row tomorrow", HabitWidgetState.HabitRemoved, states.last())
 
         habitId.value = 1
-        assertEquals(QuickLogState.Tracking(habit(1, day = tomorrow, value = 1)), states.last())
+        assertEquals(HabitWidgetState.Tracking(habit(1, day = tomorrow, value = 1)), states.last())
 
         auth.value = AuthState.SignedOut
-        assertEquals(QuickLogState.SignedOut, states.last())
+        assertEquals(HabitWidgetState.SignedOut, states.last())
     }
 
     @Test fun `a deleted habit comes back if it reappears`() = runTest {
-        val states = mutableListOf<QuickLogState>()
+        val states = mutableListOf<HabitWidgetState>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            quickLogState(auth, day, tracker, habitId).collect { states += it }
+            habitWidgetState(auth, day, habitId) { id, d -> tracker.observeHabit(id, d) }.collect { states += it }
         }
         auth.value = AuthState.SignedIn(user())
         habitId.value = 1
         tracker.days.value = mapOf(DAY to listOf(habit(1)))
-        assertEquals(QuickLogState.Tracking(habit(1)), states.last())
+        assertEquals(HabitWidgetState.Tracking(habit(1)), states.last())
 
         tracker.days.value = mapOf(DAY to emptyList())
-        assertEquals(QuickLogState.HabitRemoved, states.last())
+        assertEquals(HabitWidgetState.HabitRemoved, states.last())
 
         tracker.days.value = mapOf(DAY to listOf(habit(1)))
-        assertEquals(QuickLogState.Tracking(habit(1)), states.last())
+        assertEquals(HabitWidgetState.Tracking(habit(1)), states.last())
     }
 }
