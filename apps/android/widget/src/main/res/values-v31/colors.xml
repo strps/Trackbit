@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Android 12+: the timer text follows the wallpaper like Glance's dynamic onSurfaceVariant
-     (neutral variant, tone 30 / 80). -->
+<!-- Android 12+: these follow the wallpaper like Glance's dynamic colors. The timer text is
+     onSurfaceVariant (neutral variant, tone 30 / 80), the empty cell surfaceVariant (90 / 30). -->
 <resources>
     <color name="widget_timer_text">@android:color/system_neutral2_700</color>
+    <color name="widget_cell_empty">@android:color/system_neutral2_100</color>
 </resources>

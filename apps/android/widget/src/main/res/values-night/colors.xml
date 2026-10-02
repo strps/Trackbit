@@ -3,4 +3,5 @@
     <color name="widget_error_background">#FF0A0A0A</color>
     <color name="widget_error_text">#FFA1A1A1</color>
     <color name="widget_timer_text">#FFA1A1A1</color>
+    <color name="widget_cell_empty">#FF262626</color>
 </resources>

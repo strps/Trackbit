@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The web palette's background and muted-foreground, for the plain layouts that Glance's
-     theme doesn't reach: widget_error.xml and widget_timer.xml (dynamic on 12+, see values-v31). -->
+<!-- The web palette, for what Glance's theme doesn't reach (dynamic on 12+, see values-v31):
+     widget_error.xml and widget_timer.xml (background, muted-foreground), and W3's empty cell
+     (muted, Glance's surfaceVariant). -->
 <resources>
     <color name="widget_error_background">#FFFFFFFF</color>
     <color name="widget_error_text">#FF737373</color>
     <color name="widget_timer_text">#FF737373</color>
+    <color name="widget_cell_empty">#FFF5F5F5</color>
 </resources>

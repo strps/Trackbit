@@ -6,10 +6,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.PreviewSizeMode
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.provideContent
@@ -19,10 +22,13 @@ import com.trackbit.core.data.TrackerRepository
 import com.trackbit.widget.R
 import com.trackbit.widget.goAsync
 import com.trackbit.widget.habit.HabitIdKey
+import com.trackbit.widget.habit.HabitWidgetState
 import com.trackbit.widget.habit.HabitPickerActivity
 import com.trackbit.widget.habit.chosenHabitId
 import com.trackbit.widget.habit.habitWidgetState
+import com.trackbit.widget.preview.PreviewHabits
 import com.trackbit.widget.ui.WidgetTheme
+import com.trackbit.widget.ui.openAppAction
 import com.trackbit.widget.widgetEntryPoint
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
@@ -61,6 +67,30 @@ class HeatmapWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
                 .collectAsState(initial)
             WidgetTheme { HeatmapWidgetContent(state, firstDayOfWeek, chooseHabit) }
         }
+    }
+
+    /** Previews have no exact size, so the grid is fitted to each of [PREVIEW_SIZES]. */
+    override val previewSizeMode: PreviewSizeMode = SizeMode.Responsive(PREVIEW_SIZES)
+
+    /**
+     * The widget picker's sample (Android 15+, see `WidgetPreviews`). Its tap target is never
+     * used, since previews take no clicks.
+     */
+    override suspend fun providePreview(context: Context, widgetCategory: Int) {
+        val firstDayOfWeek = WeekFields.of(Locale.getDefault()).firstDayOfWeek
+        val window = HeatmapWindow(PreviewHabits.DAY, firstDayOfWeek)
+        val state = HabitWidgetState.Tracking(PreviewHabits.water(context, days = window.days))
+        provideContent { WidgetTheme { HeatmapWidgetContent(state, firstDayOfWeek, chooseHabit = openAppAction(context)) } }
+    }
+
+    private companion object {
+        /**
+         * The launcher shows the largest that fits its preview frame, which is about the widget's
+         * 4×2 size on the device, so the steps are close: the grid is sized to them, not stretched.
+         */
+        val PREVIEW_SIZES = listOf(250 to 110, 270 to 130, 290 to 150, 310 to 170, 330 to 180, 350 to 200)
+            .map { (width, height) -> DpSize(width.dp, height.dp) }
+            .toSet()
     }
 }
 

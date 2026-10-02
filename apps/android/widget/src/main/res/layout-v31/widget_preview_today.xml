@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- W2's static preview (previewLayout, Android 12–14): TodayWidgetContent's header and rows,
+     with PreviewHabits' sample habits. Android 15+ shows the generated preview instead. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_preview_background"
+    android:orientation="vertical"
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="10dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingBottom="6dp"
+        android:text="@string/nav_tracker"
+        android:textColor="@color/widget_preview_on_surface"
+        android:textFontWeight="500"
+        android:textSize="16sp" />
+
+    <!-- Drink water: count, 5 / 8, +1. -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:baselineAligned="false"
+        android:orientation="horizontal"
+        android:paddingVertical="5dp">
+
+        <ImageView
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:importantForAccessibility="no"
+            android:src="@drawable/ic_habit_water"
+            android:tint="@color/widget_preview_blue" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="10dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:text="@string/android_widget_preview_water"
+                android:textColor="@color/widget_preview_on_surface"
+                android:textSize="14sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="5 / 8"
+                android:textColor="@color/widget_preview_on_surface_variant"
+                android:textSize="12sp"
+                tools:ignore="HardcodedText" />
+
+            <ProgressBar
+                style="@android:style/Widget.Material.ProgressBar.Horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:layout_marginTop="3dp"
+                android:max="8"
+                android:progress="5"
+                android:progressBackgroundTint="@color/widget_preview_surface_variant"
+                android:progressTint="@color/widget_preview_blue" />
+        </LinearLayout>
+
+        <ImageView
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@drawable/widget_preview_button"
+            android:importantForAccessibility="no"
+            android:padding="8dp"
+            android:src="@drawable/ic_widget_plus"
+            android:tint="@color/widget_preview_on_secondary_container" />
+    </LinearLayout>
+
+    <!-- Read: check, done. -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:baselineAligned="false"
+        android:orientation="horizontal"
+        android:paddingVertical="5dp">
+
+        <ImageView
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:importantForAccessibility="no"
+            android:src="@drawable/ic_habit_book"
+            android:tint="@color/widget_preview_purple" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="10dp"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:text="@string/android_widget_preview_read"
+            android:textColor="@color/widget_preview_on_surface"
+            android:textSize="14sp" />
+
+        <CheckBox
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:clickable="false" />
+    </LinearLayout>
+
+    <!-- Meditate: timed, 10:00 / 15:00, play. -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:baselineAligned="false"
+        android:orientation="horizontal"
+        android:paddingVertical="5dp">
+
+        <ImageView
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:importantForAccessibility="no"
+            android:src="@drawable/ic_habit_heart"
+            android:tint="@color/widget_preview_green" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="10dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:text="@string/android_widget_preview_meditate"
+                android:textColor="@color/widget_preview_on_surface"
+                android:textSize="14sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="10:00 / 15:00"
+                android:textColor="@color/widget_preview_on_surface_variant"
+                android:textSize="12sp"
+                tools:ignore="HardcodedText" />
+
+            <ProgressBar
+                style="@android:style/Widget.Material.ProgressBar.Horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:layout_marginTop="3dp"
+                android:max="3"
+                android:progress="2"
+                android:progressBackgroundTint="@color/widget_preview_surface_variant"
+                android:progressTint="@color/widget_preview_green" />
+        </LinearLayout>
+
+        <ImageView
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@drawable/widget_preview_button"
+            android:importantForAccessibility="no"
+            android:padding="8dp"
+            android:src="@drawable/ic_widget_play"
+            android:tint="@color/widget_preview_on_secondary_container" />
+    </LinearLayout>
+</LinearLayout>

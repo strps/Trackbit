@@ -14,6 +14,7 @@ import androidx.glance.LocalContext
 import androidx.glance.LocalSize
 import androidx.glance.action.Action
 import androidx.glance.action.clickable
+import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
@@ -22,7 +23,6 @@ import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
-import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.semantics.contentDescription
@@ -131,9 +131,28 @@ internal fun gridFor(size: DpSize): GridSize {
 private fun Grid(habit: TrackedHabit, weeks: List<List<RecentDay?>>, pitch: Dp) {
     Row {
         weeks.chunked(MAX_CHILDREN).forEach { group ->
-            Row {
-                group.forEach { week ->
-                    Column { week.forEach { day -> if (day != null) Cell(habit.dayColor(day), pitch) } }
+            Row { group.forEach { week -> Week(habit, week.filterNotNull(), pitch) } }
+        }
+    }
+}
+
+/**
+ * Each day is one view: a grid is up to 182 days, and Glance allows about 500 views. A full week
+ * draws its seven empty squares as one background ([R.drawable.widget_week_empty]), and a day's
+ * color goes on top. Today's week stops at today, so its days draw their own empty squares.
+ */
+@Composable
+private fun Week(habit: TrackedHabit, days: List<RecentDay>, pitch: Dp) {
+    if (days.size == HeatmapWindow.DAYS_PER_WEEK) {
+        Column(modifier = GlanceModifier.background(ImageProvider(R.drawable.widget_week_empty))) {
+            days.forEach { DayColor(habit.dayColor(it), pitch) }
+        }
+    } else {
+        Column {
+            days.forEach { day ->
+                Box(modifier = GlanceModifier.size(pitch)) {
+                    CellShape(GlanceTheme.colors.surfaceVariant, pitch)
+                    DayColor(habit.dayColor(day), pitch)
                 }
             }
         }
@@ -141,21 +160,28 @@ private fun Grid(habit: TrackedHabit, weeks: List<List<RecentDay?>>, pitch: Dp) 
 }
 
 /**
- * A rounded square, inset by its padding for the gap. Like the web, a day's color is drawn over
- * the empty cell, since the gradient's low end is mostly transparent. One view when empty, as
- * most are: a grid is up to 182 cells.
+ * A day's color over its empty square, or nothing. Like the web, the color is drawn over the
+ * empty cell, since the gradient's low end is mostly transparent.
  */
 @Composable
-private fun Cell(color: ColorProvider?, pitch: Dp) {
-    val inset = pitch / 8
-    val empty = ColorFilter.tint(GlanceTheme.colors.surfaceVariant)
-    val shape = ImageProvider(R.drawable.ic_widget_cell)
-    if (color == null) {
-        Image(shape, contentDescription = null, colorFilter = empty, modifier = GlanceModifier.size(pitch).padding(inset))
-    } else {
-        Box(modifier = GlanceModifier.size(pitch)) {
-            Image(shape, contentDescription = null, colorFilter = empty, modifier = GlanceModifier.fillMaxSize().padding(inset))
-            Image(shape, contentDescription = null, colorFilter = ColorFilter.tint(color), modifier = GlanceModifier.fillMaxSize().padding(inset))
-        }
-    }
+private fun DayColor(color: ColorProvider?, pitch: Dp) {
+    if (color == null) Spacer(GlanceModifier.size(pitch)) else CellShape(color, pitch)
+}
+
+/**
+ * A rounded square in a [pitch] cell, the gap drawn into [R.drawable.ic_widget_cell]. A tint replaces
+ * the shape's color outright (SRC_ATOP over an opaque shape), so a translucent color, the
+ * gradient's low end, would come out dark: it's tinted opaque and faded by the image's alpha.
+ */
+@Composable
+private fun CellShape(color: ColorProvider, pitch: Dp) {
+    val resolved = color.getColor(LocalContext.current)
+    val translucent = resolved.alpha < 1f
+    Image(
+        ImageProvider(R.drawable.ic_widget_cell),
+        contentDescription = null,
+        alpha = resolved.alpha,
+        colorFilter = ColorFilter.tint(if (translucent) ColorProvider(resolved.copy(alpha = 1f)) else color),
+        modifier = GlanceModifier.size(pitch),
+    )
 }

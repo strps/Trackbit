@@ -180,7 +180,7 @@ Tasks:
 - [x] Refresh triggers: after any tracker DAO change (via `WidgetUpdater`), periodic `SyncWorker` (15 min), **local-midnight rollover** (non-wakeup alarm at the next local midnight), and on auth change
 - [x] Signed-out, empty, frozen and error states for every widget
 - [x] W3 history beyond the week: `GET /api/tracker/days` (added in C4), kept in `day_logs` while a heatmap is placed
-- [ ] Widget previews (`previewLayout` / generated previews on Android 15+)
+- [x] Widget previews: static `previewLayout` on Android 12+, generated previews on 15+ (sample habits, republished on update and locale change). None on 8–11 (follow-up).
 - [x] Dark mode + dynamic color in widgets
 
 **Exit:** W1 + W2 installed on a real device. Logging from the widget while offline appears on the web after reconnecting, with no duplicates. The widgets reset correctly at midnight.

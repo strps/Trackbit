@@ -6,6 +6,7 @@
     android:configure="com.trackbit.widget.habit.HabitPickerActivity"
     android:description="@string/android_widget_heatmap_description"
     android:initialLayout="@layout/glance_default_loading_layout"
+    android:previewLayout="@layout/widget_preview_heatmap"
     android:minWidth="250dp"
     android:minHeight="110dp"
     android:minResizeWidth="180dp"

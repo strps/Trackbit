@@ -9,6 +9,7 @@ import androidx.glance.appwidget.provideContent
 import androidx.glance.state.GlanceStateDefinition
 import androidx.compose.runtime.collectAsState
 import com.trackbit.widget.R
+import com.trackbit.widget.preview.PreviewHabits
 import com.trackbit.widget.ui.WidgetTheme
 import com.trackbit.widget.widgetEntryPoint
 import kotlinx.coroutines.flow.first
@@ -30,6 +31,12 @@ class TodayWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
             val current by state.collectAsState(initial)
             WidgetTheme { TodayWidgetContent(current) }
         }
+    }
+
+    /** The widget picker's sample (Android 15+, see `WidgetPreviews`). */
+    override suspend fun providePreview(context: Context, widgetCategory: Int) {
+        val state = TodayWidgetState.Tracking(PreviewHabits.DAY, PreviewHabits.today(context))
+        provideContent { WidgetTheme { TodayWidgetContent(state, showDate = false) } }
     }
 }
 

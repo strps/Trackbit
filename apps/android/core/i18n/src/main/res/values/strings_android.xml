@@ -29,4 +29,8 @@
     <string name="android_widget_habit_removed">Habit removed. Tap to choose another.</string>
     <string name="android_widget_heatmap_label">Habit heatmap</string>
     <string name="android_widget_heatmap_description">See one habit\'s last months at a glance.</string>
+    <!-- Sample habits in the widget pickers' previews. -->
+    <string name="android_widget_preview_water">Drink water</string>
+    <string name="android_widget_preview_read">Read</string>
+    <string name="android_widget_preview_meditate">Meditate</string>
 </resources>

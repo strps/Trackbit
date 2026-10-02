@@ -6,6 +6,7 @@ import androidx.work.Configuration
 import com.trackbit.app.timer.TimerNotifier
 import com.trackbit.core.data.sync.PeriodicSync
 import com.trackbit.widget.WidgetUpdater
+import com.trackbit.widget.preview.WidgetPreviews
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -18,12 +19,14 @@ class TrackbitApplication : Application(), Configuration.Provider {
     @Inject lateinit var periodicSync: PeriodicSync
     @Inject lateinit var widgetUpdater: WidgetUpdater
     @Inject lateinit var timerNotifier: TimerNotifier
+    @Inject lateinit var widgetPreviews: WidgetPreviews
 
     override fun onCreate() {
         super.onCreate()
         periodicSync.start()
         widgetUpdater.start()
         timerNotifier.start()
+        widgetPreviews.start()
     }
 
     // From the component, not an injected field: WorkManager may initialize (a sign-out hook

@@ -1,12 +1,12 @@
 # Handoff: Kotlin app — Workstream C (widgets)
 
 - **Plan:** [kotlin-app.md](../tasks/kotlin-app.md). Read only §2.2 and §4 "Phase 1". Phase 0 context (core modules, their invariants, landmines) is in [kotlin-app-B.md](kotlin-app-B.md): read its "Invariants" and "Landmines" sections, nothing else.
-- **Status:** Phase 1 — C1–C4 of C1–C5 done (widget foundation, W2 Today list, W1 quick-log, timer engine, W3 heatmap). Next is C5 (previews and the real-device exit check).
-- **Branch:** `kotlin-app` · **Last run:** 2026-09-29 (C4 uncommitted at end of run)
+- **Status:** Phase 1 — C1–C5 done on the emulator (widget foundation, W2 Today list, W1 quick-log, timer engine, W3 heatmap, previews). The real-device exit check is deferred to the end (user decision, 2026-10-02); the emulator stands in until then.
+- **Branch:** `kotlin-app` · **Last run:** 2026-10-02 (C5 previews; uncommitted at end of run unless the user asked to commit)
 
 ## Where we are
 
-W2 (Today list) works end to end on the emulator (API 36, Pixel Launcher, local backend): dynamic color, check toggle, count +1, offline taps reach the server exactly once after reconnecting, midnight rollover, sign-out/in. W1 (quick-log) works on the emulator too: placing it opens the habit picker, and a tap logs +1 at 2×1, 2×2 and 1×1 (checked on the server). Reconfiguring with the launcher's pencil switches the habit on a live session, and resizing switches the layout. Not verified on the emulator for W1: the offline, midnight, signed-out and habit-removed states (unit-tested; queued in [kotlin-app-followups.md](../tasks/kotlin-app-followups.md) for the C5 device pass). Timed habits (C3) work on the emulator too: a W1 tap starts a timer, the widget shows a live chronometer against the goal, and an ongoing notification appears with Stop / +30s. The timer survived a reinstall, +30s moved it forward, and Stop from either the notification or the widget added the elapsed ms to the server's day log (a second session added to the first). The 1→2 Room migration kept the emulator's data. W3 (heatmap, C4) works on the emulator: placing it opens the shared habit picker, and within seconds the grid shows the habit's days from months back (pulled from the new `/api/tracker/days`), matching the server's rows day by day, with Sunday-first weeks from the en-US locale. Not verified on the emulator for W3: releasing history when the last one is removed, dark mode, 4×3 (unit-tested or queued in the follow-ups). `./gradlew assembleDebug testDebugUnitTest lintDebug` passes with 0 lint issues and 196 unit tests (22 new); backend Vitest 56 passing. Not done yet: widget previews, a real-device run.
+W2 (Today list) works end to end on the emulator (API 36, Pixel Launcher, local backend): dynamic color, check toggle, count +1, offline taps reach the server exactly once after reconnecting, midnight rollover, sign-out/in. W1 (quick-log) works on the emulator too: placing it opens the habit picker, and a tap logs +1 at 2×1, 2×2 and 1×1 (checked on the server). Reconfiguring with the launcher's pencil switches the habit on a live session, and resizing switches the layout. Not verified on the emulator for W1: the offline, midnight, signed-out and habit-removed states (unit-tested; queued in [kotlin-app-followups.md](../tasks/kotlin-app-followups.md) for the C5 device pass). Timed habits (C3) work on the emulator too: a W1 tap starts a timer, the widget shows a live chronometer against the goal, and an ongoing notification appears with Stop / +30s. The timer survived a reinstall, +30s moved it forward, and Stop from either the notification or the widget added the elapsed ms to the server's day log (a second session added to the first). The 1→2 Room migration kept the emulator's data. W3 (heatmap, C4) works on the emulator: placing it opens the shared habit picker, and within seconds the grid shows the habit's days from months back (pulled from the new `/api/tracker/days`), matching the server's rows day by day, with Sunday-first weeks from the en-US locale. Not verified on the emulator for W3: releasing history when the last one is removed, dark mode, 4×3 (unit-tested or queued in the follow-ups). `./gradlew assembleDebug testDebugUnitTest lintDebug` passes with 0 lint issues and 196 unit tests (22 new); backend Vitest 56 passing. C5 (2026-10-02): the widget picker shows a preview of each widget with sample habits ("Drink water", "Read", "Meditate"), as a generated preview on Android 15+ and a static `previewLayout` on 12+, both checked on the emulator in light and dark. C5 also fixed two W3 bugs the dense sample exposed: a heatmap with most days logged went past Glance's view limit (the widget would show its error layout), and lightly logged days rendered dark instead of pale. `./gradlew assembleDebug testDebugUnitTest lintDebug` passes with 0 lint issues and 202 unit tests (6 new). Not done: the real-device run (deferred).
 
 ## Phase 1 task split (C1–C5)
 
@@ -16,7 +16,7 @@ W2 (Today list) works end to end on the emulator (API 36, Pixel Launcher, local 
 | **C2** | W1 habit quick-log: config activity (habit picker), 1×1 / 2×1 / 2×2 (`SizeMode.Responsive`), progress ring + streak, 7-day strip at 2×2; check/count only | ✅ 2026-09-29 |
 | **C3** | Timer engine in `core:data` (persisted start + duration), ongoing Chronometer notification (Stop / +30s), timed habits start/stop in W1 and W2 | ✅ 2026-09-29 |
 | **C4** | W3 heatmap + shared habit picker; history beyond Room's 7 days via a new lean `/api/tracker/days` | ✅ 2026-09-29 |
-| **C5** | Previews (`previewLayout` < 35, generated previews 35+), final exit check on a real device | next |
+| **C5** | Previews (`previewLayout` 31+, generated previews 35+); final exit check on a real device | ✅ previews 2026-10-02 · device check deferred |
 
 ## Done (C1)
 
@@ -73,10 +73,20 @@ W2 (Today list) works end to end on the emulator (API 36, Pixel Launcher, local 
 - **Strings** (en, es): `android_widget_heatmap_{label,description}`.
 - **Tests:** `HistoryTest` (applyDays, pending guard, release, longer window), migration 2→3, `HistorySyncTest` (request/pull/stale/earlier start/offline/fence/release), scheduler cancel, `DaysResponse` decode, `HeatmapWindowTest` (window, weeks, sizing, history request), `HeatmapWidgetContentTest`, `HabitWidgetStateTest` (moved).
 
-## Next: C5 — previews and the exit check
+## Done (C5)
 
-1. Widget previews for W1, W2, W3: `previewLayout` (static XML) below API 35, generated previews (`GlanceAppWidget.providePreview` + `setWidgetPreviews`) on 35+.
-2. The phase exit on a real device: W1 + W2 installed; offline logging reaches the web once after reconnecting; midnight reset. Work through the "To check on a device" list in [kotlin-app-followups.md](../tasks/kotlin-app-followups.md) at the same time.
+- **Sample data** ([preview/PreviewHabits.kt](../../../apps/android/widget/src/main/kotlin/com/trackbit/widget/preview/PreviewHabits.kt)): "Drink water" (count 5/8, 12-day streak, Blue, a seeded 26-week history), "Read" (check, done), "Meditate" (timed 10/15 min). Names are new strings `android_widget_preview_{water,read,meditate}` (en, es). A fixed day (`PreviewHabits.DAY`), since no preview shows a date: W2 takes `showDate = false`.
+- **Generated previews (Android 15+):** each widget overrides `providePreview` with its real content composable and the sample state. W1 renders at its minimum size (the 2×1 layout); W3 uses a `Responsive` ladder of 4×2-ish sizes (`PREVIEW_SIZES`), since previews have no exact size and the grid is sized, not stretched.
+- **Publishing** ([preview/WidgetPreviews.kt](../../../apps/android/widget/src/main/kotlin/com/trackbit/widget/preview/WidgetPreviews.kt)): `WidgetPreviews.start()` from `TrackbitApplication.onCreate`, and `WidgetPreviewReceiver` on `MY_PACKAGE_REPLACED` and `LOCALE_CHANGED`. Each widget is published unless SharedPreferences `widget_previews` already records it for the current render key (`lastUpdateTime|locales`), and recorded only on success, per widget. A mutex serializes the two triggers. `WidgetEntryPoint.previews()` added.
+- **Static previews (Android 12+)** ([layout-v31/](../../../apps/android/widget/src/main/res/layout-v31)): `widget_preview_{today,quick_log,heatmap}.xml`, set as each provider's `previewLayout`. Same sample habits and Glance's dynamic colors (`values[-night]-v31/colors_preview.xml`). Details show the progress only: XML can't format the streak plural. W1's arc is a vector (`widget_preview_ring_arc`), W3's grid a generated 16-week vector (`widget_preview_heatmap`, `tools:ignore="VectorPath"`).
+- **W3 fix: one view per day.** A colored cell was a Box with two Images (3 views), and Glance allows ~500 views per layout, so a 4×2 heatmap with most of its 182 days logged threw "There are too many views". Now a full week's Column has the seven empty squares as one background image (`widget_week_empty`, color `widget_cell_empty` = `surfaceVariant` per theme, resolved by the launcher), and each day is one tinted `ic_widget_cell` or a Spacer. Today's partial week keeps per-cell empty squares (≤ 7). Worst case about 290 views.
+- **W3 fix: translucent day colors.** Glance tints with `setColorFilter` (SRC_ATOP), which blends a translucent tint onto the drawable's own black, so the gradient's low end came out dark. `CellShape` now tints with the opaque color and puts the alpha on the image (`Image(alpha = …)`). The gap is drawn into `ic_widget_cell` itself (16-unit viewport, inset 2), so it lands exactly on the background's squares (padding was rounded to whole pixels and was off by 1 px).
+- **Tests:** `WidgetPreviewsTest` (every widget's preview translates to RemoteViews; a fully logged heatmap fits at 180×110 to 350×260, which fails on the C4 cells; the sample fills the window), `PublishIfStaleTest` (once per key, refused publishes retry, per widget).
+
+## Next
+
+1. **The real-device exit check (deferred by the user to the end):** W1 + W2 installed; offline logging reaches the web once after reconnecting; midnight reset. Work through the "To check on a device" list in [kotlin-app-followups.md](../tasks/kotlin-app-followups.md) at the same time.
+2. Otherwise Phase 1 is complete on the emulator, and Phase 2 (Workstream D, plan §4) can start.
 
 ## Invariants — do not break these
 
@@ -94,6 +104,18 @@ W2 (Today list) works end to end on the emulator (API 36, Pixel Launcher, local 
 - **Timer notifications follow Room** (`TimerNotifier`). Never post or cancel them from an action: change the timer and let the reconciler catch up.
 - **History is asked for, never fetched by a widget.** A widget calls `requestHistory(start)`, and the pull happens in `TrackerSync` (worker or periodic sync). Logs older than the recent week exist in Room only while a `history` request does; `releaseHistory()` drops them.
 - **A new habit widget is added to `HabitPickerActivity.habitWidgetFor`**, or the picker refuses to configure it.
+- **Every widget has a preview:** `providePreview` with `PreviewHabits`, a `previewLayout`, and its receiver in `WidgetPreviews.RECEIVERS`.
+- **A heatmap day is one view.** Check the view count of anything drawn per day (Glance's limit is ~500 per layout); `WidgetPreviewsTest` renders a fully logged grid.
+
+## Decisions made in C5
+
+| Question | Decision | Why |
+|---|---|---|
+| Preview data | Fixed sample habits, not the user's | The picker shows previews before any widget exists, and the system keeps one until it's republished (rate-limited). |
+| When to publish | App start, update, locale change; recorded per widget and render key | An update clears generated previews (seen on the emulator), and the text is localized. Retrying on every trigger is cheap. |
+| Android 8–11 | No preview (app icon) | `previewLayout` needs 12+; a `previewImage` would be a fixed rendered image. Queued in the follow-ups. |
+| W3 cells | One view per day, empty squares as a week background | The only layout that stays well under Glance's view limit while keeping the empty color theme-aware. |
+| Real-device check | Deferred to the end (user) | The emulator covers it for now. |
 
 ## Decisions made in C4
 
@@ -143,6 +165,10 @@ W2 (Today list) works end to end on the emulator (API 36, Pixel Launcher, local 
 
 ## Landmines
 
+- **Glance allows about 500 views per layout** ("There are too many views", then the error layout). A `background(ImageProvider)` costs two extra views (Glance wraps the target in a Box with an Image); only `background(color)` stays on the view.
+- **`ColorFilter.tint` with a translucent color draws it dark** (SRC_ATOP over the drawable's opaque fill). Tint with the opaque color and use `Image(alpha = …)`.
+- **`setWidgetPreview` is rate-limited per widget** (a second publish within minutes is refused) and an app update clears published previews. When refused, the picker falls back to `previewLayout`, even on 15+, so repeated dev installs mostly show the static layouts.
+
 - **Glance drops a Row's or Column's children past the tenth** (it only logs). W1's 7-day strip first used Spacers between cells (13 children) and lost today's cell. Use padding for gaps.
 - **Robolectric runs on targetSdk (36) because the library convention sets `isIncludeAndroidResources = true`.** Without it, Robolectric can't read the manifest and falls back to API 23, below minSdk. That was the state until C1 (probe-tested). Don't remove it. Pin a single test with `@Config(sdk = …)` only when an API-specific behaviour matters.
 - **Robolectric on API 36 needs `--add-exports=java.base/jdk.internal.access=ALL-UNNAMED`** (it creates `ApplicationSharedMemory` through FileDescriptor internals). Added once for every module in [KotlinAndroid.kt](../../../apps/android/build-logic/convention/src/main/kotlin/com/trackbit/buildlogic/KotlinAndroid.kt).
@@ -160,7 +186,7 @@ W2 (Today list) works end to end on the emulator (API 36, Pixel Launcher, local 
 
 ```bash
 cd apps/android && ./gradlew --stop
-./gradlew assembleDebug testDebugUnitTest lintDebug --max-workers=2   # green, 0 lint issues, 196 tests
+./gradlew assembleDebug testDebugUnitTest lintDebug --max-workers=2   # green, 0 lint issues, 202 tests
 pnpm android:generate:check                                          # 19 generated files up to date
 pnpm --filter backend test                                           # 56 tests (re-record contracts: test:contracts:update)
 ```
@@ -176,3 +202,4 @@ pnpm --filter backend test                                           # 56 tests 
 - 2026-09-29 — C2: W1 quick-log (config activity, responsive 1×1/2×1/2×2, bitmap progress ring, 7-day strip, removed/unconfigured states) plus shared `logAction`/`detailsText`. Verified on the emulator: placement, +1 at every size, reconfigure on a live session, resize. Found and fixed Glance's 10-child limit dropping strip cells. Next: C3.
 - 2026-09-29 — C3: timer engine (`timers` table, Room v2 auto-migration, start/stop/+30s in `TrackerRepository`, stop = increment in one transaction), `TimerNotifier` + Stop/+30s receiver in `app` with no foreground service, one-time notification permission, timed start/stop with a live chronometer in W1 and W2. Verified on the emulator: start from W1, survives reinstall, +30s, stop from the notification and from W1 reach the server as increments. Next: C4.
 - 2026-09-29 — C4: backend `GET /api/tracker/days` (user chose it over `/history`) + contract; Room v3 `history` request with pulls in `TrackerSync` (due/stale logic, `HistoryWorker`, release on the last W3's removal); W1's picker and state generalized into `habit/` for W1 and W3; W3 heatmap (26-week window, exact-size grid, tinted cells). Verified on the emulator: placing W3 via the picker, with the cells matching the server's logs back to May. Next: C5.
+- 2026-10-02 — C5 previews: generated previews (Android 15+, `providePreview` + `WidgetPreviews`, republished on update and locale change) and static `previewLayout`s (12+) with sample habits. Fixed W3's view count (one view per day) and its dark low-end colors. Verified on the emulator: the picker in light and dark, both kinds of preview, and a placed W3 in light and dark. Real-device check deferred to the end (user). 202 tests.

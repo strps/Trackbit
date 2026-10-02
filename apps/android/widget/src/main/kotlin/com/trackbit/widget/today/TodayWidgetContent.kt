@@ -47,12 +47,13 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
+/** [showDate]: false for a preview, whose sample day isn't today. */
 @Composable
-internal fun TodayWidgetContent(state: TodayWidgetState) {
+internal fun TodayWidgetContent(state: TodayWidgetState, showDate: Boolean = true) {
     val context = LocalContext.current
     val openApp = openAppAction(context)
     WidgetSurface {
-        Header(day = (state as? TodayWidgetState.Tracking)?.day, onClick = openApp)
+        Header(day = (state as? TodayWidgetState.Tracking)?.day?.takeIf { showDate }, onClick = openApp)
         when {
             state is TodayWidgetState.SignedOut ->
                 WidgetMessage(context.getString(I18nR.string.android_widget_sign_in), openApp)

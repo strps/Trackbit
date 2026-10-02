@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- W1's static preview: the sample habit's ring at 5 of 8, drawn to ic_widget_ring_track's
+     geometry (as ProgressRing.ringArc draws it), in the Blue preset. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path
+        android:pathData="M24,3A21,21 0,1 1,9.151,38.849"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeColor="@color/widget_preview_blue"
+        android:fillColor="#00000000" />
+</vector>

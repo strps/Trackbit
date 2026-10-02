@@ -6,6 +6,7 @@
     android:configure="com.trackbit.widget.habit.HabitPickerActivity"
     android:description="@string/android_widget_quick_log_description"
     android:initialLayout="@layout/glance_default_loading_layout"
+    android:previewLayout="@layout/widget_preview_quick_log"
     android:minWidth="110dp"
     android:minHeight="40dp"
     android:minResizeWidth="40dp"

@@ -8,6 +8,7 @@ import androidx.glance.appwidget.updateAll
 import com.trackbit.core.auth.AuthRepository
 import com.trackbit.core.data.TrackerRepository
 import com.trackbit.widget.heatmap.HeatmapWidget
+import com.trackbit.widget.preview.WidgetPreviews
 import com.trackbit.widget.quicklog.QuickLogWidget
 import com.trackbit.widget.today.TodayWidget
 import dagger.hilt.EntryPoint
@@ -42,6 +43,8 @@ interface WidgetEntryPoint {
     fun auth(): AuthRepository
 
     fun widgetDay(): WidgetDay
+
+    fun previews(): WidgetPreviews
 }
 
 internal fun Context.widgetEntryPoint(): WidgetEntryPoint =

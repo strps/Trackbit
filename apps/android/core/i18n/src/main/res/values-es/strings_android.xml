@@ -30,4 +30,8 @@
     <string name="android_widget_habit_removed">Hábito eliminado. Toca para elegir otro.</string>
     <string name="android_widget_heatmap_label">Mapa de calor</string>
     <string name="android_widget_heatmap_description">Mira los últimos meses de un hábito de un vistazo.</string>
+    <!-- Hábitos de ejemplo en las vistas previas de los widgets. -->
+    <string name="android_widget_preview_water">Beber agua</string>
+    <string name="android_widget_preview_read">Leer</string>
+    <string name="android_widget_preview_meditate">Meditar</string>
 </resources>

@@ -18,10 +18,13 @@ import androidx.glance.appwidget.provideContent
 import androidx.glance.currentState
 import com.trackbit.widget.R
 import com.trackbit.widget.habit.HabitIdKey
+import com.trackbit.widget.habit.HabitWidgetState
 import com.trackbit.widget.habit.HabitPickerActivity
 import com.trackbit.widget.habit.chosenHabitId
 import com.trackbit.widget.habit.habitWidgetState
+import com.trackbit.widget.preview.PreviewHabits
 import com.trackbit.widget.ui.WidgetTheme
+import com.trackbit.widget.ui.openAppAction
 import com.trackbit.widget.widgetEntryPoint
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
@@ -51,6 +54,15 @@ class QuickLogWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
                 .collectAsState(initial)
             WidgetTheme { QuickLogWidgetContent(state, chooseHabit) }
         }
+    }
+
+    /**
+     * The widget picker's sample (Android 15+, see `WidgetPreviews`), at the provider's minimum
+     * size: the 2×1 layout. Its tap target is never used, since previews take no clicks.
+     */
+    override suspend fun providePreview(context: Context, widgetCategory: Int) {
+        val state = HabitWidgetState.Tracking(PreviewHabits.water(context))
+        provideContent { WidgetTheme { QuickLogWidgetContent(state, chooseHabit = openAppAction(context)) } }
     }
 
     companion object {
