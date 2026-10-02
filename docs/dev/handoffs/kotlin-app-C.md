@@ -86,7 +86,7 @@ W2 (Today list) works end to end on the emulator (API 36, Pixel Launcher, local 
 ## Next
 
 1. **The real-device exit check (deferred by the user to the end):** W1 + W2 installed; offline logging reaches the web once after reconnecting; midnight reset. Work through the "To check on a device" list in [kotlin-app-followups.md](../tasks/kotlin-app-followups.md) at the same time.
-2. Otherwise Phase 1 is complete on the emulator, and Phase 2 (Workstream D, plan §4) can start.
+2. Otherwise Phase 1 is complete on the emulator. Phase 2 continues in [kotlin-app-D.md](kotlin-app-D.md).
 
 ## Invariants — do not break these
 
@@ -104,6 +104,7 @@ W2 (Today list) works end to end on the emulator (API 36, Pixel Launcher, local 
 - **Timer notifications follow Room** (`TimerNotifier`). Never post or cancel them from an action: change the timer and let the reconciler catch up.
 - **History is asked for, never fetched by a widget.** A widget calls `requestHistory(start)`, and the pull happens in `TrackerSync` (worker or periodic sync). Logs older than the recent week exist in Room only while a `history` request does; `releaseHistory()` drops them.
 - **A new habit widget is added to `HabitPickerActivity.habitWidgetFor`**, or the picker refuses to configure it.
+- **History requests are per owner** (since D1): W3 uses `HistoryOwner.Heatmap`.
 - **Every widget has a preview:** `providePreview` with `PreviewHabits`, a `previewLayout`, and its receiver in `WidgetPreviews.RECEIVERS`.
 - **A heatmap day is one view.** Check the view count of anything drawn per day (Glance's limit is ~500 per layout); `WidgetPreviewsTest` renders a fully logged grid.
 

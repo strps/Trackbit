@@ -19,6 +19,7 @@ import com.trackbit.core.model.RecentDay
 import com.trackbit.core.model.Rgba
 import com.trackbit.core.model.SessionUser
 import com.trackbit.core.model.UnitSystem
+import com.trackbit.core.model.HistoryOwner
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -90,7 +91,7 @@ class FakeTrackerRepository : TrackerRepository {
     override val changes = MutableSharedFlow<Unit>()
     override val pendingWrites = MutableStateFlow(0)
 
-    override fun observeDay(day: LocalDate): Flow<List<TrackedHabit>> = days.map { it[day].orEmpty() }
+    override fun observeDay(day: LocalDate, days: Int): Flow<List<TrackedHabit>> = this.days.map { it[day].orEmpty() }
 
     override fun observeHabit(habitId: Int, day: LocalDate, days: Int): Flow<TrackedHabit?> {
         observed += Triple(habitId, day, days)
@@ -99,11 +100,11 @@ class FakeTrackerRepository : TrackerRepository {
 
     /** Every [observeHabit] call: habit, day and how many days. */
     val observed = mutableListOf<Triple<Int, LocalDate, Int>>()
-    val historyRequests = mutableListOf<LocalDate>()
-    var historyReleases = 0
+    val historyRequests = mutableListOf<Pair<HistoryOwner, LocalDate>>()
+    val historyReleases = mutableListOf<HistoryOwner>()
 
-    override suspend fun requestHistory(start: LocalDate) { historyRequests += start }
-    override suspend fun releaseHistory() { historyReleases++ }
+    override suspend fun requestHistory(owner: HistoryOwner, start: LocalDate) { historyRequests += owner to start }
+    override suspend fun releaseHistory(owner: HistoryOwner) { historyReleases += owner }
 
     override suspend fun setRating(habitId: Int, day: LocalDate, rating: Int) = unused()
     override suspend fun increment(habitId: Int, day: LocalDate, delta: Int) = unused()

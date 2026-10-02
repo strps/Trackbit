@@ -16,7 +16,7 @@ import androidx.navigation.compose.rememberNavController
 import com.trackbit.app.timer.RequestNotificationPermission
 import com.trackbit.core.auth.AuthState
 import com.trackbit.feature.auth.SignInScreen
-import com.trackbit.feature.tracker.TodayScreen
+import com.trackbit.feature.tracker.TrackerScreen
 import kotlinx.serialization.Serializable
 
 /** Screens for a signed-out user. Sign-up and password reset join this graph later. */
@@ -31,7 +31,11 @@ data object SignInRoute
 data object SignedInGraph
 
 @Serializable
-data object TodayRoute
+data object TrackerRoute
+
+/** A workout habit's session on [day] (ISO date). */
+@Serializable
+data class SessionRoute(val habitId: Int, val day: String)
 
 /**
  * Routes on [authState]: each auth state owns one graph, and a change of state swaps graphs,
@@ -60,8 +64,14 @@ private fun AuthNavHost(graph: Any, onSignOut: () -> Unit) {
         navigation<SignedOutGraph>(startDestination = SignInRoute) {
             composable<SignInRoute> { SignInScreen() }
         }
-        navigation<SignedInGraph>(startDestination = TodayRoute) {
-            composable<TodayRoute> { TodayScreen(onSignOut = onSignOut) }
+        navigation<SignedInGraph>(startDestination = TrackerRoute) {
+            composable<TrackerRoute> {
+                TrackerScreen(
+                    onSignOut = onSignOut,
+                    onOpenSession = { habitId, day -> navController.navigate(SessionRoute(habitId, day.toString())) },
+                )
+            }
+            composable<SessionRoute> { SessionPlaceholderScreen(onBack = { navController.popBackStack() }) }
         }
     }
 

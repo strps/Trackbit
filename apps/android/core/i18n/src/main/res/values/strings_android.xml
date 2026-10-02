@@ -10,6 +10,15 @@
     <string name="android_tracker_mark_not_done">Mark %1$s as not done</string>
     <string name="android_tracker_start_timer">Start the timer for %1$s</string>
     <string name="android_tracker_stop_timer">Stop the timer for %1$s</string>
+    <string name="android_tracker_decrement">Remove 1 from %1$s</string>
+    <string name="android_tracker_choose_day">Choose a day</string>
+    <string name="android_tracker_edit_time">Edit the time for %1$s</string>
+    <string name="android_tracker_time_title">Time for %1$s</string>
+    <string name="android_tracker_minutes">Minutes</string>
+    <string name="android_tracker_seconds">Seconds</string>
+    <string name="android_tracker_open_session">Open the workout for %1$s</string>
+    <string name="android_tracker_more_options">More options</string>
+    <string name="android_session_coming_soon">Workout sessions are coming to the app soon. Use the web app to log this workout for now.</string>
     <string name="android_timer_channel_name">Timers</string>
     <string name="android_timer_channel_description">Habit timers while they run, with Stop and +30s.</string>
     <string name="android_timer_stop">Stop</string>

@@ -34,8 +34,9 @@ data class TrackedHabit(
     val recent: List<RecentDay>,
     val progress: HabitProgress,
     /**
-     * The streak including [day]. Null when it can't be known until a sync: a day before the last
-     * sync, or a sync so old that the days since fall outside [recent].
+     * The streak including [day]. Null when Room's logs can't tell: a sync so old that the days
+     * since fall outside [recent], or a past day whose streak reaches back past the logs Room
+     * holds (ask for history, and a long enough [recent], to know it).
      */
     val streak: Int?,
     /** The habit's running timer, which may log to a day other than [day]. */
@@ -71,13 +72,19 @@ internal fun TimerEntity.toHabitTimer(): HabitTimer? = localDay?.let { HabitTime
 internal fun HabitDay.toTrackedHabit(): TrackedHabit {
     val day = current.day
     val logs = recent.associate { it.day to StreakDay(it.rating, it.sessionCount) }
-    // Every log from the summary day on must be known to bridge the streak across the gap.
-    val before = if (habit.summaryDay.isBefore(recent.first().day)) {
-        null
+    // The logs are known from both Room's coverage and the window read.
+    val knownFrom = maxOf(logsKnownFrom, recent.first().day)
+    val streak = if (day.isBefore(habit.summaryDay)) {
+        Streak.endingBefore(habit, logs, day, habit.firstLogDay, knownFrom, habit.summaryDay, habit.streakBeforeDay)
     } else {
-        Streak.beforeDay(habit, logs, day, habit.firstLogDay, habit.summaryDay, habit.streakBeforeDay)
+        // Every log from the summary day on must be known to bridge the streak across the gap.
+        val before = if (habit.summaryDay.isBefore(recent.first().day)) {
+            null
+        } else {
+            Streak.beforeDay(habit, logs, day, habit.firstLogDay, habit.summaryDay, habit.streakBeforeDay)
+        }
+        if (Streak.dayCounts(habit, logs[day], day, habit.firstLogDay)) before?.plus(1) else 0
     }
-    val streak = if (Streak.dayCounts(habit, logs[day], day, habit.firstLogDay)) before?.plus(1) else 0
     return TrackedHabit(
         id = habit.id,
         name = habit.name,

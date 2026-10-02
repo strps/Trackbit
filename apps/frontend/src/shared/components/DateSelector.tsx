@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { Calendar } from "@/shared/components/ui/calendar";
@@ -12,6 +13,7 @@ interface DateSelectorProps {
 }
 
 export const DateSelector = ({ selectedDay, today, onDateChange, onDateSelect }: DateSelectorProps) => {
+    const { t } = useTranslation('tracker');
     const [open, setOpen] = useState(false);
 
     return (
@@ -19,7 +21,7 @@ export const DateSelector = ({ selectedDay, today, onDateChange, onDateSelect }:
             <button
                 onClick={() => onDateChange(-1)}
                 className="h-full aspect-square flex items-center justify-center border-r hover:bg-muted transition-colors"
-                aria-label="Previous day"
+                aria-label={t('previous_day')}
             >
                 <ChevronLeft className="w-4 h-4" />
             </button>
@@ -27,7 +29,7 @@ export const DateSelector = ({ selectedDay, today, onDateChange, onDateSelect }:
             <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
                     <button className="text-sm text-muted-foreground font-medium px-3 whitespace-nowrap hover:text-foreground transition-colors cursor-pointer">
-                        {selectedDay === today ? "Today" : format(selectedDay + "T00:00:00.000", "PPP")}
+                        {selectedDay === today ? t('today') : format(selectedDay + "T00:00:00.000", "PPP")}
                     </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="center">
@@ -50,7 +52,7 @@ export const DateSelector = ({ selectedDay, today, onDateChange, onDateSelect }:
                 onClick={() => onDateChange(1)}
                 disabled={selectedDay === today}
                 className="h-full aspect-square flex items-center justify-center border-l hover:bg-muted transition-colors disabled:opacity-30"
-                aria-label="Next day"
+                aria-label={t('next_day')}
             >
                 <ChevronRight className="w-4 h-4" />
             </button>

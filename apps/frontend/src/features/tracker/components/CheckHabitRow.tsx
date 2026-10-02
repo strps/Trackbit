@@ -2,6 +2,7 @@
 // Check habit row
 
 import { cn } from "@/shared/utils/utils";
+import { useTranslation } from "react-i18next";
 import { BaseHabitRow } from "./BaseHabitRow";
 import { ProgressBadge } from "./ProgressBadge";
 import { StreakBadge } from "./StreakBadge";
@@ -28,11 +29,12 @@ export const CheckHabitRow = ({
     isAntiHabit,
     onToggle,
 }: CheckHabitRowProps) => {
+    const { t } = useTranslation('tracker');
     // Anti-habit: inactive (grayed) when NOT checked (success = avoided)
     const inactive = isAntiHabit ? !checked : !checked;
     const subtitle = isAntiHabit
-        ? (checked ? 'Slipped' : 'Avoided')
-        : (checked ? 'Completed' : 'Not yet');
+        ? (checked ? t('badge_slipped') : t('badge_avoided'))
+        : (checked ? t('check_completed') : t('check_not_yet'));
 
     return (
         <BaseHabitRow
@@ -54,7 +56,7 @@ export const CheckHabitRow = ({
                     variant='outline'
                     className={checked ? 'hover:border-muted-foreground/50 scale-100' : undefined}
                     style={checked ? { backgroundColor: accentColor } : undefined}
-                    aria-label={checked ? 'Mark as incomplete' : 'Mark as complete'}
+                    aria-label={checked ? t('mark_incomplete') : t('mark_complete')}
                 >
                     <Check
                         className={cn(

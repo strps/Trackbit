@@ -10,6 +10,15 @@
     <string name="android_tracker_mark_not_done">Marcar %1$s como no hecho</string>
     <string name="android_tracker_start_timer">Iniciar el temporizador de %1$s</string>
     <string name="android_tracker_stop_timer">Detener el temporizador de %1$s</string>
+    <string name="android_tracker_decrement">Quitar 1 a %1$s</string>
+    <string name="android_tracker_choose_day">Elegir un día</string>
+    <string name="android_tracker_edit_time">Editar el tiempo de %1$s</string>
+    <string name="android_tracker_time_title">Tiempo de %1$s</string>
+    <string name="android_tracker_minutes">Minutos</string>
+    <string name="android_tracker_seconds">Segundos</string>
+    <string name="android_tracker_open_session">Abrir el entrenamiento de %1$s</string>
+    <string name="android_tracker_more_options">Más opciones</string>
+    <string name="android_session_coming_soon">Las sesiones de entrenamiento llegarán pronto a la app. Por ahora, usa la web para registrar este entrenamiento.</string>
     <string name="android_timer_channel_name">Temporizadores</string>
     <string name="android_timer_channel_description">Temporizadores de hábitos en marcha, con Detener y +30 s.</string>
     <string name="android_timer_stop">Detener</string>

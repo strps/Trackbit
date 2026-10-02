@@ -45,5 +45,22 @@
   "activity_flexibility_wip": "Seguimiento de flexibilidad por implementar",
   "activity_reps_aria": "Repeticiones para {label} {num}",
   "activity_weight_aria": "Peso ({unit}) para {label} {num}",
-  "activity_distance_aria": "Distancia para vuelta {num}"
+  "activity_distance_aria": "Distancia para vuelta {num}",
+  "badge_started": "Iniciado",
+  "badge_halfway": "A mitad",
+  "badge_done": "Hecho",
+  "badge_avoided": "Evitado",
+  "badge_slipped": "Recaída",
+  "check_completed": "Completado",
+  "check_not_yet": "Aún no",
+  "count_completed": "{value} / {goal} completados",
+  "count_slips": "{value} / {goal} recaídas",
+  "no_sessions": "Sin sesiones",
+  "sessions": "{count, plural, one {# sesión} many {# de sesiones} other {# sesiones}}",
+  "mark_complete": "Marcar como completado",
+  "mark_incomplete": "Marcar como no completado",
+  "today": "Hoy",
+  "previous_day": "Día anterior",
+  "next_day": "Día siguiente",
+  "go_to_today": "Ir a hoy"
 }

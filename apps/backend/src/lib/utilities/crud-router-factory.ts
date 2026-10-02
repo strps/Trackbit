@@ -106,6 +106,12 @@ export function generateCrudRouter<
 
     const shouldInclude = (op: 'list' | 'get' | 'create' | 'update' | 'delete') => !ommitOperations.includes(op);
 
+    // The default list can scope rows to the user only through a `userId` column. Without one it
+    // would return every user's rows, so an owned table must override list or omit it.
+    if (shouldInclude('list') && !overrides?.list && ownershipCheck && !hasUserIdColumn(table)) {
+        throw new Error('generateCrudRouter: a table without userId needs a list override or ommitOperations: [\'list\']');
+    }
+
     // Determine route segment and param schema for PK
     const pkParamNames = Array.isArray(primaryKeyFields) ? primaryKeyFields : [primaryKeyFields];
     const pkRouteSegment = `:${pkParamNames.join('/:')}`;

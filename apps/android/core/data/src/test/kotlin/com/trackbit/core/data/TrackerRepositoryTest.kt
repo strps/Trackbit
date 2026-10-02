@@ -96,14 +96,22 @@ class TrackerRepositoryTest {
         assertEquals(6, repository.observeHabit(1, tomorrow).first()!!.streak)
     }
 
-    @Test fun `the streak is unknown when the sync is too old to bridge, or for an earlier day`() = runTest {
+    @Test fun `the streak is unknown when the sync is too old to bridge`() = runTest {
         seed(todayHabit(1, streakBeforeDay = 4))
         val weekLater = DAY.plusDays(7)
         repository.increment(1, weekLater, 1)
-        repository.increment(1, DAY.minusDays(1), 1)
 
         assertNull(repository.observeHabit(1, weekLater).first()!!.streak)
-        assertNull(repository.observeHabit(1, DAY.minusDays(1)).first()!!.streak)
+    }
+
+    @Test fun `an earlier day's streak walks back through the synced week`() = runTest {
+        val recent = listOf(RecentDay(DAY.minusDays(3), 1, 0), RecentDay(DAY.minusDays(2), 1, 0))
+        seed(todayHabit(1, firstLogDay = DAY.minusDays(30), streakBeforeDay = 2, recent = recent))
+
+        repository.increment(1, DAY.minusDays(1), 1)
+
+        assertEquals(3, repository.observeHabit(1, DAY.minusDays(1)).first()!!.streak)
+        assertNull("the week before the sync is unknown", repository.observeHabit(1, DAY.minusDays(8)).first()!!.streak)
     }
 
     @Test fun `stopping a timer adds its time to the day it started on, once`() = runTest {

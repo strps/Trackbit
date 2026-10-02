@@ -23,13 +23,14 @@ import com.trackbit.core.database.entity.TimerEntity
  */
 @Database(
     entities = [HabitEntity::class, DayLogEntity::class, OutboxEntity::class, TimerEntity::class, HistoryEntity::class],
-    version = 3,
+    version = 4,
     exportSchema = true,
     autoMigrations = [
         // 2: timers.
         AutoMigration(from = 1, to = 2),
         // 3: history.
         AutoMigration(from = 2, to = 3),
+        // 4: history per owner, in Migrations.
     ],
 )
 @TypeConverters(Converters::class)

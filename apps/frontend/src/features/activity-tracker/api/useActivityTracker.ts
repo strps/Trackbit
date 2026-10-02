@@ -414,14 +414,20 @@ export function useActivityTracker() {
     // -------------------------------------------------------------------------
     const updatePerformanceMutation = useMutation({
         mutationFn: async (payload: Partial<OptimisticExercisePerformance> & { id: number }) => {
-            const { id, tempId: _tempId, createdAt: _ca, exerciseLogId: _eli, ...rest } = payload;
+            const { id } = payload;
             if (id < 0) return;
+
+            // Only the editable fields: callers pass the whole set, and the route rejects the
+            // rest (ids, uuid, timestamps).
+            const editable = (['number', 'reps', 'weight', 'duration', 'distance', 'rpe'] as const)
+                .filter((key) => key in payload);
+            const body = Object.fromEntries(editable.map((key) => [key, payload[key]]));
 
             const res = await fetch(`${API_URL}/tracker/exercise-performances/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify(rest),
+                body: JSON.stringify(body),
             });
             if (!res.ok) throw new Error('Failed to update set');
             return res.json();

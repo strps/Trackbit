@@ -2,6 +2,7 @@
 // Timed habit row
 
 import { ControlledTimer } from "@/shared/components/Timer";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/shared/components/ui/button";
 import { BaseHabitRow } from "./BaseHabitRow";
 import { ProgressBadge } from "./ProgressBadge";
@@ -37,6 +38,7 @@ export const TimedHabitRow = ({
     isAntiHabit,
     onLog,
 }: TimedHabitRowProps) => {
+    const { t } = useTranslation('tracker');
     const [isRunning, setIsRunning] = useState(false);
     const [localMs, setLocalMs] = useState(value);
 
@@ -66,7 +68,7 @@ export const TimedHabitRow = ({
                     <StreakBadge streak={streak} />
                 </>
             }
-            subtitle={isAntiHabit && localMs === 0 && !isRunning ? 'Avoided' : `${formatMs(localMs)} / ${dailyGoal}m`}
+            subtitle={isAntiHabit && localMs === 0 && !isRunning ? t('badge_avoided') : `${formatMs(localMs)} / ${dailyGoal}m`}
             right={
                 <div className="flex items-center gap-2 shrink-0">
                     <ControlledTimer

@@ -94,6 +94,8 @@
     <string name="common_validation_too_short">Must be at least %1$s characters</string>
     <string name="common_validation_too_long">Must be at most %1$s characters</string>
     <string name="common_validation_invalid_email">Enter a valid email address</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_save">Save</string>
     <string name="errors_generic_title">Something went wrong</string>
     <string name="errors_generic_message">An unexpected error occurred. Our team has been notified.</string>
     <string name="errors_unexpected_title">Unexpected Error</string>
@@ -301,4 +303,24 @@
     <string name="tracker_activity_reps_aria">Reps for %1$s %2$s</string>
     <string name="tracker_activity_weight_aria">Weight (%1$s) for %2$s %3$s</string>
     <string name="tracker_activity_distance_aria">Distance for lap %1$s</string>
+    <string name="tracker_badge_started">Started</string>
+    <string name="tracker_badge_halfway">Halfway</string>
+    <string name="tracker_badge_done">Done</string>
+    <string name="tracker_badge_avoided">Avoided</string>
+    <string name="tracker_badge_slipped">Slipped</string>
+    <string name="tracker_check_completed">Completed</string>
+    <string name="tracker_check_not_yet">Not yet</string>
+    <string name="tracker_count_completed">%1$s / %2$s completed</string>
+    <string name="tracker_count_slips">%1$s / %2$s slips</string>
+    <string name="tracker_no_sessions">No sessions</string>
+    <plurals name="tracker_sessions">
+        <item quantity="one">%1$d session</item>
+        <item quantity="other">%1$d sessions</item>
+    </plurals>
+    <string name="tracker_mark_complete">Mark as complete</string>
+    <string name="tracker_mark_incomplete">Mark as incomplete</string>
+    <string name="tracker_today">Today</string>
+    <string name="tracker_previous_day">Previous day</string>
+    <string name="tracker_next_day">Next day</string>
+    <string name="tracker_go_to_today">Go to today</string>
 </resources>

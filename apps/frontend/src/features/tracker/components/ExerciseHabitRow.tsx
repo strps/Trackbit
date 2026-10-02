@@ -2,6 +2,7 @@
 // Complex habit row
 
 import { Button } from "@/shared/components/ui/button";
+import { useTranslation } from "react-i18next";
 import { BaseHabitRow } from "./BaseHabitRow";
 import { ProgressBadge } from "./ProgressBadge";
 import { StreakBadge } from "./StreakBadge";
@@ -19,6 +20,7 @@ interface ComplexHabitRowProps {
 }
 
 export const ComplexHabitRow = ({ name, icon, accentColor, sessionsCount, sessions, streak, onNavigate }: ComplexHabitRowProps) => {
+    const { t } = useTranslation('tracker');
     const hasExercises = sessions.some(s => (s.exerciseLogs?.length ?? 0) > 0);
     const inactive = sessionsCount === 0 || !hasExercises;
     return (
@@ -32,7 +34,7 @@ export const ComplexHabitRow = ({ name, icon, accentColor, sessionsCount, sessio
                     <StreakBadge streak={streak} />
                 </>
             }
-            subtitle={sessionsCount > 0 ? `${sessionsCount} session${sessionsCount !== 1 ? 's' : ''}` : 'No sessions'}
+            subtitle={sessionsCount > 0 ? t('sessions', { count: sessionsCount }) : t('no_sessions')}
             right={
                 <Button variant="outline" size='icon' onClick={onNavigate} className="gap-2 shrink-0">
 

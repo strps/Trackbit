@@ -21,6 +21,12 @@ data class HabitDay(
     val recent: List<RecentDay>,
     /** The habit's running timer, whichever day it logs to. */
     val timer: TimerEntity?,
+    /**
+     * Room holds every log of the habit from this day on (as of the last syncs, plus local
+     * writes): the week of the last `/today`, or further back when history was pulled. An empty
+     * day before it may just be unknown.
+     */
+    val logsKnownFrom: LocalDate,
 ) {
     /** The requested day. */
     val current: RecentDay get() = recent.last()
@@ -33,10 +39,11 @@ data class HabitDay(
 
 @Dao
 abstract class HabitDayDao {
-    /** Every habit, in display order, on [day]. */
-    fun observeDay(day: LocalDate): Flow<List<HabitDay>> =
-        observeWithLogs(windowStart(day, HabitDay.RECENT_DAYS), day, habitId = null)
-            .map { rows -> rows.toHabitDays(day, HabitDay.RECENT_DAYS) }
+    /** Every habit, in display order, on [day], with the [days] days ending at it. */
+    fun observeDay(day: LocalDate, days: Int = HabitDay.RECENT_DAYS): Flow<List<HabitDay>> {
+        require(days >= 1) { "days must be at least 1" }
+        return observeWithLogs(windowStart(day, days), day, habitId = null).map { rows -> rows.toHabitDays(day, days) }
+    }
 
     /**
      * One habit on [day] with the [days] days ending at it, or null if it doesn't exist (any
@@ -56,7 +63,8 @@ abstract class HabitDayDao {
             day_logs.habitId AS log_habitId, day_logs.localDay AS log_localDay,
             day_logs.rating AS log_rating, day_logs.sessionCount AS log_sessionCount,
             timers.id AS timer_id, timers.habitId AS timer_habitId,
-            timers.localDay AS timer_localDay, timers.startedAt AS timer_startedAt
+            timers.localDay AS timer_localDay, timers.startedAt AS timer_startedAt,
+            (SELECT MIN(syncedStart) FROM history) AS historyFrom
         FROM habits
         LEFT JOIN day_logs ON day_logs.habitId = habits.id AND day_logs.localDay BETWEEN :start AND :end
         LEFT JOIN timers ON timers.habitId = habits.id
@@ -75,7 +83,11 @@ abstract class HabitDayDao {
                 val d = day.minusDays(back.toLong())
                 byDay[d]?.toRecentDay() ?: RecentDay(day = d, rating = null, sessionCount = 0)
             }
-            HabitDay(rows.first().habit, recent, rows.first().timer)
+            val first = rows.first()
+            // Every pull reaches the device's day, and `sync()` pulls history when stale, so the
+            // pulled range and the recent week meet.
+            val recentFrom = first.habit.summaryDay.minusDays(HabitDay.RECENT_DAYS - 1L)
+            HabitDay(first.habit, recent, first.timer, listOfNotNull(recentFrom, first.historyFrom).min())
         }
 }
 
@@ -84,4 +96,6 @@ data class HabitDayRow(
     @Embedded val habit: HabitEntity,
     @Embedded(prefix = "log_") val log: DayLogEntity?,
     @Embedded(prefix = "timer_") val timer: TimerEntity?,
+    /** The earliest day a history pull covered, if any. */
+    val historyFrom: LocalDate?,
 )

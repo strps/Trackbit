@@ -6,6 +6,7 @@ import com.trackbit.core.database.entity.OutboxEntity
 import com.trackbit.core.database.entity.OutboxOpType
 import com.trackbit.core.model.DaysResponse
 import com.trackbit.core.model.HabitDayValue
+import com.trackbit.core.model.HistoryOwner
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -28,7 +29,7 @@ class HistoryTest : DatabaseTest() {
 
     @Test fun `a pull makes the range match the server, and records itself on the request`() = runTest {
         insertHabits(habit(1), habit(2))
-        history.upsert(HistoryEntity(start = start))
+        history.upsert(HistoryEntity(HistoryOwner.Heatmap, start))
         logs.upsert(DayLogEntity(1, DAY.minusDays(20), rating = 9))
         logs.upsert(DayLogEntity(2, DAY.minusDays(10), rating = 9))
         logs.upsert(DayLogEntity(1, start.minusDays(1), rating = 9))
@@ -47,7 +48,7 @@ class HistoryTest : DatabaseTest() {
         assertNull("an empty log is no log", logs.get(2, DAY.minusDays(14)))
         assertNull("gone from the server", logs.get(2, DAY.minusDays(10)))
         assertEquals("outside the range", 9, logs.get(1, start.minusDays(1))!!.rating)
-        assertEquals(HistoryEntity(start = start, syncedStart = start, syncedAt = at), history.get())
+        assertEquals(HistoryEntity(HistoryOwner.Heatmap, start, syncedStart = start, syncedAt = at), history.get(HistoryOwner.Heatmap))
     }
 
     @Test fun `days with pending ops keep their optimistic value`() = runTest {
@@ -69,21 +70,21 @@ class HistoryTest : DatabaseTest() {
         db.syncDao().applyDays(days(HabitDayValue(7, DAY.minusDays(20), rating = 1, sessionCount = 0)), at)
 
         assertNull(logs.get(7, DAY.minusDays(20)))
-        assertNull(history.get())
+        assertEquals(emptyList<HistoryEntity>(), history.all())
     }
 
     @Test fun `releasing drops old logs, but not recent or pending ones`() = runTest {
         insertHabits(habit(1))
-        history.upsert(HistoryEntity(start = start))
+        history.upsert(HistoryEntity(HistoryOwner.Heatmap, start))
         val keepFrom = DAY.minusDays(6)
         logs.upsert(DayLogEntity(1, keepFrom, rating = 1))
         logs.upsert(DayLogEntity(1, keepFrom.minusDays(1), rating = 1))
         logs.upsert(DayLogEntity(1, keepFrom.minusDays(2), rating = 1))
         enqueue(1, keepFrom.minusDays(2))
 
-        history.release(keepFrom)
+        history.release(HistoryOwner.Heatmap, recentFrom = keepFrom)
 
-        assertNull(history.get())
+        assertNull(history.get(HistoryOwner.Heatmap))
         assertEquals(1, logs.get(1, keepFrom)!!.rating)
         assertNull(logs.get(1, keepFrom.minusDays(1)))
         assertEquals("pending", 1, logs.get(1, keepFrom.minusDays(2))!!.rating)
@@ -101,5 +102,30 @@ class HistoryTest : DatabaseTest() {
         assertEquals(start, month.recent.first().day)
         assertEquals(DAY, month.current.day)
         assertEquals(2, month.recent.single { it.day == DAY.minusDays(20) }.rating)
+    }
+
+    @Test fun `a pull is recorded only on the requests it covers`() = runTest {
+        history.upsert(HistoryEntity(HistoryOwner.Heatmap, start))
+        history.upsert(HistoryEntity(HistoryOwner.Tracker, start.minusDays(10)))
+
+        db.syncDao().applyDays(days(), at)
+
+        assertEquals(start, history.get(HistoryOwner.Heatmap)!!.syncedStart)
+        assertNull(history.get(HistoryOwner.Tracker)!!.syncedStart)
+    }
+
+    @Test fun `releasing one owner keeps what another still asks for`() = runTest {
+        insertHabits(habit(1))
+        val trackerStart = start.minusDays(10)
+        history.upsert(HistoryEntity(HistoryOwner.Heatmap, start, syncedStart = trackerStart, syncedAt = at))
+        history.upsert(HistoryEntity(HistoryOwner.Tracker, trackerStart, syncedStart = trackerStart, syncedAt = at))
+        logs.upsert(DayLogEntity(1, start, rating = 1))
+        logs.upsert(DayLogEntity(1, start.minusDays(1), rating = 1))
+
+        history.release(HistoryOwner.Tracker, recentFrom = DAY.minusDays(6))
+
+        assertEquals(1, logs.get(1, start)!!.rating)
+        assertNull(logs.get(1, start.minusDays(1)))
+        assertEquals("no longer covers the dropped days", start, history.get(HistoryOwner.Heatmap)!!.syncedStart)
     }
 }

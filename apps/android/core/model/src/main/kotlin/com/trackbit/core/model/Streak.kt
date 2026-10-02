@@ -64,6 +64,42 @@ object Streak {
     }
 
     /**
+     * The streak ending at (and including) [day], a day before [summaryDay], or null when the
+     * logs can't tell. [logs] must hold every log from [knownFrom] up to [summaryDay].
+     *
+     * Walking back from [day] gives it whenever the walk ends on a known day (or before the first
+     * log, where nothing counts). Otherwise, when every day from [day] up to [summaryDay] counts,
+     * it is the server's [streakBeforeDay] less the days after [day].
+     */
+    fun endingBefore(
+        habit: TrackableHabit,
+        logs: Map<LocalDate, StreakDay>,
+        day: LocalDate,
+        firstLogDay: LocalDate?,
+        knownFrom: LocalDate,
+        summaryDay: LocalDate,
+        streakBeforeDay: Int,
+    ): Int? {
+        require(day.isBefore(summaryDay)) { "day must be before the summary day" }
+        val walked = endingAt(habit, logs, day, firstLogDay)
+        val stop = day.minusDays(walked.toLong())
+        val countedKnown = walked == 0 || !stop.plusDays(1).isBefore(knownFrom)
+        val stopKnown = walked == MAX_DAYS || !stop.isBefore(knownFrom) || firstLogDay == null || stop.isBefore(firstLogDay)
+        if (countedKnown && stopKnown) return walked
+
+        // A capped server streak may hide days further back.
+        if (day.isBefore(knownFrom) || streakBeforeDay >= MAX_DAYS) return null
+        var cursor = day
+        while (cursor.isBefore(summaryDay)) {
+            if (!dayCounts(habit, logs[cursor], cursor, firstLogDay)) return null
+            cursor = cursor.plusDays(1)
+        }
+        val after = summaryDay.toEpochDay() - 1 - day.toEpochDay()
+        // Below 1 only if local writes contradict the server's streak; then it can't be told.
+        return (streakBeforeDay - after).toInt().takeIf { it >= 1 }
+    }
+
+    /**
      * The streak to display for [day]: the server's [streakBeforeDay] plus [day] itself, judged
      * on the local (possibly optimistic) [log] so a tap updates the streak before any sync.
      */

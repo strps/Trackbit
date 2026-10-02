@@ -4,6 +4,7 @@
 // Simple habit row
 
 import { mapValueToColorOrdered } from "@/shared/utils/colorUtils";
+import { useTranslation } from "react-i18next";
 import { ColorStop } from "@trackbit/types";
 import { useEffect, useState } from "react";
 import { BaseHabitRow } from "./BaseHabitRow";
@@ -38,6 +39,7 @@ export const CountHabitRow = ({
     onLog,
     className,
 }: SimpleHabitRowProps) => {
+    const { t } = useTranslation('tracker');
     const [isAnimating, setIsAnimating] = useState(false);
 
     const progress = Math.min(value / goal, 1);
@@ -69,8 +71,8 @@ export const CountHabitRow = ({
                 </>
             }
             subtitle={isAntiHabit
-                ? (value === 0 ? 'Avoided' : `${value} / ${goal} slips`)
-                : `${value} / ${goal} completed`
+                ? (value === 0 ? t('badge_avoided') : t('count_slips', { value, goal }))
+                : t('count_completed', { value, goal })
             }
             right={
                 <CompactProgressCounter onDecrement={() => onLog(value - 1)} onIncrement={() => onLog(value + 1)} value={value} goal={goal} isGoalMet={isGoalMet} colorString={colorString} />

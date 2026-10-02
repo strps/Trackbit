@@ -45,5 +45,22 @@
   "activity_flexibility_wip": "Flexibility tracking to be implemented",
   "activity_reps_aria": "Reps for {label} {num}",
   "activity_weight_aria": "Weight ({unit}) for {label} {num}",
-  "activity_distance_aria": "Distance for lap {num}"
+  "activity_distance_aria": "Distance for lap {num}",
+  "badge_started": "Started",
+  "badge_halfway": "Halfway",
+  "badge_done": "Done",
+  "badge_avoided": "Avoided",
+  "badge_slipped": "Slipped",
+  "check_completed": "Completed",
+  "check_not_yet": "Not yet",
+  "count_completed": "{value} / {goal} completed",
+  "count_slips": "{value} / {goal} slips",
+  "no_sessions": "No sessions",
+  "sessions": "{count, plural, one {# session} other {# sessions}}",
+  "mark_complete": "Mark as complete",
+  "mark_incomplete": "Mark as incomplete",
+  "today": "Today",
+  "previous_day": "Previous day",
+  "next_day": "Next day",
+  "go_to_today": "Go to today"
 }

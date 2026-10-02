@@ -15,6 +15,8 @@ import com.trackbit.core.database.entity.HistoryEntity
 import com.trackbit.core.database.entity.OutboxEntity
 import com.trackbit.core.database.entity.TimerEntity
 import com.trackbit.core.model.HabitType
+import com.trackbit.core.model.HistoryOwner
+import com.trackbit.core.model.Streak
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -22,6 +24,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import java.time.Clock
+import java.time.Instant
 import java.time.LocalDate
 import javax.inject.Inject
 
@@ -32,8 +35,12 @@ import javax.inject.Inject
  * `day` is always the local day the user is looking at, and it is what the server is sent.
  */
 interface TrackerRepository {
-    /** Every habit on [day], in display order. */
-    fun observeDay(day: LocalDate): Flow<List<TrackedHabit>>
+    /**
+     * Every habit on [day], in display order, each with the [days] days ending at [day]. Days more
+     * than a week back are empty unless [requestHistory] covers them; a past day's streak needs
+     * that history and a window of [STREAK_DAYS].
+     */
+    fun observeDay(day: LocalDate, days: Int = RECENT_DAYS): Flow<List<TrackedHabit>>
 
     /**
      * One habit on [day], or null once it no longer exists. [TrackedHabit.recent] holds the [days]
@@ -42,15 +49,15 @@ interface TrackerRepository {
     fun observeHabit(habitId: Int, day: LocalDate, days: Int = RECENT_DAYS): Flow<TrackedHabit?>
 
     /**
-     * Keeps every habit's logs from [start] on (at most a year back) in Room, pulling them from
-     * the server now and then, instead of only the last week. For heatmaps: call it whenever the
-     * shown range may have changed; it pulls only when the kept range doesn't cover [start] or has
-     * gone stale. A later call replaces [start].
+     * Keeps every habit's logs from [start] on in Room for [owner], pulling them from the server
+     * now and then, instead of only the last week. Call it whenever the shown range may have
+     * changed; it pulls only when the kept range doesn't cover [start] or has gone stale. A later
+     * call from the same owner replaces its [start].
      */
-    suspend fun requestHistory(start: LocalDate)
+    suspend fun requestHistory(owner: HistoryOwner, start: LocalDate)
 
-    /** Stops keeping history: logs from before the last week are dropped. */
-    suspend fun releaseHistory()
+    /** [owner] stops keeping history: logs no other request covers, before the last week, are dropped. */
+    suspend fun releaseHistory(owner: HistoryOwner)
 
     /** Habits with a running timer, oldest timer first, each on the day its timer logs to. */
     fun observeRunningTimers(): Flow<List<TrackedHabit>>
@@ -100,6 +107,9 @@ interface TrackerRepository {
 /** What [TrackerRepository.observeHabit] returns by default: the week `/today` brings. */
 const val RECENT_DAYS = HabitDay.RECENT_DAYS
 
+/** A window long enough to walk back any streak (they are capped at [Streak.MAX_DAYS]). */
+const val STREAK_DAYS = Streak.MAX_DAYS + 1
+
 enum class WriteResult {
     /** Applied locally and queued for the server. */
     Queued,
@@ -142,22 +152,32 @@ internal class DefaultTrackerRepository @Inject constructor(
     private val timerDao = db.timerDao()
     private val historyDao = db.historyDao()
 
-    override fun observeDay(day: LocalDate): Flow<List<TrackedHabit>> =
-        habitDayDao.observeDay(day).map { days -> days.map { it.toTrackedHabit() } }
+    override fun observeDay(day: LocalDate, days: Int): Flow<List<TrackedHabit>> =
+        habitDayDao.observeDay(day, days).map { days -> days.map { it.toTrackedHabit() } }
 
     override fun observeHabit(habitId: Int, day: LocalDate, days: Int): Flow<TrackedHabit?> =
         habitDayDao.observeHabitDay(habitId, day, days).map { it?.toTrackedHabit() }
 
-    override suspend fun requestHistory(start: LocalDate) {
+    override suspend fun requestHistory(owner: HistoryOwner, start: LocalDate) {
         val due = db.withTransaction {
-            val history = (historyDao.get() ?: HistoryEntity(start = start)).copy(start = start)
+            val now = clock.instant()
+            val requests = historyDao.all()
+            var history = (requests.find { it.owner == owner } ?: HistoryEntity(owner, start)).copy(start = start)
+            // Another owner's pull may already cover the range.
+            val covering = requests
+                .filter { it.owner != owner && it.syncedStart?.isAfter(start) == false }
+                .maxByOrNull { it.syncedAt ?: Instant.MIN }
+            if (covering != null && history.isDue(now) && !covering.copy(start = start).isDue(now)) {
+                history = history.copy(syncedStart = covering.syncedStart, syncedAt = covering.syncedAt)
+            }
             historyDao.upsert(history)
-            history.isDue(clock.instant())
+            history.isDue(now)
         }
         if (due) scheduler.syncHistory()
     }
 
-    override suspend fun releaseHistory() = historyDao.release(keepFrom = LocalDate.now().minusDays(RECENT_DAYS - 1L))
+    override suspend fun releaseHistory(owner: HistoryOwner) =
+        historyDao.release(owner, recentFrom = LocalDate.now().minusDays(RECENT_DAYS - 1L))
 
     override fun observeRunningTimers(): Flow<List<TrackedHabit>> = timerDao.observeAll().flatMapLatest { timers ->
         val habitTimers = timers.mapNotNull { timer -> timer.habitId?.let { id -> timer.localDay?.let { id to it } } }

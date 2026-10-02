@@ -3,5 +3,7 @@
   "loading": "Loading...",
   "validation.too_short": "Must be at least {min} characters",
   "validation.too_long": "Must be at most {max} characters",
-  "validation.invalid_email": "Enter a valid email address"
+  "validation.invalid_email": "Enter a valid email address",
+  "cancel": "Cancel",
+  "save": "Save"
 }

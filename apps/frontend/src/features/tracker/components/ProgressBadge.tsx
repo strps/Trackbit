@@ -3,11 +3,13 @@
 // Tiered progress badge: Bronze → Silver → Gold
 
 import { ShieldAlert, Trophy } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { AnimatePresence } from "motion/react";
 import { BadgeIcon, BadgeParent, BadgeText } from "./BaseBadge";
 
 // -------------------------------------------------------------------
 export const ProgressBadge = ({ progress, isAntiHabit }: { progress: number; isAntiHabit?: boolean }) => {
+    const { t } = useTranslation('tracker');
     const Badge = isAntiHabit
         ? (
             progress <= 0
@@ -16,7 +18,7 @@ export const ProgressBadge = ({ progress, isAntiHabit }: { progress: number; isA
                         <BadgeIcon>
                             <ShieldAlert size={'1rem'} />
                         </BadgeIcon>
-                        <BadgeText>Avoided</BadgeText>
+                        <BadgeText>{t('badge_avoided')}</BadgeText>
                     </BadgeParent>
                 )
                 : (
@@ -24,7 +26,7 @@ export const ProgressBadge = ({ progress, isAntiHabit }: { progress: number; isA
                         <BadgeIcon>
                             <ShieldAlert size={'1rem'} />
                         </BadgeIcon>
-                        <BadgeText>Slipped</BadgeText>
+                        <BadgeText>{t('badge_slipped')}</BadgeText>
                     </BadgeParent>
                 )
         )
@@ -37,7 +39,7 @@ export const ProgressBadge = ({ progress, isAntiHabit }: { progress: number; isA
                             <BadgeIcon>
                                 <Trophy size={'1rem'} />
                             </BadgeIcon>
-                            <BadgeText>Done</BadgeText>
+                            <BadgeText>{t('badge_done')}</BadgeText>
                         </BadgeParent>
                     )
                     : progress >= 0.5
@@ -46,7 +48,7 @@ export const ProgressBadge = ({ progress, isAntiHabit }: { progress: number; isA
                                 <BadgeIcon>
                                     <Trophy size={'1rem'} />
                                 </BadgeIcon>
-                                <BadgeText>Halfway</BadgeText>
+                                <BadgeText>{t('badge_halfway')}</BadgeText>
                             </BadgeParent>
                         )
                         : (
@@ -54,7 +56,7 @@ export const ProgressBadge = ({ progress, isAntiHabit }: { progress: number; isA
                                 <BadgeIcon>
                                     <Trophy size={'1rem'} />
                                 </BadgeIcon>
-                                <BadgeText>Started</BadgeText>
+                                <BadgeText>{t('badge_started')}</BadgeText>
                             </BadgeParent>
                         )
         )

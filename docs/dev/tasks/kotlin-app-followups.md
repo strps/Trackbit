@@ -21,6 +21,7 @@ These are covered by unit tests but were not exercised on the emulator for W1. R
 - W2 timed rows: the play/stop button and the running chronometer (only W1 was exercised for timers).
 - W3: removing the last heatmap releases history (the `history` row goes, logs older than a week are dropped, no more `/days` pulls). Also a 4×3 size (dark mode was checked on the emulator in C5), and a running timer in the header (its chronometer shares the row with the name).
 - Previews (C5): after switching the device language, the picker's generated previews (Android 15+) show the new language (`LOCALE_CHANGED` republishes them); after an update they come back (an update clears them, `MY_PACKAGE_REPLACED` republishes). If the system refuses a publish (rate limit), the static `previewLayout` shows until the next app start.
+- Tracker (D1): check rows (toggle with the accent fill), anti-habit rows and section, a frozen habit (lock, disabled controls, snackbar), and the tracker in Spanish. The emulator account has none of these.
 - Timers: the notification reappears after a reboot once anything wakes the app (widget update); swiping it away on 14+ leaves the timer running in the widgets; denying the notification permission leaves timers working in the widgets.
 
 ## Polish
@@ -33,9 +34,12 @@ These are covered by unit tests but were not exercised on the emulator for W1. R
 - **The ring arc is a fixed 288 px bitmap.** It's sharp at 2×2 on xxxhdpi. Size it from the widget's actual size if a larger layout is ever added.
 
 - **Chronometer format differs from ours:** the RemoteViews/notification chronometer shows "02:53", while `formatDuration` writes "1:00" (no leading zero). A `Chronometer` format string can't drop the zero. Live with it, or format the goal the same way.
-- **The app's Today screen has no timer controls** yet: timed rows show only progress. Phase 2's tracker home adds them (the notification's tap opens the app, where the running timer isn't visible yet).
+- **Tracker rows reserve an empty badge line** (D1) so a first badge doesn't move the buttons; rows without badges have blank space at the bottom. The web puts badges on the accent edge with a fixed row height; something similar would be tighter.
+- **Tracker: no swipe between days**, only ‹ › and the picker.
 
 ## Housekeeping
+
+- **The tracker's history request can outlive the screen** (D1): if the app closes while a past day is shown, the request stays (periodic sync pulls it every 6 h) until the tracker screen starts again and releases it. Releasing from `onCleared` would need an app-wide scope in features.
 
 - **Local smoke user** `b10-smoke@example.com` exists in the local dev DB only. Delete it when it's no longer useful.
 - **Timezones:** the web tracker takes "today" from the browser's timezone, and the app and widgets use the stored one. The plan's §6 proposal isn't built. Revisit if users travel across timezones and see mismatched days.

@@ -1,5 +1,9 @@
 package com.trackbit.feature.tracker
 
+import androidx.lifecycle.SavedStateHandle
+import com.trackbit.core.data.HabitTimer
+import com.trackbit.core.data.STREAK_DAYS
+import com.trackbit.core.data.RECENT_DAYS
 import com.trackbit.core.data.SyncResult
 import com.trackbit.core.data.TrackedHabit
 import com.trackbit.core.data.TrackerRepository
@@ -8,6 +12,7 @@ import com.trackbit.core.model.ColorTheme
 import com.trackbit.core.model.HabitIcon
 import com.trackbit.core.model.HabitProgress
 import com.trackbit.core.model.HabitType
+import com.trackbit.core.model.HistoryOwner
 import com.trackbit.core.model.RecentDay
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -29,12 +34,13 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.time.Instant
 import java.time.LocalDate
 
 private val DAY: LocalDate = LocalDate.of(2026, 9, 26)
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class TodayViewModelTest {
+class TrackerViewModelTest {
     private val tracker = FakeTrackerRepository()
     private val clock = FakeDayClock(DAY)
 
@@ -42,9 +48,9 @@ class TodayViewModelTest {
 
     @After fun tearDown() = Dispatchers.resetMain()
 
-    /** Subscribes to [TodayViewModel.state] for the test, as the screen would. */
-    private fun TestScope.subscribed(): TodayViewModel {
-        val viewModel = TodayViewModel(tracker, clock)
+    /** Subscribes to [TrackerViewModel.state] for the test, as the screen would. */
+    private fun TestScope.subscribed(savedState: SavedStateHandle = SavedStateHandle()): TrackerViewModel {
+        val viewModel = TrackerViewModel(tracker, clock, savedState)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
         return viewModel
     }
@@ -71,11 +77,11 @@ class TodayViewModelTest {
         tracker.writeResult = WriteResult.HabitFrozen
         val viewModel = subscribed()
         viewModel.increment(habit(1))
-        assertEquals(TodayMessage.HabitFrozen, viewModel.state.value.message)
+        assertEquals(TrackerMessage.HabitFrozen, viewModel.state.value.message)
 
-        viewModel.onMessageShown(TodayMessage.Offline)
-        assertEquals(TodayMessage.HabitFrozen, viewModel.state.value.message)
-        viewModel.onMessageShown(TodayMessage.HabitFrozen)
+        viewModel.onMessageShown(TrackerMessage.Offline)
+        assertEquals(TrackerMessage.HabitFrozen, viewModel.state.value.message)
+        viewModel.onMessageShown(TrackerMessage.HabitFrozen)
         assertNull(viewModel.state.value.message)
     }
 
@@ -86,7 +92,7 @@ class TodayViewModelTest {
 
         tracker.refreshResult.complete(SyncResult.Retry)
         assertFalse(viewModel.state.value.refreshing)
-        assertEquals(TodayMessage.Offline, viewModel.state.value.message)
+        assertEquals(TrackerMessage.Offline, viewModel.state.value.message)
     }
 
     @Test fun `a pull while refreshing doesn't start another`() = runTest {
@@ -106,9 +112,80 @@ class TodayViewModelTest {
         tracker.pendingWrites.value = 3
         assertEquals(3, viewModel.state.value.pendingWrites)
     }
+
+    @Test fun `a picked past day is shown with a streak window and history, until today again`() = runTest {
+        tracker.habits.value = listOf(habit(1))
+        val viewModel = subscribed()
+        assertEquals(listOf("release"), tracker.history)
+        assertEquals(DAY to RECENT_DAYS, tracker.observed.last())
+
+        val past = DAY.minusDays(40)
+        viewModel.selectDay(past)
+        assertEquals(past, viewModel.state.value.day)
+        assertFalse(viewModel.state.value.isToday)
+        assertEquals(listOf(past), viewModel.state.value.habits!!.map { it.day })
+        assertEquals(past to STREAK_DAYS, tracker.observed.last())
+        assertEquals("request ${past.minusDays(STREAK_DAYS - 1L)}", tracker.history.last())
+
+        viewModel.selectDay(DAY)
+        assertTrue(viewModel.state.value.isToday)
+        assertEquals(listOf("release", "request ${past.minusDays(STREAK_DAYS - 1L)}", "release"), tracker.history)
+    }
+
+    @Test fun `moving never passes today, and a picked day survives midnight`() = runTest {
+        val viewModel = subscribed()
+        viewModel.moveDay(1)
+        assertEquals(DAY, viewModel.state.value.day)
+
+        viewModel.moveDay(-1)
+        assertEquals(DAY.minusDays(1), viewModel.state.value.day)
+        clock.today.value = DAY.plusDays(1)
+        assertEquals(DAY.minusDays(1), viewModel.state.value.day)
+
+        viewModel.moveDay(1)
+        viewModel.moveDay(1)
+        assertTrue("today again", viewModel.state.value.isToday)
+        clock.today.value = DAY.plusDays(2)
+        assertEquals("follows today", DAY.plusDays(2), viewModel.state.value.day)
+    }
+
+    @Test fun `the picked day is restored with the screen`() = runTest {
+        val savedState = SavedStateHandle()
+        subscribed(savedState).selectDay(DAY.minusDays(3))
+
+        assertEquals(DAY.minusDays(3), subscribed(savedState).state.value.day)
+    }
+
+    @Test fun `decrementing stops at 0`() = runTest {
+        val viewModel = subscribed()
+        viewModel.increment(habit(1, value = 0), -1)
+        viewModel.increment(habit(2, value = 1), -1)
+        assertEquals(listOf("increment 2 $DAY -1"), tracker.writes)
+    }
+
+    @Test fun `timed habits start and stop their timer, and set their time`() = runTest {
+        val viewModel = subscribed()
+        viewModel.toggleTimer(habit(1, type = HabitType.Timed, day = DAY.minusDays(2)))
+        viewModel.toggleTimer(habit(1, type = HabitType.Timed, timer = HabitTimer(Instant.EPOCH, DAY)))
+        viewModel.setTime(habit(1, type = HabitType.Timed), 90_000)
+        assertEquals(listOf("start 1 ${DAY.minusDays(2)}", "stop 1", "set 1 $DAY 90000"), tracker.writes)
+    }
+
+    @Test fun `time entry accepts minutes and seconds within the day's range`() {
+        assertEquals(90_000L, timeMs("1", "30"))
+        assertEquals(0L, timeMs("", ""))
+        assertEquals(null, timeMs("1", "60"))
+        assertEquals(null, timeMs("99999999", "0"))
+    }
 }
 
-private fun habit(id: Int, type: HabitType = HabitType.Count, day: LocalDate = DAY) = TrackedHabit(
+private fun habit(
+    id: Int,
+    type: HabitType = HabitType.Count,
+    day: LocalDate = DAY,
+    value: Long = 0,
+    timer: HabitTimer? = null,
+) = TrackedHabit(
     id = id,
     name = "Habit $id",
     description = null,
@@ -122,8 +199,9 @@ private fun habit(id: Int, type: HabitType = HabitType.Count, day: LocalDate = D
     frozen = false,
     day = day,
     recent = listOf(RecentDay(day, rating = null, sessionCount = 0)),
-    progress = HabitProgress(value = 0, goal = 2, isAntiHabit = false),
+    progress = HabitProgress(value = value, goal = 2, isAntiHabit = false),
     streak = 0,
+    timer = timer,
 )
 
 private class FakeDayClock(day: LocalDate) : DayClock {
@@ -140,11 +218,19 @@ private class FakeTrackerRepository : TrackerRepository {
     var refreshes = 0
     val refreshResult = CompletableDeferred<SyncResult>()
 
-    override fun observeDay(day: LocalDate): Flow<List<TrackedHabit>> =
-        habits.map { list -> list.map { it.copy(day = day) } }
+    /** Every [observeDay] call: the day and how many days. */
+    val observed = mutableListOf<Pair<LocalDate, Int>>()
+
+    /** History requests and releases, in order: "request <start>" or "release". */
+    val history = mutableListOf<String>()
+
+    override fun observeDay(day: LocalDate, days: Int): Flow<List<TrackedHabit>> {
+        observed += day to days
+        return habits.map { list -> list.map { it.copy(day = day) } }
+    }
 
     override fun observeHabit(habitId: Int, day: LocalDate, days: Int): Flow<TrackedHabit?> =
-        observeDay(day).map { list -> list.find { it.id == habitId } }
+        observeDay(day, days).map { list -> list.find { it.id == habitId } }
 
     override suspend fun setRating(habitId: Int, day: LocalDate, rating: Int) = record("set $habitId $day $rating")
 
@@ -156,8 +242,15 @@ private class FakeTrackerRepository : TrackerRepository {
     override suspend fun ensureDayLog(habitId: Int, day: LocalDate) = record("ensure $habitId $day")
 
     override fun observeRunningTimers(): Flow<List<TrackedHabit>> = throw UnsupportedOperationException()
-    override suspend fun requestHistory(start: LocalDate) = throw UnsupportedOperationException()
-    override suspend fun releaseHistory() = throw UnsupportedOperationException()
+    override suspend fun requestHistory(owner: HistoryOwner, start: LocalDate) {
+        check(owner == HistoryOwner.Tracker)
+        history += "request $start"
+    }
+
+    override suspend fun releaseHistory(owner: HistoryOwner) {
+        check(owner == HistoryOwner.Tracker)
+        history += "release"
+    }
 
     override suspend fun startTimer(habitId: Int, day: LocalDate) = record("start $habitId $day")
 

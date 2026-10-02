@@ -69,9 +69,12 @@ abstract class SyncDao {
 
     /**
      * Makes Room's logs from [DaysResponse.start] to [DaysResponse.end] match a
-     * `/api/tracker/days` response, and records the pull on the history request made at
-     * [syncedAt] (if it still exists). Days with pending ops keep their optimistic value, and
-     * days of habits Room doesn't have are skipped: the next `/today` brings the habit.
+     * `/api/tracker/days` response made at [syncedAt]. Days with pending ops keep their optimistic
+     * value, and days of habits Room doesn't have are skipped: the next `/today` brings the habit.
+     *
+     * The pull is recorded on every request that starts within it (none is created), which is
+     * right only if Room is fresh from [DaysResponse.end] on: a pull longer than `/days` allows
+     * comes in chunks, newest first, and [DaysResponse.end] is the device's day.
      */
     @Transaction
     open suspend fun applyDays(days: DaysResponse, syncedAt: Instant) {
@@ -98,7 +101,7 @@ abstract class SyncDao {
     @Query("SELECT habitId, localDay FROM day_logs WHERE localDay BETWEEN :start AND :end")
     protected abstract suspend fun logDaysBetween(start: LocalDate, end: LocalDate): List<HabitDayKey>
 
-    @Query("UPDATE history SET syncedStart = :start, syncedAt = :at")
+    @Query("UPDATE history SET syncedStart = :start, syncedAt = :at WHERE start >= :start")
     protected abstract suspend fun recordHistorySync(start: LocalDate, at: Instant)
 
     @Query("DELETE FROM outbox WHERE id = :id")

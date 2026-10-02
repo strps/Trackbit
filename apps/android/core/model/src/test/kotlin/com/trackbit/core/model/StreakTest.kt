@@ -3,7 +3,7 @@ package com.trackbit.core.model
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** Mirrors apps/backend/test/streak.test.ts, plus [Streak.beforeDay] and [Streak.current]. */
+/** Mirrors apps/backend/test/streak.test.ts, plus [Streak.beforeDay], [Streak.endingBefore] and [Streak.current]. */
 class StreakTest {
     private val regular = TestHabit(HabitType.Count)
     private val complex = TestHabit(HabitType.Complex)
@@ -99,5 +99,43 @@ class StreakTest {
 
     @Test fun `beforeDay caps at a year`() {
         assertEquals(365, Streak.beforeDay(anti, emptyMap(), day("2026-01-12"), day("2020-01-01"), summaryDay = day("2026-01-10"), streakBeforeDay = 365))
+    }
+
+    private fun ratedFrom(from: String, to: String) =
+        generateSequence(day(from)) { it.plusDays(1) }.takeWhile { !it.isAfter(day(to)) }.associateWith { rated(1) }
+
+    private fun endingBefore(
+        habit: TrackableHabit,
+        logs: Map<java.time.LocalDate, StreakDay>,
+        on: String,
+        firstLogDay: String?,
+        knownFrom: String = "2026-01-04",
+        streakBeforeDay: Int = 0,
+    ) = Streak.endingBefore(habit, logs, day(on), firstLogDay?.let(::day), day(knownFrom), day("2026-01-10"), streakBeforeDay)
+
+    @Test fun `endingBefore walks back to a known gap`() {
+        assertEquals(2, endingBefore(regular, ratedFrom("2026-01-08", "2026-01-09"), "2026-01-09", "2025-12-01"))
+        assertEquals(0, endingBefore(regular, ratedFrom("2026-01-08", "2026-01-09"), "2026-01-07", "2025-12-01"))
+    }
+
+    @Test fun `endingBefore stops at the first log, even before the known days`() {
+        assertEquals(3, endingBefore(regular, ratedFrom("2026-01-07", "2026-01-09"), "2026-01-09", "2026-01-07", knownFrom = "2026-01-07"))
+    }
+
+    @Test fun `endingBefore counts back from the server's streak when the walk leaves the known days`() {
+        val logs = ratedFrom("2026-01-04", "2026-01-09")
+        assertEquals(20, endingBefore(regular, logs, "2026-01-09", "2025-12-01", streakBeforeDay = 20))
+        assertEquals(18, endingBefore(regular, logs, "2026-01-07", "2025-12-01", streakBeforeDay = 20))
+    }
+
+    @Test fun `endingBefore counts unknown anti-habit days only through the server's streak`() {
+        assertEquals(29, endingBefore(anti, emptyMap(), "2026-01-08", "2025-01-01", streakBeforeDay = 30))
+        assertEquals(null, endingBefore(anti, emptyMap(), "2026-01-02", "2025-01-01", streakBeforeDay = 30))
+        assertEquals("a capped streak", null, endingBefore(anti, emptyMap(), "2026-01-08", "2020-01-01", streakBeforeDay = 365))
+    }
+
+    @Test fun `endingBefore is unknown when a gap after the day breaks the server's streak`() {
+        val logs = ratedFrom("2026-01-04", "2026-01-07") + ratedFrom("2026-01-09", "2026-01-09")
+        assertEquals(null, endingBefore(regular, logs, "2026-01-07", "2025-12-01", streakBeforeDay = 1))
     }
 }

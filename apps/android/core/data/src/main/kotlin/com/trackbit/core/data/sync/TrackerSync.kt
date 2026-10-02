@@ -100,14 +100,26 @@ internal class TrackerSync @Inject constructor(
         }
     }
 
+    /**
+     * Pulls from the earliest start of the requests that are due up to today, in chunks `/days`
+     * accepts. Newest first, so after each chunk Room is fresh from its start on (see
+     * [com.trackbit.core.database.dao.SyncDao.applyDays]); a failure leaves the rest due.
+     */
     private suspend fun pullHistoryLocked(token: String): SyncResult {
-        val history = db.historyDao().get()
         val now = clock.instant()
-        if (history == null || !history.isDue(now)) return SyncResult.Done
-        return when (val days = safeCall { trackerService.days(history.start, LocalDate.now()) }) {
-            is ApiResult.Success -> if (fenced(token) { db.syncDao().applyDays(days.value, now) }) SyncResult.Done else SyncResult.SignedOut
-            is ApiResult.Failure -> days.error.toPullResult()
+        val due = db.historyDao().all().filter { it.isDue(now) }
+        if (due.isEmpty()) return SyncResult.Done
+        val start = due.minOf { it.start }
+        var end = LocalDate.now()
+        while (!end.isBefore(start)) {
+            val chunkStart = maxOf(start, end.minusDays(MAX_DAYS_PER_PULL - 1L))
+            when (val days = safeCall { trackerService.days(chunkStart, end) }) {
+                is ApiResult.Success -> if (!fenced(token) { db.syncDao().applyDays(days.value, now) }) return SyncResult.SignedOut
+                is ApiResult.Failure -> return days.error.toPullResult()
+            }
+            end = chunkStart.minusDays(1)
         }
+        return SyncResult.Done
     }
 
     private fun ApiError.toPullResult(): SyncResult = when (this) {
@@ -147,10 +159,13 @@ internal class TrackerSync @Inject constructor(
          * comes with every `/today`.
          */
         val HISTORY_MAX_AGE: Duration = Duration.ofHours(6)
+
+        /** The most days one `GET /api/tracker/days` returns (the backend's limit). */
+        const val MAX_DAYS_PER_PULL = 371
     }
 }
 
-/** Whether history must be pulled: never pulled, pulled from a later start, or stale. */
+/** Whether this request must be pulled: never pulled, pulled from a later start, or stale. */
 internal fun HistoryEntity.isDue(now: Instant): Boolean {
     val pulledFrom = syncedStart ?: return true
     val pulledAt = syncedAt ?: return true

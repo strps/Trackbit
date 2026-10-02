@@ -30,6 +30,7 @@ import com.trackbit.widget.preview.PreviewHabits
 import com.trackbit.widget.ui.WidgetTheme
 import com.trackbit.widget.ui.openAppAction
 import com.trackbit.widget.widgetEntryPoint
+import com.trackbit.core.model.HistoryOwner
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
@@ -96,7 +97,7 @@ class HeatmapWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
 
 /** The habit over [window], asking first for the history that fills it (a new day may move it). */
 internal fun observeWithHistory(tracker: TrackerRepository, habitId: Int, window: HeatmapWindow): Flow<TrackedHabit?> = flow {
-    tracker.requestHistory(window.start)
+    tracker.requestHistory(HistoryOwner.Heatmap, window.start)
     emitAll(tracker.observeHabit(habitId, window.today, window.days))
 }
 
@@ -107,6 +108,6 @@ class HeatmapWidgetReceiver : GlanceAppWidgetReceiver() {
     override fun onDisabled(context: Context) {
         super.onDisabled(context)
         val tracker = context.widgetEntryPoint().tracker()
-        goAsync { tracker.releaseHistory() }
+        goAsync { tracker.releaseHistory(HistoryOwner.Heatmap) }
     }
 }

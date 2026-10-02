@@ -5,6 +5,7 @@
 //   presets   @trackbit/types GRADIENT_PRESET_STOPS           → core/model GradientPresets.kt
 //   colors    apps/frontend/src/index.css (:root, .dark)      → core/designsystem WebColors.kt
 //   icons     HABIT_ICON_IDS + the web's lucide registry      → core/designsystem drawable/ic_habit_*.xml
+//             UI_ICONS (the lucide icons the web's screens use) → core/designsystem drawable/ic_ui_*.xml
 //
 // It also fails when the handwritten HabitIcon / ColorTheme enums no longer match @trackbit/types.
 //
@@ -27,6 +28,25 @@ const DESIGNSYSTEM = join(ANDROID, 'core/designsystem/src/main');
 const MODEL_SRC = join(ANDROID, 'core/model/src/main/kotlin/com/trackbit/core/model');
 const DRAWABLE_DIR = join(DESIGNSYSTEM, 'res/drawable');
 const ICON_PREFIX = 'ic_habit_';
+const UI_ICON_PREFIX = 'ic_ui_';
+
+/** Icons the app's screens use, by drawable suffix → lucide-react component, as on the web. */
+const UI_ICONS = {
+    arrow_left: 'ArrowLeft',
+    calendar_search: 'CalendarSearch',
+    check: 'Check',
+    chevron_left: 'ChevronLeft',
+    chevron_right: 'ChevronRight',
+    flame: 'Flame',
+    lock: 'Lock',
+    minus: 'Minus',
+    more_vertical: 'EllipsisVertical',
+    play: 'Play',
+    plus: 'Plus',
+    shield_alert: 'ShieldAlert',
+    stop: 'Square',
+    trophy: 'Trophy',
+};
 
 class GenerateError extends Error {}
 const fail = (message) => {
@@ -427,11 +447,15 @@ async function generateIcons(types) {
     if (!existsSync(lucideDir)) fail('apps/frontend/node_modules/lucide-react is missing: run `pnpm install` first');
     const components = webIconComponents(types.HABIT_ICON_IDS);
     const files = lucideFiles(lucideDir);
+    const icons = [
+        ...types.HABIT_ICON_IDS.map((id) => [`${ICON_PREFIX}${id}`, components[id]]),
+        ...Object.entries(UI_ICONS).map(([name, component]) => [`${UI_ICON_PREFIX}${name}`, component]),
+    ];
     const outputs = {};
-    for (const id of types.HABIT_ICON_IDS) {
-        const file = files[components[id]] ?? fail(`lucide-react has no icon named ${components[id]}`);
+    for (const [drawable, component] of icons) {
+        const file = files[component] ?? fail(`lucide-react has no icon named ${component}`);
         const { __iconNode } = await import(pathToFileURL(join(lucideDir, 'dist/esm/icons', `${file}.js`)).href);
-        outputs[join(DRAWABLE_DIR, `${ICON_PREFIX}${id}.xml`)] = vectorXml(__iconNode, file);
+        outputs[join(DRAWABLE_DIR, `${drawable}.xml`)] = vectorXml(__iconNode, file);
     }
     return outputs;
 }
@@ -451,7 +475,7 @@ async function main() {
 
     const stale = existsSync(DRAWABLE_DIR)
         ? readdirSync(DRAWABLE_DIR)
-              .filter((f) => f.startsWith(ICON_PREFIX))
+              .filter((f) => f.startsWith(ICON_PREFIX) || f.startsWith(UI_ICON_PREFIX))
               .map((f) => join(DRAWABLE_DIR, f))
               .filter((path) => !(path in outputs))
         : [];
