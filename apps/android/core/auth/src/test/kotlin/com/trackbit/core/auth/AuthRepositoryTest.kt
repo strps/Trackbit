@@ -4,6 +4,7 @@ import com.trackbit.core.network.ApiError
 import com.trackbit.core.network.ApiResult
 import com.trackbit.core.network.service.AuthService
 import com.trackbit.core.network.service.HabitsService
+import com.trackbit.core.network.service.MeService
 import com.trackbit.core.network.safeCall
 import com.trackbit.core.network.trackbitOkHttpClient
 import com.trackbit.core.network.trackbitRetrofit
@@ -29,6 +30,7 @@ class AuthRepositoryTest {
     private val harness by lazy { StoreHarness(folder.root.resolve("session.enc")) }
     private val retrofit by lazy { trackbitRetrofit(server.url("/").toString(), trackbitOkHttpClient(harness.store)) }
     private val repository by lazy { DefaultAuthRepository(harness.store, retrofit.create<AuthService>(), harness.scope) }
+    private val preferences by lazy { DefaultPreferencesRepository(harness.store, retrofit.create<MeService>(), harness.scope) }
 
     @After fun tearDown() {
         harness.close()
@@ -130,6 +132,31 @@ class AuthRepositoryTest {
         repository.refresh()
         assertEquals(AuthState.SignedIn(user()), repository.state.value)
         assertEquals("tok.sig", harness.store.currentToken())
+    }
+
+    @Test fun `a preferred source shows in the cached user at once, then reaches the server`() = runTest {
+        harness.settled()
+        signIn()
+        enqueue(204)
+
+        preferences.setPreferredExerciseSource("list:3")
+        assertEquals(AuthState.SignedIn(user().copy(preferredExerciseSource = "list:3")), repository.state.value)
+        val patch = take()
+        assertEquals("PATCH", patch.method)
+        assertEquals("/api/me/preferences", patch.target)
+        assertEquals("""{"preferredExerciseSource":"list:3"}""", patch.body?.utf8())
+
+        enqueue(204)
+        preferences.setPreferredExerciseSource(null)
+        assertEquals("""{"preferredExerciseSource":null}""", take().body?.utf8())
+        assertEquals(AuthState.SignedIn(user()), repository.state.value)
+    }
+
+    @Test fun `a preferred source while signed out changes nothing`() = runTest {
+        harness.settled()
+        preferences.setPreferredExerciseSource("list:3")
+        assertEquals(AuthState.SignedOut, repository.state.value)
+        assertEquals(0, server.requestCount)
     }
 
     private fun sessionJson(name: String = "cj") = """

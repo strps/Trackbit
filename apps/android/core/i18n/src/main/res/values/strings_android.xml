@@ -19,7 +19,6 @@
     <string name="android_tracker_open_session">Open the workout for %1$s</string>
     <string name="android_tracker_more_options">More options</string>
     <string name="android_session_back">Back</string>
-    <string name="android_session_add_exercise">Add exercise</string>
     <string name="android_session_increase">Increase %1$s</string>
     <string name="android_session_decrease">Decrease %1$s</string>
     <string name="android_session_start_stopwatch">Start the timer</string>

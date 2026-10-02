@@ -22,7 +22,10 @@ import com.trackbit.core.model.CreateExerciseLogRequest
 import com.trackbit.core.model.CreatePerformanceRequest
 import com.trackbit.core.model.CreateSessionRequest
 import com.trackbit.core.model.Exercise
+import com.trackbit.core.model.ExerciseSourceDescriptor
 import com.trackbit.core.model.HabitType
+import com.trackbit.core.model.QueueEmptyReason
+import com.trackbit.core.model.QueueEntry
 import com.trackbit.core.model.SetValues
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -47,11 +50,21 @@ interface SessionRepository {
     /** The exercise catalog as of the last [refresh]: system exercises and the user's own, by name. */
     fun observeExercises(): Flow<List<Exercise>>
 
+    /** The picker's exercise sources as of the last [refresh], in the server's order. */
+    fun observeSources(): Flow<List<ExerciseSourceDescriptor>>
+
+    /** [key]'s queue as of its last [refreshQueue]; null if it was never pulled. */
+    fun observeQueue(key: String): Flow<SourceQueue?>
+
     /**
      * Sends pending writes, then reloads [habitId]'s sessions on [day] (unless writes to that day
-     * are still pending) and the exercise catalog. For opening a session screen and pull-to-refresh.
+     * are still pending), the exercise catalog and the sources. For opening a session screen and
+     * pull-to-refresh.
      */
     suspend fun refresh(habitId: Int, day: LocalDate): SyncResult
+
+    /** Reloads [key]'s queue. */
+    suspend fun refreshQueue(key: String): SyncResult
 
     /** Starts a session on [day], whose session count goes up at once. Complex habits only. */
     suspend fun startSession(habitId: Int, day: LocalDate): WriteResult
@@ -69,8 +82,10 @@ interface SessionRepository {
     suspend fun removeExercise(logId: String): WriteResult
 
     /**
-     * Adds a set after the log's last one. It starts from the exercise's last performance: the
-     * newer of its latest set in Room and the catalog's (like the web's `buildNewSetValues`).
+     * Adds a set after the log's last one, with the values the web's `buildNewSetValues` picks:
+     * each prescribed target of the list item the log came from (if a cached queue holds it),
+     * else the exercise's last performance, the newer of its latest set in Room and the
+     * catalog's. RPE is an outcome, so it only ever comes from the last performance.
      */
     suspend fun addSet(logId: String): WriteResult
 
@@ -78,6 +93,15 @@ interface SessionRepository {
     suspend fun updateSet(setId: String, values: SetValues): WriteResult
 
     suspend fun deleteSet(setId: String): WriteResult
+}
+
+/** A source's queue as last pulled. */
+sealed interface SourceQueue {
+    /** [emptyReason] says why [entries] is empty, when it is. */
+    data class Resolved(val entries: List<QueueEntry>, val emptyReason: QueueEmptyReason?) : SourceQueue
+
+    /** The server no longer resolves it (a deleted list): the picker falls back to browse mode. */
+    data object Gone : SourceQueue
 }
 
 /** One exercise session, as the session screen shows it. */
@@ -117,6 +141,7 @@ internal class DefaultSessionRepository @Inject constructor(
 ) : SessionRepository {
     private val sessionDao = db.sessionDao()
     private val exerciseDao = db.exerciseDao()
+    private val sourceDao = db.sourceDao()
     private val habitDao = db.habitDao()
     private val dayLogDao = db.dayLogDao()
     private val writer = OutboxWriter(db, scheduler)
@@ -129,7 +154,20 @@ internal class DefaultSessionRepository @Inject constructor(
     override fun observeExercises(): Flow<List<Exercise>> =
         exerciseDao.observeAll().map { exercises -> exercises.map { it.toExercise() } }
 
+    override fun observeSources(): Flow<List<ExerciseSourceDescriptor>> =
+        sourceDao.observeSources().map { sources -> sources.map { it.toDescriptor() } }
+
+    override fun observeQueue(key: String): Flow<SourceQueue?> = sourceDao.observeQueue(key).map { cached ->
+        when {
+            cached == null -> null
+            cached.queue.gone -> SourceQueue.Gone
+            else -> SourceQueue.Resolved(cached.entries.sortedBy { it.ordinal }.map { it.toEntry() }, cached.queue.emptyReason)
+        }
+    }
+
     override suspend fun refresh(habitId: Int, day: LocalDate): SyncResult = sync.syncSessions(habitId, day)
+
+    override suspend fun refreshQueue(key: String): SyncResult = sync.syncQueue(key)
 
     override suspend fun startSession(habitId: Int, day: LocalDate): WriteResult = writer.write(habitId) {
         if (habitDao.get(habitId)?.type != HabitType.Complex) return@write null
@@ -173,7 +211,7 @@ internal class DefaultSessionRepository @Inject constructor(
     override suspend fun addSet(logId: String): WriteResult =
         writeTo({ sessionDao.logDay(logId) }, exerciseId = { sessionDao.exerciseOfLog(logId) }) { day ->
             val uuid = newUuid()
-            val values = lastPerformance(checkNotNull(sessionDao.exerciseOfLog(logId)))
+            val values = newSetValues(logId, checkNotNull(sessionDao.exerciseOfLog(logId)))
             // Like the web: one more than the sets the log has now.
             val number = sessionDao.setCount(logId) + 1
             sessionDao.insert(
@@ -222,6 +260,19 @@ internal class DefaultSessionRepository @Inject constructor(
             writer.queue(key.habitId) { change(key) }
         },
     )
+
+    /** See [SessionRepository.addSet]. Prescribed durations are seconds; sets store ms. */
+    private suspend fun newSetValues(logId: String, exerciseId: Int): SetValues {
+        val last = lastPerformance(exerciseId)
+        val prescription = sessionDao.listItemOfLog(logId)?.let { sourceDao.prescription(it) } ?: return last
+        return SetValues(
+            reps = prescription.targetReps ?: last.reps,
+            weight = prescription.targetWeight ?: last.weight,
+            duration = prescription.targetDuration?.let { it * 1000 } ?: last.duration,
+            distance = prescription.targetDistance ?: last.distance,
+            rpe = last.rpe,
+        )
+    }
 
     /**
      * The newer of [exerciseId]'s latest set in Room (which may not have reached the server yet)

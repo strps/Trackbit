@@ -96,6 +96,28 @@ class MigrationTest {
         }
     }
 
+    @Test fun `5 to 6 adds exercise sources and their queues, keeping pending writes`() {
+        helper.createDatabase(NAME, 5).use { db ->
+            db.execSQL(
+                "INSERT INTO outbox (type, habitId, localDay, payload, idempotencyKey, createdAt, attempts) " +
+                    "VALUES ('Check', 1, '2026-09-26', '{}', 'key-1', 0, 0)",
+            )
+        }
+
+        helper.runMigrationsAndValidate(NAME, 6, true, *Migrations.ALL).use { db ->
+            for (table in listOf("exercise_sources", "source_queues", "queue_entries")) {
+                db.query("SELECT COUNT(*) FROM $table").use { cursor ->
+                    cursor.moveToFirst()
+                    assertEquals(0, cursor.getInt(0))
+                }
+            }
+            db.query("SELECT COUNT(*) FROM outbox").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(1, cursor.getInt(0))
+            }
+        }
+    }
+
     private companion object {
         const val NAME = "migration-test.db"
     }

@@ -42,6 +42,8 @@ These are covered by unit tests but were not exercised on the emulator for W1. R
 - **Set edits aren't coalesced** (D3): every stepper tap or RPE change queues its own full-value `UpdatePerformance`, as the web sends one PATCH per change. Correct (FIFO, last write wins) but chatty; merge a pending update into the next one for the same set if it ever matters.
 - **The lap/hold stopwatch lives on the screen** (D3, like the web's): it survives rotation but not leaving the screen, and nothing is saved until pause. Moving it onto the timer engine (as D5 does for rest) would make it survive.
 - **Only the play button opens a workout row's session** (D1/D3); tapping the rest of the row does nothing.
+- **No "add to list" in the picker** (D4): the web's rows have `AddToListMenu` (`capabilities.canAppend`). It edits lists, which the app can't do yet; add it with the lists screen (Phase 3). Likewise the "No lists yet" hint is disabled instead of opening a list editor.
+- **System-named sources show "Source"** (D4): no source has a `nameKey` yet. When programs bring one ("today's routine"), map its key to a string in `sourceName` (`ExercisePicker.kt`).
 - **The web's flexibility card can't start a hold** (no add button when a log has no set); the app adds one with "Start" (D3). Give the web the same.
 
 ## Housekeeping
@@ -49,6 +51,9 @@ These are covered by unit tests but were not exercised on the emulator for W1. R
 - **`@trackbit/types` has no `uuid` on sessions, logs and sets** (D2 added the column). The web ignores it; its optimistic rows use negative temp ids. Adopting client uuids on the web too would let it drop the temp-id swapping in `useActivityTracker.ts`, and then the types should carry `uuid`.
 - **Session rows stay in Room for every day the app opened** (D2), until sign-out. Small, but never pruned; prune days older than the history window if it ever matters.
 - **Deleting a session, log or set isn't gated on frozen habits** on the server (creates and edits are). Same as before D2; decide whether deletes of frozen data should be allowed.
+- **A preferred-source change made offline is lost** (D4): `PreferencesRepository` updates the cached user and PATCHes once; if the PATCH fails, the next session refresh brings the server's value back. Queue it (outbox or a retrying worker) if that bites.
+- **Prescribed weights aren't converted** (D4, same as the web's `buildNewSetValues`): a prescription is in the exercise's `defaultWeightUnit`, but sets store kg, so a `lbs` exercise's target weight is taken as kg. Fix on both clients (or store prescriptions in kg) once there is a prescription editor.
+- **A prescription is found only while a cached queue holds its list item** (D4): a log picked from a list on the web, whose list the app never resolved, starts its sets from the last performance. Pulling every list's queue (or `GET /exercise-lists`) would cover it.
 - **A day's sessions refresh only when asked** (`SessionRepository.refresh`: the session screen on open and on pull-to-refresh). A session added on the web shows in the app's session count (via `/today`) before its contents.
 
 - **The tracker's history request can outlive the screen** (D1): if the app closes while a past day is shown, the request stays (periodic sync pulls it every 6 h) until the tracker screen starts again and releases it. Releasing from `onCleared` would need an app-wide scope in features.

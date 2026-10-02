@@ -2,7 +2,9 @@ package com.trackbit.feature.session
 
 import com.trackbit.core.auth.AuthRepository
 import com.trackbit.core.auth.AuthState
+import com.trackbit.core.auth.PreferencesRepository
 import com.trackbit.core.data.SessionRepository
+import com.trackbit.core.data.SourceQueue
 import com.trackbit.core.data.SyncResult
 import com.trackbit.core.data.TrackedExerciseLog
 import com.trackbit.core.data.TrackedHabit
@@ -12,12 +14,15 @@ import com.trackbit.core.data.WriteResult
 import com.trackbit.core.model.ColorTheme
 import com.trackbit.core.model.Exercise
 import com.trackbit.core.model.ExerciseLogCardStyle
+import com.trackbit.core.model.ExerciseSourceDescriptor
 import com.trackbit.core.model.HabitIcon
 import com.trackbit.core.model.HabitProgress
 import com.trackbit.core.model.HabitType
+import com.trackbit.core.model.QueueEntry
 import com.trackbit.core.model.RecentDay
 import com.trackbit.core.model.SessionUser
 import com.trackbit.core.model.SetValues
+import com.trackbit.core.model.SourceCapabilities
 import com.trackbit.core.model.UnitSystem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -48,6 +53,7 @@ class SessionViewModelTest {
     private val sessions = FakeSessionRepository()
     private val tracker = FakeTrackerRepository()
     private val auth = FakeAuthRepository()
+    private val preferences = FakePreferencesRepository(auth)
 
     @Before fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
 
@@ -55,7 +61,7 @@ class SessionViewModelTest {
 
     /** Subscribes to [SessionViewModel.state] for the test, as the screen would. */
     private fun TestScope.subscribed(): SessionViewModel {
-        val viewModel = SessionViewModel(habitId = 1, day = DAY, sessions = sessions, tracker = tracker, auth = auth)
+        val viewModel = SessionViewModel(habitId = 1, day = DAY, sessions = sessions, tracker = tracker, auth = auth, preferences = preferences)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
         return viewModel
     }
@@ -113,7 +119,7 @@ class SessionViewModelTest {
         val values = SetValues(reps = 8, weight = 60.0, duration = null, distance = null, rpe = 7)
 
         viewModel.startSession()
-        viewModel.addExercise("s-1", 10)
+        viewModel.addExercise("s-1", 10, listItemId = 4)
         viewModel.addSet("l-1")
         viewModel.updateSet("p-1", values)
         viewModel.deleteSet("p-1")
@@ -121,10 +127,61 @@ class SessionViewModelTest {
         viewModel.deleteSession("s-1")
 
         assertEquals(
-            listOf("start 1 $DAY", "add s-1 10", "set l-1", "update p-1 $values", "delete set p-1", "remove l-1", "delete s-1"),
+            listOf("start 1 $DAY", "add s-1 10 4", "set l-1", "update p-1 $values", "delete set p-1", "remove l-1", "delete s-1"),
             sessions.writes,
         )
         assertNull(viewModel.state.value.message)
+    }
+
+    @Test fun `the preferred source resolves through the sources, and its queue is pulled`() = runTest {
+        sessions.sources.value = listOf(source("list:1"), source("list:2"))
+        sessions.queues["list:2"] = MutableStateFlow(SourceQueue.Resolved(listOf(QueueEntry(10, 0, 4, null)), null))
+        auth.state.value = AuthState.SignedIn(user(preferredSource = "list:2"))
+
+        val viewModel = subscribed()
+        assertEquals("list:2", viewModel.state.value.source?.key)
+        assertEquals(SourceQueue.Resolved(listOf(QueueEntry(10, 0, 4, null)), null), viewModel.state.value.queue)
+        assertEquals("once on open", listOf("list:2"), sessions.queueRefreshes)
+
+        viewModel.selectSource("list:1")
+        assertEquals(listOf("list:1"), preferences.set)
+        assertEquals("list:1", viewModel.state.value.source?.key)
+        assertNull("never pulled", viewModel.state.value.queue)
+        assertEquals(listOf("list:2", "list:1"), sessions.queueRefreshes)
+
+        viewModel.refresh()
+        assertEquals("pull-to-refresh reloads the queue", listOf("list:2", "list:1", "list:1"), sessions.queueRefreshes)
+
+        viewModel.selectSource(null)
+        assertNull(viewModel.state.value.source)
+        assertNull(viewModel.state.value.queue)
+    }
+
+    @Test fun `a preferred key no source has is browse mode, and is cleared once a pull confirms it`() = runTest {
+        // Room's copy predates the list: until this screen's pull answers, the key is kept.
+        sessions.sources.value = listOf(source("list:1"))
+        sessions.refreshResult = SyncResult.Retry
+        auth.state.value = AuthState.SignedIn(user(preferredSource = "list:9"))
+
+        val viewModel = subscribed()
+        assertNull(viewModel.state.value.source)
+        assertEquals(emptyList<String?>(), preferences.set)
+        assertTrue(viewModel.state.value.sourcesLoaded)
+
+        sessions.refreshResult = SyncResult.Done
+        viewModel.refresh()
+        assertEquals(listOf<String?>(null), preferences.set)
+        assertNull(viewModel.state.value.source)
+    }
+
+    @Test fun `no lists is only said once the sources are known`() = runTest {
+        sessions.refreshResult = SyncResult.Retry
+        val viewModel = subscribed()
+        assertFalse(viewModel.state.value.sourcesLoaded)
+
+        sessions.refreshResult = SyncResult.Done
+        viewModel.refresh()
+        assertTrue(viewModel.state.value.sourcesLoaded)
     }
 
     @Test fun `refused writes report why`() = runTest {
@@ -165,11 +222,18 @@ private fun exercise(id: Int) = Exercise(
     defaultWeightUnit = "kg", defaultDistanceUnit = "km", lastPerformance = null,
 )
 
-private fun user(units: UnitSystem, style: ExerciseLogCardStyle) = SessionUser(
+private fun user(
+    units: UnitSystem = UnitSystem.Metric,
+    style: ExerciseLogCardStyle = ExerciseLogCardStyle.Classic,
+    preferredSource: String? = null,
+) = SessionUser(
     id = "u1", name = "Ana", email = "ana@example.com", emailVerified = true, image = null,
     role = "user", locale = "en", timezone = "UTC", unitSystem = units,
-    exerciseLogCardStyle = style, preferredExerciseSource = null,
+    exerciseLogCardStyle = style, preferredExerciseSource = preferredSource,
 )
+
+private fun source(key: String) =
+    ExerciseSourceDescriptor(key, name = key, nameKey = null, itemCount = 1, SourceCapabilities(true, true, false, false), frozen = false)
 
 /** An [T] whose every member fails: fakes override only what the view model uses. */
 private inline fun <reified T> unused(): T = Proxy.newProxyInstance(T::class.java.classLoader, arrayOf(T::class.java)) { _, method, _ ->
@@ -193,6 +257,19 @@ private class FakeSessionRepository : SessionRepository by unused() {
 
     override fun observeExercises(): Flow<List<Exercise>> = exercises
 
+    val sources = MutableStateFlow<List<ExerciseSourceDescriptor>>(emptyList())
+    val queues = mutableMapOf<String, MutableStateFlow<SourceQueue?>>()
+    val queueRefreshes = mutableListOf<String>()
+
+    override fun observeSources(): Flow<List<ExerciseSourceDescriptor>> = sources
+
+    override fun observeQueue(key: String): Flow<SourceQueue?> = queues.getOrPut(key) { MutableStateFlow(null) }
+
+    override suspend fun refreshQueue(key: String): SyncResult {
+        queueRefreshes += key
+        return SyncResult.Done
+    }
+
     override suspend fun refresh(habitId: Int, day: LocalDate): SyncResult {
         refreshes += habitId to day
         return refreshResult
@@ -205,7 +282,7 @@ private class FakeSessionRepository : SessionRepository by unused() {
 
     override suspend fun startSession(habitId: Int, day: LocalDate) = write("start $habitId $day")
     override suspend fun deleteSession(sessionId: String) = write("delete $sessionId")
-    override suspend fun addExercise(sessionId: String, exerciseId: Int, listItemId: Int?) = write("add $sessionId $exerciseId")
+    override suspend fun addExercise(sessionId: String, exerciseId: Int, listItemId: Int?) = write("add $sessionId $exerciseId $listItemId")
     override suspend fun removeExercise(logId: String) = write("remove $logId")
     override suspend fun addSet(logId: String) = write("set $logId")
     override suspend fun updateSet(setId: String, values: SetValues) = write("update $setId $values")
@@ -220,4 +297,15 @@ private class FakeTrackerRepository : TrackerRepository by unused() {
 
 private class FakeAuthRepository : AuthRepository by unused() {
     override val state = MutableStateFlow<AuthState>(AuthState.SignedOut)
+}
+
+/** Changes the signed-in user's preference, as the real one does in the cached session. */
+private class FakePreferencesRepository(private val auth: FakeAuthRepository) : PreferencesRepository {
+    val set = mutableListOf<String?>()
+
+    override suspend fun setPreferredExerciseSource(key: String?) {
+        set += key
+        val user = (auth.state.value as? AuthState.SignedIn)?.user ?: return
+        auth.state.value = AuthState.SignedIn(user.copy(preferredExerciseSource = key))
+    }
 }

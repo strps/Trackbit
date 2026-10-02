@@ -19,7 +19,6 @@
     <string name="android_tracker_open_session">Abrir el entrenamiento de %1$s</string>
     <string name="android_tracker_more_options">Más opciones</string>
     <string name="android_session_back">Atrás</string>
-    <string name="android_session_add_exercise">Añadir ejercicio</string>
     <string name="android_session_increase">Aumentar %1$s</string>
     <string name="android_session_decrease">Disminuir %1$s</string>
     <string name="android_session_start_stopwatch">Iniciar el cronómetro</string>

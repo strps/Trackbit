@@ -39,6 +39,9 @@ abstract class SessionDao {
     @Query("SELECT exerciseId FROM exercise_logs WHERE uuid = :uuid")
     abstract suspend fun exerciseOfLog(uuid: String): Int?
 
+    @Query("SELECT listItemId FROM exercise_logs WHERE uuid = :uuid")
+    abstract suspend fun listItemOfLog(uuid: String): Int?
+
     @Query(
         "SELECT l.exerciseId FROM exercise_performances p JOIN exercise_logs l ON l.uuid = p.logUuid WHERE p.uuid = :uuid",
     )

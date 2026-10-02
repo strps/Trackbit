@@ -11,6 +11,8 @@ import com.trackbit.core.model.ExercisePerformance
 import com.trackbit.core.model.ExerciseSessionDetail
 import com.trackbit.core.model.HabitType
 import com.trackbit.core.model.LastPerformance
+import com.trackbit.core.model.Prescription
+import com.trackbit.core.model.QueueEntry
 import com.trackbit.core.model.SetValues
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -220,6 +222,59 @@ class SessionRepositoryTest {
 
         assertEquals(SyncResult.SignedOut, repository.refresh(1, DAY))
         assertEquals(emptyList<TrackedSession>(), sessions())
+    }
+
+    @Test fun `a new set of a prescribed list item starts from its targets, the rest from last time`() = runTest {
+        // Item 4 prescribes 8 reps and 90 s, item 5 nothing; RPE is never prescribed.
+        val rx = Prescription(targetSets = 3, targetReps = 8, targetWeight = null, targetDuration = 90, targetDistance = null, restSeconds = 60, notes = null)
+        exercises.queueAnswer = { key -> queue(key, QueueEntry(10, 0, 4, rx), QueueEntry(10, 1, 5, null)) }
+        assertEquals(SyncResult.Done, repository.refreshQueue("list:1"))
+
+        repository.startSession(1, DAY)
+        val sessionId = sessions().single().id
+        repository.addExercise(sessionId, 10, listItemId = 4)
+        repository.addSet(sessions().single().logs.single().id)
+        assertEquals(LAST_TIME.copy(reps = 8, duration = 90_000), sessions().single().logs.single().sets.single().values)
+
+        repository.addExercise(sessionId, 10, listItemId = 5)
+        val unprescribed = sessions().single().logs.single { it.listItemId == 5 }
+        repository.addSet(unprescribed.id)
+        assertEquals(LAST_TIME.copy(reps = 8, duration = 90_000), sessions().single().logs.single { it.listItemId == 5 }.sets.single().values)
+    }
+
+    @Test fun `refresh pulls the sources, and a queue is pulled on its own`() = runTest {
+        exercises.sourcesAnswer = { listOf(source("list:2", "Legs"), source("list:1", "Pull")) }
+        exercises.queueAnswer = { key -> queue(key, QueueEntry(10, 0, 4, null)) }
+
+        assertEquals(SyncResult.Done, repository.refresh(1, DAY))
+        assertEquals(listOf("Legs", "Pull"), repository.observeSources().first().map { it.name })
+        assertEquals(null, repository.observeQueue("list:1").first())
+
+        assertEquals(SyncResult.Done, repository.refreshQueue("list:1"))
+        assertEquals(SourceQueue.Resolved(listOf(QueueEntry(10, 0, 4, null)), null), repository.observeQueue("list:1").first())
+    }
+
+    @Test fun `a queue that answers 404 is gone, and offline keeps the last copy`() = runTest {
+        exercises.queueAnswer = { key -> queue(key, QueueEntry(10, 0, 4, null)) }
+        repository.refreshQueue("list:1")
+
+        exercises.queueAnswer = { throw IOException("offline") }
+        assertEquals(SyncResult.Retry, repository.refreshQueue("list:1"))
+        assertEquals(SourceQueue.Resolved(listOf(QueueEntry(10, 0, 4, null)), null), repository.observeQueue("list:1").first())
+
+        exercises.queueAnswer = { throw httpError(404) }
+        assertEquals(SyncResult.Done, repository.refreshQueue("list:1"))
+        assertEquals(SourceQueue.Gone, repository.observeQueue("list:1").first())
+    }
+
+    @Test fun `a queue pulled after sign-out writes nothing`() = runTest {
+        exercises.queueAnswer = { key ->
+            tokens.token = null
+            queue(key, QueueEntry(10, 0, 4, null))
+        }
+        assertEquals(SyncResult.SignedOut, repository.refreshQueue("list:1"))
+        tokens.token = "t1"
+        assertEquals(null, repository.observeQueue("list:1").first())
     }
 
     private companion object {

@@ -1,0 +1,25 @@
+{
+  "request": "GET /api/exercise-sources/list::id",
+  "status": 200,
+  "body": {
+    "descriptor": {
+      "ref": {
+        "kind": "list",
+        "listId": 2
+      },
+      "key": "list:2",
+      "name": "Legs",
+      "itemCount": 0,
+      "capabilities": {
+        "canAppend": true,
+        "canReorder": true,
+        "prescribes": false,
+        "isDynamic": false
+      },
+      "frozen": false
+    },
+    "entries": [],
+    "emptyReason": "list_empty",
+    "generatedAt": "2026-01-01T00:00:00.000Z"
+  }
+}

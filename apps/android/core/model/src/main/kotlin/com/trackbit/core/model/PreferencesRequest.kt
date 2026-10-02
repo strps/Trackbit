@@ -4,10 +4,7 @@ import kotlinx.serialization.Serializable
 
 /**
  * `PATCH /api/me/preferences`. Null fields are left out of the body and stay unchanged; at least
- * one must be set.
- *
- * `preferredExerciseSource` is not here yet: clearing it needs an explicit `null` on the wire,
- * which this "null means absent" shape can't express. Add it with a tri-state type in Phase 3.
+ * one must be set. `preferredExerciseSource` has its own body, [PreferredExerciseSourceRequest].
  */
 @Serializable
 data class PreferencesRequest(
@@ -24,3 +21,13 @@ data class PreferencesRequest(
         }
     }
 }
+
+/**
+ * `PATCH /api/me/preferences` with only `preferredExerciseSource`. Always encoded, `null` included:
+ * null is browse mode (no source), which [PreferencesRequest]'s "null means absent" can't say.
+ */
+@Serializable
+data class PreferredExerciseSourceRequest(
+    /** A source key such as `list:12`, or null for browse mode. */
+    val preferredExerciseSource: String?,
+)

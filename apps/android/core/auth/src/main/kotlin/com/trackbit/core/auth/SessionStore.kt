@@ -69,9 +69,13 @@ internal class SessionStore @Inject constructor(
         _state.value = AuthState.SignedIn(session.user)
     }
 
-    /** Replaces the cached user, if [token] is still the session's. */
-    suspend fun updateUser(ifToken: String, user: SessionUser) = locked {
+    /** Replaces the cached user, if [ifToken] is still the session's. */
+    suspend fun updateUser(ifToken: String, user: SessionUser) = updateUser(ifToken) { user }
+
+    /** Changes the cached user, if [ifToken] is still the session's. */
+    suspend fun updateUser(ifToken: String, change: (SessionUser) -> SessionUser) = locked {
         val session = current?.takeIf { it.token == ifToken } ?: return@locked
+        val user = change(session.user)
         val updated = session.copy(user = user)
         dataStore.updateData { updated }
         current = updated

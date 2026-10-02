@@ -10,12 +10,14 @@ object UiIcons {
     val ArrowLeft = R.drawable.ic_ui_arrow_left
     val CalendarSearch = R.drawable.ic_ui_calendar_search
     val Check = R.drawable.ic_ui_check
+    val ChevronDown = R.drawable.ic_ui_chevron_down
     val ChevronLeft = R.drawable.ic_ui_chevron_left
     val ChevronRight = R.drawable.ic_ui_chevron_right
     val Clock = R.drawable.ic_ui_clock
     val Dumbbell = R.drawable.ic_ui_dumbbell
     val Flame = R.drawable.ic_ui_flame
     val Hash = R.drawable.ic_ui_hash
+    val Layers = R.drawable.ic_ui_layers
     val Lock = R.drawable.ic_ui_lock
     val MapPin = R.drawable.ic_ui_map_pin
     val Minus = R.drawable.ic_ui_minus

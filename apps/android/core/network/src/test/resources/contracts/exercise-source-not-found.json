@@ -1,0 +1,7 @@
+{
+  "request": "GET /api/exercise-sources/list::id",
+  "status": 404,
+  "body": {
+    "error": "Exercise source not found"
+  }
+}

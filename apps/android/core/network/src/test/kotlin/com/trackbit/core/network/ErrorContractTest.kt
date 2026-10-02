@@ -2,6 +2,7 @@ package com.trackbit.core.network
 
 import com.trackbit.core.model.IncrementRequest
 import com.trackbit.core.network.service.AuthService
+import com.trackbit.core.network.service.ExerciseService
 import com.trackbit.core.network.service.TrackerService
 import com.trackbit.core.network.service.session
 import com.trackbit.core.network.service.signIn
@@ -24,6 +25,7 @@ class ErrorContractTest {
     private val server = TestServer(tokens)
     private val tracker = server.service<TrackerService>()
     private val auth = server.service<AuthService>()
+    private val exercises = server.service<ExerciseService>()
 
     @After fun tearDown() = server.close()
 
@@ -37,6 +39,10 @@ class ErrorContractTest {
         "habit-frozen.json" to { assertEquals(ApiError.HabitFrozen(4), increment()) },
         "custom-exercise-frozen.json" to { assertEquals(ApiError.CustomExerciseFrozen(1), increment()) },
         "habit-not-found.json" to { assertEquals(ApiError.NotFound("Habit not found"), increment()) },
+        "exercise-source-not-found.json" to {
+            val result = safeCall { exercises.source("list:999999") } as ApiResult.Failure
+            assertEquals(ApiError.NotFound("Exercise source not found"), result.error)
+        },
         "validation.json" to {
             val error = increment() as ApiError.Validation
             assertEquals("Validation failed", error.message)

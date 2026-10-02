@@ -6,6 +6,7 @@ import com.trackbit.core.model.ColorStopSerializer
 import com.trackbit.core.model.ColorTheme
 import com.trackbit.core.model.HabitIcon
 import com.trackbit.core.model.HabitType
+import com.trackbit.core.model.QueueEmptyReason
 import com.trackbit.core.model.serialization.TrackbitJson
 import com.trackbit.core.model.serialization.WireEnum
 import kotlinx.serialization.builtins.ListSerializer
@@ -37,6 +38,9 @@ internal class Converters {
 
     @TypeConverter fun habitIconToWire(value: HabitIcon): String = value.wire
     @TypeConverter fun wireToHabitIcon(value: String): HabitIcon = HabitIcon.Serializer.fromWire(value)
+
+    @TypeConverter fun emptyReasonToWire(value: QueueEmptyReason?): String? = value?.stored()
+    @TypeConverter fun wireToEmptyReason(value: String?): QueueEmptyReason? = value?.let(QueueEmptyReason.Serializer::fromWire)
 
     private fun <E> E.stored(): String where E : Enum<E>, E : WireEnum = wire ?: name
 

@@ -8,21 +8,26 @@ import androidx.room.Upsert
 import com.trackbit.core.database.entity.DayLogEntity
 import com.trackbit.core.database.entity.ExerciseEntity
 import com.trackbit.core.database.entity.ExerciseLogEntity
+import com.trackbit.core.database.entity.ExerciseSourceEntity
 import com.trackbit.core.database.entity.HabitEntity
 import com.trackbit.core.database.entity.PerformanceEntity
+import com.trackbit.core.database.entity.QueueEntryEntity
 import com.trackbit.core.database.entity.SessionEntity
+import com.trackbit.core.database.entity.SourceQueueEntity
 import com.trackbit.core.database.entity.toEntity
 import com.trackbit.core.model.DayLog
 import com.trackbit.core.model.DaysResponse
 import com.trackbit.core.model.Exercise
 import com.trackbit.core.model.ExerciseSessionDetail
+import com.trackbit.core.model.ExerciseSourceDescriptor
+import com.trackbit.core.model.ResolvedQueue
 import com.trackbit.core.model.TodayResponse
 import java.time.Instant
 import java.time.LocalDate
 
 /**
  * Writes server data into Room: `/today` snapshots, the rows tracker writes return, a day's
- * sessions and the exercise catalog. The only way server data reaches tracker tables, so the
+ * sessions, the exercise catalog and the picker's sources and queues. The only way server data reaches tracker tables, so the
  * pending-op guard lives in one place.
  */
 @Dao
@@ -163,6 +168,41 @@ abstract class SyncDao {
         deleteExercisesNotIn(exercises.map { it.id })
         upsertExercises(exercises.map { it.toEntity() })
     }
+
+    /** Replaces the exercise sources. A source no longer listed takes its cached queue with it. */
+    @Transaction
+    open suspend fun applySources(sources: List<ExerciseSourceDescriptor>) {
+        deleteAllSources()
+        insertSources(sources.mapIndexed { i, source -> source.toEntity(i) })
+        deleteQueuesNotIn(sources.map { it.key })
+    }
+
+    /** Replaces [key]'s queue with the server's answer: [queue], or null when it no longer resolves. */
+    @Transaction
+    open suspend fun applyQueue(key: String, queue: ResolvedQueue?, pulledAt: Instant) {
+        // Replacing the row cascades to its old entries.
+        deleteQueue(key)
+        insertQueue(SourceQueueEntity(key, gone = queue == null, emptyReason = queue?.emptyReason, pulledAt = pulledAt))
+        if (queue != null) {
+            insertEntries(
+                queue.entries.mapIndexed { i, e -> QueueEntryEntity(key, i, e.exerciseId, e.position, e.listItemId, e.prescription) },
+            )
+        }
+    }
+
+    @Query("DELETE FROM exercise_sources")
+    protected abstract suspend fun deleteAllSources()
+
+    @Insert protected abstract suspend fun insertSources(sources: List<ExerciseSourceEntity>)
+
+    @Query("DELETE FROM source_queues WHERE `key` NOT IN (:keys)")
+    protected abstract suspend fun deleteQueuesNotIn(keys: List<String>)
+
+    @Query("DELETE FROM source_queues WHERE `key` = :key")
+    protected abstract suspend fun deleteQueue(key: String)
+
+    @Insert protected abstract suspend fun insertQueue(queue: SourceQueueEntity)
+    @Insert protected abstract suspend fun insertEntries(entries: List<QueueEntryEntity>)
 
     @Query("DELETE FROM exercise_sessions WHERE habitId = :habitId AND localDay = :day")
     protected abstract suspend fun deleteSessions(habitId: Int, day: LocalDate)

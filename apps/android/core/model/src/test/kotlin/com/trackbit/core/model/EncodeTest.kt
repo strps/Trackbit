@@ -38,4 +38,9 @@ class EncodeTest {
         val stop = ColorStop(0.5f, Rgba(255f, 225f, 0f))
         assertEquals("""{"position":0.5,"color":[255.0,225.0,0.0,1.0]}""", TrackbitJson.encodeToString(stop))
     }
+
+    @Test fun `browse mode is sent as an explicit null source`() {
+        assertEquals("""{"preferredExerciseSource":null}""", TrackbitJson.encodeToString(PreferredExerciseSourceRequest(null)))
+        assertEquals("""{"preferredExerciseSource":"list:3"}""", TrackbitJson.encodeToString(PreferredExerciseSourceRequest("list:3")))
+    }
 }

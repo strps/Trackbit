@@ -12,6 +12,8 @@ import com.google.crypto.tink.aead.AeadConfig
 import com.google.crypto.tink.integration.android.AndroidKeysetManager
 import com.trackbit.core.auth.AuthRepository
 import com.trackbit.core.auth.DefaultAuthRepository
+import com.trackbit.core.auth.DefaultPreferencesRepository
+import com.trackbit.core.auth.PreferencesRepository
 import com.trackbit.core.auth.SessionSerializer
 import com.trackbit.core.auth.SessionStore
 import com.trackbit.core.auth.SignOutHook
@@ -76,6 +78,9 @@ internal abstract class AuthBindings {
 
     @Binds
     abstract fun authRepository(repository: DefaultAuthRepository): AuthRepository
+
+    @Binds
+    abstract fun preferencesRepository(repository: DefaultPreferencesRepository): PreferencesRepository
 
     /** Empty until a module contributes one; `core:data` clears the database. */
     @Multibinds

@@ -30,7 +30,12 @@ import com.trackbit.core.model.TodayHabit
 import com.trackbit.core.model.TodayResponse
 import com.trackbit.core.network.IdempotencyKey
 import com.trackbit.core.network.SessionTokenSource
+import com.trackbit.core.model.ExerciseSourceDescriptor
+import com.trackbit.core.model.QueueEntry
+import com.trackbit.core.model.ResolvedQueue
+import com.trackbit.core.model.SourceCapabilities
 import com.trackbit.core.network.service.ExerciseService
+import kotlinx.coroutines.yield
 import com.trackbit.core.network.service.TrackerService
 import okhttp3.ResponseBody.Companion.toResponseBody
 import retrofit2.HttpException
@@ -195,11 +200,32 @@ class FakeTrackerService : TrackerService {
 
 class FakeExerciseService(var answer: () -> List<Exercise> = { emptyList() }) : ExerciseService {
     var calls = 0
+    var sourcesAnswer: () -> List<ExerciseSourceDescriptor> = { emptyList() }
+    /** Answers [key]'s queue; throw [httpError] 404 for a source that no longer resolves. */
+    var queueAnswer: (key: String) -> ResolvedQueue = { throw httpError(404) }
+
     override suspend fun exercises(): List<Exercise> {
         calls++
+        yield()
         return answer()
     }
+
+    override suspend fun sources(): List<ExerciseSourceDescriptor> {
+        yield()
+        return sourcesAnswer()
+    }
+
+    override suspend fun source(key: String): ResolvedQueue {
+        yield()
+        return queueAnswer(key)
+    }
 }
+
+fun source(key: String, name: String = key) =
+    ExerciseSourceDescriptor(key, name, nameKey = null, itemCount = null, SourceCapabilities(true, true, true, false), frozen = false)
+
+fun queue(key: String, vararg entries: QueueEntry) =
+    ResolvedQueue(source(key), entries.toList(), emptyReason = null, generatedAt = Instant.EPOCH)
 
 fun exercise(id: Int, frozen: Boolean = false, lastPerformance: LastPerformance? = null) = Exercise(
     id = id,

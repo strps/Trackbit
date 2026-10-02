@@ -25,7 +25,8 @@ import javax.inject.Singleton
 /**
  * Moves tracker data between Room and the server: [flush] sends the outbox, [sync] also pulls
  * `/today` (and history when it's due), [syncHistory] pulls only history, [syncSessions] pulls
- * one day's sessions and the exercise catalog. Workers and pull-to-refresh go through here.
+ * one day's sessions, the exercise catalog and the picker's sources, [syncQueue] one source's
+ * queue. Workers and pull-to-refresh go through here.
  *
  * One at a time: a pull that overlapped a flush could store a snapshot taken before an op that
  * was confirmed meanwhile, and two flushes would send the same op twice.
@@ -65,7 +66,8 @@ internal class TrackerSync @Inject constructor(
 
     /**
      * Sends the outbox, then replaces Room's sessions of [habitId] on [day] with the server's
-     * (unless ops for that day are still pending) and refreshes the exercise catalog.
+     * (unless ops for that day are still pending) and refreshes the exercise catalog and the
+     * picker's sources.
      */
     suspend fun syncSessions(habitId: Int, day: LocalDate): SyncResult = mutex.withLock {
         val token = tokens.currentToken() ?: return SyncResult.SignedOut
@@ -75,7 +77,19 @@ internal class TrackerSync @Inject constructor(
         if (result == SyncResult.SignedOut) return SyncResult.SignedOut
         result = worse(result, pullSessionsLocked(token, HabitDayKey(habitId, day)))
         if (result == SyncResult.SignedOut) return SyncResult.SignedOut
-        worse(result, pullExercisesLocked(token))
+        result = worse(result, pullExercisesLocked(token))
+        if (result == SyncResult.SignedOut) return SyncResult.SignedOut
+        worse(result, pullSourcesLocked(token))
+    }
+
+    /** Replaces Room's copy of [key]'s queue; a 404 records that it no longer resolves. */
+    suspend fun syncQueue(key: String): SyncResult = mutex.withLock {
+        val token = tokens.currentToken() ?: return SyncResult.SignedOut
+        val queue = when (val answer = safeCall { exerciseService.source(key) }) {
+            is ApiResult.Success -> answer.value
+            is ApiResult.Failure -> if (answer.error is ApiError.NotFound) null else return answer.error.toPullResult()
+        }
+        if (fenced(token) { db.syncDao().applyQueue(key, queue, clock.instant()) }) SyncResult.Done else SyncResult.SignedOut
     }
 
     /** Pulls the requested history if it's due (see [HistoryEntity]). */
@@ -163,6 +177,12 @@ internal class TrackerSync @Inject constructor(
         when (val exercises = safeCall { exerciseService.exercises() }) {
             is ApiResult.Success -> if (fenced(token) { db.syncDao().applyExercises(exercises.value) }) SyncResult.Done else SyncResult.SignedOut
             is ApiResult.Failure -> exercises.error.toPullResult()
+        }
+
+    private suspend fun pullSourcesLocked(token: String): SyncResult =
+        when (val sources = safeCall { exerciseService.sources() }) {
+            is ApiResult.Success -> if (fenced(token) { db.syncDao().applySources(sources.value) }) SyncResult.Done else SyncResult.SignedOut
+            is ApiResult.Failure -> sources.error.toPullResult()
         }
 
     private suspend fun pullLocked(token: String): SyncResult {

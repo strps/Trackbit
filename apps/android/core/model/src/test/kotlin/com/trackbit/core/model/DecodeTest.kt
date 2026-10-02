@@ -42,6 +42,9 @@ class DecodeTest {
         "exercise-performance.json" to ExercisePerformance.serializer(),
         "exercise-sessions.json" to ListSerializer(ExerciseSessionDetail.serializer()),
         "exercise-lists.json" to ListSerializer(ExerciseList.serializer()),
+        "exercise-sources.json" to ListSerializer(ExerciseSourceDescriptor.serializer()),
+        "exercise-source.json" to ResolvedQueue.serializer(),
+        "exercise-source-empty.json" to ResolvedQueue.serializer(),
         "session.json" to SessionResponse.serializer(),
         "limits.json" to LimitsResponse.serializer(),
         "limits-admin.json" to LimitsResponse.serializer(),
@@ -156,6 +159,33 @@ class DecodeTest {
         assertEquals(1.5, item.targetDistance)
     }
 
+    @Test fun exerciseSources() {
+        val (pull, legs) = contract<List<ExerciseSourceDescriptor>>("exercise-sources.json")
+        assertEquals("list:1", pull.key)
+        assertEquals("Pull day", pull.name)
+        assertNull(pull.nameKey)
+        assertEquals(1, pull.itemCount)
+        assertTrue(pull.capabilities.prescribes)
+        assertFalse(legs.capabilities.prescribes)
+        assertFalse(legs.frozen)
+    }
+
+    @Test fun exerciseSource() {
+        val queue = contract<ResolvedQueue>("exercise-source.json")
+        assertEquals("list:1", queue.descriptor.key)
+        assertNull(queue.emptyReason)
+        val entry = queue.entries.single()
+        assertEquals(1, entry.listItemId)
+        val prescription = checkNotNull(entry.prescription)
+        assertEquals(8, prescription.targetReps)
+        assertEquals(60.5, prescription.targetWeight)
+        assertEquals(90, prescription.targetDuration)
+
+        val empty = contract<ResolvedQueue>("exercise-source-empty.json")
+        assertEquals(emptyList<QueueEntry>(), empty.entries)
+        assertEquals(QueueEmptyReason.ListEmpty, empty.emptyReason)
+    }
+
     @Test fun session() {
         val session = contract<SessionResponse>("session.json")
         assertEquals("user-id", session.session.userId)
@@ -193,6 +223,15 @@ class DecodeTest {
             listOf(HabitType.Count, HabitType.Unknown),
             TrackbitJson.decodeFromString<LimitsResponse>(limits).effective?.allowedHabitTypes,
         )
+
+        // A source kind the app doesn't know is still a source: it is named by its key only.
+        val queue = """{"descriptor":{"ref":{"kind":"coach","coachId":"c"},"key":"coach:c","name":null,
+            "nameKey":"source_coach","itemCount":null,"capabilities":{"canAppend":false,"canReorder":false,
+            "prescribes":false,"isDynamic":true},"frozen":false},"entries":[],"emptyReason":"vacation",
+            "generatedAt":"2026-01-01T00:00:00.000Z","expiresAt":"2026-01-01T00:05:00.000Z"}"""
+        val decoded = TrackbitJson.decodeFromString<ResolvedQueue>(queue)
+        assertEquals("coach:c", decoded.descriptor.key)
+        assertEquals(QueueEmptyReason.Unknown, decoded.emptyReason)
     }
 
     @Test fun `a color stop needs 3 or 4 channels`() {

@@ -11,16 +11,20 @@ import com.trackbit.core.database.dao.HabitDayDao
 import com.trackbit.core.database.dao.HistoryDao
 import com.trackbit.core.database.dao.OutboxDao
 import com.trackbit.core.database.dao.SessionDao
+import com.trackbit.core.database.dao.SourceDao
 import com.trackbit.core.database.dao.SyncDao
 import com.trackbit.core.database.dao.TimerDao
 import com.trackbit.core.database.entity.DayLogEntity
 import com.trackbit.core.database.entity.ExerciseEntity
 import com.trackbit.core.database.entity.ExerciseLogEntity
+import com.trackbit.core.database.entity.ExerciseSourceEntity
 import com.trackbit.core.database.entity.HabitEntity
 import com.trackbit.core.database.entity.HistoryEntity
 import com.trackbit.core.database.entity.OutboxEntity
 import com.trackbit.core.database.entity.PerformanceEntity
+import com.trackbit.core.database.entity.QueueEntryEntity
 import com.trackbit.core.database.entity.SessionEntity
+import com.trackbit.core.database.entity.SourceQueueEntity
 import com.trackbit.core.database.entity.TimerEntity
 
 /**
@@ -31,8 +35,9 @@ import com.trackbit.core.database.entity.TimerEntity
     entities = [
         HabitEntity::class, DayLogEntity::class, OutboxEntity::class, TimerEntity::class, HistoryEntity::class,
         SessionEntity::class, ExerciseLogEntity::class, PerformanceEntity::class, ExerciseEntity::class,
+        ExerciseSourceEntity::class, SourceQueueEntity::class, QueueEntryEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
     autoMigrations = [
         // 2: timers.
@@ -42,6 +47,8 @@ import com.trackbit.core.database.entity.TimerEntity
         // 4: history per owner, in Migrations.
         // 5: exercise sessions, logs, sets and the exercise catalog.
         AutoMigration(from = 4, to = 5),
+        // 6: exercise sources and their queues.
+        AutoMigration(from = 5, to = 6),
     ],
 )
 @TypeConverters(Converters::class)
@@ -55,6 +62,7 @@ abstract class TrackbitDatabase : RoomDatabase() {
     abstract fun historyDao(): HistoryDao
     abstract fun sessionDao(): SessionDao
     abstract fun exerciseDao(): ExerciseDao
+    abstract fun sourceDao(): SourceDao
 
     companion object {
         const val NAME = "trackbit.db"

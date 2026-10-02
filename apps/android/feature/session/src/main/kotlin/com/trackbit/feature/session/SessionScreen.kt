@@ -64,7 +64,7 @@ import java.time.format.FormatStyle
 
 /**
  * A workout habit's sessions on [day], like the web's activity tracker: each session's exercises,
- * their sets, and a picker to add exercises. Logs through the outbox, so it works offline.
+ * their sets, and a picker to add exercises from the catalog or a source (a list). Logs through the outbox, so it works offline.
  */
 @Composable
 fun SessionScreen(
@@ -92,6 +92,7 @@ fun SessionScreen(
             onStart = viewModel::startSession,
             onDelete = viewModel::deleteSession,
             onAddExercise = viewModel::addExercise,
+            onSelectSource = viewModel::selectSource,
             log = LogCardActions(
                 onAddSet = viewModel::addSet,
                 onUpdateSet = viewModel::updateSet,
@@ -106,7 +107,8 @@ fun SessionScreen(
 private class SessionActions(
     val onStart: () -> Unit,
     val onDelete: (sessionId: String) -> Unit,
-    val onAddExercise: (sessionId: String, exerciseId: Int) -> Unit,
+    val onAddExercise: (sessionId: String, exerciseId: Int, listItemId: Int?) -> Unit,
+    val onSelectSource: (key: String?) -> Unit,
     val log: LogCardActions,
 )
 
@@ -125,6 +127,15 @@ private fun SessionContent(
     var pickingFor by rememberSaveable { mutableStateOf<String?>(null) }
     // The session an exercise was just added to, by its log count then: the new log opens.
     var addedTo by rememberSaveable { mutableStateOf<Pair<String, Int>?>(null) }
+    // Per session, the exercise last picked in browse mode: what its Play repeats.
+    var browsePicks by rememberSaveable { mutableStateOf(mapOf<String, Int>()) }
+    val pickerOf = { session: TrackedSession -> exercisePicker(state, session, browsePicks[session.id]) }
+    val add = { session: TrackedSession, browsing: Boolean, exerciseId: Int, listItemId: Int? ->
+        // In browse mode the trigger follows the pick; with a source it stays the cursor.
+        if (browsing) browsePicks = browsePicks + (session.id to exerciseId)
+        addedTo = session.id to session.logs.size
+        actions.onAddExercise(session.id, exerciseId, listItemId)
+    }
     LaunchedEffect(state.sessions, addedTo) {
         val (sessionId, before) = addedTo ?: return@LaunchedEffect
         val logs = state.sessions?.find { it.id == sessionId }?.logs ?: return@LaunchedEffect
@@ -182,15 +193,25 @@ private fun SessionContent(
                         )
                     }
                     else -> items(sessions, key = { it.id }) { session ->
+                        val picker = pickerOf(session)
                         SessionPanel(
                             session = session,
                             state = state,
                             selectedLogId = selectedLogId,
                             onSelectLog = { id, open -> selectedLogId = if (open) id else null },
-                            onPick = { pickingFor = session.id },
                             enabled = enabled,
                             actions = actions,
-                        )
+                        ) {
+                            ExercisePickerBar(
+                                picker = picker,
+                                sources = state.sources,
+                                sourcesLoaded = state.sourcesLoaded,
+                                onSelectSource = actions.onSelectSource,
+                                onOpenList = { pickingFor = session.id },
+                                onAdd = { exerciseId, listItemId -> add(session, picker.browsing, exerciseId, listItemId) },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
                     }
                 }
             }
@@ -199,28 +220,28 @@ private fun SessionContent(
 
     val picking = pickingFor?.let { id -> state.sessions?.find { it.id == id } }
     if (picking != null) {
+        val picker = pickerOf(picking)
         ExercisePickerSheet(
-            exercises = state.exercises,
+            picker = picker,
             onDismiss = { pickingFor = null },
-            onPick = { exercise ->
+            onPick = { exerciseId, listItemId ->
                 pickingFor = null
-                addedTo = picking.id to picking.logs.size
-                actions.onAddExercise(picking.id, exercise.id)
+                add(picking, picker.browsing, exerciseId, listItemId)
             },
         )
     }
 }
 
-/** A session: its header with delete, its exercises, and "Add exercise". */
+/** A session: its header with delete, its exercises, and [picker] while it can be edited. */
 @Composable
 private fun SessionPanel(
     session: TrackedSession,
     state: SessionUiState,
     selectedLogId: String?,
     onSelectLog: (String, Boolean) -> Unit,
-    onPick: () -> Unit,
     enabled: Boolean,
     actions: SessionActions,
+    picker: @Composable () -> Unit,
 ) {
     Card(Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp)) {
@@ -264,13 +285,7 @@ private fun SessionPanel(
                     )
                 }
             }
-            if (enabled) {
-                OutlinedButton(onClick = onPick, modifier = Modifier.align(Alignment.End)) {
-                    Icon(painterResource(UiIcons.Plus), null, Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.android_session_add_exercise))
-                }
-            }
+            if (enabled) picker()
         }
     }
 }
@@ -291,49 +306,6 @@ private fun SessionMenu(enabled: Boolean, onDelete: () -> Unit) {
                     onDelete()
                 },
             )
-        }
-    }
-}
-
-/**
- * The catalog, searched by name (the web picker's "All exercises" source). Frozen custom
- * exercises are shown locked. Lists, browse mode and "next" come with the full picker (D4).
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ExercisePickerSheet(exercises: List<Exercise>, onDismiss: () -> Unit, onPick: (Exercise) -> Unit) {
-    var query by rememberSaveable { mutableStateOf("") }
-    val shown = remember(exercises, query) {
-        val q = query.trim()
-        if (q.isEmpty()) exercises else exercises.filter { it.name.contains(q, ignoreCase = true) }
-    }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        Text(
-            stringResource(R.string.tracker_activity_select_exercise),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = 24.dp),
-        )
-        OutlinedTextField(
-            value = query,
-            onValueChange = { query = it },
-            placeholder = { Text(stringResource(R.string.tracker_activity_search_exercises)) },
-            leadingIcon = { Icon(painterResource(UiIcons.Search), null, Modifier.size(18.dp)) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-        )
-        LazyColumn(contentPadding = PaddingValues(bottom = 32.dp)) {
-            if (shown.isEmpty()) item { CenteredText(R.string.tracker_activity_no_exercises_found) }
-            items(shown, key = { it.id }) { exercise ->
-                ListItem(
-                    headlineContent = { Text(exercise.name) },
-                    trailingContent = if (exercise.frozen) {
-                        { Icon(painterResource(UiIcons.Lock), stringResource(R.string.errors_limits_custom_exercise_frozen_title), Modifier.size(18.dp)) }
-                    } else {
-                        null
-                    },
-                    modifier = Modifier.clickable(enabled = !exercise.frozen) { onPick(exercise) },
-                )
-            }
         }
     }
 }

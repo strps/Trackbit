@@ -1,0 +1,38 @@
+{
+  "request": "GET /api/exercise-sources",
+  "status": 200,
+  "body": [
+    {
+      "ref": {
+        "kind": "list",
+        "listId": 1
+      },
+      "key": "list:1",
+      "name": "Pull day",
+      "itemCount": 1,
+      "capabilities": {
+        "canAppend": true,
+        "canReorder": true,
+        "prescribes": true,
+        "isDynamic": false
+      },
+      "frozen": false
+    },
+    {
+      "ref": {
+        "kind": "list",
+        "listId": 2
+      },
+      "key": "list:2",
+      "name": "Legs",
+      "itemCount": 0,
+      "capabilities": {
+        "canAppend": true,
+        "canReorder": true,
+        "prescribes": false,
+        "isDynamic": false
+      },
+      "frozen": false
+    }
+  ]
+}

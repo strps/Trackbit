@@ -159,6 +159,16 @@ describe('Android contracts', () => {
         const [item] = (await lists.clone().json())[0].items
         await record(MODEL, 'exercise-lists.json', 'GET /api/exercise-lists', lists, u.secrets)
 
+        // An empty list too: its descriptor has no prescriptions and its queue says why it's empty.
+        const empty = await (await post(u.token, '/api/exercise-lists', { name: 'Legs' })).json()
+        await record(MODEL, 'exercise-sources.json', 'GET /api/exercise-sources', await get(u.token, '/api/exercise-sources'), u.secrets)
+        await record(MODEL, 'exercise-source.json', 'GET /api/exercise-sources/list::id',
+            await get(u.token, `/api/exercise-sources/list:${list.id}`), u.secrets)
+        await record(MODEL, 'exercise-source-empty.json', 'GET /api/exercise-sources/list::id',
+            await get(u.token, `/api/exercise-sources/list:${empty.id}`), u.secrets)
+        await record(NETWORK, 'exercise-source-not-found.json', 'GET /api/exercise-sources/list::id',
+            await get(u.token, '/api/exercise-sources/list:999999'), u.secrets)
+
         const habit = await createHabit(u.id, { type: 'complex' })
         // Fixed client uuids, as the app sends them.
         const ids = {
