@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.trackbit.core.data.TrackedHabit
+import com.trackbit.core.designsystem.component.DurationDialog
 import com.trackbit.core.designsystem.icon.UiIcons
 import com.trackbit.core.i18n.R
 import java.time.Instant
@@ -101,8 +102,8 @@ fun TrackerScreen(
 
     val editing = editingTimeOf?.let { id -> state.habits?.find { it.id == id } }
     if (editing != null) {
-        TimeDialog(
-            habitName = editing.name,
+        DurationDialog(
+            title = stringResource(R.string.android_tracker_time_title, editing.name),
             initialMs = editing.progress.value,
             onDismiss = { editingTimeOf = null },
             onSave = { ms ->

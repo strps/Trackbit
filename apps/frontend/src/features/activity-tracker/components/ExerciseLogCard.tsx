@@ -9,12 +9,12 @@ import { Button } from '@/shared/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/shared/components/ui/dropdown-menu';
 import { Info, MoreVertical, Trash2, Clock, Hash, Scale, MapPin, Play, Square } from 'lucide-react';
 import { EmptyState } from '@/shared/components/EmptyState';
-import { RPE_LABELS } from '@/shared/components/RpeSelector';
 import { OptimisticExerciseLog, OptimisticExercisePerformance } from '@/features/tracker/use-tracker';
 import { formatDuration, getAvgRpe, rpeColor } from '../utils';
 import { useActivityTracker } from '../api/useActivityTracker';
 import { Timer } from '@/shared/components/Timer';
 import { RpeSelector } from '@/shared/components/RpeSelector';
+import { useRpeLabel } from '@/hooks/use-rpe-label';
 
 export interface ExerciseLogCardProps {
     exerciseLog: OptimisticExerciseLog;
@@ -28,6 +28,7 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
     const { deletePerformance, newPerformance: newSet, updatePerformance: updateSet, removeExerciseLog } = useActivityTracker();
     const { unitSystem } = useUnitSystem();
     const { t } = useTranslation('tracker');
+    const rpeLabel = useRpeLabel();
     const unit = weightUnit(unitSystem);
     const exercise = exercises.find(e => e.id === exerciseLog.exerciseId);
     const [selectedPerformanceId, setSelectedPerformanceId] = useState<number | null>(null);
@@ -94,7 +95,7 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
                                 <div className={`ml-auto flex flex-col items-end normal-case ${rpeColor(avgRpe)}`}>
                                     <span className="text-[9px] text-muted-foreground uppercase">{t('activity_avg_rpe')}</span>
                                     <span className="text-base font-bold leading-none">{avgRpe}</span>
-                                    <span className="text-[9px] font-normal italic normal-case opacity-80">{RPE_LABELS[avgRpe]}</span>
+                                    <span className="text-[9px] font-normal italic normal-case opacity-80">{rpeLabel(avgRpe)}</span>
                                 </div>
                             )}
                         </div>
@@ -146,7 +147,7 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
                                 <div className={`ml-auto flex flex-col items-end normal-case ${rpeColor(avgRpe)}`}>
                                     <span className="text-[9px] text-muted-foreground uppercase">{t('activity_avg_rpe')}</span>
                                     <span className="text-base font-bold leading-none">{avgRpe}</span>
-                                    <span className="text-[9px] font-normal italic normal-case opacity-80">{RPE_LABELS[avgRpe]}</span>
+                                    <span className="text-[9px] font-normal italic normal-case opacity-80">{rpeLabel(avgRpe)}</span>
                                 </div>
                             )}
                         </div>
@@ -170,7 +171,7 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
                                 <div className={`flex flex-col items-end normal-case ${rpeColor(rpe)}`}>
                                     <span className="text-[9px] text-muted-foreground uppercase">RPE</span>
                                     <span className="text-base font-bold leading-none">{rpe}</span>
-                                    <span className="text-[9px] font-normal italic opacity-80">{RPE_LABELS[rpe]}</span>
+                                    <span className="text-[9px] font-normal italic opacity-80">{rpeLabel(rpe)}</span>
                                 </div>
                             )}
                         </div>

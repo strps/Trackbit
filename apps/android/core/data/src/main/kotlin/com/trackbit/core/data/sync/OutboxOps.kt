@@ -87,16 +87,38 @@ internal suspend fun TrackerService.send(op: OutboxEntity): DayLog? {
         OutboxOpType.Check -> check(TrackbitJson.decodeFromString<CheckRequest>(payload), key)
         OutboxOpType.Increment -> increment(TrackbitJson.decodeFromString<IncrementRequest>(payload), key)
         OutboxOpType.EnsureDayLog -> ensureDayLog(TrackbitJson.decodeFromString<EnsureDayLogRequest>(payload), key)
-        OutboxOpType.CreateSession -> null.also { createSession(TrackbitJson.decodeFromString(payload), key) }
-        OutboxOpType.DeleteSession -> null.also { deleteSession(payload.uuid(), key) }
-        OutboxOpType.CreateExerciseLog -> null.also { createExerciseLog(TrackbitJson.decodeFromString(payload), key) }
-        OutboxOpType.DeleteExerciseLog -> null.also { deleteExerciseLog(payload.uuid(), key) }
-        OutboxOpType.CreatePerformance -> null.also { createPerformance(TrackbitJson.decodeFromString(payload), key) }
-        OutboxOpType.UpdatePerformance -> null.also {
+        // Session ops answer with their row, which adds nothing: each branch ends in an explicit
+        // null. Not `null.also { call() }`: once the call really suspends, the value it resumes
+        // with escapes the Unit-coerced lambda and comes out of `send` as if it were a DayLog.
+        OutboxOpType.CreateSession -> {
+            createSession(TrackbitJson.decodeFromString(payload), key)
+            null
+        }
+        OutboxOpType.DeleteSession -> {
+            deleteSession(payload.uuid(), key)
+            null
+        }
+        OutboxOpType.CreateExerciseLog -> {
+            createExerciseLog(TrackbitJson.decodeFromString(payload), key)
+            null
+        }
+        OutboxOpType.DeleteExerciseLog -> {
+            deleteExerciseLog(payload.uuid(), key)
+            null
+        }
+        OutboxOpType.CreatePerformance -> {
+            createPerformance(TrackbitJson.decodeFromString(payload), key)
+            null
+        }
+        OutboxOpType.UpdatePerformance -> {
             val update = TrackbitJson.decodeFromString<SetUpdate>(payload)
             updatePerformance(update.uuid, update.values, key)
+            null
         }
-        OutboxOpType.DeletePerformance -> null.also { deletePerformance(payload.uuid(), key) }
+        OutboxOpType.DeletePerformance -> {
+            deletePerformance(payload.uuid(), key)
+            null
+        }
     }
 }
 

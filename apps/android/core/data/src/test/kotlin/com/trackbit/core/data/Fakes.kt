@@ -1,5 +1,6 @@
 package com.trackbit.core.data
 
+import kotlinx.coroutines.yield
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.trackbit.core.data.sync.SyncScheduler
@@ -9,6 +10,7 @@ import com.trackbit.core.model.CreateExerciseLogRequest
 import com.trackbit.core.model.CreatePerformanceRequest
 import com.trackbit.core.model.CreateSessionRequest
 import com.trackbit.core.model.Exercise
+import com.trackbit.core.model.LastPerformance
 import com.trackbit.core.model.ExerciseLog
 import com.trackbit.core.model.ExercisePerformance
 import com.trackbit.core.model.ExerciseSession
@@ -174,7 +176,9 @@ class FakeTrackerService : TrackerService {
 
     override suspend fun deletePerformance(uuid: String, key: IdempotencyKey) = recordSession(Deleted("set", uuid), key)
 
-    private fun recordSession(body: Any, key: IdempotencyKey) {
+    /** Suspends like a real call: a value an inlined lambda resumes with must not leak (see `send`). */
+    private suspend fun recordSession(body: Any, key: IdempotencyKey) {
+        yield()
         sent += Sent(body, key.value)
         sessionRespond(body)
     }
@@ -197,13 +201,13 @@ class FakeExerciseService(var answer: () -> List<Exercise> = { emptyList() }) : 
     }
 }
 
-fun exercise(id: Int, frozen: Boolean = false) = Exercise(
+fun exercise(id: Int, frozen: Boolean = false, lastPerformance: LastPerformance? = null) = Exercise(
     id = id,
     userId = if (frozen) "user" else null,
     name = "Exercise $id",
     category = "strength",
     defaultWeightUnit = "kg",
     defaultDistanceUnit = "km",
-    lastPerformance = null,
+    lastPerformance = lastPerformance,
     frozen = frozen,
 )

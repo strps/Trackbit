@@ -323,4 +323,14 @@
     <string name="tracker_previous_day">Previous day</string>
     <string name="tracker_next_day">Next day</string>
     <string name="tracker_go_to_today">Go to today</string>
+    <string name="tracker_rpe_level_1">Very Easy</string>
+    <string name="tracker_rpe_level_2">Easy</string>
+    <string name="tracker_rpe_level_3">Moderate</string>
+    <string name="tracker_rpe_level_4">Somewhat Hard</string>
+    <string name="tracker_rpe_level_5">Hard</string>
+    <string name="tracker_rpe_level_6">Hard+</string>
+    <string name="tracker_rpe_level_7">Very Hard</string>
+    <string name="tracker_rpe_level_8">Very Hard+</string>
+    <string name="tracker_rpe_level_9">Extremely Hard</string>
+    <string name="tracker_rpe_level_10">Max Effort</string>
 </resources>

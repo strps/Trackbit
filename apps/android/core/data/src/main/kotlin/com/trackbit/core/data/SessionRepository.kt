@@ -68,8 +68,11 @@ interface SessionRepository {
     /** Removes an exercise from its session, with its sets. */
     suspend fun removeExercise(logId: String): WriteResult
 
-    /** Adds a set after the log's last one. */
-    suspend fun addSet(logId: String, values: SetValues): WriteResult
+    /**
+     * Adds a set after the log's last one. It starts from the exercise's last performance: the
+     * newer of its latest set in Room and the catalog's (like the web's `buildNewSetValues`).
+     */
+    suspend fun addSet(logId: String): WriteResult
 
     /** Replaces a set's values; a null clears that field. */
     suspend fun updateSet(setId: String, values: SetValues): WriteResult
@@ -167,9 +170,10 @@ internal class DefaultSessionRepository @Inject constructor(
         deleteOp(OutboxOpType.DeleteExerciseLog, day, logId)
     }
 
-    override suspend fun addSet(logId: String, values: SetValues): WriteResult =
+    override suspend fun addSet(logId: String): WriteResult =
         writeTo({ sessionDao.logDay(logId) }, exerciseId = { sessionDao.exerciseOfLog(logId) }) { day ->
             val uuid = newUuid()
+            val values = lastPerformance(checkNotNull(sessionDao.exerciseOfLog(logId)))
             // Like the web: one more than the sets the log has now.
             val number = sessionDao.setCount(logId) + 1
             sessionDao.insert(
@@ -218,6 +222,23 @@ internal class DefaultSessionRepository @Inject constructor(
             writer.queue(key.habitId) { change(key) }
         },
     )
+
+    /**
+     * The newer of [exerciseId]'s latest set in Room (which may not have reached the server yet)
+     * and the catalog's last performance (which may be from a day Room doesn't hold). RPE comes
+     * along: it is an outcome, and the last one is the best guess.
+     */
+    private suspend fun lastPerformance(exerciseId: Int): SetValues {
+        val local = sessionDao.latestSet(exerciseId)
+        val remote = exerciseDao.get(exerciseId)?.lastPerformance
+        val remoteAt = remote?.createdAt
+        return when {
+            local != null && (remote == null || remoteAt == null || !remoteAt.isAfter(local.createdAt)) ->
+                SetValues(local.reps, local.weight, local.duration, local.distance, local.rpe)
+            remote != null -> SetValues(remote.reps, remote.weight, remote.duration, remote.distance, remote.rpe)
+            else -> SetValues.EMPTY
+        }
+    }
 
     private fun newUuid() = UUID.randomUUID().toString()
 }

@@ -9,7 +9,7 @@ A native Android client for Trackbit written in Kotlin + Jetpack Compose. It con
 Before any of these can ship, a thin foundation (auth, API client, local cache) and a few backend changes have to exist. Those are Phase 0 below, split so that several people or agents can work in parallel.
 
 **Branch:** `kotlin-app`
-**Status:** Phase 0 done 2026-09-26 ([handoff](../handoffs/kotlin-app-B.md)). Phase 1 in progress: C1 (widget foundation + W2 Today list) done 2026-09-28, C2 (W1 quick-log) and C3 (timer engine + notification) done 2026-09-29 ([handoff](../handoffs/kotlin-app-C.md)). Phase 1 done on the emulator 2026-10-02 (real-device check deferred to the end). Phase 2 in progress: D1 (tracker home) done 2026-10-02 ([handoff](../handoffs/kotlin-app-D.md)).
+**Status:** Phase 0 done 2026-09-26 ([handoff](../handoffs/kotlin-app-B.md)). Phase 1 in progress: C1 (widget foundation + W2 Today list) done 2026-09-28, C2 (W1 quick-log) and C3 (timer engine + notification) done 2026-09-29 ([handoff](../handoffs/kotlin-app-C.md)). Phase 1 done on the emulator 2026-10-02 (real-device check deferred to the end). Phase 2 in progress: D1 (tracker home), D2 (session data layer) and D3 (session screen) done 2026-10-02 ([handoff](../handoffs/kotlin-app-D.md)).
 **Deferred follow-ups:** [kotlin-app-followups.md](kotlin-app-followups.md) (non-blocking issues and checks, to pick up after Phase 1).
 
 ---
@@ -189,8 +189,8 @@ Tasks:
 
 **Goal:** the app does everything the web app's daily-use screens do.
 
-- [x] **Tracker home** (`feature/tracker`, D1 2026-10-02; workout rows open a placeholder until D3): date selector, habit rows for each type (check, count stepper, timed with the notification timer, exercise → opens the session), progress and streak badges, anti-habit handling
-- [ ] **Workout session** (`feature/session`): session panel, exercise log cards (compact + full, respecting `exerciseLogCardStyle`), set editor (reps/weight/duration/distance/RPE), unit system, exercise picker with **exercise sources** (lists, browse mode, catalog search, as described in [exercise-programs.md](exercise-programs.md)), and the Play/next behaviour
+- [x] **Tracker home** (`feature/tracker`, D1 2026-10-02): date selector, habit rows for each type (check, count stepper, timed with the notification timer, exercise → opens the session), progress and streak badges, anti-habit handling
+- [ ] **Workout session** (`feature/session`; D3 2026-10-02 built everything but the picker's sources and Play/next, which are D4): session panel, exercise log cards (compact + full, respecting `exerciseLogCardStyle`), set editor (reps/weight/duration/distance/RPE), unit system, exercise picker with **exercise sources** (lists, browse mode, catalog search, as described in [exercise-programs.md](exercise-programs.md)), and the Play/next behaviour
 - [ ] **Analytics** (`feature/analytics`): habit heatmaps, volume / muscle / exercise charts (Vico), segmented control
 - [ ] **Rest timer** (new, not on the web yet): after a set is logged, a rest countdown starts automatically. The default duration comes from a user setting, overridden by the list item's prescribed rest when the exercise came from a list with prescriptions. Controls: skip, +/−15s. It runs on the timer engine from Phase 1, so it shows in the ongoing notification, survives the app being backgrounded, and vibrates or sounds when it ends. Needs a `defaultRestSeconds` preference (backend: add it to `PATCH /api/me/preferences`).
 - [x] Session outbox ops (D2 2026-10-02): create/delete session, add/remove log, add/edit/delete a set; rows named by client uuids, every op with an idempotency key

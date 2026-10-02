@@ -170,13 +170,6 @@ class TrackerViewModelTest {
         viewModel.setTime(habit(1, type = HabitType.Timed), 90_000)
         assertEquals(listOf("start 1 ${DAY.minusDays(2)}", "stop 1", "set 1 $DAY 90000"), tracker.writes)
     }
-
-    @Test fun `time entry accepts minutes and seconds within the day's range`() {
-        assertEquals(90_000L, timeMs("1", "30"))
-        assertEquals(0L, timeMs("", ""))
-        assertEquals(null, timeMs("1", "60"))
-        assertEquals(null, timeMs("99999999", "0"))
-    }
 }
 
 private fun habit(

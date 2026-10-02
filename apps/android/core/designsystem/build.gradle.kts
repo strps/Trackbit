@@ -9,4 +9,5 @@ android {
 
 dependencies {
     api(projects.core.model)
+    implementation(projects.core.i18n)
 }

@@ -18,7 +18,14 @@
     <string name="android_tracker_seconds">Segundos</string>
     <string name="android_tracker_open_session">Abrir el entrenamiento de %1$s</string>
     <string name="android_tracker_more_options">Más opciones</string>
-    <string name="android_session_coming_soon">Las sesiones de entrenamiento llegarán pronto a la app. Por ahora, usa la web para registrar este entrenamiento.</string>
+    <string name="android_session_back">Atrás</string>
+    <string name="android_session_add_exercise">Añadir ejercicio</string>
+    <string name="android_session_increase">Aumentar %1$s</string>
+    <string name="android_session_decrease">Disminuir %1$s</string>
+    <string name="android_session_start_stopwatch">Iniciar el cronómetro</string>
+    <string name="android_session_pause_stopwatch">Pausar el cronómetro</string>
+    <string name="android_session_edit_time">Editar el tiempo</string>
+    <string name="android_session_rpe_level">RPE %1$d, %2$s</string>
     <string name="android_timer_channel_name">Temporizadores</string>
     <string name="android_timer_channel_description">Temporizadores de hábitos en marcha, con Detener y +30 s.</string>
     <string name="android_timer_stop">Detener</string>

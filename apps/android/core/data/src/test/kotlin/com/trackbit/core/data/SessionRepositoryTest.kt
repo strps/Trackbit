@@ -10,6 +10,7 @@ import com.trackbit.core.model.ExerciseLogDetail
 import com.trackbit.core.model.ExercisePerformance
 import com.trackbit.core.model.ExerciseSessionDetail
 import com.trackbit.core.model.HabitType
+import com.trackbit.core.model.LastPerformance
 import com.trackbit.core.model.SetValues
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -27,7 +28,9 @@ import java.time.Instant
 class SessionRepositoryTest {
     private val db = inMemoryDatabase()
     private val service = FakeTrackerService()
-    private val exercises = FakeExerciseService { listOf(exercise(10), exercise(11, frozen = true)) }
+    /** Exercise 10 was last done (on the server) for 5 reps of 40 kg, a day before [DAY]. */
+    private val lastTime = LastPerformance(1, weight = 40.0, reps = 5, distance = null, duration = null, createdAt = Instant.parse("2026-09-25T10:00:00Z"), rpe = 7)
+    private val exercises = FakeExerciseService { listOf(exercise(10, lastPerformance = lastTime), exercise(11, frozen = true)) }
     private val tokens = FakeTokens()
     private val scheduler = FakeScheduler()
     private val clock = FakeClock()
@@ -48,10 +51,10 @@ class SessionRepositoryTest {
     private suspend fun sessionCount() = db.dayLogDao().get(1, DAY)?.sessionCount ?: 0
 
     /** Starts a session, adds exercise 10 and one set: what a first workout queues. */
-    private suspend fun workout(values: SetValues = SetValues.EMPTY.copy(reps = 5)): TrackedSet {
+    private suspend fun workout(): TrackedSet {
         repository.startSession(1, DAY)
         repository.addExercise(sessions().single().id, 10)
-        repository.addSet(sessions().single().logs.single().id, values)
+        repository.addSet(sessions().single().logs.single().id)
         return sessions().single().logs.single().sets.single()
     }
 
@@ -62,7 +65,7 @@ class SessionRepositoryTest {
         val log = session.logs.single()
         assertEquals(1, sessionCount())
         assertEquals(10, log.exerciseId)
-        assertEquals(TrackedSet(set.id, 1, SetValues.EMPTY.copy(reps = 5)), set)
+        assertEquals(TrackedSet(set.id, 1, LAST_TIME), set)
         assertEquals(3, scheduler.flushes)
 
         assertEquals(SyncResult.Done, sync.flush())
@@ -70,7 +73,7 @@ class SessionRepositoryTest {
             listOf(
                 CreateSessionRequest(session.id, 1, DAY),
                 CreateExerciseLogRequest(log.id, session.id, 10, listItemId = null),
-                CreatePerformanceRequest(set.id, log.id, 1, SetValues.EMPTY.copy(reps = 5)),
+                CreatePerformanceRequest(set.id, log.id, 1, LAST_TIME),
             ),
             service.sent.map { it.body },
         )
@@ -82,7 +85,7 @@ class SessionRepositoryTest {
     @Test fun `sets are numbered after the log's last one, and edits and deletes are queued`() = runTest {
         val first = workout()
         val logId = sessions().single().logs.single().id
-        repository.addSet(logId, SetValues.EMPTY.copy(reps = 3))
+        repository.addSet(logId)
         val second = sessions().single().logs.single().sets[1]
         assertEquals(2, second.number)
 
@@ -93,6 +96,29 @@ class SessionRepositoryTest {
         assertEquals(listOf(TrackedSet(first.id, 1, edited)), sessions().single().logs.single().sets)
         sync.flush()
         assertEquals(listOf(Updated(first.id, edited), Deleted("set", second.id)), service.sent.drop(4).map { it.body })
+    }
+
+    @Test fun `a new set starts from the newer of the latest local set and the catalog's last performance`() = runTest {
+        val first = workout()
+        val logId = sessions().single().logs.single().id
+        val edited = SetValues(reps = 8, weight = 42.5, duration = null, distance = null, rpe = 9)
+        repository.updateSet(first.id, edited)
+
+        clock.advanceMs(1_000)
+        repository.addSet(logId)
+        assertEquals("the local set is newer", edited, sessions().single().logs.single().sets[1].values)
+
+        // A set logged elsewhere after this one reaches the catalog with a refresh.
+        val newer = lastTime.copy(reps = 12, weight = 30.0, rpe = null, createdAt = clock.now.plusSeconds(60))
+        exercises.answer = { listOf(exercise(10, lastPerformance = newer)) }
+        db.syncDao().applyExercises(exercises.answer())
+        repository.addSet(logId)
+        assertEquals(SetValues(reps = 12, weight = 30.0, duration = null, distance = null, rpe = null), sessions().single().logs.single().sets[2].values)
+
+        repository.startSession(1, DAY)
+        repository.addExercise(sessions()[1].id, 12)
+        repository.addSet(sessions()[1].logs.single().id)
+        assertEquals("never done: empty", SetValues.EMPTY, sessions()[1].logs.single().sets.single().values)
     }
 
     @Test fun `deleting a session takes its logs and the day's count with it`() = runTest {
@@ -194,5 +220,9 @@ class SessionRepositoryTest {
 
         assertEquals(SyncResult.SignedOut, repository.refresh(1, DAY))
         assertEquals(emptyList<TrackedSession>(), sessions())
+    }
+
+    private companion object {
+        val LAST_TIME = SetValues(reps = 5, weight = 40.0, duration = null, distance = null, rpe = 7)
     }
 }

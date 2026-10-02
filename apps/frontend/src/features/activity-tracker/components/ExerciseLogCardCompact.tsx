@@ -8,8 +8,8 @@ import { Button } from '@/shared/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/shared/components/ui/dropdown-menu';
 import { Popover, PopoverTrigger, PopoverContent } from '@/shared/components/ui/popover';
 import { Info, MoreVertical, Trash2, Clock, Hash, Scale, MapPin, Plus } from 'lucide-react';
-import { RPE_LABELS } from '@/shared/components/RpeSelector';
 import { OptimisticExercisePerformance } from '@/features/tracker/use-tracker';
+import { useRpeLabel } from '@/hooks/use-rpe-label';
 import { formatDuration, getAvgRpe, rpeColor } from '../utils';
 import { useActivityTracker } from '../api/useActivityTracker';
 import { SetEditor } from './SetEditor';
@@ -26,6 +26,7 @@ export const ExerciseLogCardCompact = ({ exerciseLog, isSelected, index, setEdit
     const { deletePerformance, newPerformance: newSet, updatePerformance: updateSet, removeExerciseLog } = useActivityTracker();
     const { unitSystem } = useUnitSystem();
     const { t } = useTranslation('tracker');
+    const rpeLabel = useRpeLabel();
     const unit = weightUnit(unitSystem);
     const exercise = exercises.find(e => e.id === exerciseLog.exerciseId);
     const category = (exercise?.category || 'strength') as 'strength' | 'cardio' | 'flexibility';
@@ -141,7 +142,7 @@ export const ExerciseLogCardCompact = ({ exerciseLog, isSelected, index, setEdit
                     <div className={`ml-auto flex flex-col items-end normal-case ${rpeColor(avgRpe)}`}>
                         <span className="text-[9px] text-muted-foreground uppercase">{t('activity_avg_rpe')}</span>
                         <span className="text-base font-bold leading-none">{avgRpe}</span>
-                        <span className="text-[9px] font-normal italic normal-case opacity-80">{RPE_LABELS[avgRpe]}</span>
+                        <span className="text-[9px] font-normal italic normal-case opacity-80">{rpeLabel(avgRpe)}</span>
                     </div>
                 )}
             </div>

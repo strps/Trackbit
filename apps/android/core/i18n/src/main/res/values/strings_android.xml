@@ -18,7 +18,14 @@
     <string name="android_tracker_seconds">Seconds</string>
     <string name="android_tracker_open_session">Open the workout for %1$s</string>
     <string name="android_tracker_more_options">More options</string>
-    <string name="android_session_coming_soon">Workout sessions are coming to the app soon. Use the web app to log this workout for now.</string>
+    <string name="android_session_back">Back</string>
+    <string name="android_session_add_exercise">Add exercise</string>
+    <string name="android_session_increase">Increase %1$s</string>
+    <string name="android_session_decrease">Decrease %1$s</string>
+    <string name="android_session_start_stopwatch">Start the timer</string>
+    <string name="android_session_pause_stopwatch">Pause the timer</string>
+    <string name="android_session_edit_time">Edit the time</string>
+    <string name="android_session_rpe_level">RPE %1$d, %2$s</string>
     <string name="android_timer_channel_name">Timers</string>
     <string name="android_timer_channel_description">Habit timers while they run, with Stop and +30s.</string>
     <string name="android_timer_stop">Stop</string>

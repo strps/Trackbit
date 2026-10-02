@@ -13,11 +13,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.trackbit.app.timer.RequestNotificationPermission
 import com.trackbit.core.auth.AuthState
 import com.trackbit.feature.auth.SignInScreen
+import com.trackbit.feature.session.SessionScreen
 import com.trackbit.feature.tracker.TrackerScreen
 import kotlinx.serialization.Serializable
+import java.time.LocalDate
 
 /** Screens for a signed-out user. Sign-up and password reset join this graph later. */
 @Serializable
@@ -71,7 +74,10 @@ private fun AuthNavHost(graph: Any, onSignOut: () -> Unit) {
                     onOpenSession = { habitId, day -> navController.navigate(SessionRoute(habitId, day.toString())) },
                 )
             }
-            composable<SessionRoute> { SessionPlaceholderScreen(onBack = { navController.popBackStack() }) }
+            composable<SessionRoute> { entry ->
+                val route = entry.toRoute<SessionRoute>()
+                SessionScreen(route.habitId, LocalDate.parse(route.day), onBack = { navController.popBackStack() })
+            }
         }
     }
 

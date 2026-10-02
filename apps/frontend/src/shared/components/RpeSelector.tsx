@@ -1,21 +1,9 @@
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence, useAnimationControls, useAnimate } from "motion/react";
+import { useRpeLabel } from "@/hooks/use-rpe-label";
 import { cn } from "@/shared/utils/utils";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-
-export const RPE_LABELS: Record<number, string> = {
-    1: "Very Easy",
-    2: "Easy",
-    3: "Moderate",
-    4: "Somewhat Hard",
-    5: "Hard",
-    6: "Hard+",
-    7: "Very Hard",
-    8: "Very Hard+",
-    9: "Extremely Hard",
-    10: "Max Effort",
-};
 
 const getRpeColor = (level: number): string => {
     if (level <= 3) return "#10b981";
@@ -73,6 +61,7 @@ interface TooltipProps {
 
 const RpeTooltip = ({ level, x, showLabel }: TooltipProps) => {
     const [scope, animate] = useAnimate();
+    const rpeLabel = useRpeLabel();
 
     useEffect(() => {
         animate(scope.current, { scale: [1, 0.8, 1] }, { duration: 0.15 });
@@ -118,7 +107,7 @@ const RpeTooltip = ({ level, x, showLabel }: TooltipProps) => {
                     animate={{ opacity: 1 }}
                     transition={{ type: "spring", stiffness: 500, damping: 35, mass: 0.5 }}
                 >
-                    {RPE_LABELS[level]}
+                    {rpeLabel(level)}
                 </motion.span>
             )}
             {/* Arrow */}
@@ -155,6 +144,7 @@ export const RpeSelector = ({
     label = "RPE",
 }: RpeSelectorProps) => {
     const containerRef = useRef<HTMLDivElement>(null);
+    const rpeLabel = useRpeLabel();
     const [dragging, setDragging] = useState(false);
     const [dragStartLevel, setDragStartLevel] = useState<number | null>(null);
     const [tooltip, setTooltip] = useState<{ level: number; x: number } | null>(null);
@@ -330,7 +320,7 @@ export const RpeSelector = ({
             />
             {!compact && (
                 <p className="text-xs text-muted-foreground/60 italic text-right leading-none h-3">
-                    {value != null ? RPE_LABELS[value] : ""}
+                    {value != null ? rpeLabel(value) : ""}
                 </p>
             )}
         </div>

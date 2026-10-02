@@ -62,5 +62,15 @@
   "today": "Hoy",
   "previous_day": "Día anterior",
   "next_day": "Día siguiente",
-  "go_to_today": "Ir a hoy"
+  "go_to_today": "Ir a hoy",
+  "rpe_level_1": "Muy fácil",
+  "rpe_level_2": "Fácil",
+  "rpe_level_3": "Moderado",
+  "rpe_level_4": "Algo difícil",
+  "rpe_level_5": "Difícil",
+  "rpe_level_6": "Difícil+",
+  "rpe_level_7": "Muy difícil",
+  "rpe_level_8": "Muy difícil+",
+  "rpe_level_9": "Extremadamente difícil",
+  "rpe_level_10": "Esfuerzo máximo"
 }

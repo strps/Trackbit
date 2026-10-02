@@ -44,6 +44,13 @@ abstract class SessionDao {
     )
     abstract suspend fun exerciseOfSet(uuid: String): Int?
 
+    /** The newest set of [exerciseId] in Room, from any session. */
+    @Query(
+        "SELECT p.* FROM exercise_performances p JOIN exercise_logs l ON l.uuid = p.logUuid " +
+            "WHERE l.exerciseId = :exerciseId ORDER BY p.createdAt DESC, p.number DESC LIMIT 1",
+    )
+    abstract suspend fun latestSet(exerciseId: Int): PerformanceEntity?
+
     @Query("SELECT COUNT(*) FROM exercise_performances WHERE logUuid = :logUuid")
     abstract suspend fun setCount(logUuid: String): Int
 

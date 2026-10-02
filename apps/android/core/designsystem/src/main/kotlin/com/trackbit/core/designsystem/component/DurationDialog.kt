@@ -1,4 +1,4 @@
-package com.trackbit.feature.tracker
+package com.trackbit.core.designsystem.component
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -19,16 +19,16 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.trackbit.core.i18n.R
 
-/** Sets a timed habit's total for the day, as minutes and seconds. */
+/** Edits a duration as minutes and seconds: a timed habit's day, a lap, a hold. */
 @Composable
-internal fun TimeDialog(habitName: String, initialMs: Long, onDismiss: () -> Unit, onSave: (Long) -> Unit) {
+fun DurationDialog(title: String, initialMs: Long, onDismiss: () -> Unit, onSave: (Long) -> Unit) {
     var minutes by rememberSaveable { mutableStateOf((initialMs / MS_PER_MINUTE).toString()) }
     var seconds by rememberSaveable { mutableStateOf((initialMs % MS_PER_MINUTE / 1000).toString()) }
     val ms = timeMs(minutes, seconds)
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.android_tracker_time_title, habitName)) },
+        title = { Text(title) },
         text = {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
@@ -64,7 +64,7 @@ internal fun TimeDialog(habitName: String, initialMs: Long, onDismiss: () -> Uni
  * The time [minutes] and [seconds] describe, or null unless both are whole numbers (empty is 0),
  * seconds are under a minute, and the total fits the server's day value (milliseconds in an int).
  */
-internal fun timeMs(minutes: String, seconds: String): Long? {
+fun timeMs(minutes: String, seconds: String): Long? {
     val m = if (minutes.isEmpty()) 0L else minutes.toLongOrNull() ?: return null
     val s = if (seconds.isEmpty()) 0L else seconds.toLongOrNull() ?: return null
     if (s !in 0..59 || m < 0 || m > Int.MAX_VALUE / MS_PER_MINUTE) return null
