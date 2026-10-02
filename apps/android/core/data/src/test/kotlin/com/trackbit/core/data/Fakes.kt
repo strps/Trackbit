@@ -5,6 +5,15 @@ import androidx.test.core.app.ApplicationProvider
 import com.trackbit.core.data.sync.SyncScheduler
 import com.trackbit.core.database.TrackbitDatabase
 import com.trackbit.core.model.CheckRequest
+import com.trackbit.core.model.CreateExerciseLogRequest
+import com.trackbit.core.model.CreatePerformanceRequest
+import com.trackbit.core.model.CreateSessionRequest
+import com.trackbit.core.model.Exercise
+import com.trackbit.core.model.ExerciseLog
+import com.trackbit.core.model.ExercisePerformance
+import com.trackbit.core.model.ExerciseSession
+import com.trackbit.core.model.ExerciseSessionDetail
+import com.trackbit.core.model.SetValues
 import com.trackbit.core.model.ColorStop
 import com.trackbit.core.model.ColorTheme
 import com.trackbit.core.model.DayLog
@@ -19,7 +28,11 @@ import com.trackbit.core.model.TodayHabit
 import com.trackbit.core.model.TodayResponse
 import com.trackbit.core.network.IdempotencyKey
 import com.trackbit.core.network.SessionTokenSource
+import com.trackbit.core.network.service.ExerciseService
 import com.trackbit.core.network.service.TrackerService
+import okhttp3.ResponseBody.Companion.toResponseBody
+import retrofit2.HttpException
+import retrofit2.Response
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -63,6 +76,8 @@ fun todayResponse(day: LocalDate = DAY, vararg habits: TodayHabit) = TodayRespon
 
 fun dayLog(habitId: Int, day: LocalDate, rating: Int?) =
     DayLog(id = 1, habitId = habitId, rating = rating, notes = null, localDay = day, timeStamp = Instant.EPOCH, createdAt = Instant.EPOCH)
+
+fun httpError(status: Int, body: String = "{}") = HttpException(Response.error<Any>(status, body.toResponseBody()))
 
 /** A clock that stands still until a test moves it. */
 class FakeClock(var now: Instant = Instant.parse("2026-09-26T10:00:00Z")) : Clock() {
@@ -119,6 +134,51 @@ class FakeTrackerService : TrackerService {
         return todayAnswer()
     }
 
+    /** A session write the fake received; deletes and updates name their row's uuid. */
+    data class Deleted(val type: String, val uuid: String)
+    data class Updated(val uuid: String, val values: SetValues)
+
+    /** Answers session writes; throw from it to fail one. */
+    var sessionRespond: (Any) -> Unit = {}
+    var sessionsAnswer: (Int, LocalDate) -> List<ExerciseSessionDetail> = { _, _ -> emptyList() }
+    val sessionsRequests = mutableListOf<Pair<Int, LocalDate>>()
+
+    override suspend fun sessions(habitId: Int, day: LocalDate): List<ExerciseSessionDetail> {
+        sessionsRequests += habitId to day
+        return sessionsAnswer(habitId, day)
+    }
+
+    override suspend fun createSession(body: CreateSessionRequest, key: IdempotencyKey): ExerciseSession {
+        recordSession(body, key)
+        return ExerciseSession(id = 1, uuid = body.uuid, dayLogId = 1, createdAt = null)
+    }
+
+    override suspend fun deleteSession(uuid: String, key: IdempotencyKey) = recordSession(Deleted("session", uuid), key)
+
+    override suspend fun createExerciseLog(body: CreateExerciseLogRequest, key: IdempotencyKey): ExerciseLog {
+        recordSession(body, key)
+        return ExerciseLog(1, body.uuid, body.exerciseId, 1, body.listItemId, null, null, null, null, null)
+    }
+
+    override suspend fun deleteExerciseLog(uuid: String, key: IdempotencyKey) = recordSession(Deleted("log", uuid), key)
+
+    override suspend fun createPerformance(body: CreatePerformanceRequest, key: IdempotencyKey): ExercisePerformance {
+        recordSession(body, key)
+        return ExercisePerformance(1, body.uuid, body.number, 1, body.reps, body.weight, body.duration, body.distance, body.rpe, null)
+    }
+
+    override suspend fun updatePerformance(uuid: String, values: SetValues, key: IdempotencyKey): ExercisePerformance {
+        recordSession(Updated(uuid, values), key)
+        return ExercisePerformance(1, uuid, 1, 1, values.reps, values.weight, values.duration, values.distance, values.rpe, null)
+    }
+
+    override suspend fun deletePerformance(uuid: String, key: IdempotencyKey) = recordSession(Deleted("set", uuid), key)
+
+    private fun recordSession(body: Any, key: IdempotencyKey) {
+        sent += Sent(body, key.value)
+        sessionRespond(body)
+    }
+
     override suspend fun check(body: CheckRequest, key: IdempotencyKey) = record(body, key)
     override suspend fun increment(body: IncrementRequest, key: IdempotencyKey) = record(body, key)
     override suspend fun ensureDayLog(body: EnsureDayLogRequest, key: IdempotencyKey) = record(body, key)
@@ -128,3 +188,22 @@ class FakeTrackerService : TrackerService {
         return respond(body)
     }
 }
+
+class FakeExerciseService(var answer: () -> List<Exercise> = { emptyList() }) : ExerciseService {
+    var calls = 0
+    override suspend fun exercises(): List<Exercise> {
+        calls++
+        return answer()
+    }
+}
+
+fun exercise(id: Int, frozen: Boolean = false) = Exercise(
+    id = id,
+    userId = if (frozen) "user" else null,
+    name = "Exercise $id",
+    category = "strength",
+    defaultWeightUnit = "kg",
+    defaultDistanceUnit = "km",
+    lastPerformance = null,
+    frozen = frozen,
+)

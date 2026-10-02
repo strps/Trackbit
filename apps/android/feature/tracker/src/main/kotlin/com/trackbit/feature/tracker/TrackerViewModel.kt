@@ -167,7 +167,7 @@ class TrackerViewModel @Inject constructor(
             when (block()) {
                 WriteResult.HabitFrozen -> message.value = TrackerMessage.HabitFrozen
                 // A missing habit was deleted by a sync; its row is already gone.
-                WriteResult.Queued, WriteResult.HabitNotFound, WriteResult.NoChange -> Unit
+                WriteResult.Queued, WriteResult.HabitNotFound, WriteResult.NoChange, WriteResult.ExerciseFrozen -> Unit
             }
         }
     }

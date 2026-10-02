@@ -6,7 +6,6 @@ import com.trackbit.core.model.CheckRequest
 import com.trackbit.core.model.IncrementRequest
 import com.trackbit.core.model.RecentDay
 import kotlinx.coroutines.test.runTest
-import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -14,8 +13,6 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import retrofit2.HttpException
-import retrofit2.Response
 import java.io.IOException
 import java.time.LocalDate
 
@@ -26,7 +23,7 @@ class TrackerSyncTest {
     private val tokens = FakeTokens()
     private val scheduler = FakeScheduler()
     private val clock = FakeClock()
-    private val sync = TrackerSync(db, service, tokens, clock)
+    private val sync = TrackerSync(db, service, FakeExerciseService(), tokens, clock)
     private val repository = DefaultTrackerRepository(db, sync, scheduler, clock)
     private val outbox = db.outboxDao()
 
@@ -35,9 +32,6 @@ class TrackerSyncTest {
     }
 
     @After fun close() = db.close()
-
-    private fun httpError(status: Int, body: String) =
-        HttpException(Response.error<Any>(status, body.toResponseBody()))
 
     private suspend fun rating(habitId: Int, day: LocalDate = DAY) = db.dayLogDao().get(habitId, day)?.rating
 

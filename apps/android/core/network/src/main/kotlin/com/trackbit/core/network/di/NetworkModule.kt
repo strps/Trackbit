@@ -3,6 +3,7 @@ package com.trackbit.core.network.di
 import com.trackbit.core.network.NetworkConfig
 import com.trackbit.core.network.SessionTokenSource
 import com.trackbit.core.network.service.AuthService
+import com.trackbit.core.network.service.ExerciseService
 import com.trackbit.core.network.service.HabitsService
 import com.trackbit.core.network.service.MeService
 import com.trackbit.core.network.service.TrackerService
@@ -40,6 +41,10 @@ object NetworkModule {
     @Provides
     @Singleton
     fun habitsService(retrofit: Retrofit): HabitsService = retrofit.create()
+
+    @Provides
+    @Singleton
+    fun exerciseService(retrofit: Retrofit): ExerciseService = retrofit.create()
 
     @Provides
     @Singleton

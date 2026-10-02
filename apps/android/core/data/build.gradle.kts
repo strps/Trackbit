@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.trackbit.android.library)
     alias(libs.plugins.trackbit.hilt)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {

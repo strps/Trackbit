@@ -160,25 +160,32 @@ describe('Android contracts', () => {
         await record(MODEL, 'exercise-lists.json', 'GET /api/exercise-lists', lists, u.secrets)
 
         const habit = await createHabit(u.id, { type: 'complex' })
-        const dayLog = await (await post(u.token, '/api/tracker/day-logs/ensure', { habitId: habit.id, day: '2026-01-10' })).json()
-        const session = await post(u.token, '/api/tracker/exercise-sessions', { dayLogId: dayLog.id })
-        const sessionId = (await session.clone().json()).id
+        // Fixed client uuids, as the app sends them.
+        const ids = {
+            session: '00000000-0000-4000-8000-000000000001',
+            log: '00000000-0000-4000-8000-000000000002',
+            sets: ['00000000-0000-4000-8000-000000000003', '00000000-0000-4000-8000-000000000004'],
+        }
+        const session = await post(u.token, '/api/tracker/exercise-sessions',
+            { uuid: ids.session, habitId: habit.id, day: '2026-01-10' }, { 'idempotency-key': 's-1' })
         await record(MODEL, 'exercise-session.json', 'POST /api/tracker/exercise-sessions', session, u.secrets)
 
         const log = await post(u.token, '/api/tracker/exercise-logs', {
-            exerciseSessionId: sessionId, exerciseId: row.id, listItemId: item.id,
-            exercisePerformances: [{ number: 1, reps: 8, weight: 60.5 }],
+            uuid: ids.log, exerciseSessionUuid: ids.session, exerciseId: row.id, listItemId: item.id,
         })
         const logId = (await log.clone().json()).id
         await record(MODEL, 'exercise-log-created.json', 'POST /api/tracker/exercise-logs', log, u.secrets)
         await record(MODEL, 'exercise-log.json', 'PATCH /api/tracker/exercise-logs/:id',
             await send(u.token, 'PATCH', `/api/tracker/exercise-logs/${logId}`, { distance: 5.25, duration: 1500, distanceUnit: 'km', weightUnit: 'kg' }),
             u.secrets)
+        await post(u.token, '/api/tracker/exercise-performances', { uuid: ids.sets[0], exerciseLogUuid: ids.log, number: 1, reps: 8, weight: 60.5 })
         await record(MODEL, 'exercise-performance.json', 'POST /api/tracker/exercise-performances',
             await post(u.token, '/api/tracker/exercise-performances', {
-                exerciseLogId: logId, number: 2, reps: 6, weight: 62.5, duration: 45_000, distance: 1.25, rpe: 8,
+                uuid: ids.sets[1], exerciseLogUuid: ids.log, number: 2, reps: 6, weight: 62.5, duration: 45_000, distance: 1.25, rpe: 8,
             }),
             u.secrets)
+        await record(MODEL, 'exercise-sessions.json', 'GET /api/tracker/exercise-sessions?habitId=:id&day=2026-01-10',
+            await get(u.token, `/api/tracker/exercise-sessions?habitId=${habit.id}&day=2026-01-10`), u.secrets)
 
         await record(MODEL, 'exercises.json', 'GET /api/exercise-info/exercises', await get(u.token, '/api/exercise-info/exercises'), u.secrets)
     })

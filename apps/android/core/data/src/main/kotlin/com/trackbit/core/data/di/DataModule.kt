@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.work.WorkManager
 import com.trackbit.core.auth.SignOutHook
 import com.trackbit.core.data.ClearDatabaseOnSignOut
+import com.trackbit.core.data.DefaultSessionRepository
 import com.trackbit.core.data.DefaultTrackerRepository
+import com.trackbit.core.data.SessionRepository
 import com.trackbit.core.data.TrackerRepository
 import com.trackbit.core.data.sync.CancelSyncOnSignOut
 import com.trackbit.core.data.sync.SyncScheduler
@@ -33,6 +35,9 @@ internal annotation class DataScope
 internal abstract class DataModule {
     @Binds
     abstract fun trackerRepository(repository: DefaultTrackerRepository): TrackerRepository
+
+    @Binds
+    abstract fun sessionRepository(repository: DefaultSessionRepository): SessionRepository
 
     @Binds
     abstract fun syncScheduler(scheduler: WorkManagerSyncScheduler): SyncScheduler

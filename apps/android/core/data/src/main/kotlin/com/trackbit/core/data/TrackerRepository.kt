@@ -120,6 +120,9 @@ enum class WriteResult {
     /** Nothing changed: the habit isn't in Room (deleted, or not synced yet). */
     HabitNotFound,
 
+    /** Nothing changed: the custom exercise is over the user's role limits and read-only. */
+    ExerciseFrozen,
+
     /** Nothing changed: it was already done, e.g. a timer stopped twice. */
     NoChange,
 }
@@ -149,6 +152,7 @@ internal class DefaultTrackerRepository @Inject constructor(
     private val dayLogDao = db.dayLogDao()
     private val habitDayDao = db.habitDayDao()
     private val outboxDao = db.outboxDao()
+    private val writer = OutboxWriter(db, scheduler)
     private val timerDao = db.timerDao()
     private val historyDao = db.historyDao()
 
@@ -194,27 +198,27 @@ internal class DefaultTrackerRepository @Inject constructor(
         get() = db.invalidationTracker.createFlow(HabitEntity.TABLE, DayLogEntity.TABLE, TimerEntity.TABLE, emitInitialState = false)
             .map { }
 
-    override suspend fun setRating(habitId: Int, day: LocalDate, rating: Int) = write(habitId) {
+    override suspend fun setRating(habitId: Int, day: LocalDate, rating: Int) = writer.write(habitId) {
         dayLogDao.setRating(habitId, day, rating)
         checkOp(habitId, day, rating)
     }
 
     override suspend fun increment(habitId: Int, day: LocalDate, delta: Int): WriteResult {
         require(delta != 0) { "delta must not be 0" }
-        return write(habitId) {
+        return writer.write(habitId) {
             dayLogDao.addToRating(habitId, day, delta)
             incrementOp(habitId, day, delta)
         }
     }
 
     // Sent as an absolute value, so a replayed or reordered toggle can't flip it back.
-    override suspend fun toggle(habitId: Int, day: LocalDate) = write(habitId) {
+    override suspend fun toggle(habitId: Int, day: LocalDate) = writer.write(habitId) {
         val rating = if ((dayLogDao.get(habitId, day)?.rating ?: 0) > 0) 0 else 1
         dayLogDao.setRating(habitId, day, rating)
         checkOp(habitId, day, rating)
     }
 
-    override suspend fun ensureDayLog(habitId: Int, day: LocalDate) = write(habitId) {
+    override suspend fun ensureDayLog(habitId: Int, day: LocalDate) = writer.write(habitId) {
         dayLogDao.ensure(habitId, day)
         ensureDayLogOp(habitId, day)
     }
@@ -230,7 +234,7 @@ internal class DefaultTrackerRepository @Inject constructor(
         }
     }
 
-    override suspend fun stopTimer(habitId: Int): WriteResult = flushIfQueued(
+    override suspend fun stopTimer(habitId: Int): WriteResult = writer.flushIfQueued(
         db.withTransaction {
             val timer = timerDao.forHabit(habitId) ?: return@withTransaction WriteResult.NoChange
             timerDao.delete(timer.id)
@@ -238,7 +242,7 @@ internal class DefaultTrackerRepository @Inject constructor(
             // Timed values are milliseconds in an Int column.
             val elapsed = habitTimer.elapsedMs(clock.instant()).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
             if (elapsed == 0) return@withTransaction WriteResult.NoChange
-            queue(habitId) {
+            writer.queue(habitId) {
                 dayLogDao.addToRating(habitId, habitTimer.day, elapsed)
                 incrementOp(habitId, habitTimer.day, elapsed)
             }
@@ -256,24 +260,4 @@ internal class DefaultTrackerRepository @Inject constructor(
     }
 
     override suspend fun refresh(): SyncResult = sync.sync()
-
-    /** Applies [change] and queues the op it returns, in one transaction, then starts a flush. */
-    private suspend fun write(habitId: Int, change: suspend () -> OutboxEntity): WriteResult =
-        flushIfQueued(db.withTransaction { queue(habitId, change) })
-
-    /** Inside a transaction: applies [change] and queues its op, unless the habit is frozen or gone. */
-    private suspend fun queue(habitId: Int, change: suspend () -> OutboxEntity): WriteResult {
-        val habit = habitDao.get(habitId) ?: return WriteResult.HabitNotFound
-        if (habit.frozen) return WriteResult.HabitFrozen
-        val op = change()
-        // The server's first log day is its earliest row; an anti-habit streak starts there.
-        habitDao.extendFirstLogDay(habitId, op.localDay)
-        outboxDao.enqueue(op)
-        return WriteResult.Queued
-    }
-
-    private fun flushIfQueued(result: WriteResult): WriteResult {
-        if (result == WriteResult.Queued) scheduler.flushOutbox()
-        return result
-    }
 }

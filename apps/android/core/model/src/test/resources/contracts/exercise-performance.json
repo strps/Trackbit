@@ -3,6 +3,7 @@
   "status": 201,
   "body": {
     "id": 2,
+    "uuid": "00000000-0000-4000-8000-000000000004",
     "exerciseLogId": 1,
     "number": 2,
     "reps": 6,

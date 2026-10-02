@@ -74,6 +74,28 @@ class MigrationTest {
         }
     }
 
+    @Test fun `4 to 5 adds sessions and the exercise catalog, keeping pending writes`() {
+        helper.createDatabase(NAME, 4).use { db ->
+            db.execSQL(
+                "INSERT INTO outbox (type, habitId, localDay, payload, idempotencyKey, createdAt, attempts) " +
+                    "VALUES ('Check', 1, '2026-09-26', '{}', 'key-1', 0, 0)",
+            )
+        }
+
+        helper.runMigrationsAndValidate(NAME, 5, true, *Migrations.ALL).use { db ->
+            for (table in listOf("exercise_sessions", "exercise_logs", "exercise_performances", "exercises")) {
+                db.query("SELECT COUNT(*) FROM $table").use { cursor ->
+                    cursor.moveToFirst()
+                    assertEquals(0, cursor.getInt(0))
+                }
+            }
+            db.query("SELECT COUNT(*) FROM outbox").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(1, cursor.getInt(0))
+            }
+        }
+    }
+
     private companion object {
         const val NAME = "migration-test.db"
     }

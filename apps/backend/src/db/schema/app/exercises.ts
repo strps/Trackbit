@@ -1,5 +1,5 @@
 import { relations, sql } from "drizzle-orm";
-import { boolean, foreignKey, integer, jsonb, numeric, pgTable, primaryKey, real, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, foreignKey, integer, jsonb, numeric, pgTable, primaryKey, real, serial, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { exerciseListItems } from "./exercise-lists";
 import { dayLogs } from "./habits";
 import { user } from "./user";
@@ -100,9 +100,14 @@ export const exerciseMuscleGroupsRelations = relations(exerciseMuscleGroups, ({ 
 
 
 
+// Sessions, logs and sets carry a `uuid` a client may choose when it creates the row, so an
+// offline client can create a session, its logs and their sets before any of them reaches the
+// server, and refer to each by an id that never changes. Rows created without one get a random one.
+
 //Exercise Sessions
 export const exerciseSessions = pgTable('exercise_sessions', {
     id: serial('id').primaryKey(),
+    uuid: uuid('uuid').defaultRandom().notNull().unique(),
     dayLogId: integer('day_log_id').references(() => dayLogs.id, { onDelete: 'cascade' }).notNull(),
     createdAt: timestamp('created_at').defaultNow(),
 });
@@ -119,6 +124,7 @@ export const exerciseSessionRelations = relations(exerciseSessions, ({ one, many
 //Exercise Logs
 export const exerciseLogs = pgTable('exercise_log', {
     id: serial('id').primaryKey(),
+    uuid: uuid('uuid').defaultRandom().notNull().unique(),
 
     exerciseId: integer('exercise_id').references(() => exercises.id).notNull(),
     exerciseSessionId: integer('session_id').references(() => exerciseSessions.id, { onDelete: 'cascade' }).notNull(),
@@ -159,6 +165,7 @@ export const exerciseLogRelations = relations(exerciseLogs, ({ one, many }) => (
 //Exercise Performances 
 export const exercisePerformances = pgTable('exercise_performances', {
     id: serial('id').primaryKey(),
+    uuid: uuid('uuid').defaultRandom().notNull().unique(),
     exerciseLogId: integer('exercise_log_id').references(() => exerciseLogs.id, { onDelete: 'cascade' }).notNull(),
 
     number: integer('number').default(1).notNull(), //.notNull(),// Sequential order (1, 2, 3...)

@@ -16,11 +16,38 @@ enum class OutboxOpType {
 
     /** `POST /api/tracker/day-logs/ensure`, payload `EnsureDayLogRequest`. */
     EnsureDayLog,
+
+    // Session ops. They name rows by uuid, and their habitId/localDay is the session's day.
+
+    /** `POST /api/tracker/exercise-sessions`, payload `CreateSessionRequest`. */
+    CreateSession,
+
+    /** `DELETE /api/tracker/exercise-sessions/uuid/:uuid`, payload `RowRef`. */
+    DeleteSession,
+
+    /** `POST /api/tracker/exercise-logs`, payload `CreateExerciseLogRequest`. */
+    CreateExerciseLog,
+
+    /** `DELETE /api/tracker/exercise-logs/uuid/:uuid`, payload `RowRef`. */
+    DeleteExerciseLog,
+
+    /** `POST /api/tracker/exercise-performances`, payload `CreatePerformanceRequest`. */
+    CreatePerformance,
+
+    /** `PATCH /api/tracker/exercise-performances/uuid/:uuid`, payload `SetUpdate`. */
+    UpdatePerformance,
+
+    /** `DELETE /api/tracker/exercise-performances/uuid/:uuid`, payload `RowRef`. */
+    DeletePerformance,
+    ;
+
+    /** Deleting a row that is already gone (a 404) counts as done. */
+    val deletes: Boolean get() = this == DeleteSession || this == DeleteExerciseLog || this == DeletePerformance
 }
 
 /**
  * A tracker write waiting to reach the server. Ops are sent in [id] order, and while any op for
- * ([habitId], [localDay]) is here, sync leaves that day log alone.
+ * ([habitId], [localDay]) is here, sync leaves that day log and that day's sessions alone.
  */
 @Entity(
     tableName = "outbox",

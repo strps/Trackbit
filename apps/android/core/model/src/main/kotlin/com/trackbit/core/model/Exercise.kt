@@ -32,16 +32,48 @@ data class LastPerformance(
     val rpe: Int?,
 )
 
+// Sessions, logs and sets are identified by [ExerciseSession.uuid] and friends: the app picks it
+// when it creates the row (offline, before the server has an `id`), and the server keeps it.
+// `id` is the server's key, which only the web uses.
+
 @Serializable
 data class ExerciseSession(
     val id: Int,
+    val uuid: String,
     val dayLogId: Int,
     @Serializable(with = InstantSerializer::class) val createdAt: Instant?,
+)
+
+/** A row of `GET /api/tracker/exercise-sessions`: a session with its logs and their sets. */
+@Serializable
+data class ExerciseSessionDetail(
+    val id: Int,
+    val uuid: String,
+    val dayLogId: Int,
+    @Serializable(with = InstantSerializer::class) val createdAt: Instant?,
+    val exerciseLogs: List<ExerciseLogDetail>,
+)
+
+@Serializable
+data class ExerciseLogDetail(
+    val id: Int,
+    val uuid: String,
+    val exerciseId: Int,
+    /** The list item this was logged from, or null for an ad-hoc log. */
+    val listItemId: Int?,
+    @Serializable(with = InstantSerializer::class) val createdAt: Instant?,
+    val distance: Double?,
+    /** Seconds. */
+    val duration: Int?,
+    val distanceUnit: String?,
+    val weightUnit: String?,
+    val exercisePerformances: List<ExercisePerformance>,
 )
 
 @Serializable
 data class ExerciseLog(
     val id: Int,
+    val uuid: String,
     val exerciseId: Int,
     val exerciseSessionId: Int,
     /** The list item this was logged from, or null for an ad-hoc log. */
@@ -58,6 +90,7 @@ data class ExerciseLog(
 @Serializable
 data class ExercisePerformance(
     val id: Int,
+    val uuid: String,
     val number: Int,
     val exerciseLogId: Int,
     val reps: Int?,
@@ -67,4 +100,6 @@ data class ExercisePerformance(
     val distance: Double?,
     val rpe: Int?,
     @Serializable(with = InstantSerializer::class) val createdAt: Instant?,
-)
+) {
+    val values: SetValues get() = SetValues(reps = reps, weight = weight, duration = duration, distance = distance, rpe = rpe)
+}

@@ -40,6 +40,7 @@ class DecodeTest {
         "exercise-log-created.json" to ExerciseLog.serializer(),
         "exercise-log.json" to ExerciseLog.serializer(),
         "exercise-performance.json" to ExercisePerformance.serializer(),
+        "exercise-sessions.json" to ListSerializer(ExerciseSessionDetail.serializer()),
         "exercise-lists.json" to ListSerializer(ExerciseList.serializer()),
         "session.json" to SessionResponse.serializer(),
         "limits.json" to LimitsResponse.serializer(),
@@ -117,7 +118,9 @@ class DecodeTest {
     }
 
     @Test fun `session objects`() {
-        assertEquals(1, contract<ExerciseSession>("exercise-session.json").dayLogId)
+        val session = contract<ExerciseSession>("exercise-session.json")
+        assertEquals(1, session.dayLogId)
+        assertEquals("00000000-0000-4000-8000-000000000001", session.uuid)
         assertEquals(1, contract<ExerciseLog>("exercise-log-created.json").listItemId)
         val log = contract<ExerciseLog>("exercise-log.json")
         assertEquals(5.25, log.distance)
@@ -126,6 +129,24 @@ class DecodeTest {
         assertEquals(62.5, set.weight)
         assertEquals(1.25, set.distance)
         assertEquals(8, set.rpe)
+        assertEquals("00000000-0000-4000-8000-000000000004", set.uuid)
+    }
+
+    @Test fun `a day's sessions`() {
+        val session = contract<List<ExerciseSessionDetail>>("exercise-sessions.json").single()
+        assertEquals("00000000-0000-4000-8000-000000000001", session.uuid)
+        val log = session.exerciseLogs.single()
+        assertEquals("00000000-0000-4000-8000-000000000002", log.uuid)
+        assertEquals(1, log.listItemId)
+        assertEquals(listOf(1, 2), log.exercisePerformances.map { it.number })
+        assertEquals(SetValues(reps = 8, weight = 60.5, duration = null, distance = null, rpe = null), log.exercisePerformances[0].values)
+    }
+
+    @Test fun `set values encode every field, null included`() {
+        assertEquals(
+            """{"reps":5,"weight":null,"duration":null,"distance":null,"rpe":null}""",
+            TrackbitJson.encodeToString(SetValues.serializer(), SetValues.EMPTY.copy(reps = 5)),
+        )
     }
 
     @Test fun exerciseLists() {

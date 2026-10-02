@@ -78,6 +78,13 @@
       "when": 1790435606187,
       "tag": "0010_habits_daily_goal_positive",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790961763994,
+      "tag": "0011_exercise_uuids",
+      "breakpoints": true
     }
   ]
 }

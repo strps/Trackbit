@@ -44,4 +44,14 @@ abstract class DayLogDao {
         insertIfMissing(DayLogEntity(habitId, day, rating = null))
         return checkNotNull(get(habitId, day))
     }
+
+    /** Starting (+1) or deleting (−1) one of the day's exercise sessions. */
+    @Transaction
+    open suspend fun addSessions(habitId: Int, day: LocalDate, delta: Int): DayLogEntity {
+        val current = get(habitId, day)
+        val log = (current ?: DayLogEntity(habitId, day, rating = null))
+            .let { it.copy(sessionCount = (it.sessionCount + delta).coerceAtLeast(0)) }
+        upsert(log)
+        return log
+    }
 }

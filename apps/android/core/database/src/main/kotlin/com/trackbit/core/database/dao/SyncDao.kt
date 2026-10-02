@@ -1,21 +1,29 @@
 package com.trackbit.core.database.dao
 
 import androidx.room.Dao
+import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Upsert
 import com.trackbit.core.database.entity.DayLogEntity
+import com.trackbit.core.database.entity.ExerciseEntity
+import com.trackbit.core.database.entity.ExerciseLogEntity
 import com.trackbit.core.database.entity.HabitEntity
+import com.trackbit.core.database.entity.PerformanceEntity
+import com.trackbit.core.database.entity.SessionEntity
 import com.trackbit.core.database.entity.toEntity
 import com.trackbit.core.model.DayLog
 import com.trackbit.core.model.DaysResponse
+import com.trackbit.core.model.Exercise
+import com.trackbit.core.model.ExerciseSessionDetail
 import com.trackbit.core.model.TodayResponse
 import java.time.Instant
 import java.time.LocalDate
 
 /**
- * Writes server data into Room: `/today` snapshots and the rows tracker writes return. The only
- * way server data reaches tracker tables, so the pending-op guard lives in one place.
+ * Writes server data into Room: `/today` snapshots, the rows tracker writes return, a day's
+ * sessions and the exercise catalog. The only way server data reaches tracker tables, so the
+ * pending-op guard lives in one place.
  */
 @Dao
 abstract class SyncDao {
@@ -94,6 +102,80 @@ abstract class SyncDao {
         }
         recordHistorySync(days.start, syncedAt)
     }
+
+    /**
+     * Makes Room's sessions of [habitId] on [day] (with their logs and sets) match a
+     * `GET /api/tracker/exercise-sessions` response, and the day log's session count with them.
+     * Skipped while ops for that day are pending: their optimistic rows are newer, and session ops
+     * share the day log's key.
+     */
+    @Transaction
+    open suspend fun applySessions(habitId: Int, day: LocalDate, sessions: List<ExerciseSessionDetail>) {
+        if (hasPending(habitId, day) || !habitExists(habitId)) return
+        // Children cascade. Rows keep their uuids, so a row on screen stays the same row.
+        deleteSessions(habitId, day)
+        for (session in sessions) {
+            insertSession(SessionEntity(session.uuid, habitId, day, session.createdAt ?: Instant.EPOCH))
+            for (log in session.exerciseLogs) {
+                insertLog(
+                    ExerciseLogEntity(
+                        uuid = log.uuid,
+                        sessionUuid = session.uuid,
+                        exerciseId = log.exerciseId,
+                        listItemId = log.listItemId,
+                        createdAt = log.createdAt ?: Instant.EPOCH,
+                        distance = log.distance,
+                        duration = log.duration,
+                        distanceUnit = log.distanceUnit,
+                        weightUnit = log.weightUnit,
+                    ),
+                )
+                for (set in log.exercisePerformances) {
+                    insertSet(
+                        PerformanceEntity(
+                            uuid = set.uuid,
+                            logUuid = log.uuid,
+                            number = set.number,
+                            reps = set.reps,
+                            weight = set.weight,
+                            duration = set.duration,
+                            distance = set.distance,
+                            rpe = set.rpe,
+                            createdAt = set.createdAt ?: Instant.EPOCH,
+                        ),
+                    )
+                }
+            }
+        }
+        val log = log(habitId, day)
+        if (log != null) {
+            upsertLog(log.copy(sessionCount = sessions.size))
+        } else if (sessions.isNotEmpty()) {
+            // The server made the day's log when the first session started.
+            upsertLog(DayLogEntity(habitId, day, rating = null, sessionCount = sessions.size))
+            extendFirstLogDay(habitId, day)
+        }
+    }
+
+    /** Replaces the exercise catalog. Nothing local is pending against it. */
+    @Transaction
+    open suspend fun applyExercises(exercises: List<Exercise>) {
+        deleteExercisesNotIn(exercises.map { it.id })
+        upsertExercises(exercises.map { it.toEntity() })
+    }
+
+    @Query("DELETE FROM exercise_sessions WHERE habitId = :habitId AND localDay = :day")
+    protected abstract suspend fun deleteSessions(habitId: Int, day: LocalDate)
+
+    @Insert protected abstract suspend fun insertSession(session: SessionEntity)
+    @Insert protected abstract suspend fun insertLog(log: ExerciseLogEntity)
+    @Insert protected abstract suspend fun insertSet(set: PerformanceEntity)
+
+    @Query("DELETE FROM exercises WHERE id NOT IN (:ids)")
+    protected abstract suspend fun deleteExercisesNotIn(ids: List<Int>)
+
+    @Upsert
+    protected abstract suspend fun upsertExercises(exercises: List<ExerciseEntity>)
 
     @Query("SELECT DISTINCT habitId, localDay FROM outbox")
     protected abstract suspend fun pendingDays(): List<HabitDayKey>

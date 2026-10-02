@@ -39,6 +39,11 @@ These are covered by unit tests but were not exercised on the emulator for W1. R
 
 ## Housekeeping
 
+- **`@trackbit/types` has no `uuid` on sessions, logs and sets** (D2 added the column). The web ignores it; its optimistic rows use negative temp ids. Adopting client uuids on the web too would let it drop the temp-id swapping in `useActivityTracker.ts`, and then the types should carry `uuid`.
+- **Session rows stay in Room for every day the app opened** (D2), until sign-out. Small, but never pruned; prune days older than the history window if it ever matters.
+- **Deleting a session, log or set isn't gated on frozen habits** on the server (creates and edits are). Same as before D2; decide whether deletes of frozen data should be allowed.
+- **A day's sessions refresh only when asked** (`SessionRepository.refresh`, D3's screen on open and pull-to-refresh). A session added on the web shows in the app's session count (via `/today`) before its contents.
+
 - **The tracker's history request can outlive the screen** (D1): if the app closes while a past day is shown, the request stays (periodic sync pulls it every 6 h) until the tracker screen starts again and releases it. Releasing from `onCleared` would need an app-wide scope in features.
 
 - **Local smoke user** `b10-smoke@example.com` exists in the local dev DB only. Delete it when it's no longer useful.
