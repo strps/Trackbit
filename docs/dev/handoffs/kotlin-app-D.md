@@ -2,7 +2,7 @@
 
 - **Plan:** [kotlin-app.md](../tasks/kotlin-app.md). Read only §2.2 and §4 "Phase 2". Core and widget context: the "Invariants" and "Landmines" sections of [kotlin-app-B.md](kotlin-app-B.md) and [kotlin-app-C.md](kotlin-app-C.md), nothing else.
 - **Status:** Phase 2. D1 (tracker home), D2 (session data layer), D3 (session screen) and D4 (picker sources, prescriptions, Play) done on the emulator; D5 next.
-- **Branch:** `kotlin-app` · **Last run:** 2026-10-02 (D4; uncommitted at the end of the run unless the user asked to commit)
+- **Branch:** `kotlin-app` · **Last run:** 2026-10-02 (D4, committed in e48ea62)
 
 ## Where we are
 
@@ -12,7 +12,6 @@ On the emulator (API 36, local backend, the user's dev account, compact cards): 
 
 `./gradlew assembleDebug testDebugUnitTest lintDebug` passes with 0 lint issues and 273 tests.
 
-The stash `stash@{0}` ("D2-only", from the half-split D1+D2 commit repaired by `996c4fc`) is redundant; drop it when the user agrees.
 
 ## Phase 2 task split (D1–D6)
 
