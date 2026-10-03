@@ -1,9 +1,11 @@
 package com.trackbit.core.auth
 
 import com.trackbit.core.auth.di.AuthScope
+import com.trackbit.core.model.ExerciseLogCardStyle
 import com.trackbit.core.model.PreferencesRequest
 import com.trackbit.core.model.PreferredExerciseSourceRequest
 import com.trackbit.core.model.SessionUser
+import com.trackbit.core.model.UnitSystem
 import com.trackbit.core.network.safeCall
 import com.trackbit.core.network.service.MeService
 import kotlinx.coroutines.CoroutineScope
@@ -21,6 +23,16 @@ interface PreferencesRepository {
 
     /** Seconds of rest after each set, in [SessionUser.REST_SECONDS_RANGE]; 0 turns the rest timer off. */
     suspend fun setDefaultRestSeconds(seconds: Int)
+
+    /** One of [SessionUser.LOCALES]. The app's language follows it (see `AppLanguage` in `app`). */
+    suspend fun setLocale(locale: String)
+
+    suspend fun setUnitSystem(unitSystem: UnitSystem)
+
+    suspend fun setExerciseLogCardStyle(style: ExerciseLogCardStyle)
+
+    /** An IANA zone; [DeviceTimeZoneSync] keeps it the device's. */
+    suspend fun setTimezone(zone: String)
 }
 
 internal class DefaultPreferencesRepository @Inject constructor(
@@ -35,10 +47,27 @@ internal class DefaultPreferencesRepository @Inject constructor(
         scope.launch { safeCall { meService.updatePreferredExerciseSource(PreferredExerciseSourceRequest(key)) } }
     }
 
-    override suspend fun setDefaultRestSeconds(seconds: Int) {
-        val request = PreferencesRequest(defaultRestSeconds = seconds)
+    override suspend fun setDefaultRestSeconds(seconds: Int) =
+        update(PreferencesRequest(defaultRestSeconds = seconds)) { it.copy(defaultRestSeconds = seconds) }
+
+    override suspend fun setLocale(locale: String) {
+        require(locale in SessionUser.LOCALES) { "Unsupported locale: $locale" }
+        update(PreferencesRequest(locale = locale)) { it.copy(locale = locale) }
+    }
+
+    override suspend fun setUnitSystem(unitSystem: UnitSystem) =
+        update(PreferencesRequest(unitSystem = unitSystem)) { it.copy(unitSystem = unitSystem) }
+
+    override suspend fun setExerciseLogCardStyle(style: ExerciseLogCardStyle) =
+        update(PreferencesRequest(exerciseLogCardStyle = style)) { it.copy(exerciseLogCardStyle = style) }
+
+    override suspend fun setTimezone(zone: String) =
+        update(PreferencesRequest(timezone = zone)) { it.copy(timezone = zone) }
+
+    /** The cached user first, then one PATCH that outlives the caller. */
+    private suspend fun update(request: PreferencesRequest, change: (SessionUser) -> SessionUser) {
         val token = store.token() ?: return
-        store.updateUser(ifToken = token) { it.copy(defaultRestSeconds = seconds) }
+        store.updateUser(ifToken = token, change)
         scope.launch { safeCall { meService.updatePreferences(request) } }
     }
 }

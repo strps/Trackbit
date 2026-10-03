@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Generates the Android resources that mirror the web app, so neither side is copied by hand:
 //
-//   strings   apps/frontend/src/i18n/locales/{en,es}/*.json  → core/i18n  values[-es]/strings.xml
+//   strings   apps/frontend/src/i18n/locales/{en,es}/*.json  → core/i18n  values[-es]/strings.xml, xml/locales_config.xml
 //   presets   @trackbit/types GRADIENT_PRESET_STOPS           → core/model GradientPresets.kt
 //   colors    apps/frontend/src/index.css (:root, .dark)      → core/designsystem WebColors.kt
 //   icons     HABIT_ICON_IDS + the web's lucide registry      → core/designsystem drawable/ic_habit_*.xml
@@ -259,7 +259,20 @@ function generateStrings() {
         const dir = locale === DEFAULT_LOCALE ? 'values' : `values-${locale}`;
         outputs[join(ANDROID, 'core/i18n/src/main/res', dir, 'strings.xml')] = stringsXml(entries);
     }
+    outputs[join(ANDROID, 'core/i18n/src/main/res/xml/locales_config.xml')] = localeConfigXml(locales);
     return outputs;
+}
+
+/** The languages the system's per-app language setting offers: those the strings ship in. */
+function localeConfigXml(locales) {
+    return [
+        '<?xml version="1.0" encoding="utf-8"?>',
+        `<!-- ${GENERATED_BY} Source: apps/frontend/src/i18n/locales. -->`,
+        '<locale-config xmlns:android="http://schemas.android.com/apk/res/android">',
+        ...locales.map((locale) => `    <locale android:name="${locale}" />`),
+        '</locale-config>',
+        '',
+    ].join('\n');
 }
 
 // ---------------------------------------------------------------------------------------------

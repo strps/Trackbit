@@ -51,6 +51,7 @@ class DecodeTest {
         "session.json" to SessionResponse.serializer(),
         "limits.json" to LimitsResponse.serializer(),
         "limits-admin.json" to LimitsResponse.serializer(),
+        "update-user.json" to UpdateUserResponse.serializer(),
     )
 
     @Test fun `every recorded contract decodes`() {

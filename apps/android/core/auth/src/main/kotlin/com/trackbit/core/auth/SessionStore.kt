@@ -3,6 +3,8 @@ package com.trackbit.core.auth
 import androidx.datastore.core.DataStore
 import com.trackbit.core.auth.di.AuthScope
 import com.trackbit.core.model.SessionUser
+import com.trackbit.core.network.ApiError
+import com.trackbit.core.network.ApiResult
 import com.trackbit.core.network.SessionTokenSource
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -15,6 +17,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.IOException
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -36,6 +39,9 @@ internal class SessionStore @Inject constructor(
 
     @Volatile private var current: StoredSession? = null
 
+    /** The token a [rotate] is replacing: the server may already reject it, which is expected. */
+    @Volatile private var rotating: String? = null
+
     private val _state = MutableStateFlow<AuthState>(AuthState.Loading)
     val state: StateFlow<AuthState> = _state.asStateFlow()
 
@@ -52,8 +58,15 @@ internal class SessionStore @Inject constructor(
     }
 
     override fun onUnauthorized(rejectedToken: String) {
+        if (rejectedToken == rotating) return
         scope.launch { clear(ifToken = rejectedToken) }
     }
+
+    /**
+     * The signed-in user's language, which is also the app's; the device's while signed out or
+     * still loading. Memory only, like [currentToken].
+     */
+    fun language(): Locale = current?.user?.locale?.let(Locale::forLanguageTag) ?: Locale.getDefault()
 
     suspend fun token(): String? {
         loaded.await()
@@ -80,6 +93,30 @@ internal class SessionStore @Inject constructor(
         dataStore.updateData { updated }
         current = updated
         _state.value = AuthState.SignedIn(user)
+    }
+
+    /**
+     * Runs [call], which ends the session [ifToken] on the server and starts a new one, and adopts
+     * the new token it returns (same user, so nothing else changes). Meanwhile, a 401 for the old
+     * token is expected and doesn't sign out; a 401 for the call itself does.
+     */
+    suspend fun rotate(ifToken: String, call: suspend () -> ApiResult<String>): ApiResult<String> {
+        rotating = ifToken
+        try {
+            val result = call()
+            when (result) {
+                is ApiResult.Success -> locked {
+                    val session = current?.takeIf { it.token == ifToken } ?: return@locked
+                    val updated = session.copy(token = result.value)
+                    dataStore.updateData { updated }
+                    current = updated
+                }
+                is ApiResult.Failure -> if (result.error is ApiError.Unauthorized) clear(ifToken)
+            }
+            return result
+        } finally {
+            rotating = null
+        }
     }
 
     /** Signs out, if [ifToken] is still the session's. */

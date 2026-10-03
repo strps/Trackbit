@@ -1,5 +1,7 @@
 package com.trackbit.core.auth
 
+import com.trackbit.core.model.ExerciseLogCardStyle
+import com.trackbit.core.model.UnitSystem
 import com.trackbit.core.network.ApiError
 import com.trackbit.core.network.ApiResult
 import com.trackbit.core.network.service.AuthService
@@ -30,9 +32,13 @@ class AuthRepositoryTest {
 
     private val server = MockWebServer().apply { start() }
     private val harness by lazy { StoreHarness(folder.root.resolve("session.enc")) }
-    private val retrofit by lazy { trackbitRetrofit(server.url("/").toString(), trackbitOkHttpClient(harness.store)) }
+    // Wired as in the app: the store gives both the token and the request language.
+    private val retrofit by lazy {
+        trackbitRetrofit(server.url("/").toString(), trackbitOkHttpClient(harness.store) { harness.store.language() })
+    }
     private val repository by lazy { DefaultAuthRepository(harness.store, retrofit.create<AuthService>(), harness.scope) }
     private val preferences by lazy { DefaultPreferencesRepository(harness.store, retrofit.create<MeService>(), harness.scope) }
+    private val account by lazy { DefaultAccountRepository(harness.store, retrofit.create<AuthService>()) }
 
     @After fun tearDown() {
         harness.close()
@@ -170,6 +176,99 @@ class AuthRepositoryTest {
         preferences.setPreferredExerciseSource("list:3")
         assertEquals(AuthState.SignedOut, repository.state.value)
         assertEquals(0, server.requestCount)
+    }
+
+    @Test fun `locale, units, card style and timezone change the cached user at once and are PATCHed`() = runTest {
+        signIn()
+        val changes = listOf(
+            suspend { preferences.setLocale("en") } to """{"locale":"en"}""",
+            suspend { preferences.setUnitSystem(UnitSystem.Imperial) } to """{"unitSystem":"imperial"}""",
+            suspend { preferences.setExerciseLogCardStyle(ExerciseLogCardStyle.Classic) } to """{"exerciseLogCardStyle":"classic"}""",
+            suspend { preferences.setTimezone("Europe/Madrid") } to """{"timezone":"Europe/Madrid"}""",
+        )
+        for ((change, body) in changes) {
+            enqueue(204)
+            change()
+            assertEquals(body, take().body?.utf8())
+        }
+        val expected = user().copy(
+            locale = "en", unitSystem = UnitSystem.Imperial, exerciseLogCardStyle = ExerciseLogCardStyle.Classic, timezone = "Europe/Madrid",
+        )
+        assertEquals(AuthState.SignedIn(expected), repository.state.value)
+        assertThrows(IllegalArgumentException::class.java) { runBlocking { preferences.setLocale("fr") } }
+    }
+
+    @Test fun `requests ask for the signed-in user's language, which follows a change at once`() = runTest {
+        signIn()
+        enqueue(200, "[]")
+        safeCall { retrofit.create<HabitsService>().habits() }
+        assertEquals("es", take().headers["Accept-Language"])
+
+        enqueue(204)
+        preferences.setLocale("en")
+        // The PATCH itself already goes out in the new language.
+        assertEquals("en", take().headers["Accept-Language"])
+    }
+
+    @Test fun `a new name is trimmed, sent, and cached once the server accepts it`() = runTest {
+        signIn()
+        enqueue(200, """{"status":true}""")
+        assertEquals(ApiResult.Success(Unit), account.updateName("  Ada  "))
+        assertEquals("""{"name":"Ada"}""", take().body?.utf8())
+        assertEquals(AuthState.SignedIn(user(name = "Ada")), repository.state.value)
+
+        enqueue(400, """{"code":"INVALID_NAME","message":"Invalid name"}""")
+        assertEquals(ApiResult.Failure(ApiError.Validation("Invalid name", emptyList(), "INVALID_NAME")), account.updateName("Bo"))
+        take()
+        assertEquals(AuthState.SignedIn(user(name = "Ada")), repository.state.value)
+        assertThrows(IllegalArgumentException::class.java) { runBlocking { account.updateName("   ") } }
+    }
+
+    @Test fun `a password change revokes other sessions and adopts the new token`() = runTest {
+        signIn("old.sig")
+        val signOutsBefore = harness.signOuts.size
+        enqueue(200, """{"token":"raw","user":{}}""", "set-auth-token" to "new.sig")
+
+        assertEquals(ApiResult.Success(Unit), account.changePassword("password-1234", "password-5678"))
+        val request = take()
+        assertEquals("Bearer old.sig", request.headers["Authorization"])
+        assertEquals(
+            """{"currentPassword":"password-1234","newPassword":"password-5678","revokeOtherSessions":true}""",
+            request.body?.utf8(),
+        )
+        assertEquals("new.sig", harness.store.currentToken())
+        assertEquals(AuthState.SignedIn(user()), repository.state.value)
+        assertEquals(signOutsBefore, harness.signOuts.size) // Room was not cleared
+    }
+
+    @Test fun `the old token's 401s during a password change don't sign out`() = runTest {
+        signIn("old.sig")
+        val signOutsBefore = harness.signOuts.size
+        harness.store.rotate(ifToken = "old.sig") {
+            harness.store.onUnauthorized("old.sig") // a concurrent request, sent before the change
+            ApiResult.Success("new.sig")
+        }
+        harness.store.onUnauthorized("old.sig") // one that arrives after: the token is no longer current
+        harness.settled()
+        assertEquals("new.sig", harness.store.token())
+        assertEquals(AuthState.SignedIn(user()), repository.state.value)
+        assertEquals(signOutsBefore, harness.signOuts.size)
+    }
+
+    @Test fun `a wrong current password keeps the session, a lost one signs out`() = runTest {
+        signIn("old.sig")
+        enqueue(400, """{"code":"INVALID_PASSWORD","message":"Invalid password"}""")
+        assertEquals(
+            ApiResult.Failure(ApiError.Validation("Invalid password", emptyList(), "INVALID_PASSWORD")),
+            account.changePassword("wrong-pass", "password-5678"),
+        )
+        take()
+        assertEquals("old.sig", harness.store.token())
+
+        enqueue(401, """{"code":"UNAUTHORIZED","message":"Unauthorized"}""")
+        account.changePassword("password-1234", "password-5678")
+        take()
+        assertEquals(AuthState.SignedOut, repository.state.value)
     }
 
     private fun sessionJson(name: String = "cj") = """

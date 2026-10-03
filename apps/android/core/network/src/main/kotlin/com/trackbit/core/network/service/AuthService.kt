@@ -1,7 +1,10 @@
 package com.trackbit.core.network.service
 
+import com.trackbit.core.model.ChangePasswordRequest
 import com.trackbit.core.model.SessionResponse
 import com.trackbit.core.model.SignInRequest
+import com.trackbit.core.model.UpdateUserRequest
+import com.trackbit.core.model.UpdateUserResponse
 import com.trackbit.core.model.serialization.TrackbitJson
 import com.trackbit.core.network.ApiError
 import com.trackbit.core.network.ApiResult
@@ -31,20 +34,37 @@ interface AuthService {
     /** Revokes the session [authorization] names, which may already be gone from the app. */
     @POST("api/auth/sign-out")
     suspend fun signOut(@Header("Authorization") authorization: String): Response<Unit>
+
+    /** Changes the signed-in user's profile; read the new values back from `get-session`. */
+    @POST("api/auth/update-user")
+    suspend fun updateUser(@Body body: UpdateUserRequest): UpdateUserResponse
+
+    /** The new session's token is in the `set-auth-token` header; see [changePassword]. */
+    @POST("api/auth/change-password")
+    suspend fun changePasswordRaw(@Body body: ChangePasswordRequest): Response<Unit>
 }
 
 /** Signs in and returns the session token to send as the bearer token. */
-suspend fun AuthService.signIn(email: String, password: String): ApiResult<String> {
-    val result = safeCall {
-        signInEmail(SignInRequest(email, password)).also { if (!it.isSuccessful) throw HttpException(it) }
-    }
+suspend fun AuthService.signIn(email: String, password: String): ApiResult<String> =
+    newSessionToken { signInEmail(SignInRequest(email, password)) }
+
+/**
+ * Changes the password and returns the new session's token. With `revokeOtherSessions` the
+ * server deletes every session, the current one too, so the caller must adopt this token.
+ */
+suspend fun AuthService.changePassword(request: ChangePasswordRequest): ApiResult<String> =
+    newSessionToken { changePasswordRaw(request) }
+
+/** Calls an endpoint that starts a session, and returns its token from the `set-auth-token` header. */
+private suspend fun newSessionToken(call: suspend () -> Response<Unit>): ApiResult<String> {
+    val result = safeCall { call().also { if (!it.isSuccessful) throw HttpException(it) } }
     return when (result) {
         is ApiResult.Failure -> result
         is ApiResult.Success -> result.value.headers()[SET_AUTH_TOKEN]
             ?.takeIf { it.isNotEmpty() }
             ?.let { ApiResult.Success(it) }
             ?: ApiResult.Failure(
-                ApiError.Unknown(status = result.value.code(), code = null, message = "Sign-in response has no $SET_AUTH_TOKEN header"),
+                ApiError.Unknown(status = result.value.code(), code = null, message = "Response has no $SET_AUTH_TOKEN header"),
             )
     }
 }

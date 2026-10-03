@@ -1,15 +1,18 @@
 package com.trackbit.core.network
 
+import com.trackbit.core.model.ChangePasswordRequest
 import com.trackbit.core.model.ColorTheme
 import com.trackbit.core.model.GradientPresets
 import com.trackbit.core.model.HabitIcon
 import com.trackbit.core.model.HabitRequest
 import com.trackbit.core.model.HabitType
 import com.trackbit.core.model.IncrementRequest
+import com.trackbit.core.model.UpdateUserRequest
 import com.trackbit.core.network.service.AuthService
 import com.trackbit.core.network.service.ExerciseService
 import com.trackbit.core.network.service.HabitsService
 import com.trackbit.core.network.service.TrackerService
+import com.trackbit.core.network.service.changePassword
 import com.trackbit.core.network.service.session
 import com.trackbit.core.network.service.signIn
 import kotlinx.coroutines.test.runTest
@@ -48,6 +51,9 @@ class ErrorContractTest {
 
     private suspend fun signIn(): ApiResult<String> = auth.signIn("a@test.local", "password-1234")
 
+    private suspend fun changePassword(): ApiResult<String> =
+        auth.changePassword(ChangePasswordRequest("password-1234", "password-5678"))
+
     /** What the app makes of each contract. A newly recorded contract must be added here. */
     private val expectations: Map<String, suspend () -> Unit> = mapOf(
         "habit-frozen.json" to { assertEquals(ApiError.HabitFrozen(4), increment()) },
@@ -56,7 +62,7 @@ class ErrorContractTest {
         "habit-type-not-allowed.json" to { assertEquals(ApiError.HabitTypeNotAllowed(listOf("count", "complex")), createHabit()) },
         // The form never sends it (the switch hides for structured sessions); a plain 400 if it did.
         "anti-habit-not-allowed.json" to {
-            assertEquals(ApiError.Validation("Structured sessions cannot be anti-habits.", emptyList()), createHabit())
+            assertEquals(ApiError.Validation("Structured sessions cannot be anti-habits.", emptyList(), "anti_habit_not_allowed"), createHabit())
         },
         "habit-not-found.json" to { assertEquals(ApiError.NotFound("Habit not found"), increment()) },
         "exercise-source-not-found.json" to {
@@ -69,7 +75,7 @@ class ErrorContractTest {
             assertEquals(listOf("delta", "day", "day"), error.issues.map { it.path })
         },
         "idempotency-key-invalid.json" to {
-            assertEquals(ApiError.Validation("Idempotency-Key must be at most 255 characters", emptyList()), increment())
+            assertEquals(ApiError.Validation("Idempotency-Key must be at most 255 characters", emptyList(), "idempotency_key_invalid"), increment())
         },
         // Dropped by the outbox: the key was reused for another request, so retrying can't help.
         "idempotency-key-reused.json" to {
@@ -92,6 +98,18 @@ class ErrorContractTest {
         },
         "sign-in-email-not-verified.json" to {
             assertEquals(ApiResult.Failure(ApiError.Unknown(403, "EMAIL_NOT_VERIFIED", "Email not verified")), signIn())
+        },
+        "change-password-invalid.json" to {
+            assertEquals(ApiResult.Failure(ApiError.Validation("Invalid password", emptyList(), "INVALID_PASSWORD")), changePassword())
+        },
+        "change-password-too-short.json" to {
+            assertEquals(ApiResult.Failure(ApiError.Validation("Password too short", emptyList(), "PASSWORD_TOO_SHORT")), changePassword())
+        },
+        "update-user-invalid-name.json" to {
+            assertEquals(
+                ApiResult.Failure(ApiError.Validation("Invalid name", emptyList(), "INVALID_NAME")),
+                safeCall { auth.updateUser(UpdateUserRequest(" ")) },
+            )
         },
         // Better-Auth answers an unknown token with 200 and `null`, not 401.
         "get-session-signed-out.json" to { assertEquals(ApiResult.Success(null), auth.session()) },

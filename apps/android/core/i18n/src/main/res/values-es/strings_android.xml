@@ -71,4 +71,12 @@
     <string name="android_habits_add_stop">Añadir parada</string>
     <string name="android_habits_position">Posición</string>
     <string name="android_habits_not_found">Este hábito ya no existe.</string>
+    <!-- Account settings (E2) -->
+    <string name="android_account_timezone">Zona horaria</string>
+    <string name="android_account_timezone_device">%1$s · la de este dispositivo</string>
+    <string name="android_account_rest">Descanso entre series</string>
+    <string name="android_account_rest_off">Desactivado</string>
+    <string name="android_account_password_note">Al cambiarla se cerrará tu sesión en tus otros dispositivos.</string>
+    <string name="android_account_invalid_password">La contraseña actual es incorrecta.</string>
+    <string name="android_account_save_failed">No se pudo guardar. Inténtalo de nuevo.</string>
 </resources>

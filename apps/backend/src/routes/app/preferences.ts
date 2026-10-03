@@ -12,8 +12,8 @@ import { requireAuth } from '../../middleware/auth.js'
 import { localeMiddleware } from '../../middleware/locale.js'
 import { getEffectiveLimits } from '../../lib/user-limits.js'
 import { timezoneSchema } from '../../lib/user-day.js'
+import { SUPPORTED_LOCALES } from '../../i18n/index.js'
 
-const SUPPORTED_LOCALES = ['en', 'es'] as const
 const SUPPORTED_UNIT_SYSTEMS = ['metric', 'imperial'] as const
 const SUPPORTED_CARD_STYLES = ['classic', 'compact'] as const
 

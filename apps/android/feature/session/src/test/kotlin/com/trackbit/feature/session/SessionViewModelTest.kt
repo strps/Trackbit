@@ -329,7 +329,7 @@ private class FakeAuthRepository : AuthRepository by unused() {
 }
 
 /** Changes the signed-in user's preference, as the real one does in the cached session. */
-private class FakePreferencesRepository(private val auth: FakeAuthRepository) : PreferencesRepository {
+private class FakePreferencesRepository(private val auth: FakeAuthRepository) : PreferencesRepository by unused() {
     val set = mutableListOf<String?>()
 
     override suspend fun setPreferredExerciseSource(key: String?) {

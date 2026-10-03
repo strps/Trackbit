@@ -70,4 +70,12 @@
     <string name="android_habits_add_stop">Add stop</string>
     <string name="android_habits_position">Position</string>
     <string name="android_habits_not_found">This habit no longer exists.</string>
+    <!-- Account settings (E2) -->
+    <string name="android_account_timezone">Time zone</string>
+    <string name="android_account_timezone_device">%1$s · follows this device</string>
+    <string name="android_account_rest">Rest between sets</string>
+    <string name="android_account_rest_off">Off</string>
+    <string name="android_account_password_note">Changing it signs you out on your other devices.</string>
+    <string name="android_account_invalid_password">The current password is incorrect.</string>
+    <string name="android_account_save_failed">Couldn\'t save. Try again.</string>
 </resources>

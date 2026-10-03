@@ -11,7 +11,7 @@ import { VerificationEmail } from "../emails/VerificationEmail.js";
 import { sendEmail } from "./email.js";
 import { jsx } from "react/jsx-runtime";
 import db from "../db/db.js";
-import { t, negotiateFromHeader } from "../i18n/index.js";
+import { t, negotiateFromHeader, SUPPORTED_LOCALES } from "../i18n/index.js";
 import { buildVerificationStrings, buildPasswordResetStrings } from "../i18n/email-strings.js";
 import { timezoneSchema } from "./user-day.js";
 
@@ -21,6 +21,26 @@ function assertValidTimezone(data: Record<string, unknown>) {
   if ("timezone" in data && data.timezone !== undefined && !timezoneSchema.safeParse(data.timezone).success) {
     throw new APIError("BAD_REQUEST", { message: "Invalid timezone" });
   }
+}
+
+// `locale` is client-writable too, and every client branches on it: only the
+// languages the apps ship.
+function assertValidLocale(data: Record<string, unknown>) {
+  if ("locale" in data && data.locale !== undefined && !(SUPPORTED_LOCALES as readonly unknown[]).includes(data.locale)) {
+    throw new APIError("BAD_REQUEST", { message: "Invalid locale" });
+  }
+}
+
+const USER_NAME_MAX = 100;
+
+// Names are shown wherever the user is: stored trimmed and never blank.
+function withValidName<T extends Record<string, unknown>>(data: T): T {
+  if (!("name" in data) || data.name === undefined) return data;
+  const name = typeof data.name === "string" ? data.name.trim() : "";
+  if (name.length < 1 || name.length > USER_NAME_MAX) {
+    throw new APIError("BAD_REQUEST", { message: "Invalid name" });
+  }
+  return { ...data, name };
 }
 
 export const auth = betterAuth({
@@ -154,12 +174,15 @@ export const auth = betterAuth({
       update: {
         before: async (data) => {
           assertValidTimezone(data);
-          return { data };
+          assertValidLocale(data);
+          return { data: withValidName(data) };
         },
       },
       create: {
         before: async (data, ctx) => {
           assertValidTimezone(data);
+          assertValidLocale(data);
+          data = withValidName(data);
           const locale = negotiateFromHeader(
             (ctx?.request as Request | undefined)?.headers?.get('accept-language') ?? undefined
           );

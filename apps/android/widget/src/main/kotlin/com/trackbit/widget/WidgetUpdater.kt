@@ -38,6 +38,11 @@ class WidgetUpdater @Inject internal constructor(
             widgetRefreshes(tracker.changes, auth.state).collect { TrackbitWidgets.updateAll(context) }
         }
     }
+
+    /** Re-renders every widget now, e.g. in a new language. */
+    fun refreshAll() {
+        scope.launch { TrackbitWidgets.updateAll(context) }
+    }
 }
 
 /**

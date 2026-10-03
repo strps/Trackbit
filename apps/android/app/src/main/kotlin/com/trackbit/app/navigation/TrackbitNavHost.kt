@@ -31,6 +31,7 @@ import com.trackbit.app.timer.RequestNotificationPermission
 import com.trackbit.core.auth.AuthState
 import com.trackbit.core.designsystem.icon.UiIcons
 import com.trackbit.core.i18n.R
+import com.trackbit.feature.account.AccountScreen
 import com.trackbit.feature.account.SettingsScreen
 import com.trackbit.feature.analytics.AnalyticsScreen
 import com.trackbit.feature.auth.SignInScreen
@@ -61,6 +62,9 @@ data object AnalyticsRoute
 /** The configuration screens and the account, like the web's config links and user menu. */
 @Serializable
 data object SettingsRoute
+
+@Serializable
+data object AccountRoute
 
 @Serializable
 data object HabitsConfigRoute
@@ -127,8 +131,13 @@ private fun AuthNavHost(graph: Any, onSignOut: () -> Unit) {
                 }
                 composable<AnalyticsRoute> { AnalyticsScreen() }
                 composable<SettingsRoute> {
-                    SettingsScreen(onOpenHabits = { navController.navigate(HabitsConfigRoute) }, onSignOut = onSignOut)
+                    SettingsScreen(
+                        onOpenAccount = { navController.navigate(AccountRoute) },
+                        onOpenHabits = { navController.navigate(HabitsConfigRoute) },
+                        onSignOut = onSignOut,
+                    )
                 }
+                composable<AccountRoute> { AccountScreen(onBack = { navController.popBackStack() }) }
                 composable<HabitsConfigRoute> {
                     HabitsConfigScreen(
                         onBack = { navController.popBackStack() },

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Window theme only; Compose draws everything with TrackbitTheme. -->
-    <style name="Theme.Trackbit" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Window theme only; Compose draws everything with TrackbitTheme. AppCompat because
+         MainActivity is an AppCompatActivity, for the per-app language on Android 8–12. -->
+    <style name="Theme.Trackbit" parent="Theme.AppCompat.Light.NoActionBar" />
 </resources>

@@ -1,6 +1,8 @@
 package com.trackbit.core.network
 
+import com.trackbit.core.model.ChangePasswordRequest
 import com.trackbit.core.network.service.AuthService
+import com.trackbit.core.network.service.changePassword
 import com.trackbit.core.network.service.session
 import com.trackbit.core.network.service.signIn
 import kotlinx.coroutines.test.runTest
@@ -25,6 +27,15 @@ class AuthServiceTest {
         server.enqueue(200, """{"redirect":false,"token":"raw"}""")
         val error = (auth.signIn("a@b.c", "pw") as ApiResult.Failure).error
         assertTrue(error is ApiError.Unknown && error.status == 200)
+    }
+
+    @Test fun `change-password revokes other sessions and returns the new token from the header`() = runTest {
+        server.enqueue(200, """{"token":"raw","user":{}}""", "set-auth-token" to "new.signature")
+        assertEquals(ApiResult.Success("new.signature"), auth.changePassword(ChangePasswordRequest("old-pass", "new-pass")))
+        assertEquals(
+            """{"currentPassword":"old-pass","newPassword":"new-pass","revokeOtherSessions":true}""",
+            server.takeRequest().body!!.utf8(),
+        )
     }
 
     @Test fun `decodes a session with its preferences`() = runTest {

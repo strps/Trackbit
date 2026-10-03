@@ -13,6 +13,7 @@ dependencies {
     api(projects.core.network)
     implementation(libs.androidx.datastore)
     implementation(libs.tink.android)
+    implementation(libs.androidx.core.ktx)
 
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.okhttp.mockwebserver)

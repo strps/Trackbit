@@ -31,8 +31,11 @@ sealed interface ApiError {
 
     data class NotFound(val message: String?) : ApiError
 
-    /** 400. [issues] is empty unless the route reports per-field errors. */
-    data class Validation(val message: String?, val issues: List<ValidationIssue>) : ApiError
+    /**
+     * 400. [issues] is empty unless the route reports per-field errors. [code] is the server's
+     * `error` or Better-Auth's `code` (`INVALID_PASSWORD`), when there is one.
+     */
+    data class Validation(val message: String?, val issues: List<ValidationIssue>, val code: String? = null) : ApiError
 
     /**
      * 409 `idempotency_request_in_progress`: a request with the same key is still running.
@@ -72,7 +75,7 @@ sealed interface ApiError {
                 status == 403 && error == "habit_limit_reached" -> HabitLimitReached(json.int("maxHabits"))
                 status == 403 && error == "habit_type_not_allowed" -> HabitTypeNotAllowed(json.strings("allowedHabitTypes"))
                 status == 404 -> NotFound(message)
-                status == 400 -> Validation(message, json.issues())
+                status == 400 -> Validation(message, json.issues(), error ?: json.string("code"))
                 status == 409 && error == "idempotency_request_in_progress" -> RequestInProgress
                 status >= 500 -> Server(status, message)
                 else -> Unknown(status, error ?: json.string("code"), message)

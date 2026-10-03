@@ -26,9 +26,14 @@ These are covered by unit tests but were not exercised on the emulator for W1. R
 - Tracker (D1): check rows (toggle with the accent fill), anti-habit rows and section, a frozen habit (lock, disabled controls, snackbar), and the tracker in Spanish. The emulator account has none of these.
 - Timers: the notification reappears after a reboot once anything wakes the app (widget update); swiping it away on 14+ leaves the timer running in the widgets; denying the notification permission leaves timers working in the widgets.
 - Habits config (E1): a frozen habit (banner, Save off, Delete on, lock instead of the drag handle), a role without timed/check (locked type cards), the cap (add button explains), Spanish, dark mode. The emulator account is an admin with no frozen habits.
+- Account (E2): a successful password change (the app adopts the new token, other sessions end, nothing is cleared). Backend and unit tests cover it; the emulator's dev account password isn't recorded, so only a wrong current password was tried there. Use `b10-smoke@example.com` and put its password back afterwards. Also the units and card style choices, dark mode, and the per-app language on Android 8–12 (AppCompat's stored locale, not the system's).
 - Session screen (D3): offline logging of a whole workout (start, add exercise, sets, edits) reaching the server once and in order after reconnecting; a frozen habit's session (read-only banner, no controls); a frozen custom exercise in the picker (locked) and in a log; imperial units (pounds, 5 lb steps); a flexibility exercise (the emulator catalog has none); Spanish.
 
 ## Polish
+
+- **On Android 8–12, widgets and notifications stay in the system language** after switching the app's language (E2). AppCompat localizes activities only there; from 13 the system localizes the whole process. Fixing it means wrapping the widget/notification `Context` with the app locale.
+- **Account settings lack the web's profile image URL and "Delete account"** (E2). The image needs an image loader (none in the app yet); the web's delete button is a placeholder with no endpoint.
+- **The preferred exercise source isn't in Account settings** (E2): the session picker sets it, as on the web, which doesn't list it in account settings either.
 
 - **The W1 picker doesn't mark the current habit when reconfiguring.** It would need the widget's Glance state read in `QuickLogConfigViewModel`.
 - **The W1 7-day strip doesn't mark an anti-habit's clean days**, only slips (the analytics heatmap neither, D6). `TrackedHabit.firstLogDay` exists since D6, so a clean day can now be told apart from a day before tracking started.

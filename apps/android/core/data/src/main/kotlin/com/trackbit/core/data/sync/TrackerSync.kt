@@ -26,7 +26,7 @@ import javax.inject.Singleton
  * Moves tracker data between Room and the server: [flush] sends the outbox, [sync] also pulls
  * `/today` (and history when it's due), [syncHistory] pulls only history, [syncSessions] pulls
  * one day's sessions, the exercise catalog and the picker's sources, [syncQueue] one source's
- * queue, [syncSets] a habit's sets for analytics. Workers and pull-to-refresh go through here.
+ * queue, [syncSets] a habit's sets for analytics, [syncExercises] only the catalog. Workers and pull-to-refresh go through here.
  *
  * One at a time: a pull that overlapped a flush could store a snapshot taken before an op that
  * was confirmed meanwhile, and two flushes would send the same op twice.
@@ -105,6 +105,12 @@ internal class TrackerSync @Inject constructor(
         }
         if (result == SyncResult.SignedOut) return SyncResult.SignedOut
         worse(result, pullExercisesLocked(token))
+    }
+
+    /** Replaces Room's exercise catalog, e.g. to rename it after the user's language changed. */
+    suspend fun syncExercises(): SyncResult = mutex.withLock {
+        val token = tokens.currentToken() ?: return SyncResult.SignedOut
+        pullExercisesLocked(token)
     }
 
     /** Pulls the requested history if it's due (see [HistoryEntity]). */

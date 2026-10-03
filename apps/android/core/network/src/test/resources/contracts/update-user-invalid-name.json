@@ -1,0 +1,8 @@
+{
+  "request": "POST /api/auth/update-user",
+  "status": 400,
+  "body": {
+    "code": "INVALID_NAME",
+    "message": "Invalid name"
+  }
+}

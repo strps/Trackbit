@@ -243,6 +243,8 @@ describe('Android contracts', () => {
         })
         await record(MODEL, 'session.json', 'GET /api/auth/get-session', await get(u.token, '/api/auth/get-session'), u.secrets)
         await record(MODEL, 'limits.json', 'GET /api/me/limits', await get(u.token, '/api/me/limits'), u.secrets)
+        await record(MODEL, 'update-user.json', 'POST /api/auth/update-user',
+            await send(u.token, 'POST', '/api/auth/update-user', { name: 'Renamed' }), u.secrets)
 
         const admin = await contractUser('admin@test.local', { role: 'admin' })
         await record(MODEL, 'limits-admin.json', 'GET /api/me/limits', await get(admin.token, '/api/me/limits'), admin.secrets)
@@ -256,6 +258,13 @@ describe('Android contracts', () => {
         await auth.api.signUpEmail({ body: { email: 'unverified@test.local', password: 'password-1234', name: 'unverified' } })
         await record(NETWORK, 'sign-in-email-not-verified.json', 'POST /api/auth/sign-in/email',
             (await signInBearer('unverified@test.local', 'password-1234')).res)
+
+        await record(NETWORK, 'change-password-invalid.json', 'POST /api/auth/change-password',
+            await send(u.token, 'POST', '/api/auth/change-password', { currentPassword: 'wrong-password', newPassword: 'password-5678', revokeOtherSessions: true }))
+        await record(NETWORK, 'change-password-too-short.json', 'POST /api/auth/change-password',
+            await send(u.token, 'POST', '/api/auth/change-password', { currentPassword: u.password, newPassword: 'short', revokeOtherSessions: true }))
+        await record(NETWORK, 'update-user-invalid-name.json', 'POST /api/auth/update-user',
+            await send(u.token, 'POST', '/api/auth/update-user', { name: '  ' }))
 
         await app.request('/api/auth/sign-out', bearer(u.token, { method: 'POST' }))
         await record(NETWORK, 'get-session-signed-out.json', 'GET /api/auth/get-session', await get(u.token, '/api/auth/get-session'))

@@ -1,0 +1,7 @@
+{
+  "request": "POST /api/auth/update-user",
+  "status": 200,
+  "body": {
+    "status": true
+  }
+}

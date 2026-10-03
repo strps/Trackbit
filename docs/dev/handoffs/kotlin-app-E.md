@@ -1,28 +1,42 @@
 # Handoff: Kotlin app — Workstream E (settings & configuration)
 
 - **Plan:** [kotlin-app.md](../tasks/kotlin-app.md). Read only §4 "Phase 3" (and §0 D3: config needs a connection). Core context: the "Invariants" and "Landmines" of [kotlin-app-D.md](kotlin-app-D.md), [kotlin-app-C.md](kotlin-app-C.md) and [kotlin-app-B.md](kotlin-app-B.md), nothing else.
-- **Status:** Phase 3. E1 done on the emulator; **E2 (account) is next**. The Phase 2 exit check is deferred to the final pass with the real-device check (user).
-- **Branch:** `kotlin-app` · **Last run:** 2026-10-03 (E1, committed b27c209)
+- **Status:** Phase 3. E1 and E2 done on the emulator; **E3 (exercise library) is next**. The Phase 2 exit check is deferred to the final pass with the real-device check (user).
+- **Branch:** `kotlin-app` · **Last run:** 2026-10-03 (E2, uncommitted at the end of the run unless the user asked)
 
 ## Where we are
 
 The bottom bar is **Tracker / Stats / Settings**. Settings (`feature/account`) shows the signed-in user, a "Configuration" section with **Habits**, and **Log out** (moved from the tracker's overflow menu, which is gone). Habits opens the habits config (`feature/habits-config`): both groups in order, reordered by dragging a row's grip (also past the Anti-Habits header to change group), tap a row to edit, an "Add Habit" FAB that explains the cap instead of opening at it. The form covers name, tracking method, anti-habit, weekly/daily goals (timed: a minutes dialog), 15 icons, 6 presets + a custom gradient editor, and delete with a confirmation.
 
-On the emulator (API 36, local backend, the user's dev account, an admin): drag Otroer into anti-habits → `PATCH /reorder` stored it; a structured session dropped there snapped back with the web's message; editing (anti off, heart, custom gradient with a moved stop) saved and moved the habit to the end of the habits group; creating "Goal Read" (timed, 5 min) and deleting it worked; the tracker showed each change after the background sync. Test data restored. Not exercised: frozen habits, a role without timed/check, the cap, Spanish, dark mode, offline (shows the offline text + retry).
+Tapping the user at the top of Settings opens **Account settings** (`AccountScreen`): name (Save), email (read-only), language, units, card style, rest between sets, time zone (read-only, "follows this device"), and change password. The app's language **follows the signed-in user's `locale`** (as the web syncs i18next from the session), so switching it here or on another device changes the app's per-app language. The user's stored **timezone is kept equal to the device's zone automatically** (`DeviceTimeZoneSync`: at start, at sign-in, on `ACTION_TIMEZONE_CHANGED`, and again if a refresh brings back another zone).
 
-`./gradlew assembleDebug testDebugUnitTest lintDebug` passes, 0 lint issues, 327 tests (76 of them in core:model's `test` task). Backend 87 tests.
+E2 on the emulator: Español switched the app at once (activity recreated in place, `cmd locale get-app-locales` = `[es]`, DB `es`); `cmd alarm set-timezone Europe/Madrid` made the DB follow within seconds; a rename saved with the snackbar; a wrong current password showed the translated error and kept the session. Restoring the DB to `en` by hand and relaunching switched the app back to English, and setting the device zone back made the app PATCH it back. Account data restored. Not exercised: a successful password change (the dev account's password isn't recorded; backend + unit tests cover it), units/card style from this screen, Android 8–12.
+
+E1 on the emulator (API 36, local backend, the user's dev account, an admin): drag Otroer into anti-habits → `PATCH /reorder` stored it; a structured session dropped there snapped back with the web's message; editing (anti off, heart, custom gradient with a moved stop) saved and moved the habit to the end of the habits group; creating "Goal Read" (timed, 5 min) and deleting it worked; the tracker showed each change after the background sync. Test data restored. Not exercised: frozen habits, a role without timed/check, the cap, Spanish, dark mode, offline (shows the offline text + retry).
+
+`./gradlew assembleDebug testDebugUnitTest lintDebug` passes, 0 lint issues, 341 tests (core:model's JVM `test` task included). Backend 90 tests.
 
 ## Phase 3 task split (E1–E6)
 
 | Task | Scope | Status |
 |---|---|---|
 | **E1** | Settings tab hub, habits config (list, reorder, form, gradient editor, delete, limits) | ✅ 2026-10-03 |
-| **E2** | Account: locale (per-app language + PATCH), timezone, units, card style, rest default, preferred source, profile name, change password | next |
-| **E3** | Exercise library: browse/search/filter by muscle group, custom exercise CRUD, frozen. First fix the backend bug: user exercise create/update drops `muscleGroups` (follow-ups) | |
+| **E2** | Account: locale (per-app language + PATCH), timezone (device's), units, card style, rest default, profile name, change password | ✅ 2026-10-03 |
+| **E3** | Exercise library: browse/search/filter by muscle group, custom exercise CRUD, frozen. First fix the backend bug: user exercise create/update drops `muscleGroups` (follow-ups) | next |
 | **E4** | Exercise lists: CRUD, item editor + reorder, prescriptions; "add to list" in the picker and library | |
 | **E5** | Auth screens: sign-up with invite code, forgot password, verify email. Google sign-in is backlog | |
 | **E6** | Issue report (`POST /api/issues`) | |
 | **Exit** | Parity with `/tracker`, `/sessions`, `/stats`, `/config/*`, `/account-settings` | |
+
+## Done (E2)
+
+- **Backend** [auth.ts](../../../apps/backend/src/lib/auth.ts): the user hooks (create + update) now also reject a `locale` outside `SUPPORTED_LOCALES` (`update-user` accepted any string) and store the name trimmed, 1–100 (`INVALID_NAME`); `preferences.ts` uses the shared `SUPPORTED_LOCALES`; web sign-up's name is `trim().min(1).max(100)`. Tests in `session-preferences.test.ts`, and `bearer-auth.test.ts` proves change-password revokes the caller's bearer token and returns a new one in `set-auth-token`. Contracts `update-user.json`, `change-password-invalid.json`, `change-password-too-short.json`, `update-user-invalid-name.json`.
+- **core:model:** `UpdateUserRequest/Response`, `ChangePasswordRequest` (`revokeOtherSessions` always encoded), `AccountRules`, `SessionUser.LOCALES`.
+- **core:network:** `AuthService.updateUser` / `changePassword` (token from the header, shared with sign-in); `ApiError.Validation.code` (Better-Auth's `code` or the route's `error`); [RequestLanguage.kt](../../../apps/android/core/network/src/main/kotlin/com/trackbit/core/network/RequestLanguage.kt): Accept-Language comes from the session, not `Locale.getDefault()`.
+- **core:auth:** `PreferencesRepository` + locale/units/card style/timezone; [AccountRepository.kt](../../../apps/android/core/auth/src/main/kotlin/com/trackbit/core/auth/AccountRepository.kt); `SessionStore.rotate` (adopt the new token; 401s for the old one meanwhile don't sign out) and `language()`; [DeviceTimeZoneSync.kt](../../../apps/android/core/auth/src/main/kotlin/com/trackbit/core/auth/DeviceTimeZoneSync.kt).
+- **core:data:** [LocalizedDataSync.kt](../../../apps/android/core/data/src/main/kotlin/com/trackbit/core/data/sync/LocalizedDataSync.kt) re-pulls the exercise catalog (`TrackerSync.syncExercises`) when the same user's locale changes.
+- **app:** AppCompat 1.8.0, `MainActivity : AppCompatActivity`, theme parent `Theme.AppCompat.Light.NoActionBar`, `AppLocalesMetadataHolderService` (autoStoreLocales), `android:localeConfig` (generated `core/i18n/res/xml/locales_config.xml`, now 57 generated files); [AppLanguage.kt](../../../apps/android/app/src/main/kotlin/com/trackbit/app/AppLanguage.kt) applied from `MainActivity`; `TrackbitApplication.onConfigurationChanged` re-renders widgets (`WidgetUpdater.refreshAll`) and republishes previews on a language change; `AccountRoute`.
+- **feature/account:** `AccountScreen`/`AccountViewModel`; the Settings user row opens it. Android-only strings `android_account_*` (en/es).
 
 ## Done (E1)
 
@@ -36,13 +50,13 @@ On the emulator (API 36, local backend, the user's dev account, an admin): drag 
 - **app:** `SettingsRoute`, `HabitsConfigRoute`, `HabitFormRoute(habitId: Int?)`; third tab.
 - **Icons:** grip_vertical, list, log_out, pencil, settings, user (`UI_ICONS` in generate.mjs).
 
-## Next: E2 — account settings
+## Next: E3 — exercise library
 
 1. Run **Verify**.
-2. Add an "Account" entry to [SettingsScreen.kt](../../../apps/android/feature/account/src/main/kotlin/com/trackbit/feature/account/SettingsScreen.kt) opening a new `AccountScreen` in `feature/account`, modelled on the web's [AccountSettings.tsx](../../../apps/frontend/src/features/auth/AccountSettings.tsx) (strings `auth:account.*`, `nav:language_*`, `nav:unit_*`, `nav:card_style_*`).
-3. Extend [PreferencesRepository.kt](../../../apps/android/core/auth/src/main/kotlin/com/trackbit/core/auth/PreferencesRepository.kt) (it already does rest seconds and preferred source the same way: cached user first, then one PATCH) with locale, timezone, units, card style. Locale must also switch the app's language with `AppCompatDelegate.setApplicationLocales` (plan §5.4) and refresh localized server data (the exercise catalog names come in the request's `Accept-Language`).
-4. Profile name and change password go through Better-Auth (`POST /api/auth/update-user`, `/api/auth/change-password` with `revokeOtherSessions`); add them to `AuthService` with contract recordings. A password change revokes other sessions: check the bearer token survives.
-5. Decide (ask the user) whether the timezone is a picker or "use this device's zone" (plan §6 suggests prompting when the device zone changes).
+2. Fix the backend first: user exercise create/update silently drops `muscleGroups` (see [kotlin-app-followups.md](../tasks/kotlin-app-followups.md)); `apps/backend/src/routes/app/exercise-info*` (find the route behind `/api/exercise-info/exercises`). Add a test, then record contracts for create/update/delete and the frozen error.
+3. Add a "Exercises" entry (`R.string.nav_exercises`, `UiIcons.Dumbbell`) under Configuration in [SettingsScreen.kt](../../../apps/android/feature/account/src/main/kotlin/com/trackbit/feature/account/SettingsScreen.kt), opening a new `feature/exercise-library` (the plan's module name), modelled on the web's exercise config page (`apps/frontend/src/features/` — grep `exercise-info/exercises` with POST). Browse/search, filter by muscle group, custom exercise create/edit/delete, frozen ones read-only (deletable, as E1 did for habits).
+4. Writes go through a core:data repository like `HabitsRepository` (server first, then a catalog re-pull in `DataScope`); features see errors as `ConfigError`. Reads come from the server (`GET /exercises`), not Room's catalog cache, per the E1 invariant, unless the screen only needs what Room already has (decide and record it).
+5. The dev DB has no muscle groups (D6 landmine); seed some to test the filter and delete them afterwards.
 
 ## Invariants — do not break these
 
@@ -55,6 +69,23 @@ On the emulator (API 36, local backend, the user's dev account, an admin): drag 
 - **The server picks habit order** on create and on a group change; clients send order only through `PATCH /reorder`, with every habit's (id, order, isAntiHabit).
 - **Frozen habits can be opened read-only and deleted** in the app (the web disables editing them entirely, which also blocked deleting); they can shift within a group but not change group.
 - **The list reloads on resume** (`LifecycleResumeEffect`), which is how the form's saves show; there's no result passing between the screens.
+- **The app's language is the signed-in user's `locale`**, applied by `AppLanguage` from `MainActivity`. Never set the per-app language anywhere else; change the user's locale (`PreferencesRepository.setLocale`). Signed out, the last one stays.
+- **Requests speak the session's language** (`RequestLanguage` → `SessionStore.language()`), so a pull right after a switch is already in the new one. Don't go back to `Locale.getDefault()` in the interceptor.
+- **The stored timezone is the device's** (`DeviceTimeZoneSync`, user). There is no picker; don't add a second writer.
+- **A password change rotates the token through `SessionStore.rotate`**: Better-Auth deletes every session, the caller's too. Any other endpoint that ends the current session must do the same.
+- **Server-side user rules live in `auth.ts`'s user hooks** (timezone, locale, name), which cover sign-up, `update-user` and OAuth; `AccountRules` mirrors them.
+
+## Decisions made in E2
+
+| Question | Decision | Why |
+|---|---|---|
+| Timezone: picker or device zone | Device zone, kept in sync automatically, shown read-only (user) | The phone travels with the user; `DayClock` already follows the device's day. |
+| Who owns the app language | The user's `locale` (cached session) | Same as the web; one source of truth, and a change on another device follows. |
+| Per-app language API | AppCompat (`setApplicationLocales`, autoStoreLocales) | Works from API 26; the system handles it from 33. |
+| Accept-Language | From the session's locale (`RequestLanguage`) | `Locale.getDefault()` changes only once AppCompat applies, which raced the catalog re-pull; on 8–12 a background process never gets it. |
+| Password change token | Adopt `set-auth-token` from the response via `SessionStore.rotate` | Better-Auth revokes the caller's session too (checked in its source and a backend test). |
+| Profile image, delete account, preferred source | Not on the screen | No image loader; the web's delete is a placeholder; the picker owns the source. In the follow-ups. |
+| Name rule | Trimmed 1–100, in `auth.ts` hooks + web sign-up + `AccountRules` | Root fix: `update-user` accepted blank names. |
 
 ## Decisions made in E1
 
@@ -73,7 +104,10 @@ On the emulator (API 36, local backend, the user's dev account, an admin): drag 
 
 ## Landmines
 
-- **Production needs migrations 0008–0013** and the `/days` + `/sets` backend.
+- **Production needs migrations 0008–0013** and the `/days` + `/sets` backend (E2 needs no migration, only the `auth.ts` hooks).
+- **The emulator's soft keyboard covers the lower half of the screen**: `input tap` on a field under it types a key instead. Move between fields with `input keyevent KEYCODE_TAB`, and clear a field with `input keycombination 113 29` + `KEYCODE_DEL`. When grepping `uiautomator dump` for a label with accents, match an ASCII prefix (`text="Nueva contrase`).
+- **Changing the emulator's zone:** `adb shell cmd alarm set-timezone <IANA id>`; the app PATCHes the account to follow it, so set it back to `America/Costa_Rica` afterwards. Per-app language: `adb shell cmd locale get-app-locales com.trackbit.app`.
+- **Room's DB on the emulator has no `sqlite3`**: copy `databases/trackbit.db{,-wal,-shm}` out with `adb exec-out run-as com.trackbit.app cat …` and open it locally.
 - **A swipe that starts at the screen's edge is the system Back gesture** on the emulator: drag gradient handles from inside the screen, or the form closes (and the edit is lost, see follow-ups).
 - **The emulator account is an admin** (no limits), so the lock on disallowed types and the cap never show there; use the `b10-smoke@example.com` user (default role: count + complex, 10 habits) to see them.
 - **core:model's tests are a JVM `test` task** (results in `build/test-results/test`), not `testDebugUnitTest`; count both when comparing totals.
@@ -84,16 +118,17 @@ On the emulator (API 36, local backend, the user's dev account, an admin): drag 
 
 ```bash
 cd apps/android && ./gradlew --stop
-./gradlew assembleDebug testDebugUnitTest lintDebug --max-workers=2   # green, 0 lint issues, 327 tests
-pnpm android:generate:check                                          # 56 generated files up to date
+./gradlew assembleDebug testDebugUnitTest lintDebug --max-workers=2   # green, 0 lint issues, 341 tests
+pnpm android:generate:check                                          # 57 generated files up to date
 (cd apps/frontend && npx tsc -b)
-pnpm --filter backend test                                           # 87 tests
+pnpm --filter backend test                                           # 90 tests
 ```
 
 ## Open questions
 
-- E2: timezone picker vs. device zone (ask the user). Deferred items: [kotlin-app-followups.md](../tasks/kotlin-app-followups.md) (new in E1: gradient end handles, unsaved form edits, drag-only reorder, habits-config device checks).
+- None blocking. Deferred items: [kotlin-app-followups.md](../tasks/kotlin-app-followups.md) (new in E2: password-change device check, widgets on 8–12 keep the system language, profile image / delete account / preferred source not on the screen).
 
 ## Run log
 
 - 2026-10-03 — E1: Phase 3 split E1–E6 (Settings tab, habits first, Google to backlog, Phase 2 exit deferred). Backend habit rules + migration 0013 + reorder/group fixes; web strings to `habits.json`; `HabitsRepository`/`ConfigResult`; `feature/habits-config` and the Settings hub. Android 327 tests. Next: E2.
+- 2026-10-03 — E2: account settings (name, language, units, card style, rest, password; timezone = device's, user). Backend: locale + name rules in `auth.ts` hooks; change-password token rotation proven. Android: AppCompat per-app language following the user's locale, `RequestLanguage`, `SessionStore.rotate`, `DeviceTimeZoneSync`, `LocalizedDataSync`. 341 tests, backend 90. Next: E3.

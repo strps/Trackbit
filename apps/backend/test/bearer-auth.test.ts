@@ -36,4 +36,22 @@ describe('bearer auth (native clients)', () => {
         const after = await app.request('/api/tracker/history', bearer(token))
         expect(after.status).toBe(401)
     })
+
+    // Changing the password with revokeOtherSessions deletes every session, the
+    // caller's too: a native client must adopt the token in set-auth-token.
+    it('change-password revokes the old bearer token and returns a new one', async () => {
+        const { token, email } = await signedInUser()
+        const res = await app.request('/api/auth/change-password', bearer(token, {
+            method: 'POST',
+            body: JSON.stringify({ currentPassword: 'password-1234', newPassword: 'password-5678', revokeOtherSessions: true }),
+        }))
+        expect(res.status).toBe(200)
+        const next = res.headers.get('set-auth-token')
+        expect(next).toBeTruthy()
+        expect(next).not.toBe(token)
+
+        expect((await app.request('/api/tracker/history', bearer(token))).status).toBe(401)
+        const session = await app.request('/api/auth/get-session', bearer(next!))
+        expect((await session.json()).user.email).toBe(email)
+    })
 })

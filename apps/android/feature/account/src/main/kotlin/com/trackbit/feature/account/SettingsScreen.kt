@@ -37,27 +37,33 @@ import com.trackbit.core.model.SessionUser
 
 /**
  * The Settings tab: the web's configuration links and account menu in one list. Each entry opens
- * its own screen; the app wires them ([onOpenHabits]).
+ * its own screen; the app wires them ([onOpenAccount], [onOpenHabits]).
  */
 @Composable
 fun SettingsScreen(
+    onOpenAccount: () -> Unit,
     onOpenHabits: () -> Unit,
     onSignOut: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val user by viewModel.user.collectAsStateWithLifecycle()
-    SettingsContent(user, onOpenHabits, onSignOut)
+    SettingsContent(user, onOpenAccount, onOpenHabits, onSignOut)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SettingsContent(user: SessionUser?, onOpenHabits: () -> Unit, onSignOut: () -> Unit) {
+private fun SettingsContent(user: SessionUser?, onOpenAccount: () -> Unit, onOpenHabits: () -> Unit, onSignOut: () -> Unit) {
     Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.nav_settings)) }) }) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState())) {
             if (user != null) {
+                // The user opens their account settings, like the web's user menu.
                 ListItem(
                     headlineContent = { Text(user.name) },
                     supportingContent = { Text(user.email) },
+                    trailingContent = {
+                        Icon(painterResource(UiIcons.ChevronRight), contentDescription = stringResource(R.string.auth_account_title))
+                    },
+                    modifier = Modifier.clickable(onClick = onOpenAccount),
                     leadingContent = {
                         Box(
                             Modifier.size(40.dp).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),

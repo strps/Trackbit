@@ -26,7 +26,7 @@ data class SessionUser(
     val emailVerified: Boolean,
     val image: String?,
     val role: String,
-    /** `en` or `es`. */
+    /** One of [LOCALES]. */
     val locale: String,
     /** IANA zone; the server's "today" for this user. */
     val timezone: String,
@@ -42,6 +42,9 @@ data class SessionUser(
 ) {
     companion object {
         const val DEFAULT_REST_SECONDS = 90
+
+        /** The languages the apps ship, the server's `SUPPORTED_LOCALES`. */
+        val LOCALES = listOf("en", "es")
 
         /** The server's range for [defaultRestSeconds]. */
         val REST_SECONDS_RANGE = 0..3600

@@ -13,6 +13,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
+import java.util.Locale
 
 class InterceptorsTest {
     private val tokens = FakeTokens()
@@ -55,10 +56,12 @@ class InterceptorsTest {
         assertTrue(tokens.rejected.isEmpty())
     }
 
-    @Test fun `sends Accept-Language`() = runTest {
-        server.enqueue(200, "[]")
-        server.service<HabitsService>().habits()
-        assertTrue(server.takeRequest().headers["Accept-Language"]!!.isNotEmpty())
+    @Test fun `sends the request language as Accept-Language`() = runTest {
+        TestServer(language = { Locale.forLanguageTag("es") }).use { spanish ->
+            spanish.enqueue(200, "[]")
+            spanish.service<HabitsService>().habits()
+            assertEquals("es", spanish.takeRequest().headers["Accept-Language"])
+        }
     }
 
     @Test fun `turns the key tag into the Idempotency-Key header`() = runTest {

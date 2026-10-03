@@ -1,10 +1,13 @@
 package com.trackbit.app
 
 import android.app.Application
+import android.content.res.Configuration as ResConfiguration
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.trackbit.app.timer.RestAlarm
 import com.trackbit.app.timer.TimerNotifier
+import com.trackbit.core.auth.DeviceTimeZoneSync
+import com.trackbit.core.data.sync.LocalizedDataSync
 import com.trackbit.core.data.sync.PeriodicSync
 import com.trackbit.widget.WidgetUpdater
 import com.trackbit.widget.preview.WidgetPreviews
@@ -22,6 +25,10 @@ class TrackbitApplication : Application(), Configuration.Provider {
     @Inject lateinit var timerNotifier: TimerNotifier
     @Inject lateinit var restAlarm: RestAlarm
     @Inject lateinit var widgetPreviews: WidgetPreviews
+    @Inject lateinit var deviceTimeZoneSync: DeviceTimeZoneSync
+    @Inject lateinit var localizedDataSync: LocalizedDataSync
+
+    private var locales: String? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -29,6 +36,19 @@ class TrackbitApplication : Application(), Configuration.Provider {
         widgetUpdater.start()
         timerNotifier.start()
         restAlarm.start()
+        widgetPreviews.start()
+        deviceTimeZoneSync.start()
+        localizedDataSync.start()
+        locales = resources.configuration.locales.toLanguageTags()
+    }
+
+    /** A new language (the per-app one, or the system's): widgets and their previews re-render in it. */
+    override fun onConfigurationChanged(newConfig: ResConfiguration) {
+        super.onConfigurationChanged(newConfig)
+        val now = newConfig.locales.toLanguageTags()
+        if (now == locales) return
+        locales = now
+        widgetUpdater.refreshAll()
         widgetPreviews.start()
     }
 

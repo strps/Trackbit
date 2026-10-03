@@ -208,7 +208,7 @@ Split (user, 2026-10-03): a third bottom tab **Settings** hub (`feature/account`
 - [x] **Habits config** (E1 2026-10-03, `feature/habits-config`): list, create/edit form (type, anti-habit, goals, color theme or custom gradient, icon), reorder (drag, also across groups), delete. The form's rules are `HabitRules` in core:model and the server enforces the same (name 3–50 trimmed, daily goal ≤ 1440, no structured anti-habit, migration `0013`); role limits from `GET /api/me/limits`.
 - [ ] **Exercise library**: catalog browse/search by muscle group, create/edit/delete custom exercises, frozen state
 - [ ] **Exercise lists**: CRUD, reorder items, add to list from the picker/library
-- [ ] **Account**: locale (en/es), timezone, unit system, card style, preferred exercise source (`PATCH /api/me/preferences`), sign-out
+- [x] **Account** (E2, 2026-10-03): profile name, locale (en/es; the app's language follows the user's), timezone (kept the device's automatically, user), unit system, card style, default rest, change password (`PATCH /api/me/preferences`, Better-Auth `update-user` / `change-password`); sign-out is on the Settings hub. Preferred exercise source stays in the session picker
 - [ ] Remaining auth screens: sign-up (with invite code), forgot password, verify-email handling. Google sign-in deferred to the backlog (user, 2026-10-03): it needs an Android OAuth client in Google Cloud and a Better-Auth id-token sign-in.
 - [ ] Feedback/issue report (`POST /api/issues`)
 

@@ -13,9 +13,12 @@ class FakeTokens(var token: String? = null) : SessionTokenSource {
 }
 
 /** A MockWebServer plus services wired exactly as in the app. */
-class TestServer(val tokens: FakeTokens = FakeTokens()) : AutoCloseable {
+class TestServer(
+    val tokens: FakeTokens = FakeTokens(),
+    language: RequestLanguage = RequestLanguage.Device,
+) : AutoCloseable {
     val server = MockWebServer().apply { start() }
-    val retrofit = trackbitRetrofit(server.url("/").toString(), trackbitOkHttpClient(tokens))
+    val retrofit = trackbitRetrofit(server.url("/").toString(), trackbitOkHttpClient(tokens, language))
 
     inline fun <reified T : Any> service(): T = retrofit.create()
 

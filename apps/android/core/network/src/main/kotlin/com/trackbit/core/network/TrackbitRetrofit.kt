@@ -10,8 +10,11 @@ import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 
 /** The client every Trackbit request goes through. */
-fun trackbitOkHttpClient(tokens: SessionTokenSource): OkHttpClient = OkHttpClient.Builder()
-    .addInterceptor(AcceptLanguageInterceptor())
+fun trackbitOkHttpClient(
+    tokens: SessionTokenSource,
+    language: RequestLanguage = RequestLanguage.Device,
+): OkHttpClient = OkHttpClient.Builder()
+    .addInterceptor(AcceptLanguageInterceptor(language))
     .addInterceptor(IdempotencyKeyInterceptor())
     .addInterceptor(AuthInterceptor(tokens))
     .build()

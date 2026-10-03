@@ -54,3 +54,33 @@ describe('timezone is validated at every write boundary', () => {
         expect(res.status).toBe(400)
     })
 })
+
+describe('locale is validated at every write boundary', () => {
+    it('update-user and sign-up reject a locale the apps do not ship', async () => {
+        const { token } = await signedInUser()
+        const update = (locale: string) =>
+            app.request('/api/auth/update-user', bearer(token, { method: 'POST', body: JSON.stringify({ locale }) }))
+        expect((await update('fr')).status).toBe(400)
+        expect((await update('es')).status).toBe(200)
+
+        const signUp = await app.request('/api/auth/sign-up/email', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ email: 'fr@test.local', password: 'password-1234', name: 'fr', locale: 'fr' }),
+        })
+        expect(signUp.status).toBe(400)
+    })
+})
+
+describe('profile name', () => {
+    it('update-user stores it trimmed and rejects a blank or overlong one', async () => {
+        const { token } = await signedInUser()
+        const update = (name: string) =>
+            app.request('/api/auth/update-user', bearer(token, { method: 'POST', body: JSON.stringify({ name }) }))
+        expect((await update('   ')).status).toBe(400)
+        expect((await update('x'.repeat(101))).status).toBe(400)
+        expect((await update('  Ada Lovelace ')).status).toBe(200)
+        const { user } = await (await app.request('/api/auth/get-session', bearer(token))).json()
+        expect(user.name).toBe('Ada Lovelace')
+    })
+})
