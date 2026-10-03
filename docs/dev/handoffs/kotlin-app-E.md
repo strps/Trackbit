@@ -2,7 +2,7 @@
 
 - **Plan:** [kotlin-app.md](../tasks/kotlin-app.md). Read only §4 "Phase 3" (and §0 D3: config needs a connection). Core context: the "Invariants" and "Landmines" of [kotlin-app-D.md](kotlin-app-D.md), [kotlin-app-C.md](kotlin-app-C.md) and [kotlin-app-B.md](kotlin-app-B.md), nothing else.
 - **Status:** Phase 3. E1 and E2 done on the emulator; **E3 (exercise library) is next**. The Phase 2 exit check is deferred to the final pass with the real-device check (user).
-- **Branch:** `kotlin-app` · **Last run:** 2026-10-03 (E2, uncommitted at the end of the run unless the user asked)
+- **Branch:** `kotlin-app` · **Last run:** 2026-10-03 (E2, committed 6d60f31)
 
 ## Where we are
 
