@@ -25,8 +25,20 @@
     <string name="android_session_pause_stopwatch">Pausar el cronómetro</string>
     <string name="android_session_edit_time">Editar el tiempo</string>
     <string name="android_session_rpe_level">RPE %1$d, %2$s</string>
+    <string name="android_rest_title">Descanso</string>
+    <string name="android_rest_minus_15s">−15 s</string>
+    <string name="android_rest_plus_15s">+15 s</string>
+    <string name="android_rest_skip">Saltar</string>
+    <string name="android_rest_over_title">Descanso terminado</string>
+    <string name="android_rest_over_text">Hora de la siguiente serie.</string>
+    <string name="android_rest_alert_channel_name">Avisos de descanso</string>
+    <string name="android_rest_alert_channel_description">Suena y vibra cuando termina un descanso entre series.</string>
+    <string name="android_rest_default">Descanso %1$s</string>
+    <string name="android_rest_default_off">Sin descanso</string>
+    <string name="android_rest_default_title">Descanso entre series (0:00 = sin descanso)</string>
+    <string name="android_rest_exact_alarm">El aviso puede llegar tarde. Permitir alarmas exactas</string>
     <string name="android_timer_channel_name">Temporizadores</string>
-    <string name="android_timer_channel_description">Temporizadores de hábitos en marcha, con Detener y +30 s.</string>
+    <string name="android_timer_channel_description">Temporizadores de hábitos en marcha y el descanso entre series.</string>
     <string name="android_timer_stop">Detener</string>
     <string name="android_timer_add_30s">+30 s</string>
     <string name="android_timer_goal">Meta %1$s</string>

@@ -11,8 +11,22 @@ describe('session user preferences', () => {
             timezone: 'UTC',
             unitSystem: 'metric',
             exerciseLogCardStyle: 'classic',
+            defaultRestSeconds: 90,
         })
         expect(user).toHaveProperty('preferredExerciseSource')
+    })
+})
+
+describe('defaultRestSeconds', () => {
+    it('PATCH /api/me/preferences sets it within 0–3600 and the session carries it', async () => {
+        const { token } = await signedInUser()
+        const patch = (value: unknown) =>
+            app.request('/api/me/preferences', bearer(token, { method: 'PATCH', body: JSON.stringify({ defaultRestSeconds: value }) }))
+        for (const bad of [-1, 3601, 1.5, null, '90']) expect((await patch(bad)).status).toBe(400)
+        expect((await patch(0)).status).toBe(204)
+        expect((await patch(150)).status).toBe(204)
+        const { user } = await (await app.request('/api/auth/get-session', bearer(token))).json()
+        expect(user.defaultRestSeconds).toBe(150)
     })
 })
 

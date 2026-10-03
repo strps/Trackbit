@@ -37,19 +37,22 @@ const preferencesSchema = z.object({
     // Explicitly nullable: null is how the client returns to browse mode, and is
     // also how it clears a key that no longer resolves.
     preferredExerciseSource: z.string().regex(EXERCISE_SOURCE_KEY_PATTERN).nullable().optional(),
+    // 0 turns the automatic rest timer off; the range matches the column's check.
+    defaultRestSeconds: z.number().int().min(0).max(3600).optional(),
 }).refine(
     (data) =>
         data.locale !== undefined ||
         data.timezone !== undefined ||
         data.unitSystem !== undefined ||
         data.exerciseLogCardStyle !== undefined ||
-        data.preferredExerciseSource !== undefined,
+        data.preferredExerciseSource !== undefined ||
+        data.defaultRestSeconds !== undefined,
     { message: 'At least one preference field must be provided' },
 )
 
 app.patch('/preferences', validator('json', preferencesSchema), async (c) => {
     const sessionUser = c.get('user')
-    const { locale, timezone, unitSystem, exerciseLogCardStyle, preferredExerciseSource } = c.req.valid('json')
+    const { locale, timezone, unitSystem, exerciseLogCardStyle, preferredExerciseSource, defaultRestSeconds } = c.req.valid('json')
 
     await db
         .update(user)
@@ -59,6 +62,7 @@ app.patch('/preferences', validator('json', preferencesSchema), async (c) => {
             ...(unitSystem !== undefined && { unitSystem }),
             ...(exerciseLogCardStyle !== undefined && { exerciseLogCardStyle }),
             ...(preferredExerciseSource !== undefined && { preferredExerciseSource }),
+            ...(defaultRestSeconds !== undefined && { defaultRestSeconds }),
         })
         .where(eq(user.id, sessionUser.id))
 

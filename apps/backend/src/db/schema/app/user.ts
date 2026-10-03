@@ -1,5 +1,5 @@
-import { relations } from "drizzle-orm";
-import { boolean, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import { boolean, check, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { habits } from "./habits";
 
 export const user = pgTable("user", {
@@ -21,6 +21,9 @@ export const user = pgTable("user", {
   // Dangling keys are never repaired here — every read path resolves them and
   // falls back to browse mode instead.
   preferredExerciseSource: text("preferred_exercise_source"),
+  // Rest timer length after each set, unless the set's list item prescribes
+  // one. 0 turns the automatic rest timer off.
+  defaultRestSeconds: integer("default_rest_seconds").notNull().default(90),
 
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
@@ -28,7 +31,9 @@ export const user = pgTable("user", {
   image: text("image"),
   createdAt: timestamp("created_at").notNull(),
   updatedAt: timestamp("updated_at").notNull()
-});
+}, (table) => [
+  check("user_default_rest_seconds_range", sql`${table.defaultRestSeconds} BETWEEN 0 AND 3600`),
+]);
 export const usersRelations = relations(user, ({ many }) => ({
   habits: many(habits),
 }));

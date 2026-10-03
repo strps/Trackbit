@@ -183,7 +183,7 @@ internal class DefaultTrackerRepository @Inject constructor(
     override suspend fun releaseHistory(owner: HistoryOwner) =
         historyDao.release(owner, recentFrom = LocalDate.now().minusDays(RECENT_DAYS - 1L))
 
-    override fun observeRunningTimers(): Flow<List<TrackedHabit>> = timerDao.observeAll().flatMapLatest { timers ->
+    override fun observeRunningTimers(): Flow<List<TrackedHabit>> = timerDao.observeHabitTimers().flatMapLatest { timers ->
         val habitTimers = timers.mapNotNull { timer -> timer.habitId?.let { id -> timer.localDay?.let { id to it } } }
         if (habitTimers.isEmpty()) {
             flowOf(emptyList())

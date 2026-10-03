@@ -1,5 +1,6 @@
 package com.trackbit.core.data
 
+import com.trackbit.core.auth.AuthState
 import com.trackbit.core.data.FakeTrackerService.Deleted
 import com.trackbit.core.data.FakeTrackerService.Updated
 import com.trackbit.core.data.sync.TrackerSync
@@ -37,7 +38,9 @@ class SessionRepositoryTest {
     private val scheduler = FakeScheduler()
     private val clock = FakeClock()
     private val sync = TrackerSync(db, service, exercises, tokens, clock)
-    private val repository = DefaultSessionRepository(db, sync, scheduler, clock)
+    private val auth = FakeAuth(defaultRestSeconds = 90)
+    private val repository = DefaultSessionRepository(db, sync, scheduler, clock, auth)
+    private val rest = DefaultRestTimerRepository(db, clock)
 
     private val gym = todayHabit(1, type = HabitType.Complex)
 
@@ -240,6 +243,54 @@ class SessionRepositoryTest {
         val unprescribed = sessions().single().logs.single { it.listItemId == 5 }
         repository.addSet(unprescribed.id)
         assertEquals(LAST_TIME.copy(reps = 8, duration = 90_000), sessions().single().logs.single { it.listItemId == 5 }.sets.single().values)
+    }
+
+    @Test fun `adding a set starts the rest timer, with the prescribed rest or else the user's default`() = runTest {
+        val rx = Prescription(targetSets = null, targetReps = null, targetWeight = null, targetDuration = null, targetDistance = null, restSeconds = 60, notes = null)
+        exercises.queueAnswer = { key -> queue(key, QueueEntry(10, 0, 4, rx), QueueEntry(10, 1, 5, null)) }
+        repository.refreshQueue("list:1")
+        repository.startSession(1, DAY)
+        val sessionId = sessions().single().id
+        repository.addExercise(sessionId, 10, listItemId = 4)
+        assertEquals(null, rest.observe().first())
+
+        repository.addSet(sessions().single().logs.single().id)
+        assertEquals(RestTimer(clock.now, clock.now.plusSeconds(60)), rest.observe().first())
+
+        // A newer set replaces the running rest.
+        clock.advanceMs(20_000)
+        repository.addExercise(sessionId, 10, listItemId = 5)
+        repository.addSet(sessions().single().logs.single { it.listItemId == 5 }.id)
+        assertEquals(RestTimer(clock.now, clock.now.plusSeconds(90)), rest.observe().first())
+
+        // Editing a set isn't adding one.
+        val set = sessions().single().logs.first().sets.single()
+        clock.advanceMs(5_000)
+        repository.updateSet(set.id, set.values.copy(reps = 3))
+        assertEquals(clock.now.plusSeconds(85), rest.observe().first()?.endsAt)
+    }
+
+    @Test fun `a rest of 0 starts no rest timer and ends the running one`() = runTest {
+        repository.startSession(1, DAY)
+        repository.addExercise(sessions().single().id, 10)
+        val logId = sessions().single().logs.single().id
+        repository.addSet(logId)
+        assertEquals(RestTimer(clock.now, clock.now.plusSeconds(90)), rest.observe().first())
+
+        auth.state.value = (auth.state.value as AuthState.SignedIn).let {
+            it.copy(user = it.user.copy(defaultRestSeconds = 0))
+        }
+        repository.addSet(logId)
+        assertEquals(null, rest.observe().first())
+    }
+
+    @Test fun `a refused set starts no rest timer`() = runTest {
+        repository.startSession(1, DAY)
+        repository.addExercise(sessions().single().id, 10)
+        db.syncDao().applyToday(todayResponse(DAY, todayHabit(1, type = HabitType.Complex, frozen = true)))
+
+        assertEquals(WriteResult.HabitFrozen, repository.addSet(sessions().single().logs.single().id))
+        assertEquals(null, rest.observe().first())
     }
 
     @Test fun `refresh pulls the sources, and a queue is pulled on its own`() = runTest {

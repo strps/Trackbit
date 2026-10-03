@@ -35,6 +35,10 @@ export const authClient = createAuthClient({
                     type: "string" as const,
                     required: false,
                 },
+                defaultRestSeconds: {
+                    type: "number" as const,
+                    required: false,
+                },
             },
 
         })

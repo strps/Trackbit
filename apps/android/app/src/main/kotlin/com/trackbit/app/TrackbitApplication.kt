@@ -3,6 +3,7 @@ package com.trackbit.app
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.trackbit.app.timer.RestAlarm
 import com.trackbit.app.timer.TimerNotifier
 import com.trackbit.core.data.sync.PeriodicSync
 import com.trackbit.widget.WidgetUpdater
@@ -19,6 +20,7 @@ class TrackbitApplication : Application(), Configuration.Provider {
     @Inject lateinit var periodicSync: PeriodicSync
     @Inject lateinit var widgetUpdater: WidgetUpdater
     @Inject lateinit var timerNotifier: TimerNotifier
+    @Inject lateinit var restAlarm: RestAlarm
     @Inject lateinit var widgetPreviews: WidgetPreviews
 
     override fun onCreate() {
@@ -26,6 +28,7 @@ class TrackbitApplication : Application(), Configuration.Provider {
         periodicSync.start()
         widgetUpdater.start()
         timerNotifier.start()
+        restAlarm.start()
         widgetPreviews.start()
     }
 

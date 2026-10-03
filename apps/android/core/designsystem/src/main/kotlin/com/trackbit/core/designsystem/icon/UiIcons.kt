@@ -29,6 +29,7 @@ object UiIcons {
     val Search = R.drawable.ic_ui_search
     val ShieldAlert = R.drawable.ic_ui_shield_alert
     val Stop = R.drawable.ic_ui_stop
+    val Timer = R.drawable.ic_ui_timer
     val Trash = R.drawable.ic_ui_trash
     val Trophy = R.drawable.ic_ui_trophy
 }

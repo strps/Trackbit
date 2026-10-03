@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.trackbit.core.auth.AuthRepository
 import com.trackbit.core.auth.AuthState
 import com.trackbit.core.auth.PreferencesRepository
+import com.trackbit.core.data.RestTimer
+import com.trackbit.core.data.RestTimerRepository
 import com.trackbit.core.data.SessionRepository
 import com.trackbit.core.data.SourceQueue
 import com.trackbit.core.data.SyncResult
@@ -15,6 +17,7 @@ import com.trackbit.core.data.WriteResult
 import com.trackbit.core.model.Exercise
 import com.trackbit.core.model.ExerciseLogCardStyle
 import com.trackbit.core.model.ExerciseSourceDescriptor
+import com.trackbit.core.model.SessionUser
 import com.trackbit.core.model.SetValues
 import com.trackbit.core.model.UnitSystem
 import dagger.assisted.Assisted
@@ -57,6 +60,10 @@ data class SessionUiState(
     val queue: SourceQueue? = null,
     val refreshing: Boolean = false,
     val message: SessionMessage? = null,
+    /** The rest countdown after the last set added, on any session screen; it may be just over. */
+    val rest: RestTimer? = null,
+    /** The user's rest after each set, unless a list item prescribes one; 0 is off. */
+    val defaultRestSeconds: Int = SessionUser.DEFAULT_REST_SECONDS,
 ) {
     internal val exercisesById: Map<Int, Exercise> = exercises.associateBy { it.id }
 
@@ -81,6 +88,7 @@ class SessionViewModel @AssistedInject constructor(
     tracker: TrackerRepository,
     auth: AuthRepository,
     private val preferences: PreferencesRepository,
+    private val restTimers: RestTimerRepository,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
@@ -97,9 +105,11 @@ class SessionViewModel @AssistedInject constructor(
 
     private val display = user.map { user ->
         // Unknown values (a newer server) read as the defaults, as on the web.
-        val units = user?.unitSystem?.takeIf { it != UnitSystem.Unknown } ?: UnitSystem.Metric
-        val style = user?.exerciseLogCardStyle?.takeIf { it != ExerciseLogCardStyle.Unknown } ?: ExerciseLogCardStyle.Classic
-        units to style
+        Display(
+            unitSystem = user?.unitSystem?.takeIf { it != UnitSystem.Unknown } ?: UnitSystem.Metric,
+            cardStyle = user?.exerciseLogCardStyle?.takeIf { it != ExerciseLogCardStyle.Unknown } ?: ExerciseLogCardStyle.Classic,
+            defaultRestSeconds = user?.defaultRestSeconds ?: SessionUser.DEFAULT_REST_SECONDS,
+        )
     }
 
     /**
@@ -126,21 +136,26 @@ class SessionViewModel @AssistedInject constructor(
 
     private val picker = combine(sourcePick, queue) { pick, queue -> pick to queue }
 
-    val state: StateFlow<SessionUiState> = combine(content, display, picker, refreshing, message) { content, display, picker, refreshing, message ->
+    private val status = combine(refreshing, message, restTimers.observe(), ::Triple)
+
+    val state: StateFlow<SessionUiState> = combine(content, display, picker, status) { content, display, picker, status ->
         val (pick, queue) = picker
+        val (refreshing, message, rest) = status
         SessionUiState(
             day = day,
             habit = content.first,
             sessions = content.second,
             exercises = content.third,
-            unitSystem = display.first,
-            cardStyle = display.second,
+            unitSystem = display.unitSystem,
+            cardStyle = display.cardStyle,
             sources = pick.sources,
             sourcesLoaded = pick.pulled || pick.sources.isNotEmpty(),
             source = pick.source,
             queue = queue,
             refreshing = refreshing,
             message = message,
+            rest = rest,
+            defaultRestSeconds = display.defaultRestSeconds,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SessionUiState(day))
 
@@ -198,12 +213,29 @@ class SessionViewModel @AssistedInject constructor(
 
     fun removeExercise(logId: String) = write { sessions.removeExercise(logId) }
 
-    /** Adds a set to [logId], starting from its prescription or the exercise's last performance. */
+    /**
+     * Adds a set to [logId], starting from its prescription or the exercise's last performance,
+     * and starts the rest timer.
+     */
     fun addSet(logId: String) = write { sessions.addSet(logId) }
 
     fun updateSet(setId: String, values: SetValues) = write { sessions.updateSet(setId, values) }
 
     fun deleteSet(setId: String) = write { sessions.deleteSet(setId) }
+
+    /** Moves the rest's end by [ms]; an end already past ends it. */
+    fun adjustRest(ms: Long) {
+        viewModelScope.launch { restTimers.adjust(ms) }
+    }
+
+    fun skipRest() {
+        viewModelScope.launch { restTimers.skip() }
+    }
+
+    /** The rest after each set from now on, for every session (a user preference); 0 is off. */
+    fun setDefaultRest(seconds: Int) {
+        viewModelScope.launch { preferences.setDefaultRestSeconds(seconds.coerceIn(SessionUser.REST_SECONDS_RANGE)) }
+    }
 
     /** Clears [shown] unless a newer message has replaced it. */
     fun onMessageShown(shown: SessionMessage) {
@@ -221,6 +253,8 @@ class SessionViewModel @AssistedInject constructor(
         }
     }
 }
+
+private data class Display(val unitSystem: UnitSystem, val cardStyle: ExerciseLogCardStyle, val defaultRestSeconds: Int)
 
 private data class SourcePick(
     val sources: List<ExerciseSourceDescriptor>,

@@ -45,6 +45,10 @@ These are covered by unit tests but were not exercised on the emulator for W1. R
 - **No "add to list" in the picker** (D4): the web's rows have `AddToListMenu` (`capabilities.canAppend`). It edits lists, which the app can't do yet; add it with the lists screen (Phase 3). Likewise the "No lists yet" hint is disabled instead of opening a list editor.
 - **System-named sources show "Source"** (D4): no source has a `nameKey` yet. When programs bring one ("today's routine"), map its key to a string in `sourceName` (`ExercisePicker.kt`).
 - **The web's flexibility card can't start a hold** (no add button when a log has no set); the app adds one with "Start" (D3). Give the web the same.
+- **Rest notification and alert open the app's home, not the session** (D5). A deep link to `session/{habitId}/{day}` would need the rest timer to remember its session (a column, or the last log's day).
+- **The exact-alarm hint is re-checked only on resume** (D5): after granting it through `adb appops` (no resume), the hint stays until the screen resumes. Granting it in Settings resumes the screen, so users won't see this.
+- **No in-app alert without notification permission** (D5): with `POST_NOTIFICATIONS` denied, the end of a rest is silent. Vibrating from the session screen when it's in the foreground would cover that case.
+- **Adding a set in compact cards opens the set editor sheet over the rest bar** (D5); the countdown shows once the sheet closes.
 
 ## Housekeeping
 

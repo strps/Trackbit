@@ -3,6 +3,8 @@ package com.trackbit.feature.session
 import com.trackbit.core.auth.AuthRepository
 import com.trackbit.core.auth.AuthState
 import com.trackbit.core.auth.PreferencesRepository
+import com.trackbit.core.data.RestTimer
+import com.trackbit.core.data.RestTimerRepository
 import com.trackbit.core.data.SessionRepository
 import com.trackbit.core.data.SourceQueue
 import com.trackbit.core.data.SyncResult
@@ -54,6 +56,7 @@ class SessionViewModelTest {
     private val tracker = FakeTrackerRepository()
     private val auth = FakeAuthRepository()
     private val preferences = FakePreferencesRepository(auth)
+    private val restTimers = FakeRestTimerRepository()
 
     @Before fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
 
@@ -61,9 +64,35 @@ class SessionViewModelTest {
 
     /** Subscribes to [SessionViewModel.state] for the test, as the screen would. */
     private fun TestScope.subscribed(): SessionViewModel {
-        val viewModel = SessionViewModel(habitId = 1, day = DAY, sessions = sessions, tracker = tracker, auth = auth, preferences = preferences)
+        val viewModel = SessionViewModel(habitId = 1, day = DAY, sessions = sessions, tracker = tracker, auth = auth, preferences = preferences, restTimers = restTimers)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
         return viewModel
+    }
+
+    @Test fun `shows the running rest and the user's default rest`() = runTest {
+        auth.state.value = AuthState.SignedIn(user().copy(defaultRestSeconds = 120))
+        val viewModel = subscribed()
+        assertNull(viewModel.state.value.rest)
+        assertEquals(120, viewModel.state.value.defaultRestSeconds)
+
+        val rest = RestTimer(Instant.EPOCH, Instant.EPOCH.plusSeconds(120))
+        restTimers.rest.value = rest
+        assertEquals(rest, viewModel.state.value.rest)
+    }
+
+    @Test fun `rest controls reach the rest timer, and the default is kept in the server's range`() = runTest {
+        auth.state.value = AuthState.SignedIn(user())
+        val viewModel = subscribed()
+
+        viewModel.adjustRest(-RestTimer.STEP_MS)
+        viewModel.adjustRest(RestTimer.STEP_MS)
+        viewModel.skipRest()
+        assertEquals(listOf<Any>(-15_000L, 15_000L, "skip"), restTimers.calls)
+
+        viewModel.setDefaultRest(150)
+        assertEquals(150, viewModel.state.value.defaultRestSeconds)
+        viewModel.setDefaultRest(99_999)
+        assertEquals(3600, viewModel.state.value.defaultRestSeconds)
     }
 
     @Test fun `shows the habit's sessions on its day with the catalog and the user's preferences`() = runTest {
@@ -307,5 +336,25 @@ private class FakePreferencesRepository(private val auth: FakeAuthRepository) : 
         set += key
         val user = (auth.state.value as? AuthState.SignedIn)?.user ?: return
         auth.state.value = AuthState.SignedIn(user.copy(preferredExerciseSource = key))
+    }
+
+    override suspend fun setDefaultRestSeconds(seconds: Int) {
+        val user = (auth.state.value as? AuthState.SignedIn)?.user ?: return
+        auth.state.value = AuthState.SignedIn(user.copy(defaultRestSeconds = seconds))
+    }
+}
+
+private class FakeRestTimerRepository : RestTimerRepository by unused() {
+    val rest = MutableStateFlow<RestTimer?>(null)
+    val calls = mutableListOf<Any>()
+
+    override fun observe(): Flow<RestTimer?> = rest
+
+    override suspend fun adjust(ms: Long) {
+        calls += ms
+    }
+
+    override suspend fun skip() {
+        calls += "skip"
     }
 }

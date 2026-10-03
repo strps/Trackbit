@@ -1,7 +1,9 @@
 package com.trackbit.core.auth
 
 import com.trackbit.core.auth.di.AuthScope
+import com.trackbit.core.model.PreferencesRequest
 import com.trackbit.core.model.PreferredExerciseSourceRequest
+import com.trackbit.core.model.SessionUser
 import com.trackbit.core.network.safeCall
 import com.trackbit.core.network.service.MeService
 import kotlinx.coroutines.CoroutineScope
@@ -16,6 +18,9 @@ import javax.inject.Inject
 interface PreferencesRepository {
     /** The session picker's source: a source key such as `list:12`, or null for browse mode. */
     suspend fun setPreferredExerciseSource(key: String?)
+
+    /** Seconds of rest after each set, in [SessionUser.REST_SECONDS_RANGE]; 0 turns the rest timer off. */
+    suspend fun setDefaultRestSeconds(seconds: Int)
 }
 
 internal class DefaultPreferencesRepository @Inject constructor(
@@ -28,5 +33,12 @@ internal class DefaultPreferencesRepository @Inject constructor(
         store.updateUser(ifToken = token) { it.copy(preferredExerciseSource = key) }
         // Outlives the caller (a screen being closed).
         scope.launch { safeCall { meService.updatePreferredExerciseSource(PreferredExerciseSourceRequest(key)) } }
+    }
+
+    override suspend fun setDefaultRestSeconds(seconds: Int) {
+        val request = PreferencesRequest(defaultRestSeconds = seconds)
+        val token = store.token() ?: return
+        store.updateUser(ifToken = token) { it.copy(defaultRestSeconds = seconds) }
+        scope.launch { safeCall { meService.updatePreferences(request) } }
     }
 }

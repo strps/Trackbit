@@ -9,12 +9,14 @@ import com.trackbit.core.network.safeCall
 import com.trackbit.core.network.trackbitOkHttpClient
 import com.trackbit.core.network.trackbitRetrofit
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -150,6 +152,17 @@ class AuthRepositoryTest {
         preferences.setPreferredExerciseSource(null)
         assertEquals("""{"preferredExerciseSource":null}""", take().body?.utf8())
         assertEquals(AuthState.SignedIn(user()), repository.state.value)
+    }
+
+    @Test fun `the default rest changes the cached user at once and is PATCHed`() = runTest {
+        signIn()
+        enqueue(204)
+
+        preferences.setDefaultRestSeconds(150)
+        assertEquals(AuthState.SignedIn(user().copy(defaultRestSeconds = 150)), repository.state.value)
+        assertEquals("""{"defaultRestSeconds":150}""", take().body?.utf8())
+        assertThrows(IllegalArgumentException::class.java) { runBlocking { preferences.setDefaultRestSeconds(3601) } }
+        assertEquals(150, (repository.state.value as AuthState.SignedIn).user.defaultRestSeconds)
     }
 
     @Test fun `a preferred source while signed out changes nothing`() = runTest {

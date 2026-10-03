@@ -3,6 +3,8 @@ package com.trackbit.core.data
 import kotlinx.coroutines.yield
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.trackbit.core.auth.AuthRepository
+import com.trackbit.core.auth.AuthState
 import com.trackbit.core.data.sync.SyncScheduler
 import com.trackbit.core.database.TrackbitDatabase
 import com.trackbit.core.model.CheckRequest
@@ -28,6 +30,10 @@ import com.trackbit.core.model.RecentDay
 import com.trackbit.core.model.Rgba
 import com.trackbit.core.model.TodayHabit
 import com.trackbit.core.model.TodayResponse
+import com.trackbit.core.model.ExerciseLogCardStyle
+import com.trackbit.core.model.SessionUser
+import com.trackbit.core.model.UnitSystem
+import com.trackbit.core.network.ApiResult
 import com.trackbit.core.network.IdempotencyKey
 import com.trackbit.core.network.SessionTokenSource
 import com.trackbit.core.model.ExerciseSourceDescriptor
@@ -35,8 +41,8 @@ import com.trackbit.core.model.QueueEntry
 import com.trackbit.core.model.ResolvedQueue
 import com.trackbit.core.model.SourceCapabilities
 import com.trackbit.core.network.service.ExerciseService
-import kotlinx.coroutines.yield
 import com.trackbit.core.network.service.TrackerService
+import kotlinx.coroutines.flow.MutableStateFlow
 import okhttp3.ResponseBody.Companion.toResponseBody
 import retrofit2.HttpException
 import retrofit2.Response
@@ -95,6 +101,24 @@ class FakeClock(var now: Instant = Instant.parse("2026-09-26T10:00:00Z")) : Cloc
     fun advanceMs(ms: Long) {
         now = now.plusMillis(ms)
     }
+}
+
+/** Signed in as a user whose default rest is [defaultRestSeconds]. Only [state] is used. */
+class FakeAuth(defaultRestSeconds: Int = SessionUser.DEFAULT_REST_SECONDS) : AuthRepository {
+    override val state = MutableStateFlow<AuthState>(
+        AuthState.SignedIn(
+            SessionUser(
+                id = "u_1", name = "cj", email = "u_1@test.local", emailVerified = true, image = null, role = "user",
+                locale = "en", timezone = "UTC", unitSystem = UnitSystem.Metric,
+                exerciseLogCardStyle = ExerciseLogCardStyle.Classic, preferredExerciseSource = null,
+                defaultRestSeconds = defaultRestSeconds,
+            ),
+        ),
+    )
+
+    override suspend fun signIn(email: String, password: String): ApiResult<SessionUser> = error("unused")
+    override suspend fun signOut() = error("unused")
+    override suspend fun refresh() = error("unused")
 }
 
 class FakeTokens(var token: String? = "t1") : SessionTokenSource {

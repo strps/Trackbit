@@ -65,6 +65,7 @@ import java.time.format.FormatStyle
 /**
  * A workout habit's sessions on [day], like the web's activity tracker: each session's exercises,
  * their sets, and a picker to add exercises from the catalog or a source (a list). Logs through the outbox, so it works offline.
+ * Adding a set starts the rest timer, shown at the foot while it runs; the top bar sets its default.
  */
 @Composable
 fun SessionScreen(
@@ -93,6 +94,9 @@ fun SessionScreen(
             onDelete = viewModel::deleteSession,
             onAddExercise = viewModel::addExercise,
             onSelectSource = viewModel::selectSource,
+            onAdjustRest = viewModel::adjustRest,
+            onSkipRest = viewModel::skipRest,
+            onSetDefaultRest = viewModel::setDefaultRest,
             log = LogCardActions(
                 onAddSet = viewModel::addSet,
                 onUpdateSet = viewModel::updateSet,
@@ -109,6 +113,9 @@ private class SessionActions(
     val onDelete: (sessionId: String) -> Unit,
     val onAddExercise: (sessionId: String, exerciseId: Int, listItemId: Int?) -> Unit,
     val onSelectSource: (key: String?) -> Unit,
+    val onAdjustRest: (ms: Long) -> Unit,
+    val onSkipRest: () -> Unit,
+    val onSetDefaultRest: (seconds: Int) -> Unit,
     val log: LogCardActions,
 )
 
@@ -164,8 +171,10 @@ private fun SessionContent(
                         Icon(painterResource(UiIcons.ArrowLeft), stringResource(R.string.android_session_back))
                     }
                 },
+                actions = { DefaultRestButton(state.defaultRestSeconds, actions.onSetDefaultRest) },
             )
         },
+        bottomBar = { RestTimerBar(state.rest, actions.onAdjustRest, actions.onSkipRest) },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
         PullToRefreshBox(

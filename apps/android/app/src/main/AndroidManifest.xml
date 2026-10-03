@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- The ongoing timer notification (Android 13+). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- The rest timer's end alert on time; without it the alarm is inexact (denied by default on 14+). -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <application
         android:name=".TrackbitApplication"
@@ -29,6 +31,15 @@
         <receiver
             android:name=".timer.TimerActionReceiver"
             android:exported="false" />
+
+        <!-- The rest timer's end, and exact alarms being allowed (RestAlarm). -->
+        <receiver
+            android:name=".timer.RestAlarmReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
 
         <!-- WorkManager initializes on demand from TrackbitApplication, with Hilt's worker factory. -->
         <provider

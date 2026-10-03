@@ -25,8 +25,20 @@
     <string name="android_session_pause_stopwatch">Pause the timer</string>
     <string name="android_session_edit_time">Edit the time</string>
     <string name="android_session_rpe_level">RPE %1$d, %2$s</string>
+    <string name="android_rest_title">Rest</string>
+    <string name="android_rest_minus_15s">−15s</string>
+    <string name="android_rest_plus_15s">+15s</string>
+    <string name="android_rest_skip">Skip</string>
+    <string name="android_rest_over_title">Rest over</string>
+    <string name="android_rest_over_text">Time for your next set.</string>
+    <string name="android_rest_alert_channel_name">Rest alerts</string>
+    <string name="android_rest_alert_channel_description">Sounds and vibrates when a rest between sets ends.</string>
+    <string name="android_rest_default">Rest %1$s</string>
+    <string name="android_rest_default_off">Rest off</string>
+    <string name="android_rest_default_title">Rest between sets (0:00 = off)</string>
+    <string name="android_rest_exact_alarm">The end alert may come late. Allow exact alarms</string>
     <string name="android_timer_channel_name">Timers</string>
-    <string name="android_timer_channel_description">Habit timers while they run, with Stop and +30s.</string>
+    <string name="android_timer_channel_description">Running habit timers and the rest timer between sets.</string>
     <string name="android_timer_stop">Stop</string>
     <string name="android_timer_add_30s">+30s</string>
     <string name="android_timer_goal">Goal %1$s</string>

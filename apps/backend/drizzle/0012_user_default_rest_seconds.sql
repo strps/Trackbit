@@ -1,0 +1,2 @@
+ALTER TABLE "user" ADD COLUMN "default_rest_seconds" integer DEFAULT 90 NOT NULL;--> statement-breakpoint
+ALTER TABLE "user" ADD CONSTRAINT "user_default_rest_seconds_range" CHECK ("user"."default_rest_seconds" BETWEEN 0 AND 3600);

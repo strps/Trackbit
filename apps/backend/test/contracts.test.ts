@@ -222,6 +222,7 @@ describe('Android contracts', () => {
         await post(u.token, '/api/exercise-lists', { name: 'Push day' })
         await send(u.token, 'PATCH', '/api/me/preferences', {
             locale: 'es', unitSystem: 'imperial', exerciseLogCardStyle: 'compact', preferredExerciseSource: 'list:1',
+            defaultRestSeconds: 120,
         })
         await record(MODEL, 'session.json', 'GET /api/auth/get-session', await get(u.token, '/api/auth/get-session'), u.secrets)
         await record(MODEL, 'limits.json', 'GET /api/me/limits', await get(u.token, '/api/me/limits'), u.secrets)

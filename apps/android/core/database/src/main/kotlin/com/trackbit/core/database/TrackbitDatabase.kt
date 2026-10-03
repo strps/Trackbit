@@ -37,7 +37,7 @@ import com.trackbit.core.database.entity.TimerEntity
         SessionEntity::class, ExerciseLogEntity::class, PerformanceEntity::class, ExerciseEntity::class,
         ExerciseSourceEntity::class, SourceQueueEntity::class, QueueEntryEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
     autoMigrations = [
         // 2: timers.
@@ -49,6 +49,8 @@ import com.trackbit.core.database.entity.TimerEntity
         AutoMigration(from = 4, to = 5),
         // 6: exercise sources and their queues.
         AutoMigration(from = 5, to = 6),
+        // 7: timers.endsAt (the rest timer).
+        AutoMigration(from = 6, to = 7),
     ],
 )
 @TypeConverters(Converters::class)

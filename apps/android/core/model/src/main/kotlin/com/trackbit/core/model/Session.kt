@@ -34,4 +34,16 @@ data class SessionUser(
     val exerciseLogCardStyle: ExerciseLogCardStyle,
     /** `list:12`, `program:3` or `computed:…`; null means browse mode. */
     val preferredExerciseSource: String?,
-)
+    /**
+     * Seconds of rest after each set, unless its list item prescribes some; 0 = no rest timer.
+     * Defaults to the server's column default, so a user cached by an older build still decodes.
+     */
+    val defaultRestSeconds: Int = DEFAULT_REST_SECONDS,
+) {
+    companion object {
+        const val DEFAULT_REST_SECONDS = 90
+
+        /** The server's range for [defaultRestSeconds]. */
+        val REST_SECONDS_RANGE = 0..3600
+    }
+}

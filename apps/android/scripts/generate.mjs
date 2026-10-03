@@ -54,6 +54,7 @@ const UI_ICONS = {
     search: 'Search',
     shield_alert: 'ShieldAlert',
     stop: 'Square',
+    timer: 'Timer',
     trash: 'Trash2',
     trophy: 'Trophy',
 };

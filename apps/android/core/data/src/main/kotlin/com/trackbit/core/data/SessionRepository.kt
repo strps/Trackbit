@@ -1,6 +1,8 @@
 package com.trackbit.core.data
 
 import androidx.room.withTransaction
+import com.trackbit.core.auth.AuthRepository
+import com.trackbit.core.auth.AuthState
 import com.trackbit.core.data.sync.SetUpdate
 import com.trackbit.core.data.sync.SyncScheduler
 import com.trackbit.core.data.sync.TrackerSync
@@ -24,8 +26,10 @@ import com.trackbit.core.model.CreateSessionRequest
 import com.trackbit.core.model.Exercise
 import com.trackbit.core.model.ExerciseSourceDescriptor
 import com.trackbit.core.model.HabitType
+import com.trackbit.core.model.Prescription
 import com.trackbit.core.model.QueueEmptyReason
 import com.trackbit.core.model.QueueEntry
+import com.trackbit.core.model.SessionUser
 import com.trackbit.core.model.SetValues
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -86,6 +90,10 @@ interface SessionRepository {
      * each prescribed target of the list item the log came from (if a cached queue holds it),
      * else the exercise's last performance, the newer of its latest set in Room and the
      * catalog's. RPE is an outcome, so it only ever comes from the last performance.
+     *
+     * Adding a set means it was done, so it also starts the rest timer ([RestTimerRepository]),
+     * replacing a running one: the list item's prescribed rest, else the user's default. A rest
+     * of 0 only ends the running one.
      */
     suspend fun addSet(logId: String): WriteResult
 
@@ -138,12 +146,14 @@ internal class DefaultSessionRepository @Inject constructor(
     private val sync: TrackerSync,
     scheduler: SyncScheduler,
     private val clock: Clock,
+    private val auth: AuthRepository,
 ) : SessionRepository {
     private val sessionDao = db.sessionDao()
     private val exerciseDao = db.exerciseDao()
     private val sourceDao = db.sourceDao()
     private val habitDao = db.habitDao()
     private val dayLogDao = db.dayLogDao()
+    private val timerDao = db.timerDao()
     private val writer = OutboxWriter(db, scheduler)
 
     override fun observeSessions(habitId: Int, day: LocalDate): Flow<List<TrackedSession>> =
@@ -211,7 +221,8 @@ internal class DefaultSessionRepository @Inject constructor(
     override suspend fun addSet(logId: String): WriteResult =
         writeTo({ sessionDao.logDay(logId) }, exerciseId = { sessionDao.exerciseOfLog(logId) }) { day ->
             val uuid = newUuid()
-            val values = newSetValues(logId, checkNotNull(sessionDao.exerciseOfLog(logId)))
+            val prescription = sessionDao.listItemOfLog(logId)?.let { sourceDao.prescription(it) }
+            val values = newSetValues(prescription, checkNotNull(sessionDao.exerciseOfLog(logId)))
             // Like the web: one more than the sets the log has now.
             val number = sessionDao.setCount(logId) + 1
             sessionDao.insert(
@@ -227,6 +238,7 @@ internal class DefaultSessionRepository @Inject constructor(
                     createdAt = clock.instant(),
                 ),
             )
+            startRest(prescription?.restSeconds ?: defaultRestSeconds())
             createPerformanceOp(day, CreatePerformanceRequest(uuid, logId, number, values))
         }
 
@@ -262,9 +274,9 @@ internal class DefaultSessionRepository @Inject constructor(
     )
 
     /** See [SessionRepository.addSet]. Prescribed durations are seconds; sets store ms. */
-    private suspend fun newSetValues(logId: String, exerciseId: Int): SetValues {
+    private suspend fun newSetValues(prescription: Prescription?, exerciseId: Int): SetValues {
         val last = lastPerformance(exerciseId)
-        val prescription = sessionDao.listItemOfLog(logId)?.let { sourceDao.prescription(it) } ?: return last
+        if (prescription == null) return last
         return SetValues(
             reps = prescription.targetReps ?: last.reps,
             weight = prescription.targetWeight ?: last.weight,
@@ -290,6 +302,19 @@ internal class DefaultSessionRepository @Inject constructor(
             else -> SetValues.EMPTY
         }
     }
+
+    private suspend fun startRest(seconds: Int) {
+        if (seconds <= 0) {
+            timerDao.deleteRest()
+            return
+        }
+        val now = clock.instant()
+        timerDao.replaceRest(startedAt = now, endsAt = now.plusSeconds(seconds.toLong()))
+    }
+
+    // A write needs a signed-in user, so the fallback is never used.
+    private fun defaultRestSeconds(): Int =
+        (auth.state.value as? AuthState.SignedIn)?.user?.defaultRestSeconds ?: SessionUser.DEFAULT_REST_SECONDS
 
     private fun newUuid() = UUID.randomUUID().toString()
 }

@@ -138,6 +138,14 @@ export const auth = betterAuth({
         required: false,
         input: false,
       },
+      // The rest timer's length after each set (0 = off); read by the
+      // Android app's session screen, changed through PATCH /api/me/preferences.
+      defaultRestSeconds: {
+        type: "number",
+        required: false,
+        defaultValue: 90,
+        input: false,
+      },
     },
   },
 

@@ -29,6 +29,7 @@
       "unitSystem": "imperial",
       "exerciseLogCardStyle": "compact",
       "preferredExerciseSource": "list:1",
+      "defaultRestSeconds": 120,
       "id": "user-id"
     }
   }

@@ -3,6 +3,7 @@ package com.trackbit.core.database
 import androidx.room.testing.MigrationTestHelper
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -114,6 +115,21 @@ class MigrationTest {
             db.query("SELECT COUNT(*) FROM outbox").use { cursor ->
                 cursor.moveToFirst()
                 assertEquals(1, cursor.getInt(0))
+            }
+        }
+    }
+
+    @Test fun `6 to 7 adds timers' endsAt, keeping running timers`() {
+        helper.createDatabase(NAME, 6).use { db ->
+            db.execSQL("INSERT INTO timers (habitId, localDay, startedAt) VALUES (NULL, '2026-10-02', 1000)")
+        }
+
+        helper.runMigrationsAndValidate(NAME, 7, true, *Migrations.ALL).use { db ->
+            db.query("SELECT localDay, startedAt, endsAt FROM timers").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals("2026-10-02", cursor.getString(0))
+                assertEquals(1000, cursor.getLong(1))
+                assertTrue(cursor.isNull(2))
             }
         }
     }

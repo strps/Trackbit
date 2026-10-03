@@ -6,6 +6,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
@@ -194,6 +195,12 @@ class DecodeTest {
         assertEquals(UnitSystem.Imperial, session.user.unitSystem)
         assertEquals(ExerciseLogCardStyle.Compact, session.user.exerciseLogCardStyle)
         assertEquals("list:1", session.user.preferredExerciseSource)
+        assertEquals(120, session.user.defaultRestSeconds)
+    }
+
+    @Test fun `a user cached before defaultRestSeconds existed reads the server's default`() {
+        val user = JsonObject(body("session.json").jsonObject.getValue("user").jsonObject - "defaultRestSeconds")
+        assertEquals(SessionUser.DEFAULT_REST_SECONDS, TrackbitJson.decodeFromJsonElement<SessionUser>(user).defaultRestSeconds)
     }
 
     @Test fun limits() {

@@ -14,10 +14,16 @@ data class PreferencesRequest(
     val timezone: String? = null,
     val unitSystem: UnitSystem? = null,
     val exerciseLogCardStyle: ExerciseLogCardStyle? = null,
+    /** In [SessionUser.REST_SECONDS_RANGE]; 0 turns the rest timer off. */
+    val defaultRestSeconds: Int? = null,
 ) {
     init {
-        require(locale != null || timezone != null || unitSystem != null || exerciseLogCardStyle != null) {
-            "At least one preference must be set"
+        require(
+            locale != null || timezone != null || unitSystem != null || exerciseLogCardStyle != null ||
+                defaultRestSeconds != null,
+        ) { "At least one preference must be set" }
+        require(defaultRestSeconds == null || defaultRestSeconds in SessionUser.REST_SECONDS_RANGE) {
+            "defaultRestSeconds out of range: $defaultRestSeconds"
         }
     }
 }

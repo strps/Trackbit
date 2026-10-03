@@ -8,12 +8,14 @@ import java.time.Instant
 import java.time.LocalDate
 
 /**
- * A running timer. Only the instant it started is stored, never a ticking count, so it survives
- * process death and reboots; stopping it deletes the row.
+ * A running timer. Only the instants it started (and, counting down, ends) are stored, never a
+ * ticking count, so it survives process death and reboots; stopping it deletes the row.
  *
- * A habit timer names its habit and the day its time is logged to, and there is at most one per
- * habit. The owner columns are nullable so timers that don't belong to a habit (the rest timer)
- * can share the table and the notification.
+ * Two kinds share the table and the notification:
+ * - A habit timer counts up. It names its habit and the day its time is logged to, there is at
+ *   most one per habit, and [endsAt] is null.
+ * - The rest timer counts down between sets. It has no habit or day, only [endsAt], and there is
+ *   at most one ([com.trackbit.core.database.dao.TimerDao.replaceRest]).
  */
 @Entity(
     tableName = TimerEntity.TABLE,
@@ -28,6 +30,8 @@ data class TimerEntity(
     /** The day the elapsed time is logged to: the day shown when the timer started. */
     val localDay: LocalDate?,
     val startedAt: Instant,
+    /** When a countdown (the rest timer) ends; null for a habit timer. */
+    val endsAt: Instant? = null,
 ) {
     companion object {
         const val TABLE = "timers"
