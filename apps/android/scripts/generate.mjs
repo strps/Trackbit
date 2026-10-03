@@ -32,9 +32,14 @@ const UI_ICON_PREFIX = 'ic_ui_';
 
 /** Icons the app's screens use, by drawable suffix → lucide-react component, as on the web. */
 const UI_ICONS = {
+    activity: 'Activity',
     arrow_left: 'ArrowLeft',
+    bar_chart: 'BarChart3',
+    bar_chart_2: 'BarChart2',
+    calendar_days: 'CalendarDays',
     calendar_search: 'CalendarSearch',
     check: 'Check',
+    circle_check: 'CheckCircle2',
     chevron_down: 'ChevronDown',
     chevron_left: 'ChevronLeft',
     chevron_right: 'ChevronRight',
@@ -56,6 +61,7 @@ const UI_ICONS = {
     stop: 'Square',
     timer: 'Timer',
     trash: 'Trash2',
+    trending_up: 'TrendingUp',
     trophy: 'Trophy',
 };
 

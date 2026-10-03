@@ -7,6 +7,7 @@ ksp = "2.3.12"
 # AndroidX
 activityCompose = "1.13.0"
 composeBom = "2026.09.00"
+vico = "3.3.1"
 coreKtx = "1.19.1"
 datastore = "1.2.1"
 glance = "1.2.0"
@@ -73,6 +74,7 @@ hilt-gradlePlugin = { module = "com.google.dagger:hilt-android-gradle-plugin", v
 kotlin-gradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 ksp-gradlePlugin = { module = "com.google.devtools.ksp:com.google.devtools.ksp.gradle.plugin", version.ref = "ksp" }
 room-gradlePlugin = { module = "androidx.room:room-gradle-plugin", version.ref = "room" }
+vico-compose-m3 = { module = "com.patrykandpatrick.vico:compose-m3", version.ref = "vico" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

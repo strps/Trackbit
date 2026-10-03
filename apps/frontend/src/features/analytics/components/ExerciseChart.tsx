@@ -18,23 +18,24 @@ import {
     type TimeRange,
 } from '../hooks/use-exercise-chart';
 import { useUnitSystem } from '@/providers/unit-system-provider';
+import { useTranslation } from 'react-i18next';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const METRICS: { value: ChartMetric; label: string }[] = [
-    { value: 'maxWeight', label: 'Max weight' },
-    { value: 'totalVolume', label: 'Volume' },
-    { value: 'estimatedOneRM', label: 'Est. 1RM' },
-    { value: 'avgRpe', label: 'Avg RPE' },
-];
+const METRICS = [
+    { value: 'maxWeight', label: 'metric_max_weight' },
+    { value: 'totalVolume', label: 'metric_volume' },
+    { value: 'estimatedOneRM', label: 'metric_one_rm' },
+    { value: 'avgRpe', label: 'metric_avg_rpe' },
+] as const satisfies readonly { value: ChartMetric; label: string }[];
 
-const RANGES: { value: TimeRange; label: string }[] = [
-    { value: '1M', label: '1M' },
-    { value: '3M', label: '3M' },
-    { value: '6M', label: '6M' },
-    { value: '1Y', label: '1Y' },
-    { value: 'all', label: 'All' },
-];
+const RANGES = [
+    { value: '1M', label: 'range_1m' },
+    { value: '3M', label: 'range_3m' },
+    { value: '6M', label: 'range_6m' },
+    { value: '1Y', label: 'range_1y' },
+    { value: 'all', label: 'range_all' },
+] as const satisfies readonly { value: TimeRange; label: string }[];
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -76,6 +77,7 @@ interface CustomTooltipProps {
 }
 
 const CustomTooltip = ({ active, payload, unit }: CustomTooltipProps) => {
+    const { t } = useTranslation('analytics');
     if (!active || !payload?.length) return null;
     const { value, payload: point } = payload[0];
     return (
@@ -87,7 +89,7 @@ const CustomTooltip = ({ active, payload, unit }: CustomTooltipProps) => {
                 {value} <span className="text-muted-foreground font-normal">{unit}</span>
             </p>
             {point.isPR && (
-                <p className="text-amber-500 text-xs font-medium mt-0.5">Personal record</p>
+                <p className="text-amber-500 text-xs font-medium mt-0.5">{t('personal_record')}</p>
             )}
         </div>
     );
@@ -102,6 +104,7 @@ interface ExerciseChartProps {
 }
 
 export const ExerciseChart = ({ habit, exercises, className }: ExerciseChartProps) => {
+    const { t } = useTranslation('analytics');
     const [metric, setMetric] = useState<ChartMetric>('maxWeight');
     const [range, setRange] = useState<TimeRange>('3M');
     const [exerciseId, setExerciseId] = useState<number | null>(
@@ -138,7 +141,7 @@ export const ExerciseChart = ({ habit, exercises, className }: ExerciseChartProp
     if (filteredExercises.length === 0) {
         return (
             <div className={cn('rounded-xl border border-border p-8 text-center text-muted-foreground', className)}>
-                No exercise sessions logged for this habit yet.
+                {t('exercise_empty')}
             </div>
         );
     }
@@ -154,7 +157,7 @@ export const ExerciseChart = ({ habit, exercises, className }: ExerciseChartProp
                         onValueChange={(v) => setExerciseId(Number(v))}
                     >
                         <SelectTrigger className="w-48 h-8 text-sm font-semibold border-none shadow-none px-1 focus:ring-0">
-                            <SelectValue placeholder="Select exercise…" />
+                            <SelectValue placeholder={t('exercise_select')} />
                         </SelectTrigger>
                         <SelectContent>
                             {filteredExercises.map((ex) => (
@@ -168,12 +171,12 @@ export const ExerciseChart = ({ habit, exercises, className }: ExerciseChartProp
 
                 <div className="flex items-center gap-2 flex-wrap">
                     <SegmentedControl
-                        options={METRICS}
+                        options={METRICS.map((m) => ({ ...m, label: t(m.label) }))}
                         value={metric}
                         onChange={setMetric}
                     />
                     <SegmentedControl
-                        options={RANGES}
+                        options={RANGES.map((r) => ({ ...r, label: t(r.label) }))}
                         value={range}
                         onChange={setRange}
                     />
@@ -185,7 +188,7 @@ export const ExerciseChart = ({ habit, exercises, className }: ExerciseChartProp
                 <div className="px-6 pt-4 flex gap-6">
                     {allTimeMax != null && (
                         <div>
-                            <p className="text-xs text-muted-foreground">Best in range</p>
+                            <p className="text-xs text-muted-foreground">{t('best_in_range')}</p>
                             <p className="text-lg font-semibold">
                                 {allTimeMax}
                                 <span className="text-sm font-normal text-muted-foreground ml-1">{unit}</span>
@@ -193,11 +196,11 @@ export const ExerciseChart = ({ habit, exercises, className }: ExerciseChartProp
                         </div>
                     )}
                     <div>
-                        <p className="text-xs text-muted-foreground">PRs in range</p>
+                        <p className="text-xs text-muted-foreground">{t('prs_in_range')}</p>
                         <p className="text-lg font-semibold text-amber-500">{prCount}</p>
                     </div>
                     <div>
-                        <p className="text-xs text-muted-foreground">Sessions</p>
+                        <p className="text-xs text-muted-foreground">{t('sessions')}</p>
                         <p className="text-lg font-semibold">{data.length}</p>
                     </div>
                 </div>
@@ -207,7 +210,7 @@ export const ExerciseChart = ({ habit, exercises, className }: ExerciseChartProp
             <div className="p-6 pt-4">
                 {data.length === 0 ? (
                     <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">
-                        No data for {selectedExercise?.name ?? 'this exercise'} in the selected range.
+                        {t('exercise_no_data', { name: selectedExercise?.name ?? '' })}
                     </div>
                 ) : (
                     <ResponsiveContainer width="100%" height={220}>

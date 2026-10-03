@@ -1,9 +1,10 @@
 package com.trackbit.feature.tracker
 
 import androidx.lifecycle.SavedStateHandle
+import com.trackbit.core.data.DayClock
 import com.trackbit.core.data.HabitTimer
-import com.trackbit.core.data.STREAK_DAYS
 import com.trackbit.core.data.RECENT_DAYS
+import com.trackbit.core.data.STREAK_DAYS
 import com.trackbit.core.data.SyncResult
 import com.trackbit.core.data.TrackedHabit
 import com.trackbit.core.data.TrackerRepository
@@ -14,6 +15,8 @@ import com.trackbit.core.model.HabitProgress
 import com.trackbit.core.model.HabitType
 import com.trackbit.core.model.HistoryOwner
 import com.trackbit.core.model.RecentDay
+import java.time.Instant
+import java.time.LocalDate
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -34,8 +37,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import java.time.Instant
-import java.time.LocalDate
 
 private val DAY: LocalDate = LocalDate.of(2026, 9, 26)
 

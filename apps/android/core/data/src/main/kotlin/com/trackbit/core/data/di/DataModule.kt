@@ -3,12 +3,16 @@ package com.trackbit.core.data.di
 import android.content.Context
 import androidx.work.WorkManager
 import com.trackbit.core.auth.SignOutHook
+import com.trackbit.core.data.AnalyticsRepository
 import com.trackbit.core.data.ClearDatabaseOnSignOut
+import com.trackbit.core.data.DayClock
+import com.trackbit.core.data.DefaultAnalyticsRepository
 import com.trackbit.core.data.DefaultRestTimerRepository
 import com.trackbit.core.data.DefaultSessionRepository
 import com.trackbit.core.data.DefaultTrackerRepository
 import com.trackbit.core.data.RestTimerRepository
 import com.trackbit.core.data.SessionRepository
+import com.trackbit.core.data.SystemDayClock
 import com.trackbit.core.data.TrackerRepository
 import com.trackbit.core.data.sync.CancelSyncOnSignOut
 import com.trackbit.core.data.sync.SyncScheduler
@@ -20,12 +24,12 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dagger.multibindings.IntoSet
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import java.time.Clock
 import javax.inject.Qualifier
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 /** Work that lives as long as the process. */
 @Qualifier
@@ -42,7 +46,13 @@ internal abstract class DataModule {
     abstract fun sessionRepository(repository: DefaultSessionRepository): SessionRepository
 
     @Binds
+    abstract fun analyticsRepository(repository: DefaultAnalyticsRepository): AnalyticsRepository
+
+    @Binds
     abstract fun restTimerRepository(repository: DefaultRestTimerRepository): RestTimerRepository
+
+    @Binds
+    abstract fun dayClock(clock: SystemDayClock): DayClock
 
     @Binds
     abstract fun syncScheduler(scheduler: WorkManagerSyncScheduler): SyncScheduler

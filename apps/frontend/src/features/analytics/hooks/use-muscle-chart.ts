@@ -53,9 +53,8 @@ export function useMuscleChart(
         // Build exerciseId → muscleGroups lookup
         const exerciseMuscles = new Map<number, string[]>();
         for (const ex of exercises) {
-            const muscles = (ex as any).muscleGroups as { id: number; name: string }[] | undefined;
-            if (muscles?.length) {
-                exerciseMuscles.set(ex.id, muscles.map((m) => m.name));
+            if (ex.muscleGroups.length) {
+                exerciseMuscles.set(ex.id, ex.muscleGroups.map((m) => m.name));
             }
         }
 

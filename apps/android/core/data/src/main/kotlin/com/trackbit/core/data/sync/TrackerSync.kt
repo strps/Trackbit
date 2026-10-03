@@ -26,7 +26,7 @@ import javax.inject.Singleton
  * Moves tracker data between Room and the server: [flush] sends the outbox, [sync] also pulls
  * `/today` (and history when it's due), [syncHistory] pulls only history, [syncSessions] pulls
  * one day's sessions, the exercise catalog and the picker's sources, [syncQueue] one source's
- * queue. Workers and pull-to-refresh go through here.
+ * queue, [syncSets] a habit's sets for analytics. Workers and pull-to-refresh go through here.
  *
  * One at a time: a pull that overlapped a flush could store a snapshot taken before an op that
  * was confirmed meanwhile, and two flushes would send the same op twice.
@@ -90,6 +90,21 @@ internal class TrackerSync @Inject constructor(
             is ApiResult.Failure -> if (answer.error is ApiError.NotFound) null else return answer.error.toPullResult()
         }
         if (fenced(token) { db.syncDao().applyQueue(key, queue, clock.instant()) }) SyncResult.Done else SyncResult.SignedOut
+    }
+
+    /**
+     * Replaces Room's copy of [habitId]'s sets (for analytics) and refreshes the exercise catalog,
+     * which names their exercises and muscle groups. Sets still in the outbox aren't in the pull.
+     */
+    suspend fun syncSets(habitId: Int): SyncResult = mutex.withLock {
+        val token = tokens.currentToken() ?: return SyncResult.SignedOut
+        val result = when (val sets = safeCall { trackerService.sets(habitId) }) {
+            is ApiResult.Success ->
+                if (fenced(token) { db.syncDao().applySets(sets.value, clock.instant()) }) SyncResult.Done else return SyncResult.SignedOut
+            is ApiResult.Failure -> sets.error.toPullResult()
+        }
+        if (result == SyncResult.SignedOut) return SyncResult.SignedOut
+        worse(result, pullExercisesLocked(token))
     }
 
     /** Pulls the requested history if it's due (see [HistoryEntity]). */

@@ -22,18 +22,18 @@ import { useTranslation } from 'react-i18next';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const RANGES: { value: TimeRange; label: string }[] = [
-    { value: '1M', label: '1M' },
-    { value: '3M', label: '3M' },
-    { value: '6M', label: '6M' },
-    { value: '1Y', label: '1Y' },
-    { value: 'all', label: 'All' },
-];
+const RANGES = [
+    { value: '1M', label: 'range_1m' },
+    { value: '3M', label: 'range_3m' },
+    { value: '6M', label: 'range_6m' },
+    { value: '1Y', label: 'range_1y' },
+    { value: 'all', label: 'range_all' },
+] as const satisfies readonly { value: TimeRange; label: string }[];
 
-const BREAKDOWN_OPTIONS: { value: VolumeBreakdown; label: string }[] = [
-    { value: 'total', label: 'Total' },
-    { value: 'stacked', label: 'By exercise' },
-];
+const BREAKDOWN_OPTIONS = [
+    { value: 'total', label: 'volume_total' },
+    { value: 'stacked', label: 'volume_by_exercise' },
+] as const satisfies readonly { value: VolumeBreakdown; label: string }[];
 
 // ── Custom tooltip ────────────────────────────────────────────────────────────
 
@@ -58,6 +58,7 @@ interface CustomTooltipProps {
 const CustomTooltip = ({
     active, payload, label, breakdown, showRpe, exerciseMap, unit, locale,
 }: CustomTooltipProps) => {
+    const { t } = useTranslation('analytics');
     if (!active || !payload?.length) return null;
 
     const rpeItem = payload.find((p) => p.dataKey === 'avgRpe');
@@ -86,7 +87,7 @@ const CustomTooltip = ({
                 })
                 : (
                     <div className="flex items-center justify-between gap-4">
-                        <span className="text-muted-foreground text-xs">Volume</span>
+                        <span className="text-muted-foreground text-xs">{t('metric_volume')}</span>
                         <span className="font-medium tabular-nums">
                             {formatNumber(volItems[0]?.value ?? 0, locale)} {unit}
                         </span>
@@ -95,7 +96,7 @@ const CustomTooltip = ({
             }
             {showRpe && rpeItem?.value != null && (
                 <div className="flex items-center justify-between gap-4 mt-1 pt-1 border-t border-border">
-                    <span className="text-muted-foreground text-xs">Avg RPE</span>
+                    <span className="text-muted-foreground text-xs">{t('metric_avg_rpe')}</span>
                     <span className="font-medium tabular-nums text-amber-500">{rpeItem.value}</span>
                 </div>
             )}
@@ -117,7 +118,7 @@ export const VolumeChart = ({ habit, exercises, className }: VolumeChartProps) =
     const [showRpe, setShowRpe] = useState(false);
 
     const { unitSystem } = useUnitSystem();
-    const { i18n } = useTranslation();
+    const { t, i18n } = useTranslation('analytics');
     const locale = i18n.language;
     const unit = weightUnit(unitSystem);
 
@@ -148,7 +149,7 @@ export const VolumeChart = ({ habit, exercises, className }: VolumeChartProps) =
     if (weeks.length === 0) {
         return (
             <div className={cn('rounded-xl border border-border p-8 text-center text-muted-foreground', className)}>
-                No volume data for this habit in the selected range.
+                {t('volume_empty')}
             </div>
         );
     }
@@ -159,7 +160,7 @@ export const VolumeChart = ({ habit, exercises, className }: VolumeChartProps) =
             <div className="p-6 pb-4 border-b flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
                     <BarChart2 className="w-5 h-5 text-emerald-500 shrink-0" />
-                    <span className="font-semibold text-sm">Weekly volume</span>
+                    <span className="font-semibold text-sm">{t('volume_title')}</span>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                     <Button
@@ -168,15 +169,15 @@ export const VolumeChart = ({ habit, exercises, className }: VolumeChartProps) =
                         className="h-7 text-xs"
                         onClick={() => setShowRpe((v) => !v)}
                     >
-                        RPE overlay
+                        {t('volume_rpe_overlay')}
                     </Button>
                     <SegmentedControl
-                        options={BREAKDOWN_OPTIONS}
+                        options={BREAKDOWN_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
                         value={breakdown}
                         onChange={setBreakdown}
                     />
                     <SegmentedControl
-                        options={RANGES}
+                        options={RANGES.map((r) => ({ ...r, label: t(r.label) }))}
                         value={range}
                         onChange={setRange}
                     />
@@ -186,7 +187,7 @@ export const VolumeChart = ({ habit, exercises, className }: VolumeChartProps) =
             {/* Summary row */}
             <div className="px-6 pt-4 flex gap-6 flex-wrap">
                 <div>
-                    <p className="text-xs text-muted-foreground">Total volume</p>
+                    <p className="text-xs text-muted-foreground">{t('volume_total_volume')}</p>
                     <p className="text-lg font-semibold">
                         {totalVolume >= 1000
                             ? `${(totalVolume / 1000).toFixed(1)}k`
@@ -196,18 +197,18 @@ export const VolumeChart = ({ habit, exercises, className }: VolumeChartProps) =
                 </div>
                 {avgRpe != null && (
                     <div>
-                        <p className="text-xs text-muted-foreground">Avg RPE</p>
+                        <p className="text-xs text-muted-foreground">{t('metric_avg_rpe')}</p>
                         <p className="text-lg font-semibold text-amber-500">{avgRpe}</p>
                     </div>
                 )}
                 {peakWeekLabel && (
                     <div>
-                        <p className="text-xs text-muted-foreground">Peak week</p>
+                        <p className="text-xs text-muted-foreground">{t('volume_peak_week')}</p>
                         <p className="text-lg font-semibold">{peakWeekLabel}</p>
                     </div>
                 )}
                 <div>
-                    <p className="text-xs text-muted-foreground">Weeks tracked</p>
+                    <p className="text-xs text-muted-foreground">{t('volume_weeks_tracked')}</p>
                     <p className="text-lg font-semibold">{weeks.length}</p>
                 </div>
             </div>

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { auth } from '../src/lib/auth.js'
 import db from '../src/db/db.js'
-import { exercises, idempotencyKeys, user } from '../src/db/schema/index.js'
+import { exerciseMuscleGroups, exercises, idempotencyKeys, muscleGroups, user } from '../src/db/schema/index.js'
 import { app, bearer, createHabit, post, signInBearer, signedInUser } from './helpers.js'
 
 // Records the real responses the Android app decodes, as
@@ -143,7 +143,9 @@ describe('Android contracts', () => {
 
     it('exercises and sessions', async () => {
         const u = await contractUser('exercises@test.local')
-        await db.insert(exercises).values({ name: 'Bench Press', nameI18n: { en: 'Bench Press', es: 'Press de banca' }, category: 'strength' })
+        const [bench] = await db.insert(exercises).values({ name: 'Bench Press', nameI18n: { en: 'Bench Press', es: 'Press de banca' }, category: 'strength' }).returning()
+        const [chest] = await db.insert(muscleGroups).values({ name: 'Chest', nameI18n: { en: 'Chest', es: 'Pecho' }, slug: 'chest' }).returning()
+        await db.insert(exerciseMuscleGroups).values({ exerciseId: bench.id, muscleGroupId: chest.id, role: 'primary' })
         const row = await (await post(u.token, '/api/exercise-info/exercises', {
             name: 'My row', category: 'strength', defaultWeightUnit: 'lbs', defaultDistanceUnit: 'miles', muscleGroups: [],
         })).json()
@@ -196,6 +198,8 @@ describe('Android contracts', () => {
             u.secrets)
         await record(MODEL, 'exercise-sessions.json', 'GET /api/tracker/exercise-sessions?habitId=:id&day=2026-01-10',
             await get(u.token, `/api/tracker/exercise-sessions?habitId=${habit.id}&day=2026-01-10`), u.secrets)
+        await record(MODEL, 'sets.json', 'GET /api/tracker/sets?habitId=:id',
+            await get(u.token, `/api/tracker/sets?habitId=${habit.id}`), u.secrets)
 
         await record(MODEL, 'exercises.json', 'GET /api/exercise-info/exercises', await get(u.token, '/api/exercise-info/exercises'), u.secrets)
     })

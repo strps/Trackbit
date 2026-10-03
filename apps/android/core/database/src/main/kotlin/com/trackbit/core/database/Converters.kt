@@ -6,6 +6,7 @@ import com.trackbit.core.model.ColorStopSerializer
 import com.trackbit.core.model.ColorTheme
 import com.trackbit.core.model.HabitIcon
 import com.trackbit.core.model.HabitType
+import com.trackbit.core.model.MuscleGroupRef
 import com.trackbit.core.model.QueueEmptyReason
 import com.trackbit.core.model.serialization.TrackbitJson
 import com.trackbit.core.model.serialization.WireEnum
@@ -30,6 +31,9 @@ internal class Converters {
     @TypeConverter fun colorStopsToJson(value: List<ColorStop>): String = TrackbitJson.encodeToString(colorStops, value)
     @TypeConverter fun jsonToColorStops(value: String): List<ColorStop> = TrackbitJson.decodeFromString(colorStops, value)
 
+    @TypeConverter fun muscleGroupsToJson(value: List<MuscleGroupRef>): String = TrackbitJson.encodeToString(muscleGroups, value)
+    @TypeConverter fun jsonToMuscleGroups(value: String): List<MuscleGroupRef> = TrackbitJson.decodeFromString(muscleGroups, value)
+
     @TypeConverter fun habitTypeToWire(value: HabitType): String = value.stored()
     @TypeConverter fun wireToHabitType(value: String): HabitType = HabitType.Serializer.fromWire(value)
 
@@ -46,5 +50,6 @@ internal class Converters {
 
     private companion object {
         val colorStops = ListSerializer(ColorStopSerializer)
+        val muscleGroups = ListSerializer(MuscleGroupRef.serializer())
     }
 }

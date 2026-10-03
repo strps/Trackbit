@@ -61,4 +61,6 @@
     <string name="android_widget_preview_water">Beber agua</string>
     <string name="android_widget_preview_read">Leer</string>
     <string name="android_widget_preview_meditate">Meditar</string>
+    <!-- Analytics: the muscle chart is bars on Android, so the web's radar hints don't apply. -->
+    <string name="android_analytics_muscle_empty">Ninguno de los ejercicios registrados en este rango tiene grupos musculares.</string>
 </resources>

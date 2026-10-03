@@ -44,7 +44,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.trackbit.core.designsystem.component.DurationDialog
+import com.trackbit.core.designsystem.format.displayToKg
 import com.trackbit.core.designsystem.format.formatDuration
+import com.trackbit.core.designsystem.format.formatNumber
+import com.trackbit.core.designsystem.format.kgToDisplay
+import com.trackbit.core.designsystem.format.round
+import com.trackbit.core.designsystem.format.weightUnit
 import com.trackbit.core.designsystem.icon.UiIcons
 import com.trackbit.core.i18n.R
 import com.trackbit.core.model.SetValues

@@ -5,6 +5,8 @@ import { parseApiError } from '@/shared/lib/api-error';
 const API_URL = `${import.meta.env.VITE_API_URL}/exercise-info`;
 
 export interface ExerciseWithLastPerformance extends Exercise {
+    /** Named in the user's locale. */
+    muscleGroups: { id: number; name: string }[];
     lastPerformance?: {
         id: number | null;
         weight: number | null;

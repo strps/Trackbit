@@ -134,6 +134,26 @@ class MigrationTest {
         }
     }
 
+    @Test fun `7 to 8 adds muscle groups and the analytics sets, keeping the catalog`() {
+        helper.createDatabase(NAME, 7).use { db ->
+            db.execSQL("INSERT INTO exercises (id, userId, name, category, frozen) VALUES (1, NULL, 'Bench Press', 'strength', 0)")
+        }
+
+        helper.runMigrationsAndValidate(NAME, 8, true, *Migrations.ALL).use { db ->
+            db.query("SELECT name, muscleGroups FROM exercises").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals("Bench Press", cursor.getString(0))
+                assertEquals("[]", cursor.getString(1))
+            }
+            for (table in listOf("habit_sets", "habit_set_pulls")) {
+                db.query("SELECT COUNT(*) FROM $table").use { cursor ->
+                    cursor.moveToFirst()
+                    assertEquals(0, cursor.getInt(0))
+                }
+            }
+        }
+    }
+
     private companion object {
         const val NAME = "migration-test.db"
     }

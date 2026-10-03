@@ -30,7 +30,7 @@ These are covered by unit tests but were not exercised on the emulator for W1. R
 ## Polish
 
 - **The W1 picker doesn't mark the current habit when reconfiguring.** It would need the widget's Glance state read in `QuickLogConfigViewModel`.
-- **The W1 7-day strip doesn't mark an anti-habit's clean days**, only slips. `TrackedHabit` doesn't carry `firstLogDay`, so a clean day can't be told apart from a day before tracking started. Expose it from `core:data` if the strip should show clean days.
+- **The W1 7-day strip doesn't mark an anti-habit's clean days**, only slips (the analytics heatmap neither, D6). `TrackedHabit.firstLogDay` exists since D6, so a clean day can now be told apart from a day before tracking started.
 - **W3 has no month or weekday labels and no today marker** (the web has all three). Glance's 10-child limit makes a label row that lines up with the week columns awkward; a small bitmap or a label column would do it.
 - **The W1 7-day strip draws a day's color straight on the widget background**, not over an empty cell as W3 and the web do. The gradient's low end is mostly transparent, so a lightly logged day looks fainter than an empty one. Put the colored bar over the `surfaceVariant` one (one more view per day; there are only seven).
 - **No widget previews on Android 8–11** (API 26–30): `previewLayout` needs 12+, so the picker shows the app icon there. A `previewImage` per widget (rendered images, fixed theme and language) would cover it.
@@ -60,7 +60,11 @@ These are covered by unit tests but were not exercised on the emulator for W1. R
 - **A prescription is found only while a cached queue holds its list item** (D4): a log picked from a list on the web, whose list the app never resolved, starts its sets from the last performance. Pulling every list's queue (or `GET /exercise-lists`) would cover it.
 - **A day's sessions refresh only when asked** (`SessionRepository.refresh`: the session screen on open and on pull-to-refresh). A session added on the web shows in the app's session count (via `/today`) before its contents.
 
-- **The tracker's history request can outlive the screen** (D1): if the app closes while a past day is shown, the request stays (periodic sync pulls it every 6 h) until the tracker screen starts again and releases it. Releasing from `onCleared` would need an app-wide scope in features.
+- **The tracker's history request can outlive the screen** (D1; the analytics request too, D6, which reaches back to the earliest first log): if the app closes while a past day is shown, the request stays (periodic sync pulls it every 6 h) until the tracker screen starts again and releases it. Releasing from `onCleared` would need an app-wide scope in features.
+- **Pull-to-refresh doesn't re-pull history** (D6): `sync()` pulls a history request only when it is 6 h stale, so a past day changed on the web (or deleted) shows its old value on the tracker and analytics until then. Consider forcing the history pull on a user refresh.
+- **The web analytics heatmap rates a workout day by its exercise-log count**, the app (tracker, widgets, analytics) by its session count (D6). Pick one on the web.
+- **The web's exercise chart preselects the catalog's first exercise**, even one the habit never logged (D6). The app preselects the first exercise with sets. The web also lists exercises logged without sets; the app's list comes from `/sets`, so it doesn't.
+- **Bug: user exercise create/update drops `muscleGroups`** (found in D6). The Zod schema accepts the ids but the CRUD factory inserts only `exercises` columns, so no `exercise_muscle_groups` row is ever written (only the admin route writes them), and the web's edit form starts from `[]`. Fix with create/update overrides that write the links (in a transaction) and pre-fill the form from the list's `muscleGroups`, which the list returns since D6.
 
 - **Local smoke user** `b10-smoke@example.com` exists in the local dev DB only. Delete it when it's no longer useful.
 - **Timezones:** the web tracker takes "today" from the browser's timezone, and the app and widgets use the stored one. The plan's §6 proposal isn't built. Revisit if users travel across timezones and see mismatched days.

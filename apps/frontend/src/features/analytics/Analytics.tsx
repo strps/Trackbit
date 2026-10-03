@@ -78,6 +78,7 @@ export const Analytics = () => {
 
                 {currentHabit && showHeatmap && (
                     <Heatmap
+                        title={t('heatmap_title')}
                         getRating={getRating}
                         maxValue={currentHabit.dailyGoal}
                         selectedDate={selectedDay}

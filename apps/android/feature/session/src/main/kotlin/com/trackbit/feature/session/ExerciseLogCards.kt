@@ -51,6 +51,9 @@ import androidx.compose.ui.unit.dp
 import com.trackbit.core.data.TrackedExerciseLog
 import com.trackbit.core.data.TrackedSet
 import com.trackbit.core.designsystem.format.formatDuration
+import com.trackbit.core.designsystem.format.formatNumber
+import com.trackbit.core.designsystem.format.kgToDisplay
+import com.trackbit.core.designsystem.format.weightUnit
 import com.trackbit.core.designsystem.icon.UiIcons
 import com.trackbit.core.i18n.R
 import com.trackbit.core.model.Exercise

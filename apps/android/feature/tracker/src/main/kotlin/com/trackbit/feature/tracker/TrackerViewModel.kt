@@ -3,6 +3,7 @@ package com.trackbit.feature.tracker
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.trackbit.core.data.DayClock
 import com.trackbit.core.data.RECENT_DAYS
 import com.trackbit.core.data.STREAK_DAYS
 import com.trackbit.core.data.SyncResult
@@ -11,6 +12,8 @@ import com.trackbit.core.data.TrackerRepository
 import com.trackbit.core.data.WriteResult
 import com.trackbit.core.model.HistoryOwner
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.LocalDate
+import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,8 +29,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import java.time.LocalDate
-import javax.inject.Inject
 
 data class TrackerUiState(
     /** Null until the clock and Room have answered. */

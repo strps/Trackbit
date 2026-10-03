@@ -1,9 +1,9 @@
 import { generateCrudRouter } from '../../../lib/utilities/crud-router-factory.js'; // Adjust path if necessary
-import { dayLogs, exerciseLogs, exercises, exercisePerformances, exerciseSessions, habits, muscleGroups } from '../../../db/schema/index.js';
+import { dayLogs, exerciseLogs, exerciseMuscleGroups, exercises, exercisePerformances, exerciseSessions, habits, muscleGroups } from '../../../db/schema/index.js';
 import { defineCrudSchemas } from '../../../lib/utilities/drizzle-crud-schemas.js'; // Adjust path if necessary
 import { z } from 'zod';
 import db from "../../../db/db.js";
-import { eq, isNull, or, sql, and, count } from 'drizzle-orm';
+import { eq, isNull, or, sql, and, count, asc, inArray } from 'drizzle-orm';
 import { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import {
@@ -90,9 +90,27 @@ const exerciseRouter = generateCrudRouter({
                 )
                 .where(or(isNull(exercises.userId), eq(exercises.userId, user.id)));
 
+            // Each exercise's muscle groups, named in the request's locale like the exercise.
+            const links = result.length === 0 ? [] : await db
+                .select({
+                    exerciseId: exerciseMuscleGroups.exerciseId,
+                    id: muscleGroups.id,
+                    name: sql<string>`COALESCE(${muscleGroups.nameI18n}->>${locale}, ${muscleGroups.nameI18n}->>'en', ${muscleGroups.name})`,
+                })
+                .from(exerciseMuscleGroups)
+                .innerJoin(muscleGroups, eq(muscleGroups.id, exerciseMuscleGroups.muscleGroupId))
+                .where(inArray(exerciseMuscleGroups.exerciseId, result.map((row) => row.id)))
+                .orderBy(asc(muscleGroups.displayOrder), asc(muscleGroups.id))
+            const groupsByExercise = new Map<number, { id: number; name: string }[]>()
+            for (const { exerciseId, id, name } of links) {
+                if (!groupsByExercise.has(exerciseId)) groupsByExercise.set(exerciseId, [])
+                groupsByExercise.get(exerciseId)!.push({ id, name })
+            }
+
             const frozen = await computeFrozenExercisesForUser(user.id, user.role)
             const annotated = result.map((row) => ({
                 ...row,
+                muscleGroups: groupsByExercise.get(row.id) ?? [],
                 frozen: row.userId === user.id ? frozen.has(row.id) : false,
             }))
 

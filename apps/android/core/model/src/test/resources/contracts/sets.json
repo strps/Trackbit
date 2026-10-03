@@ -1,0 +1,27 @@
+{
+  "request": "GET /api/tracker/sets?habitId=:id",
+  "status": 200,
+  "body": {
+    "habitId": 1,
+    "sets": [
+      {
+        "day": "2026-01-10",
+        "exerciseId": 2,
+        "weight": 60.5,
+        "reps": 8,
+        "rpe": null,
+        "duration": null,
+        "distance": null
+      },
+      {
+        "day": "2026-01-10",
+        "exerciseId": 2,
+        "weight": 62.5,
+        "reps": 6,
+        "rpe": 8,
+        "duration": 45000,
+        "distance": 1.25
+      }
+    ]
+  }
+}

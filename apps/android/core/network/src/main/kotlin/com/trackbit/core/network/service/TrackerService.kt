@@ -12,6 +12,7 @@ import com.trackbit.core.model.SetValues
 import com.trackbit.core.model.DaysResponse
 import com.trackbit.core.model.DayLog
 import com.trackbit.core.model.EnsureDayLogRequest
+import com.trackbit.core.model.HabitSetsResponse
 import com.trackbit.core.model.IncrementRequest
 import com.trackbit.core.model.TodayResponse
 import com.trackbit.core.network.IdempotencyKey
@@ -37,6 +38,10 @@ interface TrackerService {
     /** Logged days from [start] to [end] (at most 371 days), for every habit. */
     @GET("api/tracker/days")
     suspend fun days(@Query("start") start: LocalDate, @Query("end") end: LocalDate): DaysResponse
+
+    /** Every set of workout habit [habitId], for the analytics charts. */
+    @GET("api/tracker/sets")
+    suspend fun sets(@Query("habitId") habitId: Int): HabitSetsResponse
 
     @POST("api/tracker/check")
     suspend fun check(@Body body: CheckRequest, @Tag key: IdempotencyKey): DayLog

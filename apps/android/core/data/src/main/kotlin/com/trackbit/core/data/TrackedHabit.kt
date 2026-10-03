@@ -41,7 +41,17 @@ data class TrackedHabit(
     val streak: Int?,
     /** The habit's running timer, which may log to a day other than [day]. */
     val timer: HabitTimer? = null,
+    /** The earliest day with a log; null if never logged. */
+    val firstLogDay: LocalDate? = null,
+    /**
+     * Room holds every log from this day on; an empty day before it may just be unknown. Logs
+     * from [firstLogDay] on are all known once this is on or before it.
+     */
+    val logsKnownFrom: LocalDate = day,
 ) : TrackableHabit {
+    /** Whether [recent] holds every log the habit has, given a window reaching back to [firstLogDay]. */
+    val allLogsKnown: Boolean get() = firstLogDay == null || !logsKnownFrom.isAfter(firstLogDay)
+
     val today: RecentDay get() = recent.last()
 
     /** Whether [timer] adds to [day]'s value when it stops. */
@@ -102,5 +112,7 @@ internal fun HabitDay.toTrackedHabit(): TrackedHabit {
         progress = HabitProgress.of(habit, current.rating, current.sessionCount),
         streak = streak,
         timer = timer?.toHabitTimer(),
+        firstLogDay = habit.firstLogDay,
+        logsKnownFrom = logsKnownFrom,
     )
 }

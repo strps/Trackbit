@@ -61,6 +61,7 @@ dependencies {
     implementation(projects.core.designsystem)
     implementation(projects.core.i18n)
     implementation(projects.core.network)
+    implementation(projects.feature.analytics)
     implementation(projects.feature.auth)
     implementation(projects.feature.session)
     implementation(projects.feature.tracker)

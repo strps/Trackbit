@@ -199,8 +199,8 @@ const ExerciseLibrary = () => {
                                 <div className="text-sm text-muted-foreground flex items-center gap-2 mb-3">
                                     <Activity className="w-4 h-4" />
                                     <span>
-                                        {(exercise as any).muscleGroups?.length > 0
-                                            ? (exercise as any).muscleGroups.join(', ')
+                                        {exercise.muscleGroups.length > 0
+                                            ? exercise.muscleGroups.map((m) => m.name).join(', ')
                                             : exercise.muscleGroup || 'General'}
                                     </span>
                                 </div>

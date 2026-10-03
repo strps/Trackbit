@@ -17,8 +17,13 @@ data class Exercise(
     val defaultDistanceUnit: String?,
     /** The user's most recent set of this exercise, or null if they never logged one. */
     val lastPerformance: LastPerformance?,
+    /** Named in the user's locale, like [name]. */
+    val muscleGroups: List<MuscleGroupRef> = emptyList(),
     val frozen: Boolean = false,
 )
+
+@Serializable
+data class MuscleGroupRef(val id: Int, val name: String)
 
 @Serializable
 data class LastPerformance(

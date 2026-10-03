@@ -37,6 +37,7 @@ class DecodeTest {
         "today.json" to TodayResponse.serializer(),
         "days.json" to DaysResponse.serializer(),
         "exercises.json" to ListSerializer(Exercise.serializer()),
+        "sets.json" to HabitSetsResponse.serializer(),
         "exercise-session.json" to ExerciseSession.serializer(),
         "exercise-log-created.json" to ExerciseLog.serializer(),
         "exercise-log.json" to ExerciseLog.serializer(),
@@ -115,10 +116,23 @@ class DecodeTest {
         val system = exercises.getValue("Bench Press")
         assertNull(system.userId)
         assertNull(system.lastPerformance)
+        assertEquals(listOf(MuscleGroupRef(1, "Chest")), system.muscleGroups)
+        assertEquals(emptyList<MuscleGroupRef>(), exercises.getValue("My row").muscleGroups)
         val last = checkNotNull(exercises.getValue("My row").lastPerformance)
         assertEquals(1.25, last.distance)
         assertEquals(45_000, last.duration)
         assertEquals(Instant.parse("2026-01-01T00:00:00Z"), last.createdAt)
+    }
+
+    @Test fun sets() {
+        val sets = contract<HabitSetsResponse>("sets.json")
+        assertEquals(
+            listOf(
+                HabitSet(day("2026-01-10"), exerciseId = 2, weight = 60.5, reps = 8, rpe = null, duration = null, distance = null),
+                HabitSet(day("2026-01-10"), exerciseId = 2, weight = 62.5, reps = 6, rpe = 8, duration = 45_000, distance = 1.25),
+            ),
+            sets.sets,
+        )
     }
 
     @Test fun `session objects`() {

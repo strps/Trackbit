@@ -200,6 +200,42 @@ app.get(
 );
 
 //============================================================================================
+//--- SETS ---
+// Every set of one workout habit, flat and oldest first, without the session tree: what the
+// analytics charts aggregate. Ranges are cut on the client, so "all time" needs no extra call.
+//============================================================================================
+
+app.get(
+    '/sets',
+    validator('query', z.object({ habitId: z.coerce.number().int().positive() })),
+    async (c) => {
+        const { habitId } = c.req.valid('query');
+        await assertOwnedHabit(c, habitId);
+        const sets = await db
+            .select({
+                day: dayLogs.localDay,
+                exerciseId: exerciseLogs.exerciseId,
+                weight: exercisePerformances.weight,
+                reps: exercisePerformances.reps,
+                rpe: exercisePerformances.rpe,
+                duration: exercisePerformances.duration,
+                distance: exercisePerformances.distance,
+            })
+            .from(exercisePerformances)
+            .innerJoin(exerciseLogs, eq(exerciseLogs.id, exercisePerformances.exerciseLogId))
+            .innerJoin(exerciseSessions, eq(exerciseSessions.id, exerciseLogs.exerciseSessionId))
+            .innerJoin(dayLogs, eq(dayLogs.id, exerciseSessions.dayLogId))
+            .where(eq(dayLogs.habitId, habitId))
+            .orderBy(
+                asc(dayLogs.localDay), asc(exerciseSessions.createdAt), asc(exerciseSessions.id),
+                asc(exerciseLogs.createdAt), asc(exerciseLogs.id),
+                asc(exercisePerformances.createdAt), asc(exercisePerformances.id),
+            );
+        return c.json({ habitId, sets });
+    }
+);
+
+//============================================================================================
 //--- DAY LOG WRITES ---
 // Every write targets one (habit, localDay) row, enforced by day_logs_habit_day_uq.
 // `day` is the user's calendar day; when omitted the server uses the user's today.

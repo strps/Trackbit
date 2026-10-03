@@ -7,4 +7,7 @@ enum class HistoryOwner {
 
     /** The tracker screen, while it shows a day other than today. */
     Tracker,
+
+    /** The analytics screen: every habit's logs back to the first, for stats and heatmaps. */
+    Analytics,
 }

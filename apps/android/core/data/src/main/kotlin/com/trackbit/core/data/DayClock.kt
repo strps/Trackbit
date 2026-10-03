@@ -1,4 +1,4 @@
-package com.trackbit.feature.tracker
+package com.trackbit.core.data
 
 import android.content.BroadcastReceiver
 import android.content.Context

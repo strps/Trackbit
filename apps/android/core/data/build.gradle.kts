@@ -13,6 +13,7 @@ dependencies {
     implementation(projects.core.auth)
     implementation(projects.core.database)
     implementation(projects.core.network)
+    implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.work.runtime)
     implementation(libs.androidx.hilt.work)

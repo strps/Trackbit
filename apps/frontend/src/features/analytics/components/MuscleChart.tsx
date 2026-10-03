@@ -16,18 +16,18 @@ import { useTranslation } from 'react-i18next';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const RANGES: { value: TimeRange; label: string }[] = [
-    { value: '1M', label: '1M' },
-    { value: '3M', label: '3M' },
-    { value: '6M', label: '6M' },
-    { value: '1Y', label: '1Y' },
-    { value: 'all', label: 'All' },
-];
+const RANGES = [
+    { value: '1M', label: 'range_1m' },
+    { value: '3M', label: 'range_3m' },
+    { value: '6M', label: 'range_6m' },
+    { value: '1Y', label: 'range_1y' },
+    { value: 'all', label: 'range_all' },
+] as const satisfies readonly { value: TimeRange; label: string }[];
 
-const METRIC_OPTIONS: { value: MuscleMetric; label: string }[] = [
-    { value: 'volume', label: 'Volume' },
-    { value: 'frequency', label: 'Frequency' },
-];
+const METRIC_OPTIONS = [
+    { value: 'volume', label: 'metric_volume' },
+    { value: 'frequency', label: 'muscle_frequency' },
+] as const satisfies readonly { value: MuscleMetric; label: string }[];
 
 // ── Custom tooltip ────────────────────────────────────────────────────────────
 
@@ -40,6 +40,7 @@ interface CustomTooltipProps {
 }
 
 const CustomTooltip = ({ active, payload, metric, unit, locale }: CustomTooltipProps) => {
+    const { t } = useTranslation('analytics');
     if (!active || !payload?.length) return null;
     const { muscle, value } = payload[0].payload;
     return (
@@ -48,7 +49,7 @@ const CustomTooltip = ({ active, payload, metric, unit, locale }: CustomTooltipP
             <p className="text-muted-foreground text-xs mt-0.5">
                 {metric === 'volume'
                     ? `${formatNumber(value, locale)} ${unit}`
-                    : `${value} session${value !== 1 ? 's' : ''}`}
+                    : t('muscle_sessions', { count: value })}
             </p>
         </div>
     );
@@ -67,7 +68,7 @@ export const MuscleChart = ({ habit, exercises, className }: MuscleChartProps) =
     const [metric, setMetric] = useState<MuscleMetric>('volume');
 
     const { unitSystem } = useUnitSystem();
-    const { i18n } = useTranslation();
+    const { t, i18n } = useTranslation('analytics');
     const locale = i18n.language;
     const unit = weightUnit(unitSystem);
 
@@ -93,16 +94,16 @@ export const MuscleChart = ({ habit, exercises, className }: MuscleChartProps) =
             <div className="p-6 pb-4 border-b flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
                     <Activity className="w-5 h-5 text-purple-500 shrink-0" />
-                    <span className="font-semibold text-sm">Muscle group balance</span>
+                    <span className="font-semibold text-sm">{t('muscle_title')}</span>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                     <SegmentedControl
-                        options={METRIC_OPTIONS}
+                        options={METRIC_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
                         value={metric}
                         onChange={setMetric}
                     />
                     <SegmentedControl
-                        options={RANGES}
+                        options={RANGES.map((r) => ({ ...r, label: t(r.label) }))}
                         value={range}
                         onChange={setRange}
                     />
@@ -113,28 +114,28 @@ export const MuscleChart = ({ habit, exercises, className }: MuscleChartProps) =
             <div className="px-6 pt-4 flex gap-6 flex-wrap">
                 {topMuscle && (
                     <div>
-                        <p className="text-xs text-muted-foreground">Most trained</p>
+                        <p className="text-xs text-muted-foreground">{t('muscle_most_trained')}</p>
                         <p className="text-base font-semibold text-purple-500">{topMuscle}</p>
                     </div>
                 )}
                 {neglectedMuscle && neglectedMuscle !== topMuscle && (
                     <div>
-                        <p className="text-xs text-muted-foreground">Least trained</p>
+                        <p className="text-xs text-muted-foreground">{t('muscle_least_trained')}</p>
                         <p className="text-base font-semibold text-muted-foreground">{neglectedMuscle}</p>
                     </div>
                 )}
                 <div>
-                    <p className="text-xs text-muted-foreground">Muscle groups</p>
+                    <p className="text-xs text-muted-foreground">{t('muscle_groups')}</p>
                     <p className="text-base font-semibold">{points.length}</p>
                 </div>
                 <div>
                     <p className="text-xs text-muted-foreground">
-                        {metric === 'volume' ? 'Peak volume' : 'Peak frequency'}
+                        {metric === 'volume' ? t('muscle_peak_volume') : t('muscle_peak_frequency')}
                     </p>
                     <p className="text-base font-semibold">
                         {metric === 'volume'
                             ? `${maxValue >= 1000 ? `${(maxValue / 1000).toFixed(1)}k` : formatNumber(maxValue, locale)} ${unit}`
-                            : `${maxValue} sessions`}
+                            : t('muscle_sessions', { count: maxValue })}
                     </p>
                 </div>
             </div>
@@ -143,8 +144,8 @@ export const MuscleChart = ({ habit, exercises, className }: MuscleChartProps) =
             <div className="p-6 pt-2">
                 {!hasEnoughAxes ? (
                     <div className="h-48 flex items-center justify-center text-muted-foreground text-sm text-center px-4">
-                        At least 3 muscle groups are needed to render the radar chart.
-                        <br />Add more muscle groups to your exercises.
+                        {t('muscle_need_three')}
+                        <br />{t('muscle_add_groups')}
                     </div>
                 ) : (
                     <ResponsiveContainer width="100%" height={300}>

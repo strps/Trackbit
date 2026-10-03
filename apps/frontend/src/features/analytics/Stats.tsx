@@ -1,4 +1,5 @@
 import { BarChart3, CheckCircle2, Flame } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { AnalyticsStats } from "./hooks/use-analytics";
 
 interface StatsProps {
@@ -7,25 +8,26 @@ interface StatsProps {
 
 export const Stats = ({ stats }: StatsProps) => {
   const { totalCompletions, currentStreak, goalFrequency } = stats;
+  const { t } = useTranslation("analytics");
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       <StatCard
-        title="Total Completions"
+        title={t("stat_total_completions")}
         value={totalCompletions}
         icon={<CheckCircle2 className="w-5 h-5 text-emerald-500" />}
       />
       <StatCard
-        title="Current Streak"
+        title={t("stat_current_streak")}
         value={currentStreak}
         icon={<Flame className="w-5 h-5 text-orange-500" />}
-        trend={currentStreak > 0 ? "Keep the fire burning!" : "Start a new streak today"}
+        trend={currentStreak > 0 ? t("stat_streak_active") : t("stat_streak_none")}
       />
       <StatCard
-        title="Goal Frequency"
+        title={t("stat_goal_frequency")}
         value={goalFrequency}
         icon={<BarChart3 className="w-5 h-5 text-blue-500" />}
-        trend="Consistency over time"
+        trend={t("stat_goal_frequency_hint")}
       />
     </div>
   );

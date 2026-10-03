@@ -17,6 +17,7 @@ import com.trackbit.core.model.ExerciseLog
 import com.trackbit.core.model.ExercisePerformance
 import com.trackbit.core.model.ExerciseSession
 import com.trackbit.core.model.ExerciseSessionDetail
+import com.trackbit.core.model.HabitSetsResponse
 import com.trackbit.core.model.SetValues
 import com.trackbit.core.model.ColorStop
 import com.trackbit.core.model.ColorTheme
@@ -158,6 +159,13 @@ class FakeTrackerService : TrackerService {
     override suspend fun days(start: LocalDate, end: LocalDate): DaysResponse {
         daysRequests += start to end
         return daysAnswer(start, end)
+    }
+
+    var setsAnswer: (Int) -> HabitSetsResponse = { HabitSetsResponse(it, emptyList()) }
+
+    override suspend fun sets(habitId: Int): HabitSetsResponse {
+        yield()
+        return setsAnswer(habitId)
     }
 
     override suspend fun today(day: LocalDate?): TodayResponse {

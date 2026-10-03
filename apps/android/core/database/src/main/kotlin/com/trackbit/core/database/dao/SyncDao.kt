@@ -10,6 +10,8 @@ import com.trackbit.core.database.entity.ExerciseEntity
 import com.trackbit.core.database.entity.ExerciseLogEntity
 import com.trackbit.core.database.entity.ExerciseSourceEntity
 import com.trackbit.core.database.entity.HabitEntity
+import com.trackbit.core.database.entity.HabitSetEntity
+import com.trackbit.core.database.entity.HabitSetPullEntity
 import com.trackbit.core.database.entity.PerformanceEntity
 import com.trackbit.core.database.entity.QueueEntryEntity
 import com.trackbit.core.database.entity.SessionEntity
@@ -20,6 +22,7 @@ import com.trackbit.core.model.DaysResponse
 import com.trackbit.core.model.Exercise
 import com.trackbit.core.model.ExerciseSessionDetail
 import com.trackbit.core.model.ExerciseSourceDescriptor
+import com.trackbit.core.model.HabitSetsResponse
 import com.trackbit.core.model.ResolvedQueue
 import com.trackbit.core.model.TodayResponse
 import java.time.Instant
@@ -27,7 +30,7 @@ import java.time.LocalDate
 
 /**
  * Writes server data into Room: `/today` snapshots, the rows tracker writes return, a day's
- * sessions, the exercise catalog and the picker's sources and queues. The only way server data reaches tracker tables, so the
+ * sessions, the exercise catalog, the picker's sources and queues, and the analytics sets. The only way server data reaches tracker tables, so the
  * pending-op guard lives in one place.
  */
 @Dao
@@ -189,6 +192,25 @@ abstract class SyncDao {
             )
         }
     }
+
+    /** Replaces Room's sets of [HabitSetsResponse.habitId] with [sets], pulled at [pulledAt]. */
+    @Transaction
+    open suspend fun applySets(sets: HabitSetsResponse, pulledAt: Instant) {
+        if (!habitExists(sets.habitId)) return
+        deleteSets(sets.habitId)
+        insertSets(
+            sets.sets.mapIndexed { i, s ->
+                HabitSetEntity(sets.habitId, i, s.day, s.exerciseId, s.weight, s.reps, s.rpe, s.duration, s.distance)
+            },
+        )
+        upsertSetPull(HabitSetPullEntity(sets.habitId, pulledAt))
+    }
+
+    @Query("DELETE FROM habit_sets WHERE habitId = :habitId")
+    protected abstract suspend fun deleteSets(habitId: Int)
+
+    @Insert protected abstract suspend fun insertSets(sets: List<HabitSetEntity>)
+    @Upsert protected abstract suspend fun upsertSetPull(pull: HabitSetPullEntity)
 
     @Query("DELETE FROM exercise_sources")
     protected abstract suspend fun deleteAllSources()
