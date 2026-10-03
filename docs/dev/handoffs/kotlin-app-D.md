@@ -1,7 +1,7 @@
 # Handoff: Kotlin app — Workstream D (main features)
 
 - **Plan:** [kotlin-app.md](../tasks/kotlin-app.md). Read only §2.2 and §4 "Phase 2". Core and widget context: the "Invariants" and "Landmines" sections of [kotlin-app-B.md](kotlin-app-B.md) and [kotlin-app-C.md](kotlin-app-C.md), nothing else.
-- **Status:** Phase 2. D1–D6 done on the emulator; **the Phase 2 exit check is next**.
+- **Status:** Phase 2 D1–D6 done on the emulator. The exit check is deferred to the final pass (user, 2026-10-03); Phase 3 continues in [kotlin-app-E.md](kotlin-app-E.md).
 - **Branch:** `kotlin-app` · **Last run:** 2026-10-03 (D6, committed)
 
 ## Where we are

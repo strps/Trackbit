@@ -10,6 +10,7 @@ import { Input } from "@/shared/components/ui/input";
 import { Trash2, Plus } from "lucide-react";
 import { Button } from "./ui/button";
 import { ColorStop } from "@trackbit/types";
+import { useTranslation } from "react-i18next";
 
 interface GradientPickerProps {
     value: ColorStop[];
@@ -17,6 +18,7 @@ interface GradientPickerProps {
 }
 
 export function GradientPicker({ value, onChange }: GradientPickerProps) {
+    const { t } = useTranslation('habits');
 
     const gradientRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -171,7 +173,7 @@ export function GradientPicker({ value, onChange }: GradientPickerProps) {
             <div className="flex flex-wrap gap-4 items-end p-4 bg-muted rounded-xl border border-border">
 
                 <div className="space-y-1.5">
-                    <Label className="text-xs font-bold text-muted-foreground uppercase">Picker</Label>
+                    <Label className="text-xs font-bold text-muted-foreground uppercase">{t('gradient.picker')}</Label>
                     <Popover>
                         <PopoverTrigger asChild>
                             <button
@@ -201,7 +203,7 @@ export function GradientPicker({ value, onChange }: GradientPickerProps) {
                 </div>
 
                 <div className="space-y-1.5">
-                    <Label className="text-xs font-bold text-muted-foreground uppercase">Pos %</Label>
+                    <Label className="text-xs font-bold text-muted-foreground uppercase">{t('gradient.position')}</Label>
                     <Input
                         type="number"
                         className="w-20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -212,7 +214,7 @@ export function GradientPicker({ value, onChange }: GradientPickerProps) {
                 </div>
 
                 <div className="space-y-1.5">
-                    <Label className="text-xs font-bold text-muted-foreground uppercase">RGBA Values</Label>
+                    <Label className="text-xs font-bold text-muted-foreground uppercase">{t('gradient.rgba')}</Label>
                     <div className="flex gap-2">
                         {['R', 'G', 'B', 'A'].map((label, i) => (
                             <div key={label} className="relative">
@@ -234,7 +236,7 @@ export function GradientPicker({ value, onChange }: GradientPickerProps) {
                     onClick={deleteSelected}
                     disabled={selected === null || value.length <= 2}
                     variant="ghost"
-                    title="Delete Stop"
+                    title={t('gradient.delete_stop')}
                 >
                     <Trash2 className="w-4 h-4" />
                 </Button>

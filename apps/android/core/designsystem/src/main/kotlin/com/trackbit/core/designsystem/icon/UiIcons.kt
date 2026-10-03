@@ -21,21 +21,27 @@ object UiIcons {
     val Clock = R.drawable.ic_ui_clock
     val Dumbbell = R.drawable.ic_ui_dumbbell
     val Flame = R.drawable.ic_ui_flame
+    val GripVertical = R.drawable.ic_ui_grip_vertical
     val Hash = R.drawable.ic_ui_hash
     val Layers = R.drawable.ic_ui_layers
+    val List = R.drawable.ic_ui_list
     val Lock = R.drawable.ic_ui_lock
+    val LogOut = R.drawable.ic_ui_log_out
     val MapPin = R.drawable.ic_ui_map_pin
     val Minus = R.drawable.ic_ui_minus
     val MoreVertical = R.drawable.ic_ui_more_vertical
+    val Pencil = R.drawable.ic_ui_pencil
     val Pause = R.drawable.ic_ui_pause
     val Play = R.drawable.ic_ui_play
     val Plus = R.drawable.ic_ui_plus
     val Scale = R.drawable.ic_ui_scale
     val Search = R.drawable.ic_ui_search
+    val Settings = R.drawable.ic_ui_settings
     val ShieldAlert = R.drawable.ic_ui_shield_alert
     val Stop = R.drawable.ic_ui_stop
     val Timer = R.drawable.ic_ui_timer
     val Trash = R.drawable.ic_ui_trash
     val TrendingUp = R.drawable.ic_ui_trending_up
     val Trophy = R.drawable.ic_ui_trophy
+    val User = R.drawable.ic_ui_user
 }

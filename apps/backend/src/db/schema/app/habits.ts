@@ -42,6 +42,8 @@ export const habits = pgTable('habits', {
     unique('habits_user_anti_order_uq').on(table.userId, table.isAntiHabit, table.order),
     // Progress divides by the goal; a zero goal has no meaning for any habit type.
     check('habits_daily_goal_positive', sql`${table.dailyGoal} >= 1`),
+    // A structured session has no "slip" to count, so it can't be an anti-habit.
+    check('habits_complex_not_anti', sql`NOT (${table.isAntiHabit} AND ${table.type} = 'complex')`),
   ]
 );
 

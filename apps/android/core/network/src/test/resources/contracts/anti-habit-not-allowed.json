@@ -1,0 +1,8 @@
+{
+  "request": "PUT /api/habits/:id",
+  "status": 400,
+  "body": {
+    "error": "anti_habit_not_allowed",
+    "message": "Structured sessions cannot be anti-habits."
+  }
+}

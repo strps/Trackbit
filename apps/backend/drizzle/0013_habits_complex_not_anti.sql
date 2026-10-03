@@ -1,0 +1,1 @@
+ALTER TABLE "habits" ADD CONSTRAINT "habits_complex_not_anti" CHECK (NOT ("habits"."is_anti_habit" AND "habits"."type" = 'complex'));

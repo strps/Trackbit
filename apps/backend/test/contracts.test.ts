@@ -95,6 +95,19 @@ describe('Android contracts', () => {
         const { read } = await seedHabits(u)
         await record(MODEL, 'habit-created.json', 'POST /api/habits', read, u.secrets)
         await record(MODEL, 'habits.json', 'GET /api/habits', await get(u.token, '/api/habits'), u.secrets)
+        const habits: { id: number; name: string }[] = await (await get(u.token, '/api/habits')).json()
+        const { id } = habits.find((h) => h.name === 'Read')!
+        await record(MODEL, 'habit-updated.json', 'PUT /api/habits/:id',
+            await send(u.token, 'PUT', `/api/habits/${id}`, { name: 'Read more', isAntiHabit: true }), u.secrets)
+
+        await record(NETWORK, 'habit-type-not-allowed.json', 'POST /api/habits',
+            await post(u.token, '/api/habits', { name: 'Stretch', type: 'timed' }))
+        await record(NETWORK, 'anti-habit-not-allowed.json', 'PUT /api/habits/:id',
+            await send(u.token, 'PUT', `/api/habits/${id}`, { type: 'complex' }))
+        // The default role allows 10 habits; the seed made 4.
+        for (let i = 0; i < 6; i++) await post(u.token, '/api/habits', { name: `Habit ${i}` })
+        await record(NETWORK, 'habit-limit-reached.json', 'POST /api/habits',
+            await post(u.token, '/api/habits', { name: 'One more' }))
     })
 
     it('tracker', async () => {

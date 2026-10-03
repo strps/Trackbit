@@ -1,8 +1,14 @@
 package com.trackbit.core.network
 
+import com.trackbit.core.model.ColorTheme
+import com.trackbit.core.model.GradientPresets
+import com.trackbit.core.model.HabitIcon
+import com.trackbit.core.model.HabitRequest
+import com.trackbit.core.model.HabitType
 import com.trackbit.core.model.IncrementRequest
 import com.trackbit.core.network.service.AuthService
 import com.trackbit.core.network.service.ExerciseService
+import com.trackbit.core.network.service.HabitsService
 import com.trackbit.core.network.service.TrackerService
 import com.trackbit.core.network.service.session
 import com.trackbit.core.network.service.signIn
@@ -26,11 +32,19 @@ class ErrorContractTest {
     private val tracker = server.service<TrackerService>()
     private val auth = server.service<AuthService>()
     private val exercises = server.service<ExerciseService>()
+    private val habits = server.service<HabitsService>()
 
     @After fun tearDown() = server.close()
 
     private suspend fun increment(): ApiError =
         (safeCall { tracker.increment(IncrementRequest(4, 1), IdempotencyKey.random()) } as ApiResult.Failure).error
+
+    private suspend fun createHabit(): ApiError {
+        val request = HabitRequest(
+            "Stretch", HabitType.Timed, false, 5, 20, ColorTheme.Green, GradientPresets.getValue(ColorTheme.Custom), HabitIcon.Star,
+        )
+        return (safeCall { habits.create(request) } as ApiResult.Failure).error
+    }
 
     private suspend fun signIn(): ApiResult<String> = auth.signIn("a@test.local", "password-1234")
 
@@ -38,6 +52,12 @@ class ErrorContractTest {
     private val expectations: Map<String, suspend () -> Unit> = mapOf(
         "habit-frozen.json" to { assertEquals(ApiError.HabitFrozen(4), increment()) },
         "custom-exercise-frozen.json" to { assertEquals(ApiError.CustomExerciseFrozen(1), increment()) },
+        "habit-limit-reached.json" to { assertEquals(ApiError.HabitLimitReached(10), createHabit()) },
+        "habit-type-not-allowed.json" to { assertEquals(ApiError.HabitTypeNotAllowed(listOf("count", "complex")), createHabit()) },
+        // The form never sends it (the switch hides for structured sessions); a plain 400 if it did.
+        "anti-habit-not-allowed.json" to {
+            assertEquals(ApiError.Validation("Structured sessions cannot be anti-habits.", emptyList()), createHabit())
+        },
         "habit-not-found.json" to { assertEquals(ApiError.NotFound("Habit not found"), increment()) },
         "exercise-source-not-found.json" to {
             val result = safeCall { exercises.source("list:999999") } as ApiResult.Failure

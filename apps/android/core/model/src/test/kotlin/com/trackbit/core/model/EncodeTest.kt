@@ -24,6 +24,24 @@ class EncodeTest {
         IncrementRequest(7, 0)
     }
 
+    @Test fun `a habit request encodes the form's fields with wire names`() {
+        val request = HabitRequest(
+            name = "Stretch",
+            type = HabitType.Timed,
+            isAntiHabit = false,
+            weeklyGoal = 5,
+            dailyGoal = 90,
+            colorTheme = ColorTheme.Custom,
+            colorStops = listOf(ColorStop(0f, Rgba(255f, 0f, 0f, 0.5f))),
+            icon = HabitIcon.Trees,
+        )
+        assertEquals(
+            """{"name":"Stretch","type":"timed","isAntiHabit":false,"weeklyGoal":5,"dailyGoal":90,""" +
+                """"colorTheme":"custom","colorStops":[{"position":0.0,"color":[255.0,0.0,0.0,0.5]}],"icon":"trees"}""",
+            TrackbitJson.encodeToString(HabitRequest.serializer(), request),
+        )
+    }
+
     @Test fun `enums encode to their wire names`() {
         assertEquals("\"timed\"", TrackbitJson.encodeToString(HabitType.Timed))
         assertEquals("\"trees\"", TrackbitJson.encodeToString(HabitIcon.Trees))

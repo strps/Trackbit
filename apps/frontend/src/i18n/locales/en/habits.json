@@ -16,7 +16,6 @@
   "form.delete": "Delete",
   "form.delete_title": "Delete \"{name}\"?",
   "form.delete_body": "This will permanently delete this habit and all its tracked data. This action cannot be undone.",
-
   "type.count.label": "Count",
   "type.count.description": "Track daily counts (e.g., glasses of water, pages read).",
   "type.check.label": "Check",
@@ -25,7 +24,6 @@
   "type.timed.description": "Track duration or time spent (e.g., 30 min reading).",
   "type.complex.label": "Structured Session",
   "type.complex.description": "Log sets, reps, weights, time, or distance (e.g., Gym).",
-
   "list.habits": "Habits",
   "list.anti_habits": "Anti-Habits",
   "list.add": "Add Habit",
@@ -44,5 +42,23 @@
   "list.badge.check": "Check",
   "list.badge.count": "Count",
   "list.error.structured_anti": "Structured sessions can't be anti-habits",
-  "list.error.anti_restriction": "Only Count, Check, and Timed habits can be marked as anti-habits."
+  "list.error.anti_restriction": "Only Count, Check, and Timed habits can be marked as anti-habits.",
+  "page.title": "Habit Settings",
+  "page.subtitle": "Configure your daily routines and tracking preferences.",
+  "page.loading": "Loading habits…",
+  "drawer.new_title": "New Habit",
+  "drawer.edit_title": "Edit Habit",
+  "drawer.description": "Define how you want to track this routine.",
+  "form.color_theme": "Color Theme",
+  "theme.green": "Growth (Green)",
+  "theme.blue": "Focus (Blue)",
+  "theme.orange": "Energy (Orange)",
+  "theme.purple": "Deep Work (Purple)",
+  "theme.rose": "Passion (Rose)",
+  "theme.fire": "Intensity (Fire)",
+  "theme.custom": "Custom Theme",
+  "gradient.picker": "Picker",
+  "gradient.position": "Pos %",
+  "gradient.rgba": "RGBA Values",
+  "gradient.delete_stop": "Delete Stop"
 }

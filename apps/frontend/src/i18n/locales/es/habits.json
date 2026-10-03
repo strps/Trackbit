@@ -16,7 +16,6 @@
   "form.delete": "Eliminar",
   "form.delete_title": "¿Eliminar \"{name}\"?",
   "form.delete_body": "Esto eliminará permanentemente este hábito y todos sus datos. Esta acción no se puede deshacer.",
-
   "type.count.label": "Contador",
   "type.count.description": "Registra conteos diarios (p. ej., vasos de agua, páginas leídas).",
   "type.check.label": "Verificación",
@@ -25,7 +24,6 @@
   "type.timed.description": "Registra la duración o tiempo dedicado (p. ej., 30 min de lectura).",
   "type.complex.label": "Sesión estructurada",
   "type.complex.description": "Registra series, repeticiones, pesos, tiempo o distancia (p. ej., Gimnasio).",
-
   "list.habits": "Hábitos",
   "list.anti_habits": "Anti-Hábitos",
   "list.add": "Añadir hábito",
@@ -44,5 +42,23 @@
   "list.badge.check": "Verificación",
   "list.badge.count": "Contador",
   "list.error.structured_anti": "Las sesiones estructuradas no pueden ser anti-hábitos",
-  "list.error.anti_restriction": "Solo los hábitos de Contador, Verificación y Cronometrado pueden marcarse como anti-hábitos."
+  "list.error.anti_restriction": "Solo los hábitos de Contador, Verificación y Cronometrado pueden marcarse como anti-hábitos.",
+  "page.title": "Ajustes de hábitos",
+  "page.subtitle": "Configura tus rutinas diarias y cómo registrarlas.",
+  "page.loading": "Cargando hábitos…",
+  "drawer.new_title": "Nuevo hábito",
+  "drawer.edit_title": "Editar hábito",
+  "drawer.description": "Define cómo quieres registrar esta rutina.",
+  "form.color_theme": "Tema de color",
+  "theme.green": "Crecimiento (verde)",
+  "theme.blue": "Enfoque (azul)",
+  "theme.orange": "Energía (naranja)",
+  "theme.purple": "Trabajo profundo (morado)",
+  "theme.rose": "Pasión (rosa)",
+  "theme.fire": "Intensidad (fuego)",
+  "theme.custom": "Tema personalizado",
+  "gradient.picker": "Selector",
+  "gradient.position": "Pos. %",
+  "gradient.rgba": "Valores RGBA",
+  "gradient.delete_stop": "Eliminar parada"
 }

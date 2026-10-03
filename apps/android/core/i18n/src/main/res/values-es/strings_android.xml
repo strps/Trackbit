@@ -63,4 +63,12 @@
     <string name="android_widget_preview_meditate">Meditar</string>
     <!-- Analytics: the muscle chart is bars on Android, so the web's radar hints don't apply. -->
     <string name="android_analytics_muscle_empty">Ninguno de los ejercicios registrados en este rango tiene grupos musculares.</string>
+    <!-- Ajustes y configuración de hábitos (fase 3) -->
+    <string name="android_retry">Reintentar</string>
+    <string name="android_nav_back">Atrás</string>
+    <string name="android_habits_reorder">Arrastra para reordenar %1$s</string>
+    <string name="android_habits_edit">Editar %1$s</string>
+    <string name="android_habits_add_stop">Añadir parada</string>
+    <string name="android_habits_position">Posición</string>
+    <string name="android_habits_not_found">Este hábito ya no existe.</string>
 </resources>

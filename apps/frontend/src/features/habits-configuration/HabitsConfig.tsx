@@ -6,6 +6,7 @@ import { HabitConfigForm } from './HabitConfigForm';
 import { useLimits } from '@/hooks/use-limits';
 import { Habit } from "@trackbit/types";
 import { Button } from "@/shared/components/ui/button";
+import { useTranslation } from "react-i18next";
 import {
     Drawer,
     DrawerContent,
@@ -16,6 +17,7 @@ import {
 } from "@/shared/components/ui/drawer";
 
 const HabitConfig = () => {
+    const { t } = useTranslation('habits');
     const { habits, isLoading, createHabit, updateHabit, deleteHabit, reorderHabits } = useHabits();
     const { atHabitCap, effective } = useLimits();
 
@@ -44,7 +46,7 @@ const HabitConfig = () => {
     };
 
     if (isLoading) {
-        return <div className="min-h-screen flex items-center justify-center">Loading Habits...</div>;
+        return <div className="min-h-screen flex items-center justify-center">{t('page.loading')}</div>;
     }
 
     return (
@@ -55,9 +57,9 @@ const HabitConfig = () => {
                     <div>
                         <h1 className="text-3xl font-bold flex items-center gap-3">
                             <Settings className="w-8 h-8 text-muted-foreground" />
-                            Habit Settings
+                            {t('page.title')}
                         </h1>
-                        <p className="text-muted-foreground mt-1">Configure your daily routines and tracking preferences.</p>
+                        <p className="text-muted-foreground mt-1">{t('page.subtitle')}</p>
                     </div>
                 </div>
 
@@ -77,10 +79,10 @@ const HabitConfig = () => {
                         <DrawerHeader className="flex flex-row items-start justify-between">
                             <div className="flex flex-col gap-0.5">
                                 <DrawerTitle className="text-xl">
-                                    {activeHabitId ? 'Edit Habit' : 'New Habit'}
+                                    {activeHabitId ? t('drawer.edit_title') : t('drawer.new_title')}
                                 </DrawerTitle>
                                 <DrawerDescription>
-                                    Define how you want to track this routine.
+                                    {t('drawer.description')}
                                 </DrawerDescription>
                             </div>
                             <DrawerClose asChild>

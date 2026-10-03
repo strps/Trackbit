@@ -33,6 +33,7 @@ class DecodeTest {
     private val decoders: Map<String, KSerializer<*>> = mapOf(
         "habits.json" to ListSerializer(Habit.serializer()),
         "habit-created.json" to Habit.serializer(),
+        "habit-updated.json" to Habit.serializer(),
         "day-log.json" to DayLog.serializer(),
         "today.json" to TodayResponse.serializer(),
         "days.json" to DaysResponse.serializer(),
@@ -76,6 +77,13 @@ class DecodeTest {
         val habit = contract<Habit>("habit-created.json")
         assertFalse(habit.frozen)
         assertEquals(Instant.parse("2026-01-01T00:00:00Z"), habit.createdAt)
+    }
+
+    @Test fun `a habit moved to the anti-habits takes their next slot`() {
+        val habit = contract<Habit>("habit-updated.json")
+        assertEquals("Read more", habit.name)
+        assertTrue(habit.isAntiHabit)
+        assertEquals(1, habit.order)
     }
 
     @Test fun dayLog() {

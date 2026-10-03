@@ -1,0 +1,9 @@
+{
+  "request": "POST /api/habits",
+  "status": 403,
+  "body": {
+    "error": "habit_limit_reached",
+    "message": "You have reached the maximum of 10 habits for your role.",
+    "maxHabits": 10
+  }
+}

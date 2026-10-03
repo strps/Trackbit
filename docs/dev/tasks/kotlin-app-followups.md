@@ -25,6 +25,7 @@ These are covered by unit tests but were not exercised on the emulator for W1. R
 - Previews (C5): after switching the device language, the picker's generated previews (Android 15+) show the new language (`LOCALE_CHANGED` republishes them); after an update they come back (an update clears them, `MY_PACKAGE_REPLACED` republishes). If the system refuses a publish (rate limit), the static `previewLayout` shows until the next app start.
 - Tracker (D1): check rows (toggle with the accent fill), anti-habit rows and section, a frozen habit (lock, disabled controls, snackbar), and the tracker in Spanish. The emulator account has none of these.
 - Timers: the notification reappears after a reboot once anything wakes the app (widget update); swiping it away on 14+ leaves the timer running in the widgets; denying the notification permission leaves timers working in the widgets.
+- Habits config (E1): a frozen habit (banner, Save off, Delete on, lock instead of the drag handle), a role without timed/check (locked type cards), the cap (add button explains), Spanish, dark mode. The emulator account is an admin with no frozen habits.
 - Session screen (D3): offline logging of a whole workout (start, add exercise, sets, edits) reaching the server once and in order after reconnecting; a frozen habit's session (read-only banner, no controls); a frozen custom exercise in the picker (locked) and in a log; imperial units (pounds, 5 lb steps); a flexibility exercise (the emulator catalog has none); Spanish.
 
 ## Polish
@@ -35,6 +36,10 @@ These are covered by unit tests but were not exercised on the emulator for W1. R
 - **The W1 7-day strip draws a day's color straight on the widget background**, not over an empty cell as W3 and the web do. The gradient's low end is mostly transparent, so a lightly logged day looks fainter than an empty one. Put the colored bar over the `surfaceVariant` one (one more view per day; there are only seven).
 - **No widget previews on Android 8–11** (API 26–30): `previewLayout` needs 12+, so the picker shows the app icon there. A `previewImage` per widget (rendered images, fixed theme and language) would cover it.
 - **The ring arc is a fixed 288 px bitmap.** It's sharp at 2×2 on xxxhdpi. Size it from the widget's actual size if a larger layout is ever added.
+
+- **The gradient editor's end handles hang half off the bar** (E1): a stop at 0 or 1 is centred on the bar's edge. Inset the track by half a handle.
+- **The habit form loses unsaved edits on process death and on Back** (E1): the form lives in the ViewModel, not `SavedStateHandle`, and Back (or the edge gesture) closes it without asking, like the web's drawer. Save the form state, or confirm discarding a dirty form.
+- **Habit reorder is drag-only** (E1): no move up/down actions for TalkBack. Add custom accessibility actions on each row.
 
 - **Chronometer format differs from ours:** the RemoteViews/notification chronometer shows "02:53", while `formatDuration` writes "1:00" (no leading zero). A `Chronometer` format string can't drop the zero. Live with it, or format the goal the same way.
 - **Tracker rows reserve an empty badge line** (D1) so a first badge doesn't move the buttons; rows without badges have blank space at the bottom. The web puts badges on the accent edge with a fixed row height; something similar would be tighter.

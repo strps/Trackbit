@@ -23,6 +23,12 @@ sealed interface ApiError {
     /** 403 `custom_exercise_frozen`. */
     data class CustomExerciseFrozen(val exerciseId: Int?) : ApiError
 
+    /** 403 `habit_limit_reached`: creating one more habit would pass the role's [maxHabits]. */
+    data class HabitLimitReached(val maxHabits: Int?) : ApiError
+
+    /** 403 `habit_type_not_allowed`: the role can't have this habit type; [allowed] are the wire names it can. */
+    data class HabitTypeNotAllowed(val allowed: List<String>) : ApiError
+
     data class NotFound(val message: String?) : ApiError
 
     /** 400. [issues] is empty unless the route reports per-field errors. */
@@ -63,6 +69,8 @@ sealed interface ApiError {
                 status == 401 -> Unauthorized(json.string("code"), message)
                 status == 403 && error == "habit_frozen" -> HabitFrozen(json.int("habitId"))
                 status == 403 && error == "custom_exercise_frozen" -> CustomExerciseFrozen(json.int("exerciseId"))
+                status == 403 && error == "habit_limit_reached" -> HabitLimitReached(json.int("maxHabits"))
+                status == 403 && error == "habit_type_not_allowed" -> HabitTypeNotAllowed(json.strings("allowedHabitTypes"))
                 status == 404 -> NotFound(message)
                 status == 400 -> Validation(message, json.issues())
                 status == 409 && error == "idempotency_request_in_progress" -> RequestInProgress
@@ -75,6 +83,9 @@ sealed interface ApiError {
             (this?.get(key) as? JsonPrimitive)?.takeIf { it.isString }?.content
 
         private fun JsonObject?.int(key: String): Int? = (this?.get(key) as? JsonPrimitive)?.intOrNull
+
+        private fun JsonObject?.strings(key: String): List<String> =
+            (this?.get(key) as? JsonArray).orEmpty().mapNotNull { (it as? JsonPrimitive)?.takeIf { p -> p.isString }?.content }
 
         /** `formatZodError`'s `errors: [{ path, message, code }]`. */
         private fun JsonObject?.issues(): List<ValidationIssue> =

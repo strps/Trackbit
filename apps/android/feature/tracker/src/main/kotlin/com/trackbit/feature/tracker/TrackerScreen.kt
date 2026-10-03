@@ -15,8 +15,6 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -63,7 +61,6 @@ import java.time.format.FormatStyle
  */
 @Composable
 fun TrackerScreen(
-    onSignOut: () -> Unit,
     onOpenSession: (habitId: Int, day: LocalDate) -> Unit,
     viewModel: TrackerViewModel = hiltViewModel(),
 ) {
@@ -97,7 +94,6 @@ fun TrackerScreen(
         onRefresh = viewModel::refresh,
         onSelectDay = viewModel::selectDay,
         onMoveDay = viewModel::moveDay,
-        onSignOut = onSignOut,
     )
 
     val editing = editingTimeOf?.let { id -> state.habits?.find { it.id == id } }
@@ -123,13 +119,11 @@ private fun TrackerContent(
     onRefresh: () -> Unit,
     onSelectDay: (LocalDate) -> Unit,
     onMoveDay: (Long) -> Unit,
-    onSignOut: () -> Unit,
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.nav_tracker)) },
-                actions = { OverflowMenu(onSignOut) },
             )
         },
         snackbarHost = { SnackbarHost(snackbar) },
@@ -270,23 +264,6 @@ private fun DayPickerDialog(day: LocalDate, today: LocalDate, onDismiss: () -> U
                 modifier = Modifier.padding(start = 24.dp, end = 12.dp, top = 16.dp),
             )
         })
-    }
-}
-
-@Composable
-private fun OverflowMenu(onSignOut: () -> Unit) {
-    var open by remember { mutableStateOf(false) }
-    IconButton(onClick = { open = true }) {
-        Icon(painterResource(UiIcons.MoreVertical), contentDescription = stringResource(R.string.android_tracker_more_options))
-    }
-    DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-        DropdownMenuItem(
-            text = { Text(stringResource(R.string.nav_log_out)) },
-            onClick = {
-                open = false
-                onSignOut()
-            },
-        )
     }
 }
 

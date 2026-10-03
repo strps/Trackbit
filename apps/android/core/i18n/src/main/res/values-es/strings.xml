@@ -219,6 +219,24 @@
     <string name="habits_list_badge_count">Contador</string>
     <string name="habits_list_error_structured_anti">Las sesiones estructuradas no pueden ser anti-hábitos</string>
     <string name="habits_list_error_anti_restriction">Solo los hábitos de Contador, Verificación y Cronometrado pueden marcarse como anti-hábitos.</string>
+    <string name="habits_page_title">Ajustes de hábitos</string>
+    <string name="habits_page_subtitle">Configura tus rutinas diarias y cómo registrarlas.</string>
+    <string name="habits_page_loading">Cargando hábitos…</string>
+    <string name="habits_drawer_new_title">Nuevo hábito</string>
+    <string name="habits_drawer_edit_title">Editar hábito</string>
+    <string name="habits_drawer_description">Define cómo quieres registrar esta rutina.</string>
+    <string name="habits_form_color_theme">Tema de color</string>
+    <string name="habits_theme_green">Crecimiento (verde)</string>
+    <string name="habits_theme_blue">Enfoque (azul)</string>
+    <string name="habits_theme_orange">Energía (naranja)</string>
+    <string name="habits_theme_purple">Trabajo profundo (morado)</string>
+    <string name="habits_theme_rose">Pasión (rosa)</string>
+    <string name="habits_theme_fire">Intensidad (fuego)</string>
+    <string name="habits_theme_custom">Tema personalizado</string>
+    <string name="habits_gradient_picker">Selector</string>
+    <string name="habits_gradient_position" formatted="false">Pos. %</string>
+    <string name="habits_gradient_rgba">Valores RGBA</string>
+    <string name="habits_gradient_delete_stop">Eliminar parada</string>
     <string name="issues_modal_title">Contáctanos</string>
     <string name="issues_modal_cancel">Cancelar</string>
     <string name="issues_modal_send">Enviar</string>
@@ -299,6 +317,7 @@
     <string name="nav_log_out">Cerrar sesión</string>
     <string name="nav_report_bug">Reportar un error</string>
     <string name="nav_sign_in">Iniciar sesión</string>
+    <string name="nav_settings">Ajustes</string>
     <string name="tracker_loading">Cargando hábitos...</string>
     <string name="tracker_empty">No se encontraron hábitos. ¡Ve a Configuración para crear uno!</string>
     <plurals name="tracker_streak_badge">

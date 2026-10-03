@@ -5,7 +5,7 @@ import db from "../../db/db.js";
 import { habits } from '../../db/schema/index.js'
 import { DEFAULT_COLOR_STOPS } from '../../db/schema/app/habits.js'
 import { COLOR_THEMES, HABIT_ICON_IDS } from '@trackbit/types'
-import { eq, and, desc, count, sql } from 'drizzle-orm'
+import { eq, and, desc, count, sql, inArray } from 'drizzle-orm'
 import { requireAuth } from '../../middleware/auth.js'
 import { localeMiddleware } from '../../middleware/locale.js'
 import { t } from '../../i18n/index.js'
@@ -38,6 +38,19 @@ const colorStopsSchema = z.array(z.object({
     position: z.number(),
     color: z.tuple([z.number(), z.number(), z.number(), z.number()]),
 })).min(1)
+
+// The habit form's rules (web and Android), enforced here so no client can store more.
+// A timed habit's daily goal is minutes, capped at a day.
+const nameSchema = z.string().trim().min(3).max(50)
+const dailyGoalSchema = z.number().int().min(1).max(1440)
+const habitTypeSchema = z.enum(['count', 'complex', 'negative', 'timed', 'check'])
+
+// Mirrors the `habits_complex_not_anti` check: a structured session has no slip to count.
+const isAllowedAntiHabit = (type: string, isAntiHabit: boolean) => !(isAntiHabit && type === 'complex')
+const ANTI_HABIT_NOT_ALLOWED_RESPONSE = {
+    error: 'anti_habit_not_allowed',
+    message: 'Structured sessions cannot be anti-habits.',
+} as const
 
 // Define the Context Type to include User from middleware
 type AuthEnv = {
@@ -73,17 +86,20 @@ app.get('/', async (c) => {
 app.post(
     '/',
     validator('json', z.object({
-        name: z.string().min(1),
+        name: nameSchema,
         description: z.string().optional(),
-        type: z.enum(['count', 'complex', 'negative', 'timed', 'check']).default('count'),
+        type: habitTypeSchema.default('count'),
         isAntiHabit: z.boolean().default(false),
         weeklyGoal: z.number().int().min(1).max(7).default(5),
-        dailyGoal: z.number().int().min(1).default(1),
+        dailyGoal: dailyGoalSchema.default(1),
         colorTheme: z.enum(COLOR_THEMES).optional(),
         // Always persist a non-empty gradient: fall back to the default when omitted.
         // Cast: ColorStop's color is a 3-or-4 tuple union, the schema pins it to rgba(4).
         colorStops: colorStopsSchema.default(DEFAULT_COLOR_STOPS as z.infer<typeof colorStopsSchema>),
         icon: z.enum(HABIT_ICON_IDS).default('star'),
+    }).refine((body) => isAllowedAntiHabit(body.type, body.isAntiHabit), {
+        message: ANTI_HABIT_NOT_ALLOWED_RESPONSE.message,
+        path: ['isAntiHabit'],
     })),
     async (c) => {
         const user = c.get('user')
@@ -145,26 +161,21 @@ app.put(
     '/:id',
     validator('json', z.object({
         id: z.number().optional(),
-        name: z.string().optional(),
+        name: nameSchema.optional(),
         description: z.string().optional().nullable(),
         weeklyGoal: z.number().int().min(1).max(7).optional(),
-        dailyGoal: z.number().int().min(1).optional(),
+        dailyGoal: dailyGoalSchema.optional(),
         colorTheme: z.enum(COLOR_THEMES).optional(),
         colorStops: colorStopsSchema.optional(),
         icon: z.enum(HABIT_ICON_IDS).optional(),
-        type: z.enum(['count', 'complex', 'negative', 'timed', 'check']).optional(),
+        type: habitTypeSchema.optional(),
         isAntiHabit: z.boolean().optional(),
         order: z.number().int().min(0).optional(),
     }).strict()),
     async (c) => {
-
-
-
         const user = c.get('user')
         const id = Number(c.req.param('id'))
-
-
-        const updates = c.req.valid('json')
+        const { id: _bodyId, ...updates } = c.req.valid('json')
 
         const frozen = await computeFrozenHabitsForUser(user.id, user.role)
         if (frozen.has(id)) {
@@ -183,16 +194,42 @@ app.put(
         }
 
         try {
-            const result = await db.update(habits)
-                .set(updates)
-                .where(and(eq(habits.id, id), eq(habits.userId, user.id)))
-                .returning()
+            const result = await db.transaction(async (tx) => {
+                const [current] = await tx.select({ type: habits.type, isAntiHabit: habits.isAntiHabit })
+                    .from(habits)
+                    .where(and(eq(habits.id, id), eq(habits.userId, user.id)))
+                    .for('update')
+                if (!current) return 'not_found' as const
 
-            if (result.length === 0) {
+                const isAntiHabit = updates.isAntiHabit ?? current.isAntiHabit
+                if (!isAllowedAntiHabit(updates.type ?? current.type, isAntiHabit)) return 'anti_not_allowed' as const
+
+                // Moving between habits and anti-habits takes the next slot of the other group,
+                // as create does; keeping the old order would collide with a habit already there.
+                let order = updates.order
+                if (order === undefined && isAntiHabit !== current.isAntiHabit) {
+                    const [{ nextOrder }] = await tx
+                        .select({ nextOrder: sql<number>`COALESCE(MAX(${habits.order}) + 1, 0)` })
+                        .from(habits)
+                        .where(and(eq(habits.userId, user.id), eq(habits.isAntiHabit, isAntiHabit)))
+                    order = nextOrder
+                }
+
+                const [row] = await tx.update(habits)
+                    .set({ ...updates, ...(order !== undefined && { order }) })
+                    .where(and(eq(habits.id, id), eq(habits.userId, user.id)))
+                    .returning()
+                return row
+            })
+
+            if (result === 'not_found') {
                 return c.json({ error: t('errors', 'habit_not_found', c.get('locale')) }, 404)
             }
+            if (result === 'anti_not_allowed') {
+                return c.json(ANTI_HABIT_NOT_ALLOWED_RESPONSE, 400)
+            }
 
-            return c.json(result[0])
+            return c.json(result)
         } catch (err) {
             if (isHabitOrderConflict(err)) {
                 return c.json(HABIT_ORDER_CONFLICT_RESPONSE, 409)
@@ -216,12 +253,24 @@ app.patch(
         const user = c.get('user')
         const { items } = c.req.valid('json')
 
+        const rows = items.length === 0 ? [] : await db.select({ id: habits.id, type: habits.type, isAntiHabit: habits.isAntiHabit })
+            .from(habits)
+            .where(and(eq(habits.userId, user.id), inArray(habits.id, items.map((it) => it.id))))
+        const current = new Map(rows.map((row) => [row.id, row]))
+        if (items.some((it) => !isAllowedAntiHabit(current.get(it.id)?.type ?? 'count', it.isAntiHabit))) {
+            return c.json(ANTI_HABIT_NOT_ALLOWED_RESPONSE, 400)
+        }
+
+        // A frozen habit can't change group, but it still shifts when others move around it:
+        // refusing that would make the whole list unsortable while any habit is frozen.
         const frozen = await computeFrozenHabitsForUser(user.id, user.role)
-        const blockedIds = items.filter((it) => frozen.has(it.id)).map((it) => it.id)
+        const blockedIds = items
+            .filter((it) => frozen.has(it.id) && it.isAntiHabit !== current.get(it.id)?.isAntiHabit)
+            .map((it) => it.id)
         if (blockedIds.length > 0) {
             return c.json({
                 error: 'habit_frozen',
-                message: 'One or more habits are frozen and cannot be reordered.',
+                message: 'One or more habits are frozen and cannot change group.',
                 frozenIds: blockedIds,
             }, 403)
         }

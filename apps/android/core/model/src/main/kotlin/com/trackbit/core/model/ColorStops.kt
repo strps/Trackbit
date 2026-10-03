@@ -22,3 +22,10 @@ fun List<ColorStop>.colorAt(t: Float): Rgba {
         alpha = lerp(a.color.alpha, b.color.alpha),
     )
 }
+
+/**
+ * The stops a habit renders with: its preset's, or its own for [ColorTheme.Custom]
+ * (`resolveColorStops` in `@trackbit/types`). A theme this build doesn't know keeps its own.
+ */
+fun resolveColorStops(theme: ColorTheme, stops: List<ColorStop>): List<ColorStop> =
+    if (theme == ColorTheme.Custom) stops else GradientPresets[theme] ?: stops

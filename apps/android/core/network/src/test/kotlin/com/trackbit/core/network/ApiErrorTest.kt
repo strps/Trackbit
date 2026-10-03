@@ -22,8 +22,8 @@ class ApiErrorTest {
     }
 
     @Test fun `maps other 403s by their code`() = runTest {
-        val error = incrementFailing(403, """{"error":"habit_limit_reached","message":"Limit"}""")
-        assertEquals(ApiError.Unknown(403, "habit_limit_reached", "Limit"), error)
+        val error = incrementFailing(403, """{"error":"exercise_list_limit_reached","message":"Limit"}""")
+        assertEquals(ApiError.Unknown(403, "exercise_list_limit_reached", "Limit"), error)
     }
 
     @Test fun `maps other conflicts to Unknown`() = runTest {

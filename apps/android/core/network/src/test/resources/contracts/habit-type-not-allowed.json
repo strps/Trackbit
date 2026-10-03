@@ -1,0 +1,12 @@
+{
+  "request": "POST /api/habits",
+  "status": 403,
+  "body": {
+    "error": "habit_type_not_allowed",
+    "message": "Habit type \"timed\" is not allowed for your role.",
+    "allowedHabitTypes": [
+      "count",
+      "complex"
+    ]
+  }
+}

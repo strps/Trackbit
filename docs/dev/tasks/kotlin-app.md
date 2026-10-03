@@ -9,7 +9,7 @@ A native Android client for Trackbit written in Kotlin + Jetpack Compose. It con
 Before any of these can ship, a thin foundation (auth, API client, local cache) and a few backend changes have to exist. Those are Phase 0 below, split so that several people or agents can work in parallel.
 
 **Branch:** `kotlin-app`
-**Status:** Phase 0 done 2026-09-26 ([handoff](../handoffs/kotlin-app-B.md)). Phase 1 in progress: C1 (widget foundation + W2 Today list) done 2026-09-28, C2 (W1 quick-log) and C3 (timer engine + notification) done 2026-09-29 ([handoff](../handoffs/kotlin-app-C.md)). Phase 1 done on the emulator 2026-10-02 (real-device check deferred to the end). Phase 2 in progress: D1 (tracker home), D2 (session data layer) and D3 (session screen) done 2026-10-02 ([handoff](../handoffs/kotlin-app-D.md)).
+**Status:** Phase 0 done 2026-09-26 ([handoff](../handoffs/kotlin-app-B.md)). Phase 1 done on the emulator 2026-10-02 ([handoff](../handoffs/kotlin-app-C.md)). Phase 2 D1–D6 done on the emulator by 2026-10-03 ([handoff](../handoffs/kotlin-app-D.md)); its exit check is deferred to the final pass with the real-device check (user, 2026-10-03). Phase 3 in progress: split E1–E6, E1 (Settings tab + habits config) done 2026-10-03 ([handoff](../handoffs/kotlin-app-E.md)).
 **Deferred follow-ups:** [kotlin-app-followups.md](kotlin-app-followups.md) (non-blocking issues and checks, to pick up after Phase 1).
 
 ---
@@ -197,17 +197,19 @@ Tasks:
 - [x] Pull-to-refresh + sync indicator (D1; pending-writes line)
 - [ ] Error-code handling: frozen habit/exercise → snackbar with the same copy as the web (`errors:limits.*`)
 
-**Exit:** a full workout can be logged in the app, and a day of habits can be tracked, with results identical to the web.
+**Exit:** a full workout can be logged in the app, and a day of habits can be tracked, with results identical to the web. *Deferred (user, 2026-10-03): checked in the final pass together with the real-device check.*
 
 ### Phase 3 — Settings & configuration (Workstream E)
 
 **Goal:** a user never needs the web app.
 
-- [ ] **Habits config**: list, create/edit form (type, anti-habit, goals, color theme or custom gradient, icon), reorder (drag), delete. Enforce the same Zod rules (mirrored in Kotlin validation) and the role limits (`GET /api/me/limits`).
+Split (user, 2026-10-03): a third bottom tab **Settings** hub (`feature/account`) opens every screen below. E1 habits config · E2 account · E3 exercise library · E4 exercise lists · E5 auth screens · E6 issue report. Config needs a connection (D3): screens read the server, writes go straight to it, and a sync then refreshes Room.
+
+- [x] **Habits config** (E1 2026-10-03, `feature/habits-config`): list, create/edit form (type, anti-habit, goals, color theme or custom gradient, icon), reorder (drag, also across groups), delete. The form's rules are `HabitRules` in core:model and the server enforces the same (name 3–50 trimmed, daily goal ≤ 1440, no structured anti-habit, migration `0013`); role limits from `GET /api/me/limits`.
 - [ ] **Exercise library**: catalog browse/search by muscle group, create/edit/delete custom exercises, frozen state
 - [ ] **Exercise lists**: CRUD, reorder items, add to list from the picker/library
 - [ ] **Account**: locale (en/es), timezone, unit system, card style, preferred exercise source (`PATCH /api/me/preferences`), sign-out
-- [ ] Remaining auth screens: sign-up (with invite code), forgot password, verify-email handling, Google sign-in
+- [ ] Remaining auth screens: sign-up (with invite code), forgot password, verify-email handling. Google sign-in deferred to the backlog (user, 2026-10-03): it needs an Android OAuth client in Google Cloud and a Better-Auth id-token sign-in.
 - [ ] Feedback/issue report (`POST /api/issues`)
 
 **Exit:** feature parity with `apps/frontend` routes (`/tracker`, `/sessions`, `/stats`, `/config/*`, `/account-settings`).
@@ -231,6 +233,7 @@ Tasks:
 
 ### Later / backlog
 
+- Google sign-in (Credential Manager + Better-Auth `idToken` sign-in, or a custom-tab OAuth flow; needs an Android OAuth client: package + SHA-1)
 - App shortcuts (long-press icon → "Start workout", "Log <habit>")
 - Quick Settings tile for one habit
 - Reminders / scheduled notifications per habit (needs a backend model)

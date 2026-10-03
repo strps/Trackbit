@@ -31,8 +31,11 @@ import com.trackbit.app.timer.RequestNotificationPermission
 import com.trackbit.core.auth.AuthState
 import com.trackbit.core.designsystem.icon.UiIcons
 import com.trackbit.core.i18n.R
+import com.trackbit.feature.account.SettingsScreen
 import com.trackbit.feature.analytics.AnalyticsScreen
 import com.trackbit.feature.auth.SignInScreen
+import com.trackbit.feature.habitsconfig.HabitFormScreen
+import com.trackbit.feature.habitsconfig.HabitsConfigScreen
 import com.trackbit.feature.session.SessionScreen
 import com.trackbit.feature.tracker.TrackerScreen
 import kotlinx.serialization.Serializable
@@ -55,10 +58,22 @@ data object TrackerRoute
 @Serializable
 data object AnalyticsRoute
 
+/** The configuration screens and the account, like the web's config links and user menu. */
+@Serializable
+data object SettingsRoute
+
+@Serializable
+data object HabitsConfigRoute
+
+/** The habit form; [habitId] null creates one. The name matches `HabitFormViewModel.HABIT_ID`. */
+@Serializable
+data class HabitFormRoute(val habitId: Int? = null)
+
 /** The signed-in screens the bottom bar switches between, like the web's header links. */
 private enum class TopLevel(val route: Any, @StringRes val label: Int, @DrawableRes val icon: Int) {
     Tracker(TrackerRoute, R.string.nav_tracker, UiIcons.Flame),
     Stats(AnalyticsRoute, R.string.nav_stats, UiIcons.BarChart),
+    Settings(SettingsRoute, R.string.nav_settings, UiIcons.Settings),
 }
 
 /** A workout habit's session on [day] (ISO date). */
@@ -107,11 +122,21 @@ private fun AuthNavHost(graph: Any, onSignOut: () -> Unit) {
             navigation<SignedInGraph>(startDestination = TrackerRoute) {
                 composable<TrackerRoute> {
                     TrackerScreen(
-                        onSignOut = onSignOut,
                         onOpenSession = { habitId, day -> navController.navigate(SessionRoute(habitId, day.toString())) },
                     )
                 }
                 composable<AnalyticsRoute> { AnalyticsScreen() }
+                composable<SettingsRoute> {
+                    SettingsScreen(onOpenHabits = { navController.navigate(HabitsConfigRoute) }, onSignOut = onSignOut)
+                }
+                composable<HabitsConfigRoute> {
+                    HabitsConfigScreen(
+                        onBack = { navController.popBackStack() },
+                        onAdd = { navController.navigate(HabitFormRoute()) },
+                        onEdit = { navController.navigate(HabitFormRoute(it)) },
+                    )
+                }
+                composable<HabitFormRoute> { HabitFormScreen(onDone = { navController.popBackStack() }) }
                 composable<SessionRoute> { entry ->
                     val route = entry.toRoute<SessionRoute>()
                     SessionScreen(route.habitId, LocalDate.parse(route.day), onBack = { navController.popBackStack() })

@@ -7,25 +7,15 @@ import { COLOR_THEMES, GRADIENT_PRESET_STOPS, type ColorStop, type ColorTheme } 
 import { Field, FieldProps, InputProps } from '@/shared/components/Fields/FieldBase';
 import { CollapsibleSection } from '@/shared/components/Collapsible';
 import { BaseCell, GradientPreview } from '@/shared/components/Heatmap';
+import { useTranslation } from 'react-i18next';
 
 
 type Preset = {
-    label: string;
     stops: ColorStop[];
 };
 
-const PRESET_LABELS: Record<ColorTheme, string> = {
-    green: "Growth (Green)",
-    blue: "Focus (Blue)",
-    orange: "Energy (Orange)",
-    purple: "Deep Work (Purple)",
-    rose: "Passion (Rose)",
-    fire: "Intensity (Fire)",
-    custom: "Custom Theme",
-};
-
 export const GRADIENT_PRESETS = Object.fromEntries(
-    COLOR_THEMES.map((theme) => [theme, { label: PRESET_LABELS[theme], stops: GRADIENT_PRESET_STOPS[theme] }]),
+    COLOR_THEMES.map((theme) => [theme, { stops: GRADIENT_PRESET_STOPS[theme] }]),
 ) as Record<ColorTheme, Preset>;
 
 
@@ -44,14 +34,15 @@ interface ColorScaleFieldProps extends Omit<FieldProps, 'name' | 'fieldInput'> {
 export const ColorThemeField = ({
     form,
     nameColorTheme = "colorTheme",
-    labelColorTheme = "Color Theme",
+    labelColorTheme,
     nameColorStops = "colorStops",
 }: ColorScaleFieldProps) => {
+    const { t } = useTranslation('habits');
 
     //TODO: We migth order the stops before saving or rendering, so we don't have to use the ordered version of color gradient utilities. 
     return (
         <Field
-            label={labelColorTheme}
+            label={labelColorTheme ?? t('form.color_theme')}
             form={form}
             name={nameColorTheme}
             fieldInput={({ field, className }: InputProps) => {
@@ -77,7 +68,7 @@ export const ColorThemeField = ({
 
                                         <div className="text-left">
                                             <span className="block text-sm font-bold text-foreground">
-                                                {preset.label}
+                                                {t(`theme.${key as ColorTheme}`)}
                                             </span>
                                         </div>
 
@@ -107,7 +98,7 @@ export const ColorThemeField = ({
 
                                                                 <div className="text-left">
                                                                     <span className="block text-sm font-bold text-foreground">
-                                                                        {preset.label}
+                                                                        {t(`theme.${key as ColorTheme}`)}
                                                                     </span>
                                                                 </div>
                                                             </div>

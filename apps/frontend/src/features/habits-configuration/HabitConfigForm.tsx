@@ -182,8 +182,11 @@ export const HabitConfigForm = ({
         onCancel();
     };
 
-    const onSubmit = (data: z.infer<typeof formSchema>) => {
+    const onSubmit = (values: z.infer<typeof formSchema>) => {
         const options = { onSuccess: handleCancel, onError: handleMutationError };
+        // The anti-habit switch hides for structured sessions but keeps its value; the server
+        // refuses a structured anti-habit.
+        const data = values.type === 'complex' ? { ...values, isAntiHabit: false } : values;
         if (!data.id)
             createHabit(data as Habit, options);
         else
