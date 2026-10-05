@@ -34,6 +34,9 @@ These are covered by unit tests but were not exercised on the emulator for W1. R
 
 ## Polish
 
+- **Reset and verification links open the web, not the app** (E5). Both emails link to the web (`/reset-password?token=`, `/verify-email?backendUrl=`), which works from any device; the app only asks for them. Opening them in the app needs Android App Links: `/.well-known/assetlinks.json` on the web host with the release (Play signing) certificate, an intent filter, and a reset screen in `feature/auth`.
+- **The web's sign-in doesn't offer to resend the verification email** (E5): it shows Better-Auth's message only, and resending lives on `/verify-email`'s error state. The app offers the button right under `EMAIL_NOT_VERIFIED`; give the web the same.
+
 - **On Android 8–12, widgets and notifications stay in the system language** after switching the app's language (E2). AppCompat localizes activities only there; from 13 the system localizes the whole process. Fixing it means wrapping the widget/notification `Context` with the app locale.
 - **Account settings lack the web's profile image URL and "Delete account"** (E2). The image needs an image loader (none in the app yet); the web's delete button is a placeholder with no endpoint.
 - **The preferred exercise source isn't in Account settings** (E2): the session picker sets it, as on the web, which doesn't list it in account settings either.
@@ -64,6 +67,10 @@ These are covered by unit tests but were not exercised on the emulator for W1. R
 - **Adding a set in compact cards opens the set editor sheet over the rest bar** (D5); the countdown shows once the sheet closes.
 
 ## Housekeeping
+
+- **Invites aren't tied to their email** (E5): the admin route always stores the recipient in `invites.email`, but sign-up accepts the code with any email. Decide whether a code should only work for its recipient (case-insensitive match in `consumeInvite`, `auth.ts`).
+- **An invite's use is taken before the user row is inserted** (E5, unchanged): the conditional UPDATE runs in Better-Auth's `create.before` hook, so an insert that fails afterwards (a DB error; a taken email is refused earlier) loses that use. Accounts that never verify keep theirs too.
+- **`errors.json`'s `invite_code_required` is unused** (sign-up treats a code as optional); drop it, or add a server-side "invite required" setting if registration should close again.
 
 - **The web has no prescription editor** (E4, Android only, user): the web's list editor still edits only order and membership; its round-trip keeps the targets the app writes. Add the fields there (kg/km, the server's bounds in `exercise-lists.ts`) when the programs phase comes.
 - **`exercise_list_items_list_position_uq` isn't deferrable on the local dev DB** although `0006` asks for it (and a pushed schema never is). Since E4 the route writes positions in two phases and doesn't need it; check production with `SELECT condeferrable FROM pg_constraint WHERE conname = 'exercise_list_items_list_position_uq'` and drop the `DEFERRABLE` expectation from the docs if it differs.

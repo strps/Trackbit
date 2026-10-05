@@ -2,22 +2,15 @@ package com.trackbit.feature.auth
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,18 +22,24 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.trackbit.core.designsystem.theme.TrackbitTheme
 import com.trackbit.core.i18n.R
 
 @Composable
-fun SignInScreen(viewModel: SignInViewModel = hiltViewModel()) {
+fun SignInScreen(
+    onSignUp: () -> Unit,
+    onForgotPassword: (email: String) -> Unit,
+    viewModel: SignInViewModel = hiltViewModel(),
+) {
     SignInContent(
         state = viewModel.state,
         onEmailChange = viewModel::onEmailChange,
         onPasswordChange = viewModel::onPasswordChange,
         onSubmit = viewModel::submit,
+        onResend = viewModel::resendVerification,
+        onSignUp = onSignUp,
+        onForgotPassword = { onForgotPassword(viewModel.state.email.trim()) },
     )
 }
 
@@ -50,62 +49,72 @@ private fun SignInContent(
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onSubmit: () -> Unit,
+    onResend: () -> Unit,
+    onSignUp: () -> Unit,
+    onForgotPassword: () -> Unit,
 ) {
-    Surface(Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .safeDrawingPadding()
-                .imePadding()
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            val fieldModifier = Modifier.widthIn(max = 480.dp).fillMaxWidth()
+    AuthLayout(
+        title = stringResource(R.string.auth_sign_in_title),
+        description = stringResource(R.string.auth_sign_in_description),
+    ) {
+        OutlinedTextField(
+            value = state.email,
+            onValueChange = onEmailChange,
+            label = { Text(stringResource(R.string.auth_sign_in_email)) },
+            isError = state.error == SignInError.InvalidEmail,
+            singleLine = true,
+            enabled = !state.submitting,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+            modifier = AuthFieldModifier.semantics { contentType = ContentType.EmailAddress + ContentType.Username },
+        )
+        OutlinedTextField(
+            value = state.password,
+            onValueChange = onPasswordChange,
+            label = { Text(stringResource(R.string.auth_sign_in_password)) },
+            singleLine = true,
+            enabled = !state.submitting,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { onSubmit() }),
+            modifier = AuthFieldModifier.semantics { contentType = ContentType.Password },
+        )
+        state.error?.let { AuthMessage(stringResource(it.messageRes), isError = true) }
+        if (state.error == SignInError.EmailNotVerified) {
+            ResendVerification(state.resend, onResend)
+        }
+        Button(onClick = onSubmit, enabled = state.canSubmit, modifier = AuthFieldModifier) {
             Text(
-                text = stringResource(R.string.auth_sign_in_title),
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = fieldModifier,
+                stringResource(
+                    if (state.submitting) R.string.auth_sign_in_submitting else R.string.auth_sign_in_submit,
+                ),
             )
+        }
+        TextButton(onClick = onForgotPassword, enabled = !state.submitting) {
+            Text(stringResource(R.string.auth_sign_in_forgot_password))
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
             Text(
-                text = stringResource(R.string.auth_sign_in_description),
+                text = stringResource(R.string.auth_sign_in_no_account),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = fieldModifier,
             )
-            OutlinedTextField(
-                value = state.email,
-                onValueChange = onEmailChange,
-                label = { Text(stringResource(R.string.auth_sign_in_email)) },
-                isError = state.error == SignInError.InvalidEmail,
-                singleLine = true,
-                enabled = !state.submitting,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
-                modifier = fieldModifier.semantics { contentType = ContentType.EmailAddress + ContentType.Username },
-            )
-            OutlinedTextField(
-                value = state.password,
-                onValueChange = onPasswordChange,
-                label = { Text(stringResource(R.string.auth_sign_in_password)) },
-                singleLine = true,
-                enabled = !state.submitting,
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { onSubmit() }),
-                modifier = fieldModifier.semantics { contentType = ContentType.Password },
-            )
-            state.error?.let {
-                Text(
-                    text = stringResource(it.messageRes),
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = fieldModifier,
-                )
+            TextButton(onClick = onSignUp, enabled = !state.submitting) {
+                Text(stringResource(R.string.auth_sign_in_signup_link))
             }
-            Button(onClick = onSubmit, enabled = state.canSubmit, modifier = fieldModifier) {
+        }
+    }
+}
+
+@Composable
+private fun ResendVerification(resend: ResendState, onResend: () -> Unit) {
+    when (resend) {
+        ResendState.Sent -> AuthMessage(stringResource(R.string.auth_verify_resend_success), isError = false)
+        else -> {
+            if (resend == ResendState.Failed) AuthMessage(stringResource(R.string.auth_verify_resend_error), isError = true)
+            OutlinedButton(onClick = onResend, enabled = resend != ResendState.Sending, modifier = AuthFieldModifier) {
                 Text(
                     stringResource(
-                        if (state.submitting) R.string.auth_sign_in_submitting else R.string.auth_sign_in_submit,
+                        if (resend == ResendState.Sending) R.string.auth_verify_resend_submitting else R.string.auth_verify_resend_submit,
                     ),
                 )
             }
@@ -128,10 +137,13 @@ private val SignInError.messageRes: Int
 private fun SignInPreview() {
     TrackbitTheme {
         SignInContent(
-            state = SignInUiState(email = "ada@example.com", error = SignInError.InvalidCredentials),
+            state = SignInUiState(email = "ada@example.com", error = SignInError.EmailNotVerified),
             onEmailChange = {},
             onPasswordChange = {},
             onSubmit = {},
+            onResend = {},
+            onSignUp = {},
+            onForgotPassword = {},
         )
     }
 }

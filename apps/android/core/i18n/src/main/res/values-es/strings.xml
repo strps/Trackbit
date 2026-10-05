@@ -90,6 +90,14 @@
     <string name="auth_forgot_submitting">Enviando...</string>
     <string name="auth_forgot_back">Volver a iniciar sesión</string>
     <string name="auth_forgot_success">Revisa tu correo para restablecer tu contraseña.</string>
+    <string name="auth_reset_title">Elige una nueva contraseña</string>
+    <string name="auth_reset_description">Introduce una nueva contraseña para tu cuenta. Todos los dispositivos con la sesión iniciada tendrán que volver a iniciar sesión.</string>
+    <string name="auth_reset_password">Nueva contraseña</string>
+    <string name="auth_reset_submit">Guardar contraseña</string>
+    <string name="auth_reset_submitting">Guardando...</string>
+    <string name="auth_reset_success">Tu contraseña se ha cambiado. Inicia sesión con tu nueva contraseña.</string>
+    <string name="auth_reset_invalid_link">Este enlace ha caducado o ya se ha usado.</string>
+    <string name="auth_reset_request_new">Solicitar un enlace nuevo</string>
     <string name="auth_verify_title">Verificación de correo</string>
     <string name="auth_verify_loading">Verificando tu correo electrónico...</string>
     <string name="auth_verify_success_description">¡Tu correo ha sido verificado correctamente!</string>

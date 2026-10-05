@@ -1,0 +1,8 @@
+{
+  "request": "POST /api/auth/sign-up/email",
+  "status": 400,
+  "body": {
+    "code": "INVITE_CODE_EXPIRED",
+    "message": "This invitation code has expired."
+  }
+}

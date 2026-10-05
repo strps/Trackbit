@@ -4,6 +4,7 @@ import NotFound from "@/features/errors/404";
 import { Analytics } from "@/features/analytics/Analytics";
 import AccountSettings from "@/features/auth/AccountSettings";
 import ForgotPasswordPage from "@/features/auth/ForgotPassword";
+import ResetPasswordPage from "@/features/auth/ResetPassword";
 import SignInPage from "@/features/auth/SignIn";
 import SignUpPage from "@/features/auth/SignUp";
 import VerifyEmail from "@/features/auth/VerifyEmail";
@@ -47,6 +48,7 @@ export const router = createBrowserRouter([
             { path: "signin", element: <SignInPage /> },
             { path: "signup", element: <SignUpPage /> },
             { path: "forgot", element: <ForgotPasswordPage /> },
+            { path: "reset-password", element: <ResetPasswordPage /> },
             { path: "verify-email", element: <VerifyEmail /> },
         ]
     },

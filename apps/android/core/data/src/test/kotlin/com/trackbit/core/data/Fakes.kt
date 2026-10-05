@@ -120,6 +120,9 @@ class FakeAuth(defaultRestSeconds: Int = SessionUser.DEFAULT_REST_SECONDS) : Aut
     )
 
     override suspend fun signIn(email: String, password: String): ApiResult<SessionUser> = error("unused")
+    override suspend fun signUp(name: String, email: String, password: String, inviteCode: String?): ApiResult<Unit> = error("unused")
+    override suspend fun requestPasswordReset(email: String): ApiResult<Unit> = error("unused")
+    override suspend fun resendVerificationEmail(email: String): ApiResult<Unit> = error("unused")
     override suspend fun signOut() = error("unused")
     override suspend fun refresh() = error("unused")
 }

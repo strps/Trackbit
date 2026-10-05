@@ -48,6 +48,9 @@ private val user = SessionUser(
 private class FakeAuthRepository : AuthRepository {
     override val state = MutableStateFlow<AuthState>(AuthState.SignedOut)
     override suspend fun signIn(email: String, password: String): ApiResult<SessionUser> = error("unused")
+    override suspend fun signUp(name: String, email: String, password: String, inviteCode: String?): ApiResult<Unit> = error("unused")
+    override suspend fun requestPasswordReset(email: String): ApiResult<Unit> = error("unused")
+    override suspend fun resendVerificationEmail(email: String): ApiResult<Unit> = error("unused")
     override suspend fun signOut() = Unit
     override suspend fun refresh() = Unit
 }

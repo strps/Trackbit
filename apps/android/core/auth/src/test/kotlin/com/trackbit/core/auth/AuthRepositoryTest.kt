@@ -24,6 +24,8 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import retrofit2.create
+import java.time.ZoneId
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 /** The repository against a fake server, with the store as the client's token source. */
@@ -277,4 +279,51 @@ class AuthRepositoryTest {
                  "role":"tester","locale":"es","timezone":"America/Costa_Rica","unitSystem":"metric",
                  "exerciseLogCardStyle":"compact","preferredExerciseSource":null}}
     """.trimIndent()
+
+    @Test fun `sign-up sends the app's language and the device's zone, and starts no session`() = runTest {
+        harness.settled()
+        val default = Locale.getDefault()
+        Locale.setDefault(Locale.forLanguageTag("es-CR"))
+        try {
+            enqueue(200, """{"token":null,"user":{}}""")
+            assertEquals(ApiResult.Success(Unit), repository.signUp("Ada", "ada@test.local", "password-1", " CODE "))
+            val request = take()
+            assertEquals("/api/auth/sign-up/email", request.target)
+            assertEquals(
+                """{"name":"Ada","email":"ada@test.local","password":"password-1","locale":"es",""" +
+                    """"timezone":"${ZoneId.systemDefault().id}","inviteCode":"CODE"}""",
+                request.body?.utf8(),
+            )
+            assertNull(request.headers["Authorization"])
+
+            // A language the apps don't ship falls back to English; a blank invite is left out.
+            Locale.setDefault(Locale.forLanguageTag("fr-FR"))
+            enqueue(200, """{"token":null,"user":{}}""")
+            repository.signUp("Ada", "ada@test.local", "password-1", "  ")
+            assertEquals(
+                """{"name":"Ada","email":"ada@test.local","password":"password-1","locale":"en",""" +
+                    """"timezone":"${ZoneId.systemDefault().id}"}""",
+                take().body?.utf8(),
+            )
+        } finally {
+            Locale.setDefault(default)
+        }
+        assertEquals(AuthState.SignedOut, repository.state.value)
+    }
+
+    @Test fun `reset and resend requests carry only the email`() = runTest {
+        harness.settled()
+        enqueue(200, """{"status":true,"message":"If this email exists in our system, check your email for the reset link"}""")
+        assertEquals(ApiResult.Success(Unit), repository.requestPasswordReset("ada@test.local"))
+        take().let {
+            assertEquals("/api/auth/request-password-reset", it.target)
+            assertEquals("""{"email":"ada@test.local"}""", it.body?.utf8())
+        }
+        enqueue(200, """{"status":true}""")
+        assertEquals(ApiResult.Success(Unit), repository.resendVerificationEmail("ada@test.local"))
+        take().let {
+            assertEquals("/api/auth/send-verification-email", it.target)
+            assertEquals("""{"email":"ada@test.local"}""", it.body?.utf8())
+        }
+    }
 }

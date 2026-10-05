@@ -1,16 +1,9 @@
 package com.trackbit.feature.auth
 
-import com.trackbit.core.auth.AuthRepository
-import com.trackbit.core.auth.AuthState
-import com.trackbit.core.model.ExerciseLogCardStyle
-import com.trackbit.core.model.SessionUser
-import com.trackbit.core.model.UnitSystem
 import com.trackbit.core.network.ApiError
 import com.trackbit.core.network.ApiResult
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -52,15 +45,15 @@ class SignInViewModelTest {
         fill(email = "ada@example")
         viewModel.submit()
         assertEquals(SignInError.InvalidEmail, viewModel.state.error)
-        assertTrue(auth.calls.isEmpty())
+        assertTrue(auth.signIns.isEmpty())
     }
 
     @Test fun `sends the trimmed email and stays submitting on success`() {
         fill()
         viewModel.submit()
         assertTrue(viewModel.state.submitting)
-        auth.result.complete(ApiResult.Success(user))
-        assertEquals(listOf("ada@example.com" to "hunter22"), auth.calls)
+        auth.signInResult.complete(ApiResult.Success(USER))
+        assertEquals(listOf("ada@example.com" to "hunter22"), auth.signIns)
         assertTrue(viewModel.state.submitting)
         assertFalse(viewModel.state.canSubmit)
     }
@@ -69,13 +62,13 @@ class SignInViewModelTest {
         fill()
         viewModel.submit()
         viewModel.submit()
-        assertEquals(1, auth.calls.size)
+        assertEquals(1, auth.signIns.size)
     }
 
     @Test fun `failures map to messages and re-enable the form`() {
         fill()
         viewModel.submit()
-        auth.result.complete(ApiResult.Failure(ApiError.Unauthorized("INVALID_EMAIL_OR_PASSWORD", "Invalid")))
+        auth.signInResult.complete(ApiResult.Failure(ApiError.Unauthorized("INVALID_EMAIL_OR_PASSWORD", "Invalid")))
         assertFalse(viewModel.state.submitting)
         assertEquals(SignInError.InvalidCredentials, viewModel.state.error)
     }
@@ -97,24 +90,44 @@ class SignInViewModelTest {
         assertEquals(SignInError.Unexpected, ApiError.Server(500, null).toSignInError())
         assertEquals(SignInError.Unexpected, ApiError.Unknown(403, "OTHER", null).toSignInError())
     }
-}
 
-private val user = SessionUser(
-    id = "u_1", name = "Ada", email = "ada@example.com", emailVerified = true, image = null,
-    role = "user", locale = "en", timezone = "UTC", unitSystem = UnitSystem.Metric,
-    exerciseLogCardStyle = ExerciseLogCardStyle.Classic, preferredExerciseSource = null,
-)
-
-private class FakeAuthRepository : AuthRepository {
-    val calls = mutableListOf<Pair<String, String>>()
-    val result = CompletableDeferred<ApiResult<SessionUser>>()
-    override val state = MutableStateFlow<AuthState>(AuthState.SignedOut)
-
-    override suspend fun signIn(email: String, password: String): ApiResult<SessionUser> {
-        calls += email to password
-        return result.await()
+    private fun failUnverified() {
+        fill()
+        viewModel.submit()
+        auth.signInResult.complete(ApiResult.Failure(ApiError.Unknown(403, "EMAIL_NOT_VERIFIED", "Email not verified")))
     }
 
-    override suspend fun signOut() = Unit
-    override suspend fun refresh() = Unit
+    @Test fun `an unverified account can ask for a new link, once at a time`() {
+        failUnverified()
+        viewModel.resendVerification()
+        viewModel.resendVerification()
+        assertEquals(ResendState.Sending, viewModel.state.resend)
+        assertEquals(listOf("ada@example.com"), auth.resends)
+        auth.resendResult.complete(ApiResult.Success(Unit))
+        assertEquals(ResendState.Sent, viewModel.state.resend)
+    }
+
+    @Test fun `a failed resend says so and offers the button again`() {
+        failUnverified()
+        viewModel.resendVerification()
+        auth.resendResult.complete(ApiResult.Failure(ApiError.Network(IOException())))
+        assertEquals(ResendState.Failed, viewModel.state.resend)
+    }
+
+    @Test fun `resending is only offered for an unverified account`() {
+        fill()
+        viewModel.submit()
+        auth.signInResult.complete(ApiResult.Failure(ApiError.Unauthorized(null, null)))
+        viewModel.resendVerification()
+        assertTrue(auth.resends.isEmpty())
+    }
+
+    @Test fun `editing the email withdraws the offer and ignores a late answer`() {
+        failUnverified()
+        viewModel.resendVerification()
+        viewModel.onEmailChange("other@example.com")
+        auth.resendResult.complete(ApiResult.Success(Unit))
+        assertEquals(ResendState.Idle, viewModel.state.resend)
+        assertNull(viewModel.state.error)
+    }
 }

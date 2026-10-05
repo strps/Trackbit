@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { auth } from '../src/lib/auth.js'
 import db from '../src/db/db.js'
-import { exerciseListItems, exerciseLists, exerciseMuscleGroups, exercises, idempotencyKeys, muscleGroups, user } from '../src/db/schema/index.js'
+import { exerciseListItems, exerciseLists, exerciseMuscleGroups, exercises, idempotencyKeys, invites, muscleGroups, user } from '../src/db/schema/index.js'
 import { app, bearer, createHabit, post, signInBearer, signedInUser } from './helpers.js'
 
 // Records the real responses the Android app decodes, as
@@ -326,6 +326,26 @@ describe('Android contracts', () => {
             await send(u.token, 'POST', '/api/auth/change-password', { currentPassword: u.password, newPassword: 'short', revokeOtherSessions: true }))
         await record(NETWORK, 'update-user-invalid-name.json', 'POST /api/auth/update-user',
             await send(u.token, 'POST', '/api/auth/update-user', { name: '  ' }))
+
+        const signUp = (body: Record<string, unknown>) => app.request('/api/auth/sign-up/email', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ name: 'New user', password: 'password-1234', locale: 'en', timezone: 'UTC', ...body }),
+        })
+        await record(NETWORK, 'sign-up-email-taken.json', 'POST /api/auth/sign-up/email',
+            await signUp({ email: u.email }))
+        await record(NETWORK, 'sign-up-password-too-short.json', 'POST /api/auth/sign-up/email',
+            await signUp({ email: 'short@test.local', password: 'short' }))
+        await db.insert(invites).values([
+            { code: 'USED-UP', maxUses: 1, uses: 1 },
+            { code: 'EXPIRED', expiresAt: new Date(Date.now() - 60_000) },
+        ])
+        await record(NETWORK, 'sign-up-invite-invalid.json', 'POST /api/auth/sign-up/email',
+            await signUp({ email: 'invite1@test.local', inviteCode: 'NO-SUCH-CODE' }))
+        await record(NETWORK, 'sign-up-invite-used-up.json', 'POST /api/auth/sign-up/email',
+            await signUp({ email: 'invite2@test.local', inviteCode: 'USED-UP' }))
+        await record(NETWORK, 'sign-up-invite-expired.json', 'POST /api/auth/sign-up/email',
+            await signUp({ email: 'invite3@test.local', inviteCode: 'EXPIRED' }))
 
         await app.request('/api/auth/sign-out', bearer(u.token, { method: 'POST' }))
         await record(NETWORK, 'get-session-signed-out.json', 'GET /api/auth/get-session', await get(u.token, '/api/auth/get-session'))

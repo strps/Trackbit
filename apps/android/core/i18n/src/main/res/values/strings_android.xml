@@ -3,6 +3,12 @@
 <resources>
     <string name="android_auth_sign_in_invalid_credentials">Invalid email or password.</string>
     <string name="android_auth_sign_in_email_not_verified">Verify your email before signing in. Check your inbox for the link.</string>
+    <string name="android_auth_sign_up_invite_optional">Optional. Use the code from your invitation email.</string>
+    <string name="android_auth_sign_up_email_taken">An account already uses this email. Sign in, or reset your password.</string>
+    <string name="android_auth_sign_up_invite_invalid">This invitation code doesn\'t exist.</string>
+    <string name="android_auth_sign_up_invite_used_up">This invitation code has already been used.</string>
+    <string name="android_auth_sign_up_invite_expired">This invitation code has expired.</string>
+    <string name="android_auth_forgot_sent">If an account uses this email, a reset link is on its way. Open it on any device to choose a new password.</string>
     <string name="android_errors_offline">Can\'t reach Trackbit. Check your connection and try again.</string>
     <string name="android_tracker_offline">Offline. Showing saved data; changes sync when you\'re back online.</string>
     <string name="android_tracker_increment">Add 1 to %1$s</string>

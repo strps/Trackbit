@@ -17,11 +17,15 @@ data class SignInUiState(
     val password: String = "",
     val submitting: Boolean = false,
     val error: SignInError? = null,
+    /** Only offered while [error] is [SignInError.EmailNotVerified]. */
+    val resend: ResendState = ResendState.Idle,
 ) {
     val canSubmit: Boolean get() = !submitting && email.isNotBlank() && password.isNotEmpty()
 }
 
 enum class SignInError { InvalidEmail, InvalidCredentials, EmailNotVerified, Offline, Unexpected }
+
+enum class ResendState { Idle, Sending, Sent, Failed }
 
 /** Signing in only changes [AuthRepository.state]; the app routes away from here when it does. */
 @HiltViewModel
@@ -32,21 +36,21 @@ class SignInViewModel @Inject constructor(
         private set
 
     fun onEmailChange(email: String) {
-        state = state.copy(email = email, error = null)
+        state = state.copy(email = email, error = null, resend = ResendState.Idle)
     }
 
     fun onPasswordChange(password: String) {
-        state = state.copy(password = password, error = null)
+        state = state.copy(password = password, error = null, resend = ResendState.Idle)
     }
 
     fun submit() {
         if (!state.canSubmit) return
         val email = state.email.trim()
-        if (!EMAIL.matches(email)) {
+        if (!isEmail(email)) {
             state = state.copy(error = SignInError.InvalidEmail)
             return
         }
-        state = state.copy(submitting = true, error = null)
+        state = state.copy(submitting = true, error = null, resend = ResendState.Idle)
         viewModelScope.launch {
             when (val result = auth.signIn(email, state.password)) {
                 // Stay "submitting" until the app navigates away, so the form can't be sent twice.
@@ -56,9 +60,16 @@ class SignInViewModel @Inject constructor(
         }
     }
 
-    private companion object {
-        /** Same shape the server accepts; the server stays authoritative. */
-        val EMAIL = Regex("""^[^\s@]+@[^\s@]+\.[^\s@]+$""")
+    /** Mails a new verification link to the account that just failed to sign in unverified. */
+    fun resendVerification() {
+        if (state.error != SignInError.EmailNotVerified || state.resend == ResendState.Sending) return
+        state = state.copy(resend = ResendState.Sending)
+        viewModelScope.launch {
+            val result = auth.resendVerificationEmail(state.email.trim())
+            // A field edited meanwhile has already reset the offer.
+            if (state.resend != ResendState.Sending) return@launch
+            state = state.copy(resend = if (result is ApiResult.Success) ResendState.Sent else ResendState.Failed)
+        }
     }
 }
 

@@ -1,10 +1,13 @@
 package com.trackbit.core.network.service
 
 import com.trackbit.core.model.ChangePasswordRequest
+import com.trackbit.core.model.PasswordResetRequest
 import com.trackbit.core.model.SessionResponse
 import com.trackbit.core.model.SignInRequest
+import com.trackbit.core.model.SignUpRequest
 import com.trackbit.core.model.UpdateUserRequest
 import com.trackbit.core.model.UpdateUserResponse
+import com.trackbit.core.model.VerificationEmailRequest
 import com.trackbit.core.model.serialization.TrackbitJson
 import com.trackbit.core.network.ApiError
 import com.trackbit.core.network.ApiResult
@@ -42,6 +45,18 @@ interface AuthService {
     /** The new session's token is in the `set-auth-token` header; see [changePassword]. */
     @POST("api/auth/change-password")
     suspend fun changePasswordRaw(@Body body: ChangePasswordRequest): Response<Unit>
+
+    /** Creates an unverified account and emails its verification link; it starts no session. */
+    @POST("api/auth/sign-up/email")
+    suspend fun signUp(@Body body: SignUpRequest)
+
+    /** Emails a link to the web's reset page, if the account exists. */
+    @POST("api/auth/request-password-reset")
+    suspend fun requestPasswordReset(@Body body: PasswordResetRequest)
+
+    /** Emails a new verification link, if the account exists and is unverified. */
+    @POST("api/auth/send-verification-email")
+    suspend fun sendVerificationEmail(@Body body: VerificationEmailRequest)
 }
 
 /** Signs in and returns the session token to send as the bearer token. */

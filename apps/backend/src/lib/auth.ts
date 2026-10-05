@@ -4,7 +4,7 @@ import { admin, bearer } from "better-auth/plugins"
 import { user } from "../db/schema/app/user.js";
 import { account, session, verification } from "../db/schema/app/auth.js";
 import { invites } from "../db/schema/app/settings.js";
-import { lt, gte, eq } from "drizzle-orm";
+import { and, eq, gt, isNull, lt, or, sql } from "drizzle-orm";
 import { getOAuthState, APIError } from "better-auth/api";  // Added APIError
 import { PasswordResetEmail } from "../emails/PasswordReset.js";
 import { VerificationEmail } from "../emails/VerificationEmail.js";
@@ -43,6 +43,51 @@ function withValidName<T extends Record<string, unknown>>(data: T): T {
   return { ...data, name };
 }
 
+const FRONT_URL = process.env.FRONT_URL || 'http://localhost:5173';
+
+// The reset page lives in the web app, whichever client asked: the emailed link
+// carries the token straight to it (Better-Auth's own GET /reset-password/:token
+// hop needs a client-supplied `redirectTo`, which no client sent, so every link
+// ended on its error page).
+export function passwordResetUrl(token: string) {
+  return `${FRONT_URL}/reset-password?token=${encodeURIComponent(token)}`;
+}
+
+type InviteError = 'invite_code_invalid' | 'invite_code_max_uses' | 'invite_code_expired';
+
+// Clients branch on `code`; better-call would otherwise derive it from the
+// (translated) message.
+function inviteError(key: InviteError, locale: string) {
+  return new APIError("BAD_REQUEST", { message: t('errors', key, locale), code: key.toUpperCase() });
+}
+
+/**
+ * Consumes one use of [code] and returns the role it grants. The check and the
+ * increment are one conditional UPDATE, so concurrent sign-ups can't share the
+ * last use; when nothing matched, the row says why.
+ */
+async function consumeInvite(code: string, locale: string): Promise<string> {
+  const now = new Date();
+  const [consumed] = await db
+    .update(invites)
+    .set({
+      uses: sql`${invites.uses} + 1`,
+      consumedAt: sql`CASE WHEN ${invites.uses} + 1 >= ${invites.maxUses} THEN now() ELSE NULL END`,
+    })
+    .where(and(
+      eq(invites.code, code),
+      lt(invites.uses, invites.maxUses),
+      or(isNull(invites.expiresAt), gt(invites.expiresAt, now)),
+    ))
+    .returning({ role: invites.role });
+  if (consumed) return consumed.role;
+
+  const invite = await db.query.invites.findFirst({ where: eq(invites.code, code) });
+  if (!invite) throw inviteError('invite_code_invalid', locale);
+  if (invite.uses >= invite.maxUses) throw inviteError('invite_code_max_uses', locale);
+  throw inviteError('invite_code_expired', locale);
+}
+
 export const auth = betterAuth({
 
   baseURL: process.env.SERVER_URL || 'http://localhost:3000',
@@ -65,7 +110,7 @@ export const auth = betterAuth({
   ],
 
   // Trusted origins for cross-site requests
-  trustedOrigins: [process.env.FRONT_URL || 'http://localhost:5173', process.env.ADMIN_URL || 'http://localhost:5173'],
+  trustedOrigins: [FRONT_URL, process.env.ADMIN_URL || 'http://localhost:5173'],
   advanced: {
     defaultCookieAttributes: {
       sameSite: "none",  // Critical for cross-site cookie setting/sending
@@ -76,7 +121,11 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
-    async sendResetPassword({ user, url }) {
+    // A reset is how a user takes back an account: every signed-in device
+    // (bearer tokens too) has to sign in again with the new password.
+    revokeSessionsOnPasswordReset: true,
+    async sendResetPassword({ user, token }) {
+      const url = passwordResetUrl(token);
       const locale = (user as any).locale ?? 'en';
       const strings = buildPasswordResetStrings(locale, user.name ?? 'User');
       sendEmail({
@@ -180,20 +229,19 @@ export const auth = betterAuth({
       },
       create: {
         before: async (data, ctx) => {
+          // For email/password signup: inviteCode comes directly from data. It
+          // isn't a column, so it must leave the input object itself: Better-Auth
+          // merges the returned data into it, and a key missing from a copy
+          // would still reach the insert (every invited sign-up failed so).
+          let inviteCode = (data as { inviteCode?: unknown }).inviteCode;
+          delete (data as { inviteCode?: unknown }).inviteCode;
+
           assertValidTimezone(data);
           assertValidLocale(data);
           data = withValidName(data);
           const locale = negotiateFromHeader(
             (ctx?.request as Request | undefined)?.headers?.get('accept-language') ?? undefined
           );
-
-          let inviteCode: string | undefined;
-
-          // For email/password signup: inviteCode comes directly from data
-          if ("inviteCode" in data) {
-            inviteCode = (data as { inviteCode?: string }).inviteCode;
-            delete data.inviteCode;
-          }
 
           // For social/OAuth signup: retrieve from state during callback
           if (ctx?.path?.startsWith("/callback/")) {
@@ -204,52 +252,12 @@ export const auth = betterAuth({
           // Invite code is optional. Regular signups get the default role.
           // If a code is supplied (e.g. from an emailed invite link), validate
           // it, consume one use, and assign the role from the invite.
-          if (!inviteCode) {
+          const code = typeof inviteCode === "string" ? inviteCode.trim() : "";
+          if (!code) {
             return { data };
           }
 
-          const invite = await db.query.invites.findFirst({
-            where: eq(invites.code, inviteCode),
-          });
-
-          if (!invite) {
-            throw new APIError("BAD_REQUEST", {
-              message: t('errors', 'invite_code_invalid', locale),
-            });
-          }
-
-          // Check usage limit
-          if (invite.maxUses !== null && invite.uses >= invite.maxUses) {
-            throw new APIError("BAD_REQUEST", {
-              message: t('errors', 'invite_code_max_uses', locale),
-            });
-          }
-
-          // Check expiration
-          if (invite.expiresAt && invite.expiresAt < new Date()) {
-            throw new APIError("BAD_REQUEST", {
-              message: t('errors', 'invite_code_expired', locale),
-            });
-          }
-
-          // Consume one use of the invite
-          const newUses = invite.uses + 1;
-          const isFullyConsumed = invite.maxUses !== null && newUses >= invite.maxUses;
-
-          await db
-            .update(invites)
-            .set({
-              uses: newUses,
-              consumedAt: isFullyConsumed ? new Date() : null,
-            })
-            .where(eq(invites.id, invite.id));
-
-          return {
-            data: {
-              ...data,
-              role: invite.role ?? "tester",
-            },
-          };
+          return { data: { ...data, role: await consumeInvite(code, locale) } };
         },
       },
     },

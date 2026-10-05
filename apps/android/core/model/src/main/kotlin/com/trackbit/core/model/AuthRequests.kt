@@ -11,6 +11,35 @@ data class SignInRequest(
     val password: String,
 )
 
+/**
+ * `POST /api/auth/sign-up/email`. No session comes back: the account must verify its email
+ * first. [locale] and [timezone] are the device's, as the web sends its browser's; a blank
+ * [inviteCode] is left out (the server would ignore it too).
+ */
+@Serializable
+data class SignUpRequest(
+    val name: String,
+    val email: String,
+    val password: String,
+    val locale: String,
+    val timezone: String,
+    val inviteCode: String? = null,
+)
+
+/**
+ * `POST /api/auth/request-password-reset`. The server emails a link to the web's reset page,
+ * and answers the same whether or not the account exists.
+ */
+@Serializable
+data class PasswordResetRequest(val email: String)
+
+/**
+ * `POST /api/auth/send-verification-email` without a session: mails a new link if [email] is
+ * an unverified account, and answers the same either way.
+ */
+@Serializable
+data class VerificationEmailRequest(val email: String)
+
 /** `POST /api/auth/update-user` with only the profile name; see [AccountRules.NAME_LENGTH]. */
 @Serializable
 data class UpdateUserRequest(val name: String)
@@ -38,4 +67,8 @@ object AccountRules {
 
     /** Better-Auth's default `minPasswordLength`, also the web sign-up's. */
     const val PASSWORD_MIN = 8
+
+    /** [languageTag]'s language if the apps ship it, else English (the web's `detectLocale`). */
+    fun signUpLocale(languageTag: String): String =
+        languageTag.substringBefore('-').lowercase().takeIf { it in SessionUser.LOCALES } ?: "en"
 }

@@ -12,6 +12,7 @@ import com.trackbit.core.model.HabitIcon
 import com.trackbit.core.model.HabitRequest
 import com.trackbit.core.model.HabitType
 import com.trackbit.core.model.IncrementRequest
+import com.trackbit.core.model.SignUpRequest
 import com.trackbit.core.model.UpdateUserRequest
 import com.trackbit.core.network.service.AuthService
 import com.trackbit.core.network.service.ExerciseListService
@@ -68,6 +69,9 @@ class ErrorContractTest {
     private suspend fun appendTo(listId: Int): ApiError = listError { lists.append(listId, AppendListItemRequest(1)) }
 
     private suspend fun signIn(): ApiResult<String> = auth.signIn("a@test.local", "password-1234")
+
+    private suspend fun signUp(): ApiError =
+        (safeCall { auth.signUp(SignUpRequest("Ada", "a@test.local", "password-1234", "en", "UTC", "CODE")) } as ApiResult.Failure).error
 
     private suspend fun changePassword(): ApiResult<String> =
         auth.changePassword(ChangePasswordRequest("password-1234", "password-5678"))
@@ -139,6 +143,27 @@ class ErrorContractTest {
         },
         "sign-in-email-not-verified.json" to {
             assertEquals(ApiResult.Failure(ApiError.Unknown(403, "EMAIL_NOT_VERIFIED", "Email not verified")), signIn())
+        },
+        "sign-up-email-taken.json" to {
+            assertEquals(
+                ApiError.Unknown(422, "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL", "User already exists. Use another email."),
+                signUp(),
+            )
+        },
+        "sign-up-password-too-short.json" to {
+            assertEquals(ApiError.Validation("Password too short", emptyList(), "PASSWORD_TOO_SHORT"), signUp())
+        },
+        "sign-up-invite-invalid.json" to {
+            assertEquals(ApiError.Validation("Invalid invitation code.", emptyList(), "INVITE_CODE_INVALID"), signUp())
+        },
+        "sign-up-invite-used-up.json" to {
+            assertEquals(
+                ApiError.Validation("This invitation code has reached its maximum uses.", emptyList(), "INVITE_CODE_MAX_USES"),
+                signUp(),
+            )
+        },
+        "sign-up-invite-expired.json" to {
+            assertEquals(ApiError.Validation("This invitation code has expired.", emptyList(), "INVITE_CODE_EXPIRED"), signUp())
         },
         "change-password-invalid.json" to {
             assertEquals(ApiResult.Failure(ApiError.Validation("Invalid password", emptyList(), "INVALID_PASSWORD")), changePassword())

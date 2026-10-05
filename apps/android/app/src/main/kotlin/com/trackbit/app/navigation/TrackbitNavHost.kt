@@ -34,7 +34,9 @@ import com.trackbit.core.i18n.R
 import com.trackbit.feature.account.AccountScreen
 import com.trackbit.feature.account.SettingsScreen
 import com.trackbit.feature.analytics.AnalyticsScreen
+import com.trackbit.feature.auth.ForgotPasswordScreen
 import com.trackbit.feature.auth.SignInScreen
+import com.trackbit.feature.auth.SignUpScreen
 import com.trackbit.feature.exerciselibrary.ExerciseFormScreen
 import com.trackbit.feature.exerciselibrary.ExerciseLibraryScreen
 import com.trackbit.feature.exerciselists.ExerciseListsScreen
@@ -46,12 +48,19 @@ import com.trackbit.feature.tracker.TrackerScreen
 import kotlinx.serialization.Serializable
 import java.time.LocalDate
 
-/** Screens for a signed-out user. Sign-up and password reset join this graph later. */
+/** Screens for a signed-out user: sign-in, sign-up and asking for a password reset. */
 @Serializable
 data object SignedOutGraph
 
 @Serializable
 data object SignInRoute
+
+@Serializable
+data object SignUpRoute
+
+/** [email] pre-fills the form (the sign-in form's). */
+@Serializable
+data class ForgotPasswordRoute(val email: String = "")
 
 /** Screens for a signed-in user. */
 @Serializable
@@ -139,7 +148,18 @@ private fun AuthNavHost(graph: Any, onSignOut: () -> Unit) {
             modifier = Modifier.padding(padding).consumeWindowInsets(padding),
         ) {
             navigation<SignedOutGraph>(startDestination = SignInRoute) {
-                composable<SignInRoute> { SignInScreen() }
+                composable<SignInRoute> {
+                    SignInScreen(
+                        onSignUp = { navController.navigate(SignUpRoute) },
+                        onForgotPassword = { navController.navigate(ForgotPasswordRoute(it)) },
+                    )
+                }
+                // Neither starts a session, so both lead back to sign-in (popping to it, so a
+                // double tap can't empty the graph).
+                composable<SignUpRoute> { SignUpScreen(onSignIn = { navController.popBackStack(SignInRoute, inclusive = false) }) }
+                composable<ForgotPasswordRoute> {
+                    ForgotPasswordScreen(onBack = { navController.popBackStack(SignInRoute, inclusive = false) })
+                }
             }
             navigation<SignedInGraph>(startDestination = TrackerRoute) {
                 composable<TrackerRoute> {

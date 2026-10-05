@@ -89,6 +89,14 @@
     <string name="auth_forgot_submitting">Sending...</string>
     <string name="auth_forgot_back">Back to sign in</string>
     <string name="auth_forgot_success">Check your email for a password reset link.</string>
+    <string name="auth_reset_title">Choose a new password</string>
+    <string name="auth_reset_description">Enter a new password for your account. Every device signed in to it will need to sign in again.</string>
+    <string name="auth_reset_password">New password</string>
+    <string name="auth_reset_submit">Set password</string>
+    <string name="auth_reset_submitting">Saving...</string>
+    <string name="auth_reset_success">Your password has been changed. Sign in with your new password.</string>
+    <string name="auth_reset_invalid_link">This reset link has expired or was already used.</string>
+    <string name="auth_reset_request_new">Request a new link</string>
     <string name="auth_verify_title">Email Verification</string>
     <string name="auth_verify_loading">Verifying your email address...</string>
     <string name="auth_verify_success_description">Your email has been successfully verified!</string>

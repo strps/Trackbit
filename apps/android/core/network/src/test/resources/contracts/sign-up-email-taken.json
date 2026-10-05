@@ -1,0 +1,8 @@
+{
+  "request": "POST /api/auth/sign-up/email",
+  "status": 422,
+  "body": {
+    "code": "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL",
+    "message": "User already exists. Use another email."
+  }
+}
