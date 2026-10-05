@@ -1,0 +1,16 @@
+{
+  "request": "PATCH /api/exercise-info/exercises/:id",
+  "status": 200,
+  "body": {
+    "id": 3,
+    "userId": "user-id",
+    "name": "Ring dips",
+    "description": null,
+    "category": "cardio",
+    "defaultWeightUnit": "kg",
+    "defaultDistanceUnit": "km",
+    "lastPerformance": null,
+    "muscleGroups": [],
+    "frozen": false
+  }
+}

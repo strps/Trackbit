@@ -64,6 +64,7 @@ dependencies {
     implementation(projects.feature.account)
     implementation(projects.feature.analytics)
     implementation(projects.feature.auth)
+    implementation(projects.feature.exerciseLibrary)
     implementation(projects.feature.habitsConfig)
     implementation(projects.feature.session)
     implementation(projects.feature.tracker)

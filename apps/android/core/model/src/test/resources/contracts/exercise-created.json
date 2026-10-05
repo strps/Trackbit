@@ -1,0 +1,21 @@
+{
+  "request": "POST /api/exercise-info/exercises",
+  "status": 201,
+  "body": {
+    "id": 3,
+    "userId": "user-id",
+    "name": "Dips",
+    "description": "Lean forward",
+    "category": "strength",
+    "defaultWeightUnit": "kg",
+    "defaultDistanceUnit": "km",
+    "lastPerformance": null,
+    "muscleGroups": [
+      {
+        "id": 1,
+        "name": "Chest"
+      }
+    ],
+    "frozen": false
+  }
+}

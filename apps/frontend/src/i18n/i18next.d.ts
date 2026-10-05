@@ -5,6 +5,7 @@ import auth from './locales/en/auth.json';
 import nav from './locales/en/nav.json';
 import tracker from './locales/en/tracker.json';
 import habits from './locales/en/habits.json';
+import exercises from './locales/en/exercises.json';
 import lists from './locales/en/lists.json';
 import analytics from './locales/en/analytics.json';
 import errors from './locales/en/errors.json';
@@ -23,6 +24,7 @@ declare module 'i18next' {
       nav: typeof nav;
       tracker: typeof tracker;
       habits: typeof habits;
+      exercises: typeof exercises;
       lists: typeof lists;
       analytics: typeof analytics;
       errors: typeof errors;

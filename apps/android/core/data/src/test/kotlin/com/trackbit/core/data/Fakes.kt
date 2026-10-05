@@ -1,6 +1,5 @@
 package com.trackbit.core.data
 
-import kotlinx.coroutines.yield
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.trackbit.core.auth.AuthRepository
@@ -8,50 +7,53 @@ import com.trackbit.core.auth.AuthState
 import com.trackbit.core.data.sync.SyncScheduler
 import com.trackbit.core.database.TrackbitDatabase
 import com.trackbit.core.model.CheckRequest
+import com.trackbit.core.model.ColorStop
+import com.trackbit.core.model.ColorTheme
 import com.trackbit.core.model.CreateExerciseLogRequest
 import com.trackbit.core.model.CreatePerformanceRequest
 import com.trackbit.core.model.CreateSessionRequest
-import com.trackbit.core.model.Exercise
-import com.trackbit.core.model.LastPerformance
-import com.trackbit.core.model.ExerciseLog
-import com.trackbit.core.model.ExercisePerformance
-import com.trackbit.core.model.ExerciseSession
-import com.trackbit.core.model.ExerciseSessionDetail
-import com.trackbit.core.model.HabitSetsResponse
-import com.trackbit.core.model.SetValues
-import com.trackbit.core.model.ColorStop
-import com.trackbit.core.model.ColorTheme
 import com.trackbit.core.model.DayLog
 import com.trackbit.core.model.DaysResponse
 import com.trackbit.core.model.EnsureDayLogRequest
+import com.trackbit.core.model.Exercise
+import com.trackbit.core.model.ExerciseLog
+import com.trackbit.core.model.ExerciseLogCardStyle
+import com.trackbit.core.model.ExercisePerformance
+import com.trackbit.core.model.ExerciseRequest
+import com.trackbit.core.model.ExerciseSession
+import com.trackbit.core.model.ExerciseSessionDetail
+import com.trackbit.core.model.ExerciseSourceDescriptor
 import com.trackbit.core.model.HabitIcon
+import com.trackbit.core.model.HabitSetsResponse
 import com.trackbit.core.model.HabitType
 import com.trackbit.core.model.IncrementRequest
+import com.trackbit.core.model.LastPerformance
+import com.trackbit.core.model.MuscleGroup
+import com.trackbit.core.model.QueueEntry
 import com.trackbit.core.model.RecentDay
+import com.trackbit.core.model.ResolvedQueue
 import com.trackbit.core.model.Rgba
+import com.trackbit.core.model.SessionUser
+import com.trackbit.core.model.SetValues
+import com.trackbit.core.model.SourceCapabilities
 import com.trackbit.core.model.TodayHabit
 import com.trackbit.core.model.TodayResponse
-import com.trackbit.core.model.ExerciseLogCardStyle
-import com.trackbit.core.model.SessionUser
 import com.trackbit.core.model.UnitSystem
 import com.trackbit.core.network.ApiResult
 import com.trackbit.core.network.IdempotencyKey
 import com.trackbit.core.network.SessionTokenSource
-import com.trackbit.core.model.ExerciseSourceDescriptor
-import com.trackbit.core.model.QueueEntry
-import com.trackbit.core.model.ResolvedQueue
-import com.trackbit.core.model.SourceCapabilities
 import com.trackbit.core.network.service.ExerciseService
 import com.trackbit.core.network.service.TrackerService
-import kotlinx.coroutines.flow.MutableStateFlow
-import okhttp3.ResponseBody.Companion.toResponseBody
-import retrofit2.HttpException
-import retrofit2.Response
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZoneOffset
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.yield
+import okhttp3.ResponseBody.Companion.toResponseBody
+import retrofit2.HttpException
+import retrofit2.Response
 
 val DAY: LocalDate = LocalDate.of(2026, 9, 26)
 
@@ -240,6 +242,35 @@ class FakeExerciseService(var answer: () -> List<Exercise> = { emptyList() }) : 
         calls++
         yield()
         return answer()
+    }
+
+    var muscleGroupsAnswer: () -> List<MuscleGroup> = { emptyList() }
+    /** Answers a create (id null) or an update; throw [httpError] to fail it. */
+    var writeAnswer: (id: Int?, body: ExerciseRequest) -> Exercise = { id, body ->
+        exercise(id ?: 100).copy(userId = "user", name = body.name, description = body.description)
+    }
+    val writes = mutableListOf<Pair<Int?, ExerciseRequest?>>()
+
+    override suspend fun createExercise(body: ExerciseRequest): Exercise {
+        yield()
+        writes += null to body
+        return writeAnswer(null, body)
+    }
+
+    override suspend fun updateExercise(id: Int, body: ExerciseRequest): Exercise {
+        yield()
+        writes += id to body
+        return writeAnswer(id, body)
+    }
+
+    override suspend fun deleteExercise(id: Int) {
+        yield()
+        writes += id to null
+    }
+
+    override suspend fun muscleGroups(): List<MuscleGroup> {
+        yield()
+        return muscleGroupsAnswer()
     }
 
     override suspend fun sources(): List<ExerciseSourceDescriptor> {

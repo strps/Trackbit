@@ -79,4 +79,7 @@
     <string name="android_account_password_note">Al cambiarla se cerrará tu sesión en tus otros dispositivos.</string>
     <string name="android_account_invalid_password">La contraseña actual es incorrecta.</string>
     <string name="android_account_save_failed">No se pudo guardar. Inténtalo de nuevo.</string>
+    <!-- Biblioteca de ejercicios (E3) -->
+    <string name="android_exercises_all_muscles">Todos los músculos</string>
+    <string name="android_exercises_not_found">Este ejercicio ya no existe.</string>
 </resources>

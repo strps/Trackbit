@@ -4,7 +4,7 @@ import com.trackbit.core.model.HabitType
 import com.trackbit.core.network.ApiError
 import com.trackbit.core.network.ApiResult
 
-/** What a config call (habits, and later the library, lists and account) came back with. */
+/** What a config call (habits, the exercise library, and later lists) came back with. */
 sealed interface ConfigResult<out T> {
     data class Success<T>(val value: T) : ConfigResult<T>
     data class Failure(val error: ConfigError) : ConfigResult<Nothing>
@@ -22,6 +22,14 @@ sealed interface ConfigError {
     /** [type] isn't in the role's [allowed] types. */
     data class HabitTypeNotAllowed(val type: HabitType?, val allowed: List<HabitType>) : ConfigError
 
+    /** A custom exercise over the role's limits: read-only until one is deleted. */
+    data object CustomExerciseFrozen : ConfigError
+
+    data class CustomExerciseLimitReached(val maxCustomExercises: Int) : ConfigError
+
+    /** The user already has a custom exercise with that name. */
+    data object ExerciseNameTaken : ConfigError
+
     /** Gone on the server (deleted elsewhere). */
     data object NotFound : ConfigError
 
@@ -38,6 +46,9 @@ internal fun <T> ApiResult<T>.toConfigResult(type: HabitType? = null): ConfigRes
             is ApiError.HabitLimitReached -> ConfigError.HabitLimitReached(e.maxHabits ?: 0)
             is ApiError.HabitTypeNotAllowed ->
                 ConfigError.HabitTypeNotAllowed(type, e.allowed.mapNotNull { wire -> HabitType.entries.find { it.wire == wire } })
+            is ApiError.CustomExerciseFrozen -> ConfigError.CustomExerciseFrozen
+            is ApiError.CustomExerciseLimitReached -> ConfigError.CustomExerciseLimitReached(e.maxCustomExercises ?: 0)
+            ApiError.ExerciseNameTaken -> ConfigError.ExerciseNameTaken
             is ApiError.NotFound -> ConfigError.NotFound
             else -> ConfigError.Failed
         },

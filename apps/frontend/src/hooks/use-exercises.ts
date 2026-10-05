@@ -1,6 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Exercise } from '@trackbit/types';
 import { parseApiError } from '@/shared/lib/api-error';
+import { EXERCISE_LISTS_QUERY_KEY } from '@/features/exercise-lists/use-exercise-lists';
+import { EXERCISE_SOURCES_QUERY_KEY } from './use-exercise-sources';
+import { EXERCISE_QUEUE_QUERY_KEY } from './use-exercise-queue';
 
 const API_URL = `${import.meta.env.VITE_API_URL}/exercise-info`;
 
@@ -30,7 +33,10 @@ const fetchMuscleGroups = async (): Promise<{ name: string; id: number }[]> => {
     return res.json();
 };
 
-const createExercise = async (newExercise: { name: string; category: string; muscleGroups?: number[] }) => {
+/** The custom exercise form; `description` null or blank clears it. */
+export type ExerciseInput = { name: string; category: string; muscleGroups?: number[]; description?: string | null };
+
+const createExercise = async (newExercise: ExerciseInput) => {
     const res = await fetch(`${API_URL}/exercises`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -50,7 +56,7 @@ const deleteExercise = async (id: number) => {
     return res.json();
 };
 
-const updateExercise = async ({ id, ...data }: { id: number; name: string; category: string; muscleGroups?: number[]; description?: string }) => {
+const updateExercise = async ({ id, ...data }: ExerciseInput & { id: number }) => {
     const res = await fetch(`${API_URL}/exercises/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -82,11 +88,16 @@ export function useExercises() {
         },
     });
 
+    // A delete also removes the exercise's logs and list items, so sessions and lists refetch.
     const deleteMutation = useMutation({
         mutationFn: deleteExercise,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['exercises'] });
             queryClient.invalidateQueries({ queryKey: ['me', 'limits'] });
+            queryClient.invalidateQueries({ queryKey: ['habit-logs'] });
+            queryClient.invalidateQueries({ queryKey: EXERCISE_LISTS_QUERY_KEY });
+            queryClient.invalidateQueries({ queryKey: EXERCISE_SOURCES_QUERY_KEY });
+            queryClient.invalidateQueries({ queryKey: EXERCISE_QUEUE_QUERY_KEY });
         },
     });
 
@@ -121,7 +132,7 @@ export function useExercises() {
         isLoading: query.isLoading,
         createExercise: createMutation.mutateAsync,
         isCreating: createMutation.isPending,
-        deleteExercise: deleteMutation.mutate,
+        deleteExercise: deleteMutation.mutateAsync,
         isDeleting: deleteMutation.isPending,
         updateExercise: updateMutation.mutateAsync,
         isUpdating: updateMutation.isPending,

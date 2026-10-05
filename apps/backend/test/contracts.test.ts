@@ -215,6 +215,21 @@ describe('Android contracts', () => {
             await get(u.token, `/api/tracker/sets?habitId=${habit.id}`), u.secrets)
 
         await record(MODEL, 'exercises.json', 'GET /api/exercise-info/exercises', await get(u.token, '/api/exercise-info/exercises'), u.secrets)
+
+        // The library: muscle groups, and a custom exercise's create and update.
+        await record(MODEL, 'muscle-groups.json', 'GET /api/exercise-info/muscle-groups', await get(u.token, '/api/exercise-info/muscle-groups'), u.secrets)
+        const created = await post(u.token, '/api/exercise-info/exercises', {
+            name: 'Dips', description: 'Lean forward', category: 'strength', muscleGroups: [chest.id],
+        })
+        const dipsId = (await created.clone().json()).id
+        await record(MODEL, 'exercise-created.json', 'POST /api/exercise-info/exercises', created, u.secrets)
+        await record(MODEL, 'exercise-updated.json', 'PATCH /api/exercise-info/exercises/:id',
+            await send(u.token, 'PATCH', `/api/exercise-info/exercises/${dipsId}`, { name: 'Ring dips', category: 'cardio', description: null, muscleGroups: [] }),
+            u.secrets)
+        await record(NETWORK, 'exercise-name-taken.json', 'POST /api/exercise-info/exercises',
+            await post(u.token, '/api/exercise-info/exercises', { name: 'Ring dips', category: 'strength' }), u.secrets)
+        await record(NETWORK, 'muscle-group-not-found.json', 'POST /api/exercise-info/exercises',
+            await post(u.token, '/api/exercise-info/exercises', { name: 'Ghost', category: 'strength', muscleGroups: [999999] }), u.secrets)
     })
 
     it('frozen custom exercise', async () => {
@@ -232,6 +247,10 @@ describe('Android contracts', () => {
 
         await record(NETWORK, 'custom-exercise-frozen.json', 'POST /api/tracker/exercise-logs',
             await post(u.token, '/api/tracker/exercise-logs', { exerciseSessionId: session.id, exerciseId: frozen.id }))
+        await record(NETWORK, 'custom-exercise-frozen-update.json', 'PATCH /api/exercise-info/exercises/:id',
+            await send(u.token, 'PATCH', `/api/exercise-info/exercises/${frozen.id}`, { name: 'Thawed' }))
+        await record(NETWORK, 'custom-exercise-limit-reached.json', 'POST /api/exercise-info/exercises',
+            await post(u.token, '/api/exercise-info/exercises', { name: 'One more', category: 'strength' }))
     })
 
     it('session and preferences', async () => {

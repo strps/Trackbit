@@ -1,0 +1,9 @@
+{
+  "request": "PATCH /api/exercise-info/exercises/:id",
+  "status": 403,
+  "body": {
+    "error": "custom_exercise_frozen",
+    "message": "This custom exercise is frozen because your role limits were reduced. Delete it or another to free a slot.",
+    "exerciseId": 1
+  }
+}

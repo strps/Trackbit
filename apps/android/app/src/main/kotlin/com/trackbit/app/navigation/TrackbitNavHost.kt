@@ -35,6 +35,8 @@ import com.trackbit.feature.account.AccountScreen
 import com.trackbit.feature.account.SettingsScreen
 import com.trackbit.feature.analytics.AnalyticsScreen
 import com.trackbit.feature.auth.SignInScreen
+import com.trackbit.feature.exerciselibrary.ExerciseFormScreen
+import com.trackbit.feature.exerciselibrary.ExerciseLibraryScreen
 import com.trackbit.feature.habitsconfig.HabitFormScreen
 import com.trackbit.feature.habitsconfig.HabitsConfigScreen
 import com.trackbit.feature.session.SessionScreen
@@ -72,6 +74,13 @@ data object HabitsConfigRoute
 /** The habit form; [habitId] null creates one. The name matches `HabitFormViewModel.HABIT_ID`. */
 @Serializable
 data class HabitFormRoute(val habitId: Int? = null)
+
+@Serializable
+data object ExerciseLibraryRoute
+
+/** The custom exercise form; [exerciseId] null creates one. The name matches `ExerciseFormViewModel.EXERCISE_ID`. */
+@Serializable
+data class ExerciseFormRoute(val exerciseId: Int? = null)
 
 /** The signed-in screens the bottom bar switches between, like the web's header links. */
 private enum class TopLevel(val route: Any, @StringRes val label: Int, @DrawableRes val icon: Int) {
@@ -134,6 +143,7 @@ private fun AuthNavHost(graph: Any, onSignOut: () -> Unit) {
                     SettingsScreen(
                         onOpenAccount = { navController.navigate(AccountRoute) },
                         onOpenHabits = { navController.navigate(HabitsConfigRoute) },
+                        onOpenExercises = { navController.navigate(ExerciseLibraryRoute) },
                         onSignOut = onSignOut,
                     )
                 }
@@ -146,6 +156,14 @@ private fun AuthNavHost(graph: Any, onSignOut: () -> Unit) {
                     )
                 }
                 composable<HabitFormRoute> { HabitFormScreen(onDone = { navController.popBackStack() }) }
+                composable<ExerciseLibraryRoute> {
+                    ExerciseLibraryScreen(
+                        onBack = { navController.popBackStack() },
+                        onAdd = { navController.navigate(ExerciseFormRoute()) },
+                        onEdit = { navController.navigate(ExerciseFormRoute(it)) },
+                    )
+                }
+                composable<ExerciseFormRoute> { ExerciseFormScreen(onDone = { navController.popBackStack() }) }
                 composable<SessionRoute> { entry ->
                     val route = entry.toRoute<SessionRoute>()
                     SessionScreen(route.habitId, LocalDate.parse(route.day), onBack = { navController.popBackStack() })

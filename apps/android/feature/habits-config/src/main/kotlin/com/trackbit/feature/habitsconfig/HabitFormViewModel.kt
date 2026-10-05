@@ -187,7 +187,7 @@ class HabitFormViewModel @Inject constructor(
             ConfigError.NotFound -> HabitFormMessage.NotFound
             is ConfigError.HabitLimitReached -> HabitFormMessage.HabitLimitReached(maxHabits)
             is ConfigError.HabitTypeNotAllowed -> HabitFormMessage.HabitTypeNotAllowed(type, allowed)
-            ConfigError.Failed -> HabitFormMessage.Failed
+            else -> HabitFormMessage.Failed
         }
     }
 }

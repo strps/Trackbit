@@ -1,12 +1,16 @@
 # Handoff: Kotlin app — Workstream E (settings & configuration)
 
 - **Plan:** [kotlin-app.md](../tasks/kotlin-app.md). Read only §4 "Phase 3" (and §0 D3: config needs a connection). Core context: the "Invariants" and "Landmines" of [kotlin-app-D.md](kotlin-app-D.md), [kotlin-app-C.md](kotlin-app-C.md) and [kotlin-app-B.md](kotlin-app-B.md), nothing else.
-- **Status:** Phase 3. E1 and E2 done on the emulator; **E3 (exercise library) is next**. The Phase 2 exit check is deferred to the final pass with the real-device check (user).
-- **Branch:** `kotlin-app` · **Last run:** 2026-10-03 (E2, committed 6d60f31)
+- **Status:** Phase 3. E1, E2 and E3 done on the emulator; **E4 (exercise lists) is next**. The Phase 2 exit check is deferred to the final pass with the real-device check (user).
+- **Branch:** `kotlin-app` · **Last run:** 2026-10-05 (E3, not committed yet)
 
 ## Where we are
 
 The bottom bar is **Tracker / Stats / Settings**. Settings (`feature/account`) shows the signed-in user, a "Configuration" section with **Habits**, and **Log out** (moved from the tracker's overflow menu, which is gone). Habits opens the habits config (`feature/habits-config`): both groups in order, reordered by dragging a row's grip (also past the Anti-Habits header to change group), tap a row to edit, an "Add Habit" FAB that explains the cap instead of opening at it. The form covers name, tracking method, anti-habit, weekly/daily goals (timed: a minutes dialog), 15 icons, 6 presets + a custom gradient editor, and delete with a confirmation.
+
+Under Configuration, **Exercises** opens the exercise library (`feature/exercise-library`): every exercise sorted by name, searched by name, filtered All / Custom / System and by a top-level muscle group (its subdivisions included), each card with its category badge, Mine/System/Frozen badges, description and muscle groups. Tapping one of the user's own opens the form (name, description, muscle chips, category with its inputs, delete with a confirmation that warns when it was logged); system exercises don't open. A frozen one opens read-only and can be deleted. The "Add Custom Exercise" FAB explains the cap instead of opening at it.
+
+E3 on the emulator (API 36, the user's dev account, 4 seeded `e3-*` muscle groups incl. a subdivision, all deleted afterwards): created "E3 Dips 2" (cardio, Upper chest, a description), and the DB has the link; saving a duplicate name showed the error under the field; the Chest filter showed it via its Upper chest subdivision; editing another exercise (add Back, switch to strength) saved; both deleted from the form; dark mode checked. Not exercised: frozen exercises, the cap (admin account), Spanish, offline, a delete of a logged exercise (the Room cleanup is covered by `ExerciseLibraryRepositoryTest`).
 
 Tapping the user at the top of Settings opens **Account settings** (`AccountScreen`): name (Save), email (read-only), language, units, card style, rest between sets, time zone (read-only, "follows this device"), and change password. The app's language **follows the signed-in user's `locale`** (as the web syncs i18next from the session), so switching it here or on another device changes the app's per-app language. The user's stored **timezone is kept equal to the device's zone automatically** (`DeviceTimeZoneSync`: at start, at sign-in, on `ACTION_TIMEZONE_CHANGED`, and again if a refresh brings back another zone).
 
@@ -14,7 +18,7 @@ E2 on the emulator: Español switched the app at once (activity recreated in pla
 
 E1 on the emulator (API 36, local backend, the user's dev account, an admin): drag Otroer into anti-habits → `PATCH /reorder` stored it; a structured session dropped there snapped back with the web's message; editing (anti off, heart, custom gradient with a moved stop) saved and moved the habit to the end of the habits group; creating "Goal Read" (timed, 5 min) and deleting it worked; the tracker showed each change after the background sync. Test data restored. Not exercised: frozen habits, a role without timed/check, the cap, Spanish, dark mode, offline (shows the offline text + retry).
 
-`./gradlew assembleDebug testDebugUnitTest lintDebug` passes, 0 lint issues, 341 tests (core:model's JVM `test` task included). Backend 90 tests.
+`./gradlew assembleDebug testDebugUnitTest lintDebug` passes, 0 lint issues, 360 tests (core:model's JVM `test` task included). Backend 104 tests.
 
 ## Phase 3 task split (E1–E6)
 
@@ -22,11 +26,21 @@ E1 on the emulator (API 36, local backend, the user's dev account, an admin): dr
 |---|---|---|
 | **E1** | Settings tab hub, habits config (list, reorder, form, gradient editor, delete, limits) | ✅ 2026-10-03 |
 | **E2** | Account: locale (per-app language + PATCH), timezone (device's), units, card style, rest default, profile name, change password | ✅ 2026-10-03 |
-| **E3** | Exercise library: browse/search/filter by muscle group, custom exercise CRUD, frozen. First fix the backend bug: user exercise create/update drops `muscleGroups` (follow-ups) | next |
-| **E4** | Exercise lists: CRUD, item editor + reorder, prescriptions; "add to list" in the picker and library | |
+| **E3** | Exercise library: browse/search/filter by muscle group, custom exercise CRUD, frozen; backend `muscleGroups` fix | ✅ 2026-10-05 |
+| **E4** | Exercise lists: CRUD, item editor + reorder, prescriptions; "add to list" in the picker and library | next |
 | **E5** | Auth screens: sign-up with invite code, forgot password, verify email. Google sign-in is backlog | |
 | **E6** | Issue report (`POST /api/issues`) | |
 | **Exit** | Parity with `/tracker`, `/sessions`, `/stats`, `/config/*`, `/account-settings` | |
+
+## Done (E3)
+
+- **Backend** [exercises.ts](../../../apps/backend/src/routes/app/exercise-info/exercises.ts) is a plain Hono router now (the CRUD factory dropped `muscleGroups`): create/update write the links in a transaction (400 `muscle_group_not_found` rolls back), answer the list's row shape, trim the name 1–100 and the description ≤ 500 (blank → null), 409 `exercise_name_taken`; delete removes the exercise's logs (and sets) and list items, frozen ones too. The list returns `description`. [musclegroups.ts](../../../apps/backend/src/routes/app/exercise-info/musclegroups.ts) is list-only (admins edit under `/admin`). `isUniqueViolation` moved to [db-errors.ts](../../../apps/backend/src/lib/db-errors.ts). Migration [0014](../../../apps/backend/drizzle/0014_exercise_description_not_blank.sql) (local dev only) turns blank descriptions into NULL, drops blank translations and adds the CHECK `exercises_description_not_blank`; the admin route drops blank translations. Tests in [exercise-library.test.ts](../../../apps/backend/test/exercise-library.test.ts); contracts `exercise-created/updated.json`, `muscle-groups.json`, `custom-exercise-frozen-update.json`, `custom-exercise-limit-reached.json`, `exercise-name-taken.json`, `muscle-group-not-found.json`.
+- **Web:** the library edits (pre-filled with its muscle groups) and deletes custom exercises; its strings moved to `exercises.json` (en/es); `@trackbit/types` `Exercise.description` (the stale `muscleGroup` is gone).
+- **core:model:** `Exercise.description`, `MuscleGroup`, [ExerciseRequests.kt](../../../apps/android/core/model/src/main/kotlin/com/trackbit/core/model/ExerciseRequests.kt) (`ExerciseCategory`, `ExerciseRequest`, `ExerciseRules`).
+- **core:network:** `ExerciseService` create/update/delete/muscleGroups; `ApiError.CustomExerciseLimitReached`, `ExerciseNameTaken`.
+- **core:database / core:data:** `SyncDao.removeExercise` + `TrackerSync.removeExercise` (a deleted exercise's logs, analytics sets and queue entries leave Room, then catalog + sources re-pull); [ExerciseLibraryRepository.kt](../../../apps/android/core/data/src/main/kotlin/com/trackbit/core/data/ExerciseLibraryRepository.kt); `ConfigError.CustomExerciseFrozen`, `CustomExerciseLimitReached`, `ExerciseNameTaken`.
+- **feature/exercise-library:** `ExerciseLibraryViewModel`/`Screen`, `ExerciseFormViewModel`/`Screen`, `ExerciseTexts`. Android-only strings `android_exercises_*`.
+- **app:** `ExerciseLibraryRoute`, `ExerciseFormRoute(exerciseId: Int?)`; Settings → Exercises.
 
 ## Done (E2)
 
@@ -50,13 +64,13 @@ E1 on the emulator (API 36, local backend, the user's dev account, an admin): dr
 - **app:** `SettingsRoute`, `HabitsConfigRoute`, `HabitFormRoute(habitId: Int?)`; third tab.
 - **Icons:** grip_vertical, list, log_out, pencil, settings, user (`UI_ICONS` in generate.mjs).
 
-## Next: E3 — exercise library
+## Next: E4 — exercise lists
 
 1. Run **Verify**.
-2. Fix the backend first: user exercise create/update silently drops `muscleGroups` (see [kotlin-app-followups.md](../tasks/kotlin-app-followups.md)); `apps/backend/src/routes/app/exercise-info*` (find the route behind `/api/exercise-info/exercises`). Add a test, then record contracts for create/update/delete and the frozen error.
-3. Add a "Exercises" entry (`R.string.nav_exercises`, `UiIcons.Dumbbell`) under Configuration in [SettingsScreen.kt](../../../apps/android/feature/account/src/main/kotlin/com/trackbit/feature/account/SettingsScreen.kt), opening a new `feature/exercise-library` (the plan's module name), modelled on the web's exercise config page (`apps/frontend/src/features/` — grep `exercise-info/exercises` with POST). Browse/search, filter by muscle group, custom exercise create/edit/delete, frozen ones read-only (deletable, as E1 did for habits).
-4. Writes go through a core:data repository like `HabitsRepository` (server first, then a catalog re-pull in `DataScope`); features see errors as `ConfigError`. Reads come from the server (`GET /exercises`), not Room's catalog cache, per the E1 invariant, unless the screen only needs what Room already has (decide and record it).
-5. The dev DB has no muscle groups (D6 landmine); seed some to test the filter and delete them afterwards.
+2. Read the web's lists: `apps/frontend/src/features/exercise-lists/` (`ExerciseLists.tsx`, `ExerciseListEditor.tsx`, `ListFormDialog.tsx`, `AddToListMenu.tsx`, `use-exercise-lists.ts`) and [exercise-lists.ts](../../../apps/backend/src/routes/app/exercise-lists.ts) (list CRUD, items, prescriptions, `exercise_list_name_taken`, the list cap + frozen lists). Check its write rules the way E1/E3 did (trimmed names, bounds, transactions) and fix them at the server first; record contracts for every new response and error.
+3. Add "Lists" (`R.string.nav_lists`, `UiIcons.List`) under Configuration, opening a new feature module (lists, then the item editor with drag reorder like E1's `reorderable`, and prescription editing).
+4. Writes go through a core:data repository like `ExerciseLibraryRepository`; after success re-pull the sources (`pullSourcesLocked`) and the edited list's cached queue, since the picker reads them from Room.
+5. "Add to list" from the library card and from the session picker (the web's `AddToListMenu`).
 
 ## Invariants — do not break these
 
@@ -73,7 +87,21 @@ E1 on the emulator (API 36, local backend, the user's dev account, an admin): dr
 - **Requests speak the session's language** (`RequestLanguage` → `SessionStore.language()`), so a pull right after a switch is already in the new one. Don't go back to `Locale.getDefault()` in the interceptor.
 - **The stored timezone is the device's** (`DeviceTimeZoneSync`, user). There is no picker; don't add a second writer.
 - **A password change rotates the token through `SessionStore.rotate`**: Better-Auth deletes every session, the caller's too. Any other endpoint that ends the current session must do the same.
+- **`ExerciseRules` is the custom exercise form's and the server's rule set** (`exercises.ts` schema); change them together. A description is never blank: NULL in the DB (CHECK), null on the wire, blank translations dropped by the admin route.
+- **Deleting an exercise goes through `TrackerSync.removeExercise`**: the server deletes its logs and list items, so Room must drop its copies too or cached sessions, analytics and queues keep showing it.
+- **The library reads the server** (descriptions and `frozen` aren't in Room's catalog); Room's catalog stays the picker's/sessions' source and catches up after each library write.
 - **Server-side user rules live in `auth.ts`'s user hooks** (timezone, locale, name), which cover sign-up, `update-user` and OAuth; `AccountRules` mirrors them.
+
+## Decisions made in E3
+
+| Question | Decision | Why |
+|---|---|---|
+| Library reads | Server (`GET /exercises` + `/muscle-groups`), not Room | Room's catalog has no descriptions; same as the E1 invariant. |
+| Muscle filter | Chips of top-level groups; a group matches its subdivisions | The taxonomy is hierarchical; a flat list of every level would be long and miss sub-linked exercises. The web has none yet (follow-ups). |
+| System exercises | Not tappable | Read-only for users; the card already shows everything. |
+| Delete side effects | Drop the exercise's logs/sets/queue entries in Room, then re-pull catalog + sources | The server deletes them; waiting for the next pull would show ghosts. |
+| Blank descriptions | Migration 0014 + CHECK + admin schema, not a client-side hide | Root fix: legacy rows held `''`. |
+| Name taken | Shown under the name field, cleared when the name changes | As the web does. |
 
 ## Decisions made in E2
 
@@ -104,7 +132,10 @@ E1 on the emulator (API 36, local backend, the user's dev account, an admin): dr
 
 ## Landmines
 
-- **Production needs migrations 0008–0013** and the `/days` + `/sets` backend (E2 needs no migration, only the `auth.ts` hooks).
+- **Production needs migrations 0008–0014** and the `/days` + `/sets` backend (E3's 0014 is applied to local dev only).
+- **The local backend's `tsx watch` once missed an edit for two days** (follow-ups): if a backend change seems absent, compare the dev server's start time with the file's mtime and restart it. In E3 it was restarted from this session (`npx tsx watch --env-file=.env src/dev.ts` in `apps/backend`, logging to the session scratchpad); restart it from your own terminal with `pnpm dev:backend`.
+- **The dev DB has no muscle groups again** (E3 seeded `e3-*` ones and deleted them). Seed some to test the library filter or the form's chips.
+- **Gboard's floating toolbar can cover the left of the screen** after `KEYCODE_ESCAPE` hides the keyboard, and once asked for the microphone; tap `Don't allow` and avoid chips on the far left, or hide it with `KEYCODE_BACK` while a field has focus.
 - **The emulator's soft keyboard covers the lower half of the screen**: `input tap` on a field under it types a key instead. Move between fields with `input keyevent KEYCODE_TAB`, and clear a field with `input keycombination 113 29` + `KEYCODE_DEL`. When grepping `uiautomator dump` for a label with accents, match an ASCII prefix (`text="Nueva contrase`).
 - **Changing the emulator's zone:** `adb shell cmd alarm set-timezone <IANA id>`; the app PATCHes the account to follow it, so set it back to `America/Costa_Rica` afterwards. Per-app language: `adb shell cmd locale get-app-locales com.trackbit.app`.
 - **Room's DB on the emulator has no `sqlite3`**: copy `databases/trackbit.db{,-wal,-shm}` out with `adb exec-out run-as com.trackbit.app cat …` and open it locally.
@@ -118,10 +149,10 @@ E1 on the emulator (API 36, local backend, the user's dev account, an admin): dr
 
 ```bash
 cd apps/android && ./gradlew --stop
-./gradlew assembleDebug testDebugUnitTest lintDebug --max-workers=2   # green, 0 lint issues, 341 tests
+./gradlew assembleDebug testDebugUnitTest lintDebug --max-workers=2   # green, 0 lint issues, 360 tests
 pnpm android:generate:check                                          # 57 generated files up to date
 (cd apps/frontend && npx tsc -b)
-pnpm --filter backend test                                           # 90 tests
+pnpm --filter backend test                                           # 104 tests
 ```
 
 ## Open questions
@@ -132,3 +163,4 @@ pnpm --filter backend test                                           # 90 tests
 
 - 2026-10-03 — E1: Phase 3 split E1–E6 (Settings tab, habits first, Google to backlog, Phase 2 exit deferred). Backend habit rules + migration 0013 + reorder/group fixes; web strings to `habits.json`; `HabitsRepository`/`ConfigResult`; `feature/habits-config` and the Settings hub. Android 327 tests. Next: E2.
 - 2026-10-03 — E2: account settings (name, language, units, card style, rest, password; timezone = device's, user). Backend: locale + name rules in `auth.ts` hooks; change-password token rotation proven. Android: AppCompat per-app language following the user's locale, `RequestLanguage`, `SessionStore.rotate`, `DeviceTimeZoneSync`, `LocalizedDataSync`. 341 tests, backend 90. Next: E3.
+- 2026-10-05 — E3: exercise library. Backend: exercises router rewritten (muscle groups stored, rules, name-taken, delete with logs), muscle groups list-only, migration 0014 (no blank descriptions) local dev only; web library edit/delete. Android: `ExerciseLibraryRepository`, `TrackerSync.removeExercise`, `feature/exercise-library`, Settings → Exercises. 360 tests, backend 104. Next: E4.

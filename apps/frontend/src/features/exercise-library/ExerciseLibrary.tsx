@@ -22,18 +22,36 @@ import {
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from '@/shared/components/ui/dropdown-menu';
+import {
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+    AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/shared/components/ui/alert-dialog';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { ApiError } from '@/shared/lib/api-error';
 import { AddToListMenu } from '@/features/exercise-lists/AddToListMenu';
+import type { ExerciseWithLastPerformance } from '../../hooks/use-exercises';
 
 const ExerciseLibrary = () => {
+    const { t } = useTranslation('exercises');
+    const { t: tErrors } = useTranslation('errors');
     const { exercises, isLoading, deleteExercise } = useExercises();
     const { atExerciseCap, effective } = useLimits();
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState<'all' | 'custom' | 'system'>('all');
 
     const [isFormOpen, setIsFormOpen] = useState(false);
-    const [editingExercise, setEditingExercise] = useState<typeof exercises[number] | null>(null);
+    const [editingExercise, setEditingExercise] = useState<ExerciseWithLastPerformance | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<ExerciseWithLastPerformance | null>(null);
+    const categories = useCategoryConfig();
+
+    const confirmDelete = async (exercise: ExerciseWithLastPerformance) => {
+        try {
+            await deleteExercise(exercise.id);
+        } catch {
+            toast.error(t('error.generic_title'), { description: t('error.generic_body') });
+        }
+    };
 
     const filteredExercises = exercises.filter(ex => {
         const matchesSearch = ex.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -46,7 +64,7 @@ const ExerciseLibrary = () => {
 
 
 
-    if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading Library...</div>;
+    if (isLoading) return <div className="p-8 text-center text-muted-foreground">{t('page.loading')}</div>;
 
     return (
         <div className="min-h-screen bg-background text-foreground p-4 md:p-8 font-sans">
@@ -57,10 +75,10 @@ const ExerciseLibrary = () => {
                     <div>
                         <h1 className="text-3xl font-bold flex items-center gap-3">
                             <Dumbbell className="w-8 h-8 text-primary" />
-                            Exercise Library
+                            {t('page.title')}
                         </h1>
                         <p className="text-muted-foreground mt-1">
-                            Manage your database of movements and activities.
+                            {t('page.subtitle')}
                         </p>
                     </div>
                     <Tooltip>
@@ -72,13 +90,13 @@ const ExerciseLibrary = () => {
                                     className="font-bold"
                                     size="lg"
                                 >
-                                    <Plus className="w-4 h-4 mr-2" /> Add Custom Exercise
+                                    <Plus className="w-4 h-4 mr-2" /> {t('page.add')}
                                 </Button>
                             </span>
                         </TooltipTrigger>
                         {atExerciseCap && (
                             <TooltipContent>
-                                You've reached your role's limit of {effective?.maxCustomExercises ?? 0} custom exercises.
+                                {t('page.at_cap', { max: effective?.maxCustomExercises ?? 0 })}
                             </TooltipContent>
                         )}
                     </Tooltip>
@@ -88,7 +106,7 @@ const ExerciseLibrary = () => {
                 <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
                     <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
-                            <DialogTitle>Create New Exercise</DialogTitle>
+                            <DialogTitle>{t('form.create_title')}</DialogTitle>
                         </DialogHeader>
                         <CreateExerciseForm onSuccess={() => setIsFormOpen(false)} />
                     </DialogContent>
@@ -98,7 +116,7 @@ const ExerciseLibrary = () => {
                 <Dialog open={!!editingExercise} onOpenChange={(open) => { if (!open) setEditingExercise(null); }}>
                     <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
-                            <DialogTitle>Edit Exercise</DialogTitle>
+                            <DialogTitle>{t('form.edit_title')}</DialogTitle>
                         </DialogHeader>
                         {editingExercise && (
                             <CreateExerciseForm
@@ -115,7 +133,7 @@ const ExerciseLibrary = () => {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
                         <Input
                             type="text"
-                            placeholder="Search exercises..."
+                            placeholder={t('page.search')}
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
                             className="pl-10"
@@ -127,9 +145,8 @@ const ExerciseLibrary = () => {
                                 key={type}
                                 onClick={() => setFilterType(type)}
                                 variant={filterType === type ? 'default' : 'ghost'}
-                                className="capitalize"
                             >
-                                {type}
+                                {t(`filter.${type}`)}
                             </Button>
                         ))}
                     </div>
@@ -138,14 +155,14 @@ const ExerciseLibrary = () => {
                 {/* List Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredExercises.map((exercise) => {
-                        const config = CATEGORY_CONFIG.find(c => c.value === exercise.category) || CATEGORY_CONFIG[0];
+                        const config = categories.find(c => c.value === exercise.category) || categories[0];
                         const isFrozen = !!exercise.frozen;
 
                         return (
                             <div
                                 key={exercise.id}
                                 className={`p-4 bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow ${isFrozen ? 'opacity-60 grayscale' : ''}`}
-                                title={isFrozen ? 'Frozen — delete to free a slot' : undefined}
+                                title={isFrozen ? tErrors('limits.frozen_tooltip') : undefined}
                             >
                                 <div className="flex justify-between items-start mb-2">
                                     <Badge variant="secondary" className={config.color}>
@@ -156,11 +173,11 @@ const ExerciseLibrary = () => {
                                             <>
                                                 {isFrozen && (
                                                     <Badge variant="outline" className="flex items-center gap-1">
-                                                        <Lock className="w-3 h-3" /> Frozen
+                                                        <Lock className="w-3 h-3" /> {tErrors('limits.frozen_badge')}
                                                     </Badge>
                                                 )}
                                                 <Badge variant="outline" className="flex items-center gap-1">
-                                                    <User className="w-3 h-3" /> Mine
+                                                    <User className="w-3 h-3" /> {t('badge.mine')}
                                                 </Badge>
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
@@ -173,21 +190,21 @@ const ExerciseLibrary = () => {
                                                             <DropdownMenuItem
                                                                 onClick={() => setEditingExercise(exercise)}
                                                             >
-                                                                <Pencil className="w-4 h-4 mr-2" /> Edit
+                                                                <Pencil className="w-4 h-4 mr-2" /> {t('menu.edit')}
                                                             </DropdownMenuItem>
                                                         )}
                                                         <DropdownMenuItem
                                                             className="text-destructive focus:text-destructive"
-                                                            onClick={() => deleteExercise(exercise.id)}
+                                                            onClick={() => setDeleteTarget(exercise)}
                                                         >
-                                                            <Trash2 className="w-4 h-4 mr-2" /> Delete
+                                                            <Trash2 className="w-4 h-4 mr-2" /> {t('menu.delete')}
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
                                             </>
                                         ) : (
                                             <Badge variant="outline" className="flex items-center gap-1 text-muted-foreground">
-                                                <Globe className="w-3 h-3" /> System
+                                                <Globe className="w-3 h-3" /> {t('badge.system')}
                                             </Badge>
                                         )}
                                         <AddToListMenu exerciseId={exercise.id} />
@@ -201,7 +218,7 @@ const ExerciseLibrary = () => {
                                     <span>
                                         {exercise.muscleGroups.length > 0
                                             ? exercise.muscleGroups.map((m) => m.name).join(', ')
-                                            : exercise.muscleGroup || 'General'}
+                                            : t('card.general')}
                                     </span>
                                 </div>
 
@@ -216,6 +233,33 @@ const ExerciseLibrary = () => {
                         );
                     })}
                 </div>
+                {filteredExercises.length === 0 && (
+                    <p className="py-8 text-center text-muted-foreground">{t('page.empty')}</p>
+                )}
+
+                <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>{t('delete.title', { name: deleteTarget?.name ?? '' })}</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                {t('delete.body')}
+                                {deleteTarget?.lastPerformance && <> {t('delete.body_logged')}</>}
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>{t('delete.cancel')}</AlertDialogCancel>
+                            <AlertDialogAction
+                                className="bg-destructive text-white hover:bg-destructive/90"
+                                onClick={() => {
+                                    if (deleteTarget) confirmDelete(deleteTarget);
+                                    setDeleteTarget(null);
+                                }}
+                            >
+                                {t('delete.confirm')}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
 
             </div>
         </div>
@@ -238,46 +282,50 @@ type ExerciseCategoryOption = {
     color: string;
 }
 
-const CATEGORY_CONFIG: SelectOption<ExerciseCategoryOption>[] = [
-    {
-        value: "strength",
-        label: 'Strength Training',
-        icon: Dumbbell,
-        description: 'For lifting and resistance exercises.',
-        fields: [
-            { label: 'Sets', icon: Hash },
-            { label: 'Reps', icon: Activity },
-            { label: 'Weight', icon: Scale },
-        ],
-        color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
-    },
-    {
-        value: "cardio",
-        label: 'Cardio & Endurance',
-        icon: Activity,
-        description: 'For running, cycling, and stamina.',
-        fields: [
-            { label: 'Laps', icon: Hash },
-            { label: 'Distance', icon: Ruler },
-            { label: 'Duration', icon: Timer },
-        ],
-        color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-    },
-    {
-        value: "flexibility",
-        label: 'Flexibility & Balance',
-        icon: User,
-        description: 'For yoga, stretching, and mobility.',
-        fields: [
-            { label: 'Duration', icon: Timer },
-        ],
-        color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-    }
-]
+function useCategoryConfig(): SelectOption<ExerciseCategoryOption>[] {
+    const { t } = useTranslation('exercises');
+    return [
+        {
+            value: "strength",
+            label: t('category.strength'),
+            icon: Dumbbell,
+            description: t('category.strength_desc'),
+            fields: [
+                { label: t('field.sets'), icon: Hash },
+                { label: t('field.reps'), icon: Activity },
+                { label: t('field.weight'), icon: Scale },
+            ],
+            color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
+        },
+        {
+            value: "cardio",
+            label: t('category.cardio'),
+            icon: Activity,
+            description: t('category.cardio_desc'),
+            fields: [
+                { label: t('field.laps'), icon: Hash },
+                { label: t('field.distance'), icon: Ruler },
+                { label: t('field.duration'), icon: Timer },
+            ],
+            color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+        },
+        {
+            value: "flexibility",
+            label: t('category.flexibility'),
+            icon: User,
+            description: t('category.flexibility_desc'),
+            fields: [
+                { label: t('field.duration'), icon: Timer },
+            ],
+            color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+        }
+    ];
+}
 
+// The server's rules (exercises.ts), checked here first.
 const createExerciseSchema = z.object({
-    name: z.string().min(1, 'Name is required'),
-    description: z.string().max(500, 'Description is too long').optional(),
+    name: z.string().trim().min(1).max(100),
+    description: z.string().trim().max(500),
     category: z.enum(['strength', 'cardio', 'flexibility']),
     muscleGroups: z.array(z.number()),
 
@@ -285,20 +333,22 @@ const createExerciseSchema = z.object({
 
 type ExerciseFormProps = {
     onSuccess: () => void;
-    exercise?: { id: number; name: string; category: string; };
+    exercise?: ExerciseWithLastPerformance;
 };
 
 const CreateExerciseForm = ({ onSuccess, exercise }: ExerciseFormProps) => {
-
+    const { t } = useTranslation('exercises');
+    const { t: tErrors } = useTranslation('errors');
     const { createExercise, isCreating, updateExercise, isUpdating, muscleGroups } = useExercises();
+    const categories = useCategoryConfig();
     const isEditMode = !!exercise;
 
     const form = useForm({
         defaultValues: {
             name: exercise?.name ?? '',
             category: (exercise?.category ?? 'strength') as 'strength' | 'cardio' | 'flexibility',
-            muscleGroups: [] as number[],
-            description: ''
+            muscleGroups: exercise?.muscleGroups.map((m) => m.id) ?? [],
+            description: exercise?.description ?? ''
         },
         resolver: zodResolver(createExerciseSchema)
     });
@@ -315,19 +365,23 @@ const CreateExerciseForm = ({ onSuccess, exercise }: ExerciseFormProps) => {
         } catch (err) {
             if (err instanceof ApiError) {
                 if (err.code === 'custom_exercise_limit_reached') {
-                    toast.error('Exercise limit reached', {
-                        description: `You have reached the maximum of ${err.payload.maxCustomExercises ?? ''} custom exercises for your role.`,
+                    toast.error(tErrors('limits.custom_exercise_limit_reached_title'), {
+                        description: tErrors('limits.custom_exercise_limit_reached_body', { maxCustomExercises: err.payload.maxCustomExercises ?? 0 }),
                     });
                     return;
                 }
                 if (err.code === 'custom_exercise_frozen') {
-                    toast.error('Exercise is frozen', {
-                        description: 'This custom exercise is read-only because your role limits were reduced. Delete it or another to free a slot.',
+                    toast.error(tErrors('limits.custom_exercise_frozen_title'), {
+                        description: tErrors('limits.custom_exercise_frozen_body'),
                     });
                     return;
                 }
+                if (err.code === 'exercise_name_taken') {
+                    form.setError('name', { message: t('error.name_taken_body') });
+                    return;
+                }
             }
-            toast.error('Something went wrong', { description: 'An unexpected error occurred.' });
+            toast.error(t('error.generic_title'), { description: t('error.generic_body') });
         }
     };
 
@@ -344,44 +398,51 @@ const CreateExerciseForm = ({ onSuccess, exercise }: ExerciseFormProps) => {
 
                         <TextField
                             name="name"
-                            label="Exercise Name"
-                            placeholder="e.g. Bulgarian Split Squat"
+                            label={t('form.name_label')}
+                            placeholder={t('form.name_placeholder')}
                             form={form}
                         />
                         <TextAreaField
                             name="description"
-                            label="Description"
-                            placeholder="Exercise Description"
+                            label={t('form.description_label')}
+                            placeholder={t('form.description_placeholder')}
                             form={form}
                         />
                     </div>
 
 
-                    <ChoiceListField
-                        form={form}
-                        name='muscleGroups'
-                        label='Target Muscles'
-                        options={options}
-                        mode='multi'
-                        className='flex flex-wrap gap-2'
-                        optionComponent={({ value, label, isSelected, onToggle, disabled, number }) => {
-                            const className = `
-                                                        cursor-pointer px-3 py-2 rounded-md border text-sm font-medium transition-all
-                                                        ${isSelected
-                                    ? 'bg-primary text-primary-foreground border-primary'
-                                    : 'bg-background hover:bg-accent hover:text-accent-foreground border-input'}
-                                                    `
-                            return (
-                                <div
-                                    key={value}
-                                    onClick={() => onToggle(value)}
-                                    className={className}
-                                >
-                                    {label}
-                                </div>
-                            )
-                        }}
-                    />
+                    {options.length === 0 ? (
+                        <div className="space-y-2">
+                            <p className="text-sm font-medium">{t('form.muscles_label')}</p>
+                            <p className="text-sm text-muted-foreground">{t('form.muscles_empty')}</p>
+                        </div>
+                    ) : (
+                        <ChoiceListField
+                            form={form}
+                            name='muscleGroups'
+                            label={t('form.muscles_label')}
+                            options={options}
+                            mode='multi'
+                            className='flex flex-wrap gap-2'
+                            optionComponent={({ value, label, isSelected, onToggle, disabled, number }) => {
+                                const className = `
+                                                            cursor-pointer px-3 py-2 rounded-md border text-sm font-medium transition-all
+                                                            ${isSelected
+                                        ? 'bg-primary text-primary-foreground border-primary'
+                                        : 'bg-background hover:bg-accent hover:text-accent-foreground border-input'}
+                                                        `
+                                return (
+                                    <div
+                                        key={value}
+                                        onClick={() => onToggle(value)}
+                                        className={className}
+                                    >
+                                        {label}
+                                    </div>
+                                )
+                            }}
+                        />
+                    )}
 
 
 
@@ -390,8 +451,8 @@ const CreateExerciseForm = ({ onSuccess, exercise }: ExerciseFormProps) => {
                 <ChoiceListField
                     form={form}
                     name='category'
-                    label='Category'
-                    options={CATEGORY_CONFIG}
+                    label={t('form.category_label')}
+                    options={categories}
                     className='grid grid-cols-1 md:grid-cols-2 gap-6'
                     optionComponent={({ value, label, isSelected, onToggle, disabled, icon: Icon, fields, ...props }: SelectListOptionComponentProps<ExerciseCategoryOption>) => {
                         return (
@@ -419,7 +480,7 @@ const CreateExerciseForm = ({ onSuccess, exercise }: ExerciseFormProps) => {
                                 <p className="text-xs text-muted-foreground mt-1">{props.description}</p>
 
                                 <div className="mt-4 pt-3 border-t border-border/50">
-                                    <span className="text-[10px] uppercase font-bold text-muted-foreground mb-2 block">Inputs:</span>
+                                    <span className="text-[10px] uppercase font-bold text-muted-foreground mb-2 block">{t('form.inputs')}</span>
                                     <div className="flex flex-wrap gap-2">
                                         {fields.map((f: any) => (
                                             <span key={f.label} className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-muted border border-border shadow-sm text-muted-foreground font-medium">
@@ -439,7 +500,7 @@ const CreateExerciseForm = ({ onSuccess, exercise }: ExerciseFormProps) => {
                     className="w-full"
                     disabled={isCreating || isUpdating}
                 >
-                    {isCreating || isUpdating ? 'Saving...' : isEditMode ? 'Update Exercise' : 'Save to Library'}
+                    {isCreating || isUpdating ? t('form.saving') : isEditMode ? t('form.update') : t('form.create')}
                 </Button>
             </form>
         </div>

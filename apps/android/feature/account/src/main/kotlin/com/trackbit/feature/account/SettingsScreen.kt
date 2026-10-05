@@ -43,16 +43,23 @@ import com.trackbit.core.model.SessionUser
 fun SettingsScreen(
     onOpenAccount: () -> Unit,
     onOpenHabits: () -> Unit,
+    onOpenExercises: () -> Unit,
     onSignOut: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val user by viewModel.user.collectAsStateWithLifecycle()
-    SettingsContent(user, onOpenAccount, onOpenHabits, onSignOut)
+    SettingsContent(user, onOpenAccount, onOpenHabits, onOpenExercises, onSignOut)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SettingsContent(user: SessionUser?, onOpenAccount: () -> Unit, onOpenHabits: () -> Unit, onSignOut: () -> Unit) {
+private fun SettingsContent(
+    user: SessionUser?,
+    onOpenAccount: () -> Unit,
+    onOpenHabits: () -> Unit,
+    onOpenExercises: () -> Unit,
+    onSignOut: () -> Unit,
+) {
     Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.nav_settings)) }) }) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState())) {
             if (user != null) {
@@ -77,6 +84,7 @@ private fun SettingsContent(user: SessionUser?, onOpenAccount: () -> Unit, onOpe
             }
             SectionTitle(R.string.nav_configuration)
             Entry(UiIcons.Flame, R.string.nav_habits, onOpenHabits)
+            Entry(UiIcons.Dumbbell, R.string.nav_exercises, onOpenExercises)
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             Entry(UiIcons.LogOut, R.string.nav_log_out, onSignOut, tint = MaterialTheme.colorScheme.error)
         }

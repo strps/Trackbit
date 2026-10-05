@@ -1,0 +1,8 @@
+{
+  "request": "POST /api/exercise-info/exercises",
+  "status": 409,
+  "body": {
+    "error": "exercise_name_taken",
+    "message": "You already have an exercise with that name"
+  }
+}

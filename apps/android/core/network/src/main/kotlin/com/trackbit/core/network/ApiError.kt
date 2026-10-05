@@ -29,6 +29,12 @@ sealed interface ApiError {
     /** 403 `habit_type_not_allowed`: the role can't have this habit type; [allowed] are the wire names it can. */
     data class HabitTypeNotAllowed(val allowed: List<String>) : ApiError
 
+    /** 403 `custom_exercise_limit_reached`: one more custom exercise would pass the role's [maxCustomExercises]. */
+    data class CustomExerciseLimitReached(val maxCustomExercises: Int?) : ApiError
+
+    /** 409 `exercise_name_taken`: the user already has a custom exercise with that name. */
+    data object ExerciseNameTaken : ApiError
+
     data class NotFound(val message: String?) : ApiError
 
     /**
@@ -74,9 +80,11 @@ sealed interface ApiError {
                 status == 403 && error == "custom_exercise_frozen" -> CustomExerciseFrozen(json.int("exerciseId"))
                 status == 403 && error == "habit_limit_reached" -> HabitLimitReached(json.int("maxHabits"))
                 status == 403 && error == "habit_type_not_allowed" -> HabitTypeNotAllowed(json.strings("allowedHabitTypes"))
+                status == 403 && error == "custom_exercise_limit_reached" -> CustomExerciseLimitReached(json.int("maxCustomExercises"))
                 status == 404 -> NotFound(message)
                 status == 400 -> Validation(message, json.issues(), error ?: json.string("code"))
                 status == 409 && error == "idempotency_request_in_progress" -> RequestInProgress
+                status == 409 && error == "exercise_name_taken" -> ExerciseNameTaken
                 status >= 500 -> Server(status, message)
                 else -> Unknown(status, error ?: json.string("code"), message)
             }

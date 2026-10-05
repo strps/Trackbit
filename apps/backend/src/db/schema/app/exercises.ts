@@ -1,5 +1,5 @@
 import { relations, sql } from "drizzle-orm";
-import { boolean, foreignKey, integer, jsonb, numeric, pgTable, primaryKey, real, serial, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, foreignKey, integer, jsonb, numeric, pgTable, primaryKey, real, serial, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { exerciseListItems } from "./exercise-lists";
 import { dayLogs } from "./habits";
 import { user } from "./user";
@@ -28,6 +28,8 @@ export const exercises = pgTable('exercises', {
         uniqueIndex('unique_system_exercise_name')
             .on(sql`(name_i18n->>'en')`)
             .where(sql`user_id IS NULL`),
+        // No description is NULL, never a blank string the clients would have to hide.
+        check('exercises_description_not_blank', sql`${table.description} IS NULL OR btrim(${table.description}) <> ''`),
     ]
 );
 

@@ -11,6 +11,9 @@ Add an item when you defer something. Delete it once it's done or no longer rele
 
 - **The web treats `exercise_log.duration` as milliseconds** (`ExerciseLogCard`'s flexibility legend divides it by 1000), while the Android model documents seconds (D3's hold summary multiplies by 1000). No client writes it yet; settle the unit before one does.
 
+- **The local backend's `tsx watch` can miss an edit** (E3, 2026-10-05). The dev server that started at 11:50:40 kept serving the old exercise routes after a save at 11:50:43, and stayed stale for two days; touching the file didn't wake it. If a backend change "doesn't work" on the emulator, compare the process start time with the file's mtime (`ps -o lstart= -p <pid>`) and restart `pnpm dev:backend`.
+- **The web library still has no muscle group filter** (E3). Android filters by top-level group (subdivisions included); add the same chips to `ExerciseLibrary.tsx` when the web gets touched.
+
 ## To check on a device
 
 These are covered by unit tests but were not exercised on the emulator for W1. Run through them during the C5 real-device pass:
@@ -74,7 +77,6 @@ These are covered by unit tests but were not exercised on the emulator for W1. R
 - **Pull-to-refresh doesn't re-pull history** (D6): `sync()` pulls a history request only when it is 6 h stale, so a past day changed on the web (or deleted) shows its old value on the tracker and analytics until then. Consider forcing the history pull on a user refresh.
 - **The web analytics heatmap rates a workout day by its exercise-log count**, the app (tracker, widgets, analytics) by its session count (D6). Pick one on the web.
 - **The web's exercise chart preselects the catalog's first exercise**, even one the habit never logged (D6). The app preselects the first exercise with sets. The web also lists exercises logged without sets; the app's list comes from `/sets`, so it doesn't.
-- **Bug: user exercise create/update drops `muscleGroups`** (found in D6). The Zod schema accepts the ids but the CRUD factory inserts only `exercises` columns, so no `exercise_muscle_groups` row is ever written (only the admin route writes them), and the web's edit form starts from `[]`. Fix with create/update overrides that write the links (in a transaction) and pre-fill the form from the list's `muscleGroups`, which the list returns since D6.
 
 - **Local smoke user** `b10-smoke@example.com` exists in the local dev DB only. Delete it when it's no longer useful.
 - **Timezones:** the web tracker takes "today" from the browser's timezone, and the app and widgets use the stored one. The plan's §6 proposal isn't built. Revisit if users travel across timezones and see mismatched days.

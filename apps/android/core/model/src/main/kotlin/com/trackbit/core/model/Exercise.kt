@@ -12,6 +12,9 @@ data class Exercise(
     val userId: String?,
     /** Already localized for the request's locale. */
     val name: String,
+    /** Localized like [name]; null when it has none. Only the library shows it, so Room doesn't keep it. */
+    val description: String? = null,
+    /** An [ExerciseCategory] wire name. */
     val category: String,
     val defaultWeightUnit: String?,
     val defaultDistanceUnit: String?,
@@ -24,6 +27,18 @@ data class Exercise(
 
 @Serializable
 data class MuscleGroupRef(val id: Int, val name: String)
+
+/** A row of `GET /api/exercise-info/muscle-groups`: the shared taxonomy, named in the request's locale. */
+@Serializable
+data class MuscleGroup(
+    val id: Int,
+    val name: String,
+    val slug: String,
+    val parentId: Int?,
+    /** 1 for a major group, 2 for a subdivision, deeper after that. */
+    val level: Int,
+    val displayOrder: Int?,
+)
 
 @Serializable
 data class LastPerformance(

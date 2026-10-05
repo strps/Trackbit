@@ -172,6 +172,19 @@ abstract class SyncDao {
         upsertExercises(exercises.map { it.toEntity() })
     }
 
+    /**
+     * The user deleted their exercise [id] on the server, which took every log of it (and their
+     * sets) and its list items along: drops Room's copies so cached sessions, analytics and queues
+     * stop showing it before their next pull.
+     */
+    @Transaction
+    open suspend fun removeExercise(id: Int) {
+        deleteLogsOf(id)
+        deleteHabitSetsOf(id)
+        deleteQueueEntriesOf(id)
+        deleteExercise(id)
+    }
+
     /** Replaces the exercise sources. A source no longer listed takes its cached queue with it. */
     @Transaction
     open suspend fun applySources(sources: List<ExerciseSourceDescriptor>) {
@@ -232,6 +245,18 @@ abstract class SyncDao {
     @Insert protected abstract suspend fun insertSession(session: SessionEntity)
     @Insert protected abstract suspend fun insertLog(log: ExerciseLogEntity)
     @Insert protected abstract suspend fun insertSet(set: PerformanceEntity)
+
+    @Query("DELETE FROM exercise_logs WHERE exerciseId = :id")
+    protected abstract suspend fun deleteLogsOf(id: Int)
+
+    @Query("DELETE FROM habit_sets WHERE exerciseId = :id")
+    protected abstract suspend fun deleteHabitSetsOf(id: Int)
+
+    @Query("DELETE FROM queue_entries WHERE exerciseId = :id")
+    protected abstract suspend fun deleteQueueEntriesOf(id: Int)
+
+    @Query("DELETE FROM exercises WHERE id = :id")
+    protected abstract suspend fun deleteExercise(id: Int)
 
     @Query("DELETE FROM exercises WHERE id NOT IN (:ids)")
     protected abstract suspend fun deleteExercisesNotIn(ids: List<Int>)

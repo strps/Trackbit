@@ -28,7 +28,8 @@ export interface Exercise {
     userId: string | null;
     name: string;
     category: string;
-    muscleGroup: string | null;
+    /** Localized like `name`; null when it has none. */
+    description: string | null;
     defaultWeightUnit: string | null;
     defaultDistanceUnit: string | null;
     createdAt: string | null;

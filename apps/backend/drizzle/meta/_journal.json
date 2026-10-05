@@ -99,6 +99,13 @@
       "when": 1791044290790,
       "tag": "0013_habits_complex_not_anti",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791223762833,
+      "tag": "0014_exercise_description_not_blank",
+      "breakpoints": true
     }
   ]
 }

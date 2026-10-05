@@ -38,6 +38,9 @@ class DecodeTest {
         "today.json" to TodayResponse.serializer(),
         "days.json" to DaysResponse.serializer(),
         "exercises.json" to ListSerializer(Exercise.serializer()),
+        "exercise-created.json" to Exercise.serializer(),
+        "exercise-updated.json" to Exercise.serializer(),
+        "muscle-groups.json" to ListSerializer(MuscleGroup.serializer()),
         "sets.json" to HabitSetsResponse.serializer(),
         "exercise-session.json" to ExerciseSession.serializer(),
         "exercise-log-created.json" to ExerciseLog.serializer(),
@@ -131,6 +134,21 @@ class DecodeTest {
         assertEquals(1.25, last.distance)
         assertEquals(45_000, last.duration)
         assertEquals(Instant.parse("2026-01-01T00:00:00Z"), last.createdAt)
+    }
+
+    @Test fun `custom exercise writes answer a library row`() {
+        val created = contract<Exercise>("exercise-created.json")
+        assertEquals("Lean forward", created.description)
+        assertEquals(listOf(MuscleGroupRef(1, "Chest")), created.muscleGroups)
+        assertFalse(created.frozen)
+        val updated = contract<Exercise>("exercise-updated.json")
+        assertNull(updated.description)
+        assertEquals(ExerciseCategory.Cardio, ExerciseCategory.of(updated.category))
+        assertEquals(emptyList<MuscleGroupRef>(), updated.muscleGroups)
+    }
+
+    @Test fun `muscle groups`() {
+        assertEquals(listOf(MuscleGroup(1, "Chest", "chest", null, 1, 0)), contract<List<MuscleGroup>>("muscle-groups.json"))
     }
 
     @Test fun sets() {

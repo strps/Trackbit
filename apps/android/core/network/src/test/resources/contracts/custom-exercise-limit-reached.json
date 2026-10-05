@@ -1,0 +1,9 @@
+{
+  "request": "POST /api/exercise-info/exercises",
+  "status": 403,
+  "body": {
+    "error": "custom_exercise_limit_reached",
+    "message": "You have reached the maximum of 5 custom exercises for your role.",
+    "maxCustomExercises": 5
+  }
+}

@@ -10,6 +10,7 @@ import { requireAuth } from '../../middleware/auth.js'
 import { localeMiddleware } from '../../middleware/locale.js'
 import { t } from '../../i18n/index.js'
 import { frozenHabitException } from '../../lib/frozen-errors.js'
+import { isUniqueViolation } from '../../lib/db-errors.js'
 import {
     computeFrozenHabitIds,
     computeFrozenHabitsForUser,
@@ -18,14 +19,7 @@ import {
 
 const HABIT_ORDER_UNIQUE_CONSTRAINT = 'habits_user_anti_order_uq'
 
-// Postgres unique-violation thrown by `node-postgres` carries `code === '23505'`
-// and `constraint === '<name>'` on the underlying error.
-function isHabitOrderConflict(err: unknown): boolean {
-    const e = err as { code?: string; constraint?: string; cause?: unknown }
-    if (e?.code === '23505' && e?.constraint === HABIT_ORDER_UNIQUE_CONSTRAINT) return true
-    if (e?.cause) return isHabitOrderConflict(e.cause)
-    return false
-}
+const isHabitOrderConflict = (err: unknown) => isUniqueViolation(err, HABIT_ORDER_UNIQUE_CONSTRAINT)
 
 const HABIT_ORDER_CONFLICT_RESPONSE = {
     error: 'habit_order_conflict',

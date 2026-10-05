@@ -21,9 +21,13 @@ const i18nStringSchema = z.object({
     es: z.string().optional(),
 })
 
+// Blank translations are dropped, and none at all is stored as null, so a description is never ''.
 const i18nOptionalSchema = z.object({
-    en: z.string().max(500).optional(),
-    es: z.string().max(500).optional(),
+    en: z.string().trim().max(500).optional(),
+    es: z.string().trim().max(500).optional(),
+}).transform((translations) => {
+    const kept = Object.fromEntries(Object.entries(translations).filter(([, text]) => text))
+    return Object.keys(kept).length > 0 ? kept : null
 }).optional().nullable()
 
 const exerciseBodySchema = z.object({

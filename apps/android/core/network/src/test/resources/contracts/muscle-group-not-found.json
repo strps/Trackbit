@@ -1,0 +1,8 @@
+{
+  "request": "POST /api/exercise-info/exercises",
+  "status": 400,
+  "body": {
+    "error": "muscle_group_not_found",
+    "message": "One or more muscle groups do not exist."
+  }
+}

@@ -2,6 +2,8 @@ package com.trackbit.core.network
 
 import com.trackbit.core.model.ChangePasswordRequest
 import com.trackbit.core.model.ColorTheme
+import com.trackbit.core.model.ExerciseCategory
+import com.trackbit.core.model.ExerciseRequest
 import com.trackbit.core.model.GradientPresets
 import com.trackbit.core.model.HabitIcon
 import com.trackbit.core.model.HabitRequest
@@ -49,6 +51,11 @@ class ErrorContractTest {
         return (safeCall { habits.create(request) } as ApiResult.Failure).error
     }
 
+    private val exerciseRequest = ExerciseRequest("Dips", null, ExerciseCategory.Strength, listOf(1))
+
+    private suspend fun createExercise(): ApiError =
+        (safeCall { exercises.createExercise(exerciseRequest) } as ApiResult.Failure).error
+
     private suspend fun signIn(): ApiResult<String> = auth.signIn("a@test.local", "password-1234")
 
     private suspend fun changePassword(): ApiResult<String> =
@@ -63,6 +70,19 @@ class ErrorContractTest {
         // The form never sends it (the switch hides for structured sessions); a plain 400 if it did.
         "anti-habit-not-allowed.json" to {
             assertEquals(ApiError.Validation("Structured sessions cannot be anti-habits.", emptyList(), "anti_habit_not_allowed"), createHabit())
+        },
+        "custom-exercise-frozen-update.json" to {
+            val result = safeCall { exercises.updateExercise(1, exerciseRequest) } as ApiResult.Failure
+            assertEquals(ApiError.CustomExerciseFrozen(1), result.error)
+        },
+        "custom-exercise-limit-reached.json" to { assertEquals(ApiError.CustomExerciseLimitReached(5), createExercise()) },
+        "exercise-name-taken.json" to { assertEquals(ApiError.ExerciseNameTaken, createExercise()) },
+        // The form only offers groups the server listed; one deleted meanwhile is a plain 400.
+        "muscle-group-not-found.json" to {
+            assertEquals(
+                ApiError.Validation("One or more muscle groups do not exist.", emptyList(), "muscle_group_not_found"),
+                createExercise(),
+            )
         },
         "habit-not-found.json" to { assertEquals(ApiError.NotFound("Habit not found"), increment()) },
         "exercise-source-not-found.json" to {

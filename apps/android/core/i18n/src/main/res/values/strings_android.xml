@@ -78,4 +78,7 @@
     <string name="android_account_password_note">Changing it signs you out on your other devices.</string>
     <string name="android_account_invalid_password">The current password is incorrect.</string>
     <string name="android_account_save_failed">Couldn\'t save. Try again.</string>
+    <!-- Exercise library (E3) -->
+    <string name="android_exercises_all_muscles">All muscles</string>
+    <string name="android_exercises_not_found">This exercise no longer exists.</string>
 </resources>
