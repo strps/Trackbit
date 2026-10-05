@@ -16,8 +16,9 @@ import {
 import type { ExerciseListWithItems } from './use-exercise-lists';
 
 const listFormSchema = z.object({
-    name: z.string().min(1).max(120),
-    description: z.string().max(500),
+    // The server's rules (exercise-lists.ts): trimmed, 1–120 and ≤ 500.
+    name: z.string().trim().min(1).max(120),
+    description: z.string().trim().max(500),
 });
 
 type ListFormValues = z.infer<typeof listFormSchema>;

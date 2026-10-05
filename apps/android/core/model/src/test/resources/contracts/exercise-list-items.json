@@ -1,0 +1,22 @@
+{
+  "request": "PUT /api/exercise-lists/:id/items",
+  "status": 200,
+  "body": {
+    "listId": 1,
+    "items": [
+      {
+        "id": 1,
+        "listId": 1,
+        "exerciseId": 1,
+        "position": 0,
+        "targetSets": 5,
+        "targetReps": 5,
+        "targetWeight": 100,
+        "targetDuration": null,
+        "targetDistance": null,
+        "restSeconds": 180,
+        "notes": "Belt"
+      }
+    ]
+  }
+}

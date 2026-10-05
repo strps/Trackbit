@@ -1,0 +1,9 @@
+{
+  "request": "POST /api/exercise-lists",
+  "status": 403,
+  "body": {
+    "error": "exercise_list_limit_reached",
+    "message": "You have reached the maximum of 3 exercise lists for your role.",
+    "maxExerciseLists": 3
+  }
+}

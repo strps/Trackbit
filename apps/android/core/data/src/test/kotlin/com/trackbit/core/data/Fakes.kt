@@ -273,7 +273,10 @@ class FakeExerciseService(var answer: () -> List<Exercise> = { emptyList() }) : 
         return muscleGroupsAnswer()
     }
 
+    var sourceCalls = 0
+
     override suspend fun sources(): List<ExerciseSourceDescriptor> {
+        sourceCalls++
         yield()
         return sourcesAnswer()
     }

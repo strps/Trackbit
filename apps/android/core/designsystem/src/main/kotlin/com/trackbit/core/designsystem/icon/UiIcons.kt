@@ -25,6 +25,7 @@ object UiIcons {
     val Hash = R.drawable.ic_ui_hash
     val Layers = R.drawable.ic_ui_layers
     val List = R.drawable.ic_ui_list
+    val ListPlus = R.drawable.ic_ui_list_plus
     val Lock = R.drawable.ic_ui_lock
     val LogOut = R.drawable.ic_ui_log_out
     val MapPin = R.drawable.ic_ui_map_pin
@@ -44,4 +45,5 @@ object UiIcons {
     val TrendingUp = R.drawable.ic_ui_trending_up
     val Trophy = R.drawable.ic_ui_trophy
     val User = R.drawable.ic_ui_user
+    val X = R.drawable.ic_ui_x
 }

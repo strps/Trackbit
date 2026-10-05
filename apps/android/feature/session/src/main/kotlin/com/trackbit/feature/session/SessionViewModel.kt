@@ -5,6 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.trackbit.core.auth.AuthRepository
 import com.trackbit.core.auth.AuthState
 import com.trackbit.core.auth.PreferencesRepository
+import com.trackbit.core.data.ConfigError
+import com.trackbit.core.data.ConfigResult
+import com.trackbit.core.data.ExerciseListsRepository
 import com.trackbit.core.data.RestTimer
 import com.trackbit.core.data.RestTimerRepository
 import com.trackbit.core.data.SessionRepository
@@ -14,7 +17,9 @@ import com.trackbit.core.data.TrackedHabit
 import com.trackbit.core.data.TrackedSession
 import com.trackbit.core.data.TrackerRepository
 import com.trackbit.core.data.WriteResult
+import com.trackbit.core.designsystem.component.ListTargets
 import com.trackbit.core.model.Exercise
+import com.trackbit.core.model.ExerciseList
 import com.trackbit.core.model.ExerciseLogCardStyle
 import com.trackbit.core.model.ExerciseSourceDescriptor
 import com.trackbit.core.model.SessionUser
@@ -37,6 +42,8 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
@@ -64,7 +71,12 @@ data class SessionUiState(
     val rest: RestTimer? = null,
     /** The user's rest after each set, unless a list item prescribes one; 0 is off. */
     val defaultRestSeconds: Int = SessionUser.DEFAULT_REST_SECONDS,
+    /** The user's lists from the server, for "add to list"; null until a menu loads them. */
+    val lists: List<ExerciseList>? = null,
+    val listsFailed: Boolean = false,
 ) {
+    fun listTargets(exerciseId: Int): ListTargets = ListTargets.of(lists, listsFailed, exerciseId)
+
     internal val exercisesById: Map<Int, Exercise> = exercises.associateBy { it.id }
 
     fun exercise(id: Int): Exercise? = exercisesById[id]
@@ -73,7 +85,18 @@ data class SessionUiState(
     val readOnly: Boolean get() = habit?.frozen == true
 }
 
-enum class SessionMessage { Offline, SyncFailed, HabitFrozen, ExerciseFrozen }
+sealed interface SessionMessage {
+    data object Offline : SessionMessage
+    data object SyncFailed : SessionMessage
+    data object HabitFrozen : SessionMessage
+    data object ExerciseFrozen : SessionMessage
+    data class AddedToList(val listName: String) : SessionMessage
+    data object ListFrozen : SessionMessage
+    data class ListFull(val maxItems: Int) : SessionMessage
+}
+
+/** The add-to-list menus' lists: null until loaded. */
+private data class ListsLoad(val lists: List<ExerciseList>? = null, val failed: Boolean = false)
 
 /**
  * A workout habit's sessions on one day, like the web's activity tracker. Reads come from Room;
@@ -89,6 +112,7 @@ class SessionViewModel @AssistedInject constructor(
     auth: AuthRepository,
     private val preferences: PreferencesRepository,
     private val restTimers: RestTimerRepository,
+    private val exerciseLists: ExerciseListsRepository,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
@@ -96,6 +120,7 @@ class SessionViewModel @AssistedInject constructor(
     }
 
     private val refreshing = MutableStateFlow(false)
+    private val lists = MutableStateFlow(ListsLoad())
     private val message = MutableStateFlow<SessionMessage?>(null)
 
     /** A pull of the sources answered, so a preferred key missing from them really dangles. */
@@ -138,7 +163,7 @@ class SessionViewModel @AssistedInject constructor(
 
     private val status = combine(refreshing, message, restTimers.observe(), ::Triple)
 
-    val state: StateFlow<SessionUiState> = combine(content, display, picker, status) { content, display, picker, status ->
+    val state: StateFlow<SessionUiState> = combine(content, display, picker, status, lists) { content, display, picker, status, lists ->
         val (pick, queue) = picker
         val (refreshing, message, rest) = status
         SessionUiState(
@@ -156,6 +181,8 @@ class SessionViewModel @AssistedInject constructor(
             message = message,
             rest = rest,
             defaultRestSeconds = display.defaultRestSeconds,
+            lists = lists.lists,
+            listsFailed = lists.failed,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SessionUiState(day))
 
@@ -235,6 +262,36 @@ class SessionViewModel @AssistedInject constructor(
     /** The rest after each set from now on, for every session (a user preference); 0 is off. */
     fun setDefaultRest(seconds: Int) {
         viewModelScope.launch { preferences.setDefaultRestSeconds(seconds.coerceIn(SessionUser.REST_SECONDS_RANGE)) }
+    }
+
+    /** An add-to-list menu opened: (re)loads the user's lists from the server (it needs a connection). */
+    fun loadLists() {
+        viewModelScope.launch {
+            when (val result = exerciseLists.lists()) {
+                is ConfigResult.Success -> lists.value = ListsLoad(result.value)
+                is ConfigResult.Failure -> lists.update { it.copy(failed = it.lists == null) }
+            }
+        }
+    }
+
+    /** Appends [exerciseId] to [listId], like the web picker's add-to-list menu. */
+    fun addToList(listId: Int, exerciseId: Int) {
+        viewModelScope.launch {
+            when (val result = exerciseLists.append(listId, exerciseId)) {
+                is ConfigResult.Success -> {
+                    val updated = lists.updateAndGet { load ->
+                        load.copy(lists = load.lists?.map { if (it.id == listId) it.copy(items = result.value.items) else it })
+                    }
+                    message.value = SessionMessage.AddedToList(updated.lists?.find { it.id == listId }?.name.orEmpty())
+                }
+                is ConfigResult.Failure -> message.value = when (val error = result.error) {
+                    ConfigError.Offline -> SessionMessage.Offline
+                    ConfigError.ExerciseListFrozen -> SessionMessage.ListFrozen
+                    is ConfigError.ExerciseListFull -> SessionMessage.ListFull(error.maxItems)
+                    else -> SessionMessage.SyncFailed
+                }
+            }
+        }
     }
 
     /** Clears [shown] unless a newer message has replaced it. */

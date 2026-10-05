@@ -3,6 +3,7 @@ package com.trackbit.feature.session
 import com.trackbit.core.auth.AuthRepository
 import com.trackbit.core.auth.AuthState
 import com.trackbit.core.auth.PreferencesRepository
+import com.trackbit.core.data.ConfigError
 import com.trackbit.core.data.RestTimer
 import com.trackbit.core.data.RestTimerRepository
 import com.trackbit.core.data.SessionRepository
@@ -13,6 +14,8 @@ import com.trackbit.core.data.TrackedHabit
 import com.trackbit.core.data.TrackedSession
 import com.trackbit.core.data.TrackerRepository
 import com.trackbit.core.data.WriteResult
+import com.trackbit.core.designsystem.component.ListTarget
+import com.trackbit.core.designsystem.component.ListTargets
 import com.trackbit.core.model.ColorTheme
 import com.trackbit.core.model.Exercise
 import com.trackbit.core.model.ExerciseLogCardStyle
@@ -34,6 +37,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -57,6 +61,7 @@ class SessionViewModelTest {
     private val auth = FakeAuthRepository()
     private val preferences = FakePreferencesRepository(auth)
     private val restTimers = FakeRestTimerRepository()
+    private val lists = FakeExerciseListsRepository()
 
     @Before fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
 
@@ -64,7 +69,7 @@ class SessionViewModelTest {
 
     /** Subscribes to [SessionViewModel.state] for the test, as the screen would. */
     private fun TestScope.subscribed(): SessionViewModel {
-        val viewModel = SessionViewModel(habitId = 1, day = DAY, sessions = sessions, tracker = tracker, auth = auth, preferences = preferences, restTimers = restTimers)
+        val viewModel = SessionViewModel(habitId = 1, day = DAY, sessions = sessions, tracker = tracker, auth = auth, preferences = preferences, restTimers = restTimers, exerciseLists = lists)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
         return viewModel
     }
@@ -222,6 +227,35 @@ class SessionViewModelTest {
         sessions.writeResult = WriteResult.HabitFrozen
         viewModel.startSession()
         assertEquals(SessionMessage.HabitFrozen, viewModel.state.value.message)
+    }
+
+    @Test fun `add to list offers the unfrozen lists from the server and appends`() = runTest {
+        lists.lists = listOf(exerciseList(1, "Legs", items = listOf(item(1, 1, 10, 0))), exerciseList(2, "Old", frozen = true))
+        val viewModel = subscribed()
+        assertEquals(ListTargets.Loading, viewModel.state.value.listTargets(11))
+
+        viewModel.loadLists()
+        advanceUntilIdle()
+        assertEquals(ListTargets.Loaded(listOf(ListTarget(1, "Legs", 1, contains = false))), viewModel.state.value.listTargets(11))
+        assertEquals(ListTargets.Loaded(listOf(ListTarget(1, "Legs", 1, contains = true))), viewModel.state.value.listTargets(10))
+
+        viewModel.addToList(1, 11)
+        advanceUntilIdle()
+        assertEquals(SessionMessage.AddedToList("Legs"), viewModel.state.value.message)
+        assertEquals(ListTargets.Loaded(listOf(ListTarget(1, "Legs", 2, contains = true))), viewModel.state.value.listTargets(11))
+    }
+
+    @Test fun `add to list says why it failed`() = runTest {
+        val viewModel = subscribed()
+        lists.failWith = ConfigError.Offline
+        viewModel.loadLists()
+        advanceUntilIdle()
+        assertEquals(ListTargets.Offline, viewModel.state.value.listTargets(10))
+
+        lists.failWith = ConfigError.ExerciseListFull(100)
+        viewModel.addToList(1, 10)
+        advanceUntilIdle()
+        assertEquals(SessionMessage.ListFull(100), viewModel.state.value.message)
     }
 }
 

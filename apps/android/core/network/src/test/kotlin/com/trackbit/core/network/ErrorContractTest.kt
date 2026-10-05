@@ -2,7 +2,10 @@ package com.trackbit.core.network
 
 import com.trackbit.core.model.ChangePasswordRequest
 import com.trackbit.core.model.ColorTheme
+import com.trackbit.core.model.AppendListItemRequest
 import com.trackbit.core.model.ExerciseCategory
+import com.trackbit.core.model.ExerciseListReorderRequest
+import com.trackbit.core.model.ExerciseListRequest
 import com.trackbit.core.model.ExerciseRequest
 import com.trackbit.core.model.GradientPresets
 import com.trackbit.core.model.HabitIcon
@@ -11,6 +14,7 @@ import com.trackbit.core.model.HabitType
 import com.trackbit.core.model.IncrementRequest
 import com.trackbit.core.model.UpdateUserRequest
 import com.trackbit.core.network.service.AuthService
+import com.trackbit.core.network.service.ExerciseListService
 import com.trackbit.core.network.service.ExerciseService
 import com.trackbit.core.network.service.HabitsService
 import com.trackbit.core.network.service.TrackerService
@@ -38,6 +42,7 @@ class ErrorContractTest {
     private val auth = server.service<AuthService>()
     private val exercises = server.service<ExerciseService>()
     private val habits = server.service<HabitsService>()
+    private val lists = server.service<ExerciseListService>()
 
     @After fun tearDown() = server.close()
 
@@ -55,6 +60,12 @@ class ErrorContractTest {
 
     private suspend fun createExercise(): ApiError =
         (safeCall { exercises.createExercise(exerciseRequest) } as ApiResult.Failure).error
+
+    private suspend fun listError(call: suspend () -> Any): ApiError = (safeCall { call() } as ApiResult.Failure).error
+
+    private suspend fun createList(): ApiError = listError { lists.create(ExerciseListRequest("Legs", null)) }
+
+    private suspend fun appendTo(listId: Int): ApiError = listError { lists.append(listId, AppendListItemRequest(1)) }
 
     private suspend fun signIn(): ApiResult<String> = auth.signIn("a@test.local", "password-1234")
 
@@ -83,6 +94,16 @@ class ErrorContractTest {
                 ApiError.Validation("One or more muscle groups do not exist.", emptyList(), "muscle_group_not_found"),
                 createExercise(),
             )
+        },
+        "exercise-list-name-taken.json" to { assertEquals(ApiError.ExerciseListNameTaken, createList()) },
+        "exercise-list-limit-reached.json" to { assertEquals(ApiError.ExerciseListLimitReached(3), createList()) },
+        "exercise-list-frozen.json" to { assertEquals(ApiError.ExerciseListFrozen, appendTo(5)) },
+        "exercise-list-order-frozen.json" to {
+            assertEquals(ApiError.ExerciseListFrozen, listError { lists.reorder(ExerciseListReorderRequest(listOf(5, 4, 1, 3))) })
+        },
+        "exercise-list-full.json" to { assertEquals(ApiError.ExerciseListFull(100), appendTo(1)) },
+        "exercise-list-not-found.json" to {
+            assertEquals(ApiError.NotFound("Exercise list not found"), listError { lists.update(999999, ExerciseListRequest("Ghost", null)) })
         },
         "habit-not-found.json" to { assertEquals(ApiError.NotFound("Habit not found"), increment()) },
         "exercise-source-not-found.json" to {

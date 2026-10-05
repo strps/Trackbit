@@ -143,7 +143,7 @@ Three deliberate omissions from the earlier draft:
 
 `prescription` fields are `T | null`, never optional — one representation for "not prescribed" instead of two (`undefined` vs `null`) drifting through JSON round-trips.
 
-**Prescription units** are the exercise's `defaultWeightUnit` / `defaultDistanceUnit`. The prescription itself stores no unit; the log the user creates carries its own (`exercise_log.weightUnit` / `.distanceUnit`), pre-filled from the same defaults.
+**Prescription units** are kg and km, like the sets they pre-fill (Kotlin E4, migration `0015`, which converted the earlier `lbs`/`miles` targets); the clients convert for display as they do for sets. Durations are seconds.
 
 ### The cursor is client-side
 

@@ -1,10 +1,11 @@
 package com.trackbit.core.data
 
+import com.trackbit.core.model.ExerciseListRules
 import com.trackbit.core.model.HabitType
 import com.trackbit.core.network.ApiError
 import com.trackbit.core.network.ApiResult
 
-/** What a config call (habits, the exercise library, and later lists) came back with. */
+/** What a config call (habits, the exercise library, lists) came back with. */
 sealed interface ConfigResult<out T> {
     data class Success<T>(val value: T) : ConfigResult<T>
     data class Failure(val error: ConfigError) : ConfigResult<Nothing>
@@ -30,6 +31,17 @@ sealed interface ConfigError {
     /** The user already has a custom exercise with that name. */
     data object ExerciseNameTaken : ConfigError
 
+    /** A list over the role's cap: read-only until it or another one is deleted. */
+    data object ExerciseListFrozen : ConfigError
+
+    data class ExerciseListLimitReached(val maxExerciseLists: Int) : ConfigError
+
+    /** The user already has a list with that name. */
+    data object ExerciseListNameTaken : ConfigError
+
+    /** The list already holds [maxItems] exercises. */
+    data class ExerciseListFull(val maxItems: Int) : ConfigError
+
     /** Gone on the server (deleted elsewhere). */
     data object NotFound : ConfigError
 
@@ -49,6 +61,10 @@ internal fun <T> ApiResult<T>.toConfigResult(type: HabitType? = null): ConfigRes
             is ApiError.CustomExerciseFrozen -> ConfigError.CustomExerciseFrozen
             is ApiError.CustomExerciseLimitReached -> ConfigError.CustomExerciseLimitReached(e.maxCustomExercises ?: 0)
             ApiError.ExerciseNameTaken -> ConfigError.ExerciseNameTaken
+            ApiError.ExerciseListFrozen -> ConfigError.ExerciseListFrozen
+            is ApiError.ExerciseListLimitReached -> ConfigError.ExerciseListLimitReached(e.maxExerciseLists ?: 0)
+            ApiError.ExerciseListNameTaken -> ConfigError.ExerciseListNameTaken
+            is ApiError.ExerciseListFull -> ConfigError.ExerciseListFull(e.maxItems ?: ExerciseListRules.MAX_ITEMS)
             is ApiError.NotFound -> ConfigError.NotFound
             else -> ConfigError.Failed
         },

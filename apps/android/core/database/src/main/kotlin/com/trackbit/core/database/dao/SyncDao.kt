@@ -230,6 +230,10 @@ abstract class SyncDao {
 
     @Insert protected abstract suspend fun insertSources(sources: List<ExerciseSourceEntity>)
 
+    /** The sources whose queue Room holds (a pull refreshes them after a list changed). */
+    @Query("SELECT `key` FROM source_queues")
+    abstract suspend fun cachedQueueKeys(): List<String>
+
     @Query("DELETE FROM source_queues WHERE `key` NOT IN (:keys)")
     protected abstract suspend fun deleteQueuesNotIn(keys: List<String>)
 

@@ -48,6 +48,11 @@ class DecodeTest {
         "exercise-performance.json" to ExercisePerformance.serializer(),
         "exercise-sessions.json" to ListSerializer(ExerciseSessionDetail.serializer()),
         "exercise-lists.json" to ListSerializer(ExerciseList.serializer()),
+        "exercise-list-created.json" to ExerciseList.serializer(),
+        "exercise-list-updated.json" to ExerciseList.serializer(),
+        "exercise-lists-reordered.json" to ListSerializer(ExerciseList.serializer()),
+        "exercise-list-items.json" to ExerciseListItemsResponse.serializer(),
+        "exercise-list-item-appended.json" to ExerciseListItemsResponse.serializer(),
         "exercise-sources.json" to ListSerializer(ExerciseSourceDescriptor.serializer()),
         "exercise-source.json" to ResolvedQueue.serializer(),
         "exercise-source-empty.json" to ResolvedQueue.serializer(),
@@ -199,6 +204,34 @@ class DecodeTest {
         assertEquals(120, item.restSeconds)
         assertEquals(60.5, item.targetWeight)
         assertEquals(1.5, item.targetDistance)
+    }
+
+    @Test fun exerciseListWrites() {
+        val updated = contract<ExerciseList>("exercise-list-updated.json")
+        assertEquals("Legs", updated.name)
+        assertNull(updated.description)
+        assertEquals(listOf(1, 2), updated.items.map { it.exerciseId })
+        assertEquals(Prescription(5, 5, 100.0, null, null, 180, "Belt"), updated.items[0].prescription)
+        assertTrue(updated.items[1].prescription.isEmpty)
+
+        assertEquals(listOf("Arms", "Legs"), contract<List<ExerciseList>>("exercise-lists-reordered.json").map { it.name })
+        val appended = contract<ExerciseListItemsResponse>("exercise-list-item-appended.json")
+        assertEquals(listOf(0, 1), appended.items.map { it.position })
+    }
+
+    @Test fun `list items encode every target, and leave out a new item's id`() {
+        val request = ExerciseListItemsRequest.of(
+            listOf(
+                ListItemDraft(7, 1, Prescription.NONE.copy(targetSets = 3, notes = "  ")),
+                ListItemDraft(null, 2, Prescription.NONE),
+            ),
+        )
+        assertEquals(
+            """{"items":[""" +
+                """{"id":7,"exerciseId":1,"position":0,"targetSets":3,"targetReps":null,"targetWeight":null,"targetDuration":null,"targetDistance":null,"restSeconds":null,"notes":null},""" +
+                """{"exerciseId":2,"position":1,"targetSets":null,"targetReps":null,"targetWeight":null,"targetDuration":null,"targetDistance":null,"restSeconds":null,"notes":null}]}""",
+            TrackbitJson.encodeToString(ExerciseListItemsRequest.serializer(), request),
+        )
     }
 
     @Test fun exerciseSources() {

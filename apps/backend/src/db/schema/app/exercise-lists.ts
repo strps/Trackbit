@@ -1,5 +1,5 @@
-import { relations } from 'drizzle-orm';
-import { integer, pgTable, real, serial, text, timestamp, unique, uniqueIndex } from 'drizzle-orm/pg-core';
+import { relations, sql } from 'drizzle-orm';
+import { check, integer, pgTable, real, serial, text, timestamp, unique, uniqueIndex } from 'drizzle-orm/pg-core';
 import { exerciseLogs, exercises } from './exercises';
 import { user } from './user';
 
@@ -22,6 +22,9 @@ export const exerciseLists = pgTable('exercise_lists', {
 },
     (table) => [
         uniqueIndex('exercise_lists_user_name_uq').on(table.userId, table.name),
+        // Names are stored trimmed; no description is NULL, never a blank string.
+        check('exercise_lists_name_trimmed', sql`${table.name} = btrim(${table.name}) AND ${table.name} <> ''`),
+        check('exercise_lists_description_not_blank', sql`${table.description} IS NULL OR btrim(${table.description}) <> ''`),
     ]
 );
 
@@ -39,21 +42,30 @@ export const exerciseListItems = pgTable('exercise_list_items', {
     position: integer('position').notNull(),
 
     // Prescription — all nullable. Casual favorite lists leave every one null.
-    // Units are the exercise's defaultWeightUnit / defaultDistanceUnit; the
-    // prescription itself stores no unit.
+    // Weights are kg and distances km, like the sets they pre-fill; the clients
+    // convert for display, as they do for sets.
     targetSets: integer('target_sets'),
     targetReps: integer('target_reps'),
-    targetWeight: real('target_weight'),
+    targetWeight: real('target_weight'), // kg
     targetDuration: integer('target_duration'), // seconds
-    targetDistance: real('target_distance'),
+    targetDistance: real('target_distance'), // km
     restSeconds: integer('rest_seconds'),
     notes: text('notes'),
 },
     (table) => [
-        // Enforced as DEFERRABLE INITIALLY DEFERRED in migration 0006 so a
-        // reorder can pass through conflicting intermediate positions inside a
-        // transaction, exactly like habits_user_anti_order_uq.
+        // Migration 0006 makes it DEFERRABLE, but a pushed schema (tests) isn't, so
+        // writes must never pass through a duplicate: PUT /:id/items parks the
+        // kept rows on negative positions first.
         unique('exercise_list_items_list_position_uq').on(table.listId, table.position),
+        // A target is positive or not prescribed (null); rest may be zero. The upper bounds
+        // live in the route's schema.
+        check('exercise_list_items_prescription_positive', sql`(${table.targetSets} IS NULL OR ${table.targetSets} >= 1)
+            AND (${table.targetReps} IS NULL OR ${table.targetReps} >= 1)
+            AND (${table.targetWeight} IS NULL OR ${table.targetWeight} > 0)
+            AND (${table.targetDuration} IS NULL OR ${table.targetDuration} >= 1)
+            AND (${table.targetDistance} IS NULL OR ${table.targetDistance} > 0)
+            AND (${table.restSeconds} IS NULL OR ${table.restSeconds} BETWEEN 0 AND 3600)`),
+        check('exercise_list_items_notes_not_blank', sql`${table.notes} IS NULL OR btrim(${table.notes}) <> ''`),
     ]
 );
 

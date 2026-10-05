@@ -45,6 +45,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.trackbit.core.designsystem.component.AddToListButton
+import com.trackbit.core.designsystem.component.ListTargets
 import com.trackbit.core.designsystem.icon.UiIcons
 import com.trackbit.core.i18n.R
 import com.trackbit.core.model.Exercise
@@ -62,13 +64,14 @@ internal fun ExercisePickerBar(
     sources: List<ExerciseSourceDescriptor>,
     sourcesLoaded: Boolean,
     onSelectSource: (key: String?) -> Unit,
+    onOpenLists: () -> Unit,
     onOpenList: () -> Unit,
     onAdd: (exerciseId: Int, listItemId: Int?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val selected = picker.selected
     Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        SourceDropdown(picker, sources, sourcesLoaded, onSelectSource)
+        SourceDropdown(picker, sources, sourcesLoaded, onSelectSource, onOpenLists)
         Row(verticalAlignment = Alignment.CenterVertically) {
             OutlinedButton(onClick = onOpenList, modifier = Modifier.weight(1f)) {
                 Text(
@@ -107,6 +110,7 @@ private fun SourceDropdown(
     sources: List<ExerciseSourceDescriptor>,
     sourcesLoaded: Boolean,
     onSelect: (key: String?) -> Unit,
+    onOpenLists: () -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
     fun select(key: String?) {
@@ -139,15 +143,17 @@ private fun SourceDropdown(
                 leadingIcon = { CheckMark(picker.browsing) },
                 onClick = { select(null) },
             )
-            // Lists are the only sources a user makes today, so none means no lists. The app has
-            // no list editor yet, so the hint only points at the web.
+            // Lists are the only sources a user makes today, so none means no lists: the hint
+            // opens the lists screen, as the web's links to /config/lists.
             if (sourcesLoaded && sources.isEmpty()) {
                 HorizontalDivider()
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.tracker_activity_no_lists_hint)) },
                     leadingIcon = { Icon(painterResource(UiIcons.Plus), null, Modifier.size(18.dp)) },
-                    enabled = false,
-                    onClick = {},
+                    onClick = {
+                        open = false
+                        onOpenLists()
+                    },
                 )
             }
             for (source in sources) {
@@ -183,6 +189,9 @@ private fun CheckMark(checked: Boolean) {
 @Composable
 internal fun ExercisePickerSheet(
     picker: ExercisePickerState,
+    listTargets: (exerciseId: Int) -> ListTargets,
+    onListsMenu: () -> Unit,
+    onAddToList: (listId: Int, exerciseId: Int) -> Unit,
     onDismiss: () -> Unit,
     onPick: (exerciseId: Int, listItemId: Int?) -> Unit,
 ) {
@@ -219,23 +228,38 @@ internal fun ExercisePickerSheet(
                     }
                 }
                 // A routine may hold an exercise twice, so rows are keyed by their place in it.
-                itemsIndexed(rows, key = { i, _ -> "entry-$i" }) { _, row -> PickerRowItem(row, onPick) }
+                itemsIndexed(rows, key = { i, _ -> "entry-$i" }) { _, row ->
+                    PickerRowItem(row, listTargets(row.exercise.id), onListsMenu, onAddToList, onPick)
+                }
             } else {
                 val rows = picker.search(query)
                 if (rows.isEmpty()) item { SheetText(R.string.tracker_activity_no_exercises_found) }
-                items(rows, key = { it.exercise.id }) { row -> PickerRowItem(row, onPick) }
+                items(rows, key = { it.exercise.id }) { row ->
+                    PickerRowItem(row, listTargets(row.exercise.id), onListsMenu, onAddToList, onPick)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun PickerRowItem(row: PickerRow, onPick: (exerciseId: Int, listItemId: Int?) -> Unit) {
+private fun PickerRowItem(
+    row: PickerRow,
+    listTargets: ListTargets,
+    onListsMenu: () -> Unit,
+    onAddToList: (listId: Int, exerciseId: Int) -> Unit,
+    onPick: (exerciseId: Int, listItemId: Int?) -> Unit,
+) {
     val exercise = row.exercise
     ListItem(
         headlineContent = { Text(exercise.name) },
         supportingContent = { Text(exercise.category.uppercase(), style = MaterialTheme.typography.labelSmall) },
-        trailingContent = { RowMark(exercise, row.done) },
+        trailingContent = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AddToListButton(listTargets, onListsMenu, onPick = { onAddToList(it.id, exercise.id) })
+                RowMark(exercise, row.done)
+            }
+        },
         // The cursor: what Play adds next.
         colors = if (row.highlighted) {
             ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.secondaryContainer)

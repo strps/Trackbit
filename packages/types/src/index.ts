@@ -77,9 +77,9 @@ export interface ExercisePerformance {
 export interface Prescription {
     targetSets: number | null;
     targetReps: number | null;
-    targetWeight: number | null;
+    targetWeight: number | null;     // kg, like sets
     targetDuration: number | null;   // seconds
-    targetDistance: number | null;
+    targetDistance: number | null;   // km, like sets
     restSeconds: number | null;
     notes: string | null;
 }

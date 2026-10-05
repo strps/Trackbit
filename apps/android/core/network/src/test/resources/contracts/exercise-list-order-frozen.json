@@ -1,0 +1,11 @@
+{
+  "request": "PATCH /api/exercise-lists/reorder",
+  "status": 403,
+  "body": {
+    "error": "exercise_list_frozen",
+    "message": "This list is frozen because your role limits were reduced. Delete it or another to free a slot.",
+    "listIds": [
+      5
+    ]
+  }
+}

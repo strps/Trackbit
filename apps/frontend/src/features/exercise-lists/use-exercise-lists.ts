@@ -56,7 +56,7 @@ const createList = async (input: { name: string; description?: string | null }) 
     return res.json() as Promise<ExerciseListWithItems>;
 };
 
-const updateList = async ({ id, ...updates }: { id: number; name?: string; description?: string | null; position?: number }) => {
+const updateList = async ({ id, ...updates }: { id: number; name?: string; description?: string | null }) => {
     const res = await fetch(`${API_URL}/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -64,7 +64,32 @@ const updateList = async ({ id, ...updates }: { id: number; name?: string; descr
         body: JSON.stringify(updates),
     });
     if (!res.ok) throw await parseApiError(res, 'Failed to update list');
-    return res.json() as Promise<ExerciseList>;
+    return res.json() as Promise<ExerciseListWithItems>;
+};
+
+// The whole order in one call, stored in one transaction. Frozen lists must stay at the end.
+const reorderLists = async (orderedIds: number[]) => {
+    const res = await fetch(`${API_URL}/reorder`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ids: orderedIds }),
+    });
+    if (!res.ok) throw await parseApiError(res, 'Failed to reorder lists');
+    return res.json() as Promise<ExerciseListWithItems[]>;
+};
+
+// Appends one exercise at the end on the server, so a stale copy of the items can't overwrite
+// changes made elsewhere (as a replace-all built from the cache could).
+const appendItem = async ({ listId, exerciseId }: { listId: number; exerciseId: number }) => {
+    const res = await fetch(`${API_URL}/${listId}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ exerciseId }),
+    });
+    if (!res.ok) throw await parseApiError(res, 'Failed to add to list');
+    return res.json() as Promise<{ listId: number; items: ExerciseListItem[] }>;
 };
 
 const deleteList = async (id: number) => {
@@ -186,20 +211,8 @@ export function useExerciseLists() {
         },
     });
 
-    // Reordering lists is n PATCHes rather than one bulk endpoint: exercise_lists
-    // has no unique constraint on (userId, position), so intermediate duplicates
-    // are harmless and no deferred-constraint dance is needed.
     const reorderMutation = useMutation({
-        mutationFn: async (orderedIds: number[]) => {
-            const current = queryClient.getQueryData<ExerciseListWithItems[]>(EXERCISE_LISTS_QUERY_KEY) ?? [];
-            const positionOf = new Map(current.map((list) => [list.id, list.position]));
-
-            const changed = orderedIds
-                .map((id, index) => ({ id, position: index }))
-                .filter(({ id, position }) => positionOf.get(id) !== position);
-
-            await Promise.all(changed.map(({ id, position }) => updateList({ id, position })));
-        },
+        mutationFn: reorderLists,
         onMutate: async (orderedIds) => {
             await queryClient.cancelQueries({ queryKey: EXERCISE_LISTS_QUERY_KEY });
             const previous = queryClient.getQueryData<ExerciseListWithItems[]>(EXERCISE_LISTS_QUERY_KEY);
@@ -265,18 +278,16 @@ export function useExerciseLists() {
         onSettled: invalidateAll,
     });
 
-    // Appending needs the list's current items, since the endpoint's contract is
-    // replace-all — reading them from the cache keeps the call site a one-liner.
-    const appendExercise = ({ listId, exerciseId }: { listId: number; exerciseId: number }) => {
-        const list = (queryClient.getQueryData<ExerciseListWithItems[]>(EXERCISE_LISTS_QUERY_KEY) ?? [])
-            .find((candidate) => candidate.id === listId);
-        if (!list) return;
-
-        saveItemsMutation.mutate({
-            listId,
-            items: [...list.items.map(toItemInput), { exerciseId }],
-        });
-    };
+    const appendMutation = useMutation({
+        mutationFn: appendItem,
+        onSuccess: ({ listId, items }) => {
+            queryClient.setQueryData<ExerciseListWithItems[]>(EXERCISE_LISTS_QUERY_KEY, (old = []) =>
+                old.map((list) => (list.id === listId ? { ...list, items } : list))
+            );
+        },
+        onError: toastListError,
+        onSettled: invalidateAll,
+    });
 
     return {
         lists: listsQuery.data ?? [],
@@ -288,6 +299,6 @@ export function useExerciseLists() {
         deleteList: deleteMutation.mutate,
         reorderLists: reorderMutation.mutate,
         saveItems: saveItemsMutation.mutate,
-        appendExercise,
+        appendExercise: appendMutation.mutate,
     };
 }

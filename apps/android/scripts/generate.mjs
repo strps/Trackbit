@@ -50,6 +50,7 @@ const UI_ICONS = {
     hash: 'Hash',
     layers: 'Layers',
     list: 'List',
+    list_plus: 'ListPlus',
     lock: 'Lock',
     log_out: 'LogOut',
     map_pin: 'MapPin',
@@ -69,6 +70,7 @@ const UI_ICONS = {
     trending_up: 'TrendingUp',
     trophy: 'Trophy',
     user: 'User',
+    x: 'X',
 };
 
 class GenerateError extends Error {}

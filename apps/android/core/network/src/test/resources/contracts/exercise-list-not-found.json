@@ -1,0 +1,7 @@
+{
+  "request": "PATCH /api/exercise-lists/:id",
+  "status": 404,
+  "body": {
+    "error": "Exercise list not found"
+  }
+}

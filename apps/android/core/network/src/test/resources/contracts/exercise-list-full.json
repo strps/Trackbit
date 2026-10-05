@@ -1,0 +1,9 @@
+{
+  "request": "POST /api/exercise-lists/:id/items",
+  "status": 400,
+  "body": {
+    "error": "exercise_list_full",
+    "message": "A list holds at most 100 exercises.",
+    "maxItems": 100
+  }
+}

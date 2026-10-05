@@ -1,14 +1,18 @@
 # Handoff: Kotlin app — Workstream E (settings & configuration)
 
 - **Plan:** [kotlin-app.md](../tasks/kotlin-app.md). Read only §4 "Phase 3" (and §0 D3: config needs a connection). Core context: the "Invariants" and "Landmines" of [kotlin-app-D.md](kotlin-app-D.md), [kotlin-app-C.md](kotlin-app-C.md) and [kotlin-app-B.md](kotlin-app-B.md), nothing else.
-- **Status:** Phase 3. E1, E2 and E3 done on the emulator; **E4 (exercise lists) is next**. The Phase 2 exit check is deferred to the final pass with the real-device check (user).
-- **Branch:** `kotlin-app` · **Last run:** 2026-10-05 (E3, committed bfafcf5)
+- **Status:** Phase 3. E1–E4 done on the emulator; **E5 (auth screens) is next**. The Phase 2 exit check is deferred to the final pass with the real-device check (user).
+- **Branch:** `kotlin-app` · **Last run:** 2026-10-05 (E4)
 
 ## Where we are
 
 The bottom bar is **Tracker / Stats / Settings**. Settings (`feature/account`) shows the signed-in user, a "Configuration" section with **Habits**, and **Log out** (moved from the tracker's overflow menu, which is gone). Habits opens the habits config (`feature/habits-config`): both groups in order, reordered by dragging a row's grip (also past the Anti-Habits header to change group), tap a row to edit, an "Add Habit" FAB that explains the cap instead of opening at it. The form covers name, tracking method, anti-habit, weekly/daily goals (timed: a minutes dialog), 15 icons, 6 presets + a custom gradient editor, and delete with a confirmation.
 
 Under Configuration, **Exercises** opens the exercise library (`feature/exercise-library`): every exercise sorted by name, searched by name, filtered All / Custom / System and by a top-level muscle group (its subdivisions included), each card with its category badge, Mine/System/Frozen badges, description and muscle groups. Tapping one of the user's own opens the form (name, description, muscle chips, category with its inputs, delete with a confirmation that warns when it was logged); system exercises don't open. A frozen one opens read-only and can be deleted. The "Add Custom Exercise" FAB explains the cap instead of opening at it.
+
+Under Configuration, **Lists** opens the user's exercise lists (`feature/exercise-lists`): in order, reordered by dragging the grip (frozen lists stay at the end, locked), "New list" opens a name/description dialog (or explains the cap) and then the new list's editor. The editor shows the list's exercises in order: drag to reorder, X to remove, "Add exercise" (a searchable sheet of the catalog; an exercise can be added twice), and tap a row for its **targets** (sets, reps, weight in the user's unit, distance km, duration, rest, notes, by category), which pre-fill the session's new sets. Rename and delete are in the top bar; a frozen list is read-only but can be deleted. The library cards and the session picker's rows have an **add to list** button (the web's `AddToListMenu`), and the picker's "No lists yet" hint now opens the lists screen.
+
+E4 on the emulator (API 36, the user's dev account): created "E4 Legs" (with a description) and it opened; added Strenght and Cardio; targets 4 × 8, 82.5 kg, rest 1:30, a note → stored as such in the DB; dragged Cardio first → positions swapped, ids kept (this first failed with a 500, see Done); added a third from the library's menu ("Added to E4 Legs"); in a session, E4 Legs was a source with 3 items in the new order, and Strenght's new set started at 8 × 82.5. Session, list and preferred source cleaned up. Not exercised: frozen lists, the caps (admin account), imperial units on the device (unit-tested), Spanish, dark mode, offline.
 
 E3 on the emulator (API 36, the user's dev account, 4 seeded `e3-*` muscle groups incl. a subdivision, all deleted afterwards): created "E3 Dips 2" (cardio, Upper chest, a description), and the DB has the link; saving a duplicate name showed the error under the field; the Chest filter showed it via its Upper chest subdivision; editing another exercise (add Back, switch to strength) saved; both deleted from the form; dark mode checked. Not exercised: frozen exercises, the cap (admin account), Spanish, offline, a delete of a logged exercise (the Room cleanup is covered by `ExerciseLibraryRepositoryTest`).
 
@@ -18,7 +22,7 @@ E2 on the emulator: Español switched the app at once (activity recreated in pla
 
 E1 on the emulator (API 36, local backend, the user's dev account, an admin): drag Otroer into anti-habits → `PATCH /reorder` stored it; a structured session dropped there snapped back with the web's message; editing (anti off, heart, custom gradient with a moved stop) saved and moved the habit to the end of the habits group; creating "Goal Read" (timed, 5 min) and deleting it worked; the tracker showed each change after the background sync. Test data restored. Not exercised: frozen habits, a role without timed/check, the cap, Spanish, dark mode, offline (shows the offline text + retry).
 
-`./gradlew assembleDebug testDebugUnitTest lintDebug` passes, 0 lint issues, 360 tests (core:model's JVM `test` task included). Backend 104 tests.
+`./gradlew assembleDebug testDebugUnitTest lintDebug` passes, 0 lint issues, 390 tests (core:model's JVM `test` task included). Backend 124 tests.
 
 ## Phase 3 task split (E1–E6)
 
@@ -27,10 +31,22 @@ E1 on the emulator (API 36, local backend, the user's dev account, an admin): dr
 | **E1** | Settings tab hub, habits config (list, reorder, form, gradient editor, delete, limits) | ✅ 2026-10-03 |
 | **E2** | Account: locale (per-app language + PATCH), timezone (device's), units, card style, rest default, profile name, change password | ✅ 2026-10-03 |
 | **E3** | Exercise library: browse/search/filter by muscle group, custom exercise CRUD, frozen; backend `muscleGroups` fix | ✅ 2026-10-05 |
-| **E4** | Exercise lists: CRUD, item editor + reorder, prescriptions; "add to list" in the picker and library | next |
-| **E5** | Auth screens: sign-up with invite code, forgot password, verify email. Google sign-in is backlog | |
+| **E4** | Exercise lists: CRUD, item editor + reorder, prescriptions; "add to list" in the picker and library | ✅ 2026-10-05 |
+| **E5** | Auth screens: sign-up with invite code, forgot password, verify email. Google sign-in is backlog | next |
 | **E6** | Issue report (`POST /api/issues`) | |
 | **Exit** | Parity with `/tracker`, `/sessions`, `/stats`, `/config/*`, `/account-settings` | |
+
+## Done (E4)
+
+- **Backend** [exercise-lists.ts](../../../apps/backend/src/routes/app/exercise-lists.ts): names trimmed 1–120, descriptions and notes trimmed ≤ 500 (blank → null), ids validated (`/abc` is a 400), strict bodies. Prescription bounds: sets 1–50, reps 1–1000, weight 0–1000 kg (exclusive 0), duration 1–86 400 s, distance 0–1000 km, rest 0–3600 s; ≤ 100 items. **Prescribed weights are kg and distances km**, like sets (both clients' pre-fill was already treating them so). New `PATCH /reorder` (`{ ids }`: every list once, one transaction; 400 `exercise_list_order_mismatch`; 403 `exercise_list_frozen` with `listIds` if the frozen set would change) replaces the web's PATCH per list; `PATCH /:id` no longer takes `position` and answers the full list (items + frozen). New `POST /:id/items` (`{ exerciseId }`, appends unprescribed under a row lock; 400 `exercise_list_full`). `PUT /:id/items` locks the list row, refuses repeated item ids, and **writes positions in two phases** (kept rows parked on negative positions): the emulator showed `exercise_list_items_list_position_uq` isn't deferrable on the dev DB (and never in pushed test DBs), so a swap was a 500, on the web too. Migration [0015](../../../apps/backend/drizzle/0015_exercise_list_rules.sql) (local dev only) trims names, nulls blank descriptions/notes and zero targets, converts lbs/miles targets, adds CHECKs. Tests in [exercise-lists.test.ts](../../../apps/backend/test/exercise-lists.test.ts); contracts `exercise-list-{created,updated,items,item-appended}.json`, `exercise-lists-reordered.json`, `exercise-list-{name-taken,not-found,limit-reached,frozen,order-frozen,full}.json`.
+- **Web:** reorder through `PATCH /reorder`, add-to-list through `POST /:id/items` (toast on success), list form trims; `@trackbit/types` `Prescription` documents kg/km. No prescription editor (follow-ups).
+- **core:model:** [ExerciseListRequests.kt](../../../apps/android/core/model/src/main/kotlin/com/trackbit/core/model/ExerciseListRequests.kt) (`ExerciseListRequest`, `ExerciseListReorderRequest`, `AppendListItemRequest`, `ExerciseListItemsRequest`/`ExerciseListItemInput`, `ListItemDraft`, `ExerciseListItemsResponse`, `ExerciseListRules`); `Prescription.NONE`/`isEmpty`; `ExerciseList.items`/`frozen` are required now.
+- **core:network:** `ExerciseListService`; `ApiError.ExerciseListFrozen`, `ExerciseListLimitReached`, `ExerciseListNameTaken`, `ExerciseListFull`.
+- **core:data:** [ExerciseListsRepository.kt](../../../apps/android/core/data/src/main/kotlin/com/trackbit/core/data/ExerciseListsRepository.kt) (every write then runs `TrackerSync.syncSources`: sources + every queue Room holds); `SyncDao.cachedQueueKeys`; the matching `ConfigError`s.
+- **core:designsystem:** `AddToListButton` + `ListTargets` (stateless; each screen loads the lists from the server); icons `list_plus`, `x`.
+- **feature/exercise-lists:** `ExerciseListsViewModel`/`Screen`, `ListEditorViewModel`/`Screen`, `TargetsForm` + `TargetsSheet`, `ListFormDialog`. Android-only strings `android_lists_*` (en/es; `android_lists_full` is a plural).
+- **Library and session:** add-to-list on library cards and picker rows (`ExerciseListsRepository.append`, a snackbar names the list); `SessionMessage` is a sealed interface now; `SessionScreen(onOpenLists)`.
+- **app:** `ExerciseListsRoute`, `ListEditorRoute(listId)`; Settings → Lists.
 
 ## Done (E3)
 
@@ -64,13 +80,12 @@ E1 on the emulator (API 36, local backend, the user's dev account, an admin): dr
 - **app:** `SettingsRoute`, `HabitsConfigRoute`, `HabitFormRoute(habitId: Int?)`; third tab.
 - **Icons:** grip_vertical, list, log_out, pencil, settings, user (`UI_ICONS` in generate.mjs).
 
-## Next: E4 — exercise lists
+## Next: E5 — auth screens
 
 1. Run **Verify**.
-2. Read the web's lists: `apps/frontend/src/features/exercise-lists/` (`ExerciseLists.tsx`, `ExerciseListEditor.tsx`, `ListFormDialog.tsx`, `AddToListMenu.tsx`, `use-exercise-lists.ts`) and [exercise-lists.ts](../../../apps/backend/src/routes/app/exercise-lists.ts) (list CRUD, items, prescriptions, `exercise_list_name_taken`, the list cap + frozen lists). Check its write rules the way E1/E3 did (trimmed names, bounds, transactions) and fix them at the server first; record contracts for every new response and error.
-3. Add "Lists" (`R.string.nav_lists`, `UiIcons.List`) under Configuration, opening a new feature module (lists, then the item editor with drag reorder like E1's `reorderable`, and prescription editing).
-4. Writes go through a core:data repository like `ExerciseLibraryRepository`; after success re-pull the sources (`pullSourcesLocked`) and the edited list's cached queue, since the picker reads them from Room.
-5. "Add to list" from the library card and from the session picker (the web's `AddToListMenu`).
+2. Read the web's auth pages (`apps/frontend/src/features/auth/`: sign-up with invite code, forgot/reset password, verify email) and the invite check in the backend (`/api/auth/*` hooks, `invites`). Check their write rules the way E1–E4 did and fix them at the server first; record contracts for every new response and error.
+3. Extend `feature/auth` (sign-in today): sign-up (name, email, password, invite code; locale and timezone from the device, as the web sends them), forgot password, and what an unverified account sees (`EMAIL_NOT_VERIFIED` on sign-in). Routing still follows `AuthState` (B invariant).
+4. Landmine: sign-up sends real email unless the backend runs with `RESEND_API_KEY=` (B handoff).
 
 ## Invariants — do not break these
 
@@ -90,7 +105,25 @@ E1 on the emulator (API 36, local backend, the user's dev account, an admin): dr
 - **`ExerciseRules` is the custom exercise form's and the server's rule set** (`exercises.ts` schema); change them together. A description is never blank: NULL in the DB (CHECK), null on the wire, blank translations dropped by the admin route.
 - **Deleting an exercise goes through `TrackerSync.removeExercise`**: the server deletes its logs and list items, so Room must drop its copies too or cached sessions, analytics and queues keep showing it.
 - **The library reads the server** (descriptions and `frozen` aren't in Room's catalog); Room's catalog stays the picker's/sessions' source and catches up after each library write.
+- **`ExerciseListRules` is the list editor's and the server's rule set** (`exercise-lists.ts` schemas); change them together.
+- **Prescriptions are kg and km** (seconds for durations), like sets: only the UI converts (`TargetsForm` with `kgToDisplay`/`displayToKg`). An unchanged weight is kept exactly, so pounds' half-rounding doesn't drift it.
+- **List writes go through `ExerciseListsRepository`**, which re-pulls the sources and every cached queue after success (`TrackerSync.syncSources`): the picker and new sets' prescriptions read them from Room.
+- **The editor's item writes run one at a time, each applied to the server's latest items** (`ListEditorViewModel.saveItems`, keyed by item id): a replace-all built from a stale copy would delete an item appended meanwhile. Appends always go through `POST /:id/items`, so every item the editor holds has an id.
+- **Frozen lists stay at the end of the order** (the freeze walks positions); the client refuses such a drag before the server does.
+- **`PUT /:id/items` never relies on the position constraint being deferred**: kept rows are parked on negative positions first.
 - **Server-side user rules live in `auth.ts`'s user hooks** (timezone, locale, name), which cover sign-up, `update-user` and OAuth; `AccountRules` mirrors them.
+
+## Decisions made in E4
+
+| Question | Decision | Why |
+|---|---|---|
+| Prescription editing | In E4, Android ahead of the web (user) | The plan's E4 scope; the web keeps the targets through its round-trip. |
+| Prescription units | kg and km, stored like sets; migration converts old lbs/miles targets | Root fix of the D4 follow-up: both clients already pre-filled sets from them as kg. |
+| Which targets show | By category, as the set controls record (strength: sets/reps/weight; cardio: laps/distance/duration; flexibility: sets/duration) + rest and notes | Hidden ones are kept, not cleared. |
+| List reorder | One `PATCH /reorder` in a transaction | The web's PATCH per list could stop halfway. |
+| Add to list | `POST /:id/items` appends on the server | A replace-all from a cached copy could drop concurrent changes; the app's sources don't carry list ids. |
+| Add-to-list data | The menu loads `GET /exercise-lists` (library on refresh, session when the menu opens) | Config needs a connection anyway; no key parsing. |
+| Same exercise twice | Allowed from the editor, refused (checked) from the add-to-list menus | As the web: routines repeat exercises; the quick menu avoids accidental duplicates. |
 
 ## Decisions made in E3
 
@@ -132,8 +165,11 @@ E1 on the emulator (API 36, local backend, the user's dev account, an admin): dr
 
 ## Landmines
 
-- **Production needs migrations 0008–0014** and the `/days` + `/sets` backend (E3's 0014 is applied to local dev only).
+- **Production needs migrations 0008–0015** and the `/days` + `/sets` backend (0014 and 0015 are applied to local dev only). Run 0015's audit query (names that collide once trimmed) first.
 - **The local backend's `tsx watch` once missed an edit for two days** (follow-ups): if a backend change seems absent, compare the dev server's start time with the file's mtime and restart it. In E3 it was restarted from this session (`npx tsx watch --env-file=.env src/dev.ts` in `apps/backend`, logging to the session scratchpad); restart it from your own terminal with `pnpm dev:backend`.
+- **Extended FABs don't show in `uiautomator dump`** (E4): tap them by coordinates (bottom right, ≈ (876, 2220) at 1080×2400).
+- **Drag-to-reorder on the emulator needs `adb shell input draganddrop x1 y1 x2 y2 2500`** on the grip; `input swipe` doesn't start the drag.
+- **Picking a list in the session sets the account's preferred source**: reset it (`preferred_exercise_source` NULL for the dev account) after testing with a throwaway list.
 - **The dev DB has no muscle groups again** (E3 seeded `e3-*` ones and deleted them). Seed some to test the library filter or the form's chips.
 - **Gboard's floating toolbar can cover the left of the screen** after `KEYCODE_ESCAPE` hides the keyboard, and once asked for the microphone; tap `Don't allow` and avoid chips on the far left, or hide it with `KEYCODE_BACK` while a field has focus.
 - **The emulator's soft keyboard covers the lower half of the screen**: `input tap` on a field under it types a key instead. Move between fields with `input keyevent KEYCODE_TAB`, and clear a field with `input keycombination 113 29` + `KEYCODE_DEL`. When grepping `uiautomator dump` for a label with accents, match an ASCII prefix (`text="Nueva contrase`).
@@ -149,18 +185,19 @@ E1 on the emulator (API 36, local backend, the user's dev account, an admin): dr
 
 ```bash
 cd apps/android && ./gradlew --stop
-./gradlew assembleDebug testDebugUnitTest lintDebug --max-workers=2   # green, 0 lint issues, 360 tests
-pnpm android:generate:check                                          # 57 generated files up to date
+./gradlew assembleDebug testDebugUnitTest lintDebug --max-workers=2   # green, 0 lint issues, 390 tests
+pnpm android:generate:check                                          # 59 generated files up to date
 (cd apps/frontend && npx tsc -b)
-pnpm --filter backend test                                           # 104 tests
+pnpm --filter backend test                                           # 124 tests
 ```
 
 ## Open questions
 
-- None blocking. Deferred items: [kotlin-app-followups.md](../tasks/kotlin-app-followups.md) (new in E2: password-change device check, widgets on 8–12 keep the system language, profile image / delete account / preferred source not on the screen).
+- None blocking. Deferred items: [kotlin-app-followups.md](../tasks/kotlin-app-followups.md) (new in E4: no web prescription editor, the dev DB's non-deferrable position constraint, the racy list cap; new in E2: password-change device check, widgets on 8–12 keep the system language, profile image / delete account / preferred source not on the screen).
 
 ## Run log
 
 - 2026-10-03 — E1: Phase 3 split E1–E6 (Settings tab, habits first, Google to backlog, Phase 2 exit deferred). Backend habit rules + migration 0013 + reorder/group fixes; web strings to `habits.json`; `HabitsRepository`/`ConfigResult`; `feature/habits-config` and the Settings hub. Android 327 tests. Next: E2.
 - 2026-10-03 — E2: account settings (name, language, units, card style, rest, password; timezone = device's, user). Backend: locale + name rules in `auth.ts` hooks; change-password token rotation proven. Android: AppCompat per-app language following the user's locale, `RequestLanguage`, `SessionStore.rotate`, `DeviceTimeZoneSync`, `LocalizedDataSync`. 341 tests, backend 90. Next: E3.
 - 2026-10-05 — E3: exercise library. Backend: exercises router rewritten (muscle groups stored, rules, name-taken, delete with logs), muscle groups list-only, migration 0014 (no blank descriptions) local dev only; web library edit/delete. Android: `ExerciseLibraryRepository`, `TrackerSync.removeExercise`, `feature/exercise-library`, Settings → Exercises. 360 tests, backend 104. Next: E4.
+- 2026-10-05 — E4: exercise lists with per-item targets (Android ahead of the web, user). Backend: list rules + migration 0015 (prescriptions in kg/km), `PATCH /reorder`, `POST /:id/items`, two-phase item positions (the emulator caught a 500 on a swap). Web: reorder/append through them. Android: `ExerciseListsRepository` + `TrackerSync.syncSources`, `feature/exercise-lists`, add-to-list in library and picker. 390 tests, backend 124. Next: E5.

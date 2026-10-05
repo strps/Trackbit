@@ -35,6 +35,18 @@ sealed interface ApiError {
     /** 409 `exercise_name_taken`: the user already has a custom exercise with that name. */
     data object ExerciseNameTaken : ApiError
 
+    /** 403 `exercise_list_frozen`: the list is over the role's cap and read-only (it can still be deleted). */
+    data object ExerciseListFrozen : ApiError
+
+    /** 403 `exercise_list_limit_reached`: one more list would pass the role's [maxExerciseLists]. */
+    data class ExerciseListLimitReached(val maxExerciseLists: Int?) : ApiError
+
+    /** 409 `exercise_list_name_taken`: the user already has a list with that name. */
+    data object ExerciseListNameTaken : ApiError
+
+    /** 400 `exercise_list_full`: the list already holds [maxItems] exercises. */
+    data class ExerciseListFull(val maxItems: Int?) : ApiError
+
     data class NotFound(val message: String?) : ApiError
 
     /**
@@ -81,10 +93,14 @@ sealed interface ApiError {
                 status == 403 && error == "habit_limit_reached" -> HabitLimitReached(json.int("maxHabits"))
                 status == 403 && error == "habit_type_not_allowed" -> HabitTypeNotAllowed(json.strings("allowedHabitTypes"))
                 status == 403 && error == "custom_exercise_limit_reached" -> CustomExerciseLimitReached(json.int("maxCustomExercises"))
+                status == 403 && error == "exercise_list_frozen" -> ExerciseListFrozen
+                status == 403 && error == "exercise_list_limit_reached" -> ExerciseListLimitReached(json.int("maxExerciseLists"))
+                status == 400 && error == "exercise_list_full" -> ExerciseListFull(json.int("maxItems"))
                 status == 404 -> NotFound(message)
                 status == 400 -> Validation(message, json.issues(), error ?: json.string("code"))
                 status == 409 && error == "idempotency_request_in_progress" -> RequestInProgress
                 status == 409 && error == "exercise_name_taken" -> ExerciseNameTaken
+                status == 409 && error == "exercise_list_name_taken" -> ExerciseListNameTaken
                 status >= 500 -> Server(status, message)
                 else -> Unknown(status, error ?: json.string("code"), message)
             }

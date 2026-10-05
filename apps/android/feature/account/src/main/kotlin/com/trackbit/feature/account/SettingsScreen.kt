@@ -44,11 +44,12 @@ fun SettingsScreen(
     onOpenAccount: () -> Unit,
     onOpenHabits: () -> Unit,
     onOpenExercises: () -> Unit,
+    onOpenLists: () -> Unit,
     onSignOut: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val user by viewModel.user.collectAsStateWithLifecycle()
-    SettingsContent(user, onOpenAccount, onOpenHabits, onOpenExercises, onSignOut)
+    SettingsContent(user, onOpenAccount, onOpenHabits, onOpenExercises, onOpenLists, onSignOut)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,6 +59,7 @@ private fun SettingsContent(
     onOpenAccount: () -> Unit,
     onOpenHabits: () -> Unit,
     onOpenExercises: () -> Unit,
+    onOpenLists: () -> Unit,
     onSignOut: () -> Unit,
 ) {
     Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.nav_settings)) }) }) { padding ->
@@ -85,6 +87,7 @@ private fun SettingsContent(
             SectionTitle(R.string.nav_configuration)
             Entry(UiIcons.Flame, R.string.nav_habits, onOpenHabits)
             Entry(UiIcons.Dumbbell, R.string.nav_exercises, onOpenExercises)
+            Entry(UiIcons.List, R.string.nav_lists, onOpenLists)
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             Entry(UiIcons.LogOut, R.string.nav_log_out, onSignOut, tint = MaterialTheme.colorScheme.error)
         }

@@ -1,0 +1,35 @@
+{
+  "request": "POST /api/exercise-lists/:id/items",
+  "status": 201,
+  "body": {
+    "listId": 1,
+    "items": [
+      {
+        "id": 1,
+        "listId": 1,
+        "exerciseId": 1,
+        "position": 0,
+        "targetSets": 5,
+        "targetReps": 5,
+        "targetWeight": 100,
+        "targetDuration": null,
+        "targetDistance": null,
+        "restSeconds": 180,
+        "notes": "Belt"
+      },
+      {
+        "id": 2,
+        "listId": 1,
+        "exerciseId": 2,
+        "position": 1,
+        "targetSets": null,
+        "targetReps": null,
+        "targetWeight": null,
+        "targetDuration": null,
+        "targetDistance": null,
+        "restSeconds": null,
+        "notes": null
+      }
+    ]
+  }
+}

@@ -65,11 +65,14 @@ These are covered by unit tests but were not exercised on the emulator for W1. R
 
 ## Housekeeping
 
+- **The web has no prescription editor** (E4, Android only, user): the web's list editor still edits only order and membership; its round-trip keeps the targets the app writes. Add the fields there (kg/km, the server's bounds in `exercise-lists.ts`) when the programs phase comes.
+- **`exercise_list_items_list_position_uq` isn't deferrable on the local dev DB** although `0006` asks for it (and a pushed schema never is). Since E4 the route writes positions in two phases and doesn't need it; check production with `SELECT condeferrable FROM pg_constraint WHERE conname = 'exercise_list_items_list_position_uq'` and drop the `DEFERRABLE` expectation from the docs if it differs.
+- **The list cap is checked before the insert** (`POST /api/exercise-lists`), so two creates at once can pass it; the freeze then covers the extra list. Same pattern as habits and custom exercises.
+
 - **`@trackbit/types` has no `uuid` on sessions, logs and sets** (D2 added the column). The web ignores it; its optimistic rows use negative temp ids. Adopting client uuids on the web too would let it drop the temp-id swapping in `useActivityTracker.ts`, and then the types should carry `uuid`.
 - **Session rows stay in Room for every day the app opened** (D2), until sign-out. Small, but never pruned; prune days older than the history window if it ever matters.
 - **Deleting a session, log or set isn't gated on frozen habits** on the server (creates and edits are). Same as before D2; decide whether deletes of frozen data should be allowed.
 - **A preferred-source change made offline is lost** (D4): `PreferencesRepository` updates the cached user and PATCHes once; if the PATCH fails, the next session refresh brings the server's value back. Queue it (outbox or a retrying worker) if that bites.
-- **Prescribed weights aren't converted** (D4, same as the web's `buildNewSetValues`): a prescription is in the exercise's `defaultWeightUnit`, but sets store kg, so a `lbs` exercise's target weight is taken as kg. Fix on both clients (or store prescriptions in kg) once there is a prescription editor.
 - **A prescription is found only while a cached queue holds its list item** (D4): a log picked from a list on the web, whose list the app never resolved, starts its sets from the last performance. Pulling every list's queue (or `GET /exercise-lists`) would cover it.
 - **A day's sessions refresh only when asked** (`SessionRepository.refresh`: the session screen on open and on pull-to-refresh). A session added on the web shows in the app's session count (via `/today`) before its contents.
 

@@ -42,11 +42,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -72,6 +74,7 @@ fun SessionScreen(
     habitId: Int,
     day: LocalDate,
     onBack: () -> Unit,
+    onOpenLists: () -> Unit,
     viewModel: SessionViewModel = hiltViewModel<SessionViewModel, SessionViewModel.Factory>(
         key = "$habitId/$day",
         creationCallback = { it.create(habitId, day) },
@@ -81,19 +84,23 @@ fun SessionScreen(
     val snackbar = remember { SnackbarHostState() }
 
     state.message?.let { message ->
-        val text = stringResource(message.textRes)
+        val text = message.text()
         LaunchedEffect(message) {
             snackbar.showSnackbar(text)
             viewModel.onMessageShown(message)
         }
     }
 
+    val openLists by rememberUpdatedState(onOpenLists)
     val actions = remember(viewModel) {
         SessionActions(
             onStart = viewModel::startSession,
             onDelete = viewModel::deleteSession,
             onAddExercise = viewModel::addExercise,
             onSelectSource = viewModel::selectSource,
+            onOpenLists = { openLists() },
+            onListsMenu = viewModel::loadLists,
+            onAddToList = viewModel::addToList,
             onAdjustRest = viewModel::adjustRest,
             onSkipRest = viewModel::skipRest,
             onSetDefaultRest = viewModel::setDefaultRest,
@@ -113,6 +120,11 @@ private class SessionActions(
     val onDelete: (sessionId: String) -> Unit,
     val onAddExercise: (sessionId: String, exerciseId: Int, listItemId: Int?) -> Unit,
     val onSelectSource: (key: String?) -> Unit,
+    /** The lists screen (no lists yet). */
+    val onOpenLists: () -> Unit,
+    /** An add-to-list menu opened: load the lists. */
+    val onListsMenu: () -> Unit,
+    val onAddToList: (listId: Int, exerciseId: Int) -> Unit,
     val onAdjustRest: (ms: Long) -> Unit,
     val onSkipRest: () -> Unit,
     val onSetDefaultRest: (seconds: Int) -> Unit,
@@ -216,6 +228,7 @@ private fun SessionContent(
                                 sources = state.sources,
                                 sourcesLoaded = state.sourcesLoaded,
                                 onSelectSource = actions.onSelectSource,
+                                onOpenLists = actions.onOpenLists,
                                 onOpenList = { pickingFor = session.id },
                                 onAdd = { exerciseId, listItemId -> add(session, picker.browsing, exerciseId, listItemId) },
                                 modifier = Modifier.fillMaxWidth(),
@@ -232,6 +245,9 @@ private fun SessionContent(
         val picker = pickerOf(picking)
         ExercisePickerSheet(
             picker = picker,
+            listTargets = state::listTargets,
+            onListsMenu = actions.onListsMenu,
+            onAddToList = actions.onAddToList,
             onDismiss = { pickingFor = null },
             onPick = { exerciseId, listItemId ->
                 pickingFor = null
@@ -354,11 +370,13 @@ private fun CenteredText(@StringRes text: Int) {
     )
 }
 
-@get:StringRes
-private val SessionMessage.textRes: Int
-    get() = when (this) {
-        SessionMessage.Offline -> R.string.android_tracker_offline
-        SessionMessage.SyncFailed -> R.string.errors_generic_title
-        SessionMessage.HabitFrozen -> R.string.errors_limits_habit_frozen_body
-        SessionMessage.ExerciseFrozen -> R.string.errors_limits_custom_exercise_frozen_body
-    }
+@Composable
+private fun SessionMessage.text(): String = when (this) {
+    SessionMessage.Offline -> stringResource(R.string.android_tracker_offline)
+    SessionMessage.SyncFailed -> stringResource(R.string.errors_generic_title)
+    SessionMessage.HabitFrozen -> stringResource(R.string.errors_limits_habit_frozen_body)
+    SessionMessage.ExerciseFrozen -> stringResource(R.string.errors_limits_custom_exercise_frozen_body)
+    is SessionMessage.AddedToList -> stringResource(R.string.lists_add_to_list_added, listName)
+    SessionMessage.ListFrozen -> stringResource(R.string.errors_limits_exercise_list_frozen_body)
+    is SessionMessage.ListFull -> pluralStringResource(R.plurals.android_lists_full, maxItems, maxItems)
+}

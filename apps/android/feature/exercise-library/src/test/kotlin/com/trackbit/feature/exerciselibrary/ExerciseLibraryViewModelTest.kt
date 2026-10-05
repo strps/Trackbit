@@ -1,6 +1,8 @@
 package com.trackbit.feature.exerciselibrary
 
 import com.trackbit.core.data.ConfigError
+import com.trackbit.core.designsystem.component.ListTarget
+import com.trackbit.core.designsystem.component.ListTargets
 import com.trackbit.core.model.EffectiveLimits
 import com.trackbit.core.model.MuscleGroupRef
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +24,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class ExerciseLibraryViewModelTest {
     private val repository = FakeExerciseLibraryRepository()
+    private val lists = FakeExerciseListsRepository()
     private val dispatcher = StandardTestDispatcher()
 
     private val chest = MuscleGroupRef(1, "Chest")
@@ -42,7 +45,7 @@ class ExerciseLibraryViewModelTest {
     @After fun tearDown() = Dispatchers.resetMain()
 
     private fun TestScope.library(): ExerciseLibraryViewModel {
-        val viewModel = ExerciseLibraryViewModel(repository)
+        val viewModel = ExerciseLibraryViewModel(repository, lists)
         viewModel.refresh()
         advanceUntilIdle()
         return viewModel
@@ -109,5 +112,29 @@ class ExerciseLibraryViewModelTest {
         assertFalse(viewModel.state.value.loadFailed)
         assertEquals(4, viewModel.state.value.exercises?.size)
         assertEquals(ExerciseLibraryMessage.Offline, viewModel.state.value.message)
+    }
+
+    @Test fun `add to list appends to an unfrozen list and says so`() = runTest(dispatcher) {
+        lists.lists = listOf(exerciseList(1, "Push"), exerciseList(2, "Frozen", frozen = true))
+        val viewModel = library()
+        assertEquals(ListTargets.Loaded(listOf(ListTarget(1, "Push", 0, contains = false))), viewModel.state.value.listTargets(2))
+
+        viewModel.addToList(1, 2)
+        advanceUntilIdle()
+
+        assertEquals(listOf("lists", "append 1 2"), lists.calls)
+        assertEquals(ExerciseLibraryMessage.AddedToList("Push"), viewModel.state.value.message)
+        assertEquals(ListTargets.Loaded(listOf(ListTarget(1, "Push", 1, contains = true))), viewModel.state.value.listTargets(2))
+    }
+
+    @Test fun `lists that failed to load are retried when the menu opens`() = runTest(dispatcher) {
+        lists.failWith = ConfigError.Offline
+        val viewModel = library()
+        assertEquals(ListTargets.Offline, viewModel.state.value.listTargets(2))
+
+        lists.failWith = null
+        viewModel.onListsMenu()
+        advanceUntilIdle()
+        assertEquals(ListTargets.Loaded(emptyList()), viewModel.state.value.listTargets(2))
     }
 }

@@ -58,7 +58,7 @@ data class QueueEntry(
     val prescription: Prescription?,
 )
 
-/** A list item's targets: what a new set of it starts with. Units are the exercise's defaults. */
+/** A list item's targets: what a new set of it starts with. Weights are kg and distances km, like sets. */
 @Serializable
 data class Prescription(
     val targetSets: Int?,
@@ -69,7 +69,14 @@ data class Prescription(
     val targetDistance: Double?,
     val restSeconds: Int?,
     val notes: String?,
-)
+) {
+    val isEmpty: Boolean get() = this == NONE
+
+    companion object {
+        /** Nothing prescribed. */
+        val NONE = Prescription(null, null, null, null, null, null, null)
+    }
+}
 
 /** `ResolvedQueue.emptyReason`. */
 @Serializable(with = QueueEmptyReason.Serializer::class)

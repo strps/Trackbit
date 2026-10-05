@@ -76,8 +76,10 @@ export const AddToListMenu = ({ exerciseId, className, align = 'end' }: AddToLis
                                 key={list.id}
                                 disabled={alreadyIn}
                                 onClick={() => {
-                                    appendExercise({ listId: list.id, exerciseId });
-                                    toast.success(t('add_to_list.added', { name }));
+                                    appendExercise(
+                                        { listId: list.id, exerciseId },
+                                        { onSuccess: () => toast.success(t('add_to_list.added', { name })) },
+                                    );
                                 }}
                             >
                                 <span className="flex-1 truncate">{name}</span>

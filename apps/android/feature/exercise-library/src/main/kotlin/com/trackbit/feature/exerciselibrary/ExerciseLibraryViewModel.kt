@@ -5,8 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.trackbit.core.data.ConfigError
 import com.trackbit.core.data.ConfigResult
 import com.trackbit.core.data.ExerciseLibraryRepository
+import com.trackbit.core.data.ExerciseListsRepository
+import com.trackbit.core.designsystem.component.ListTargets
 import com.trackbit.core.model.EffectiveLimits
 import com.trackbit.core.model.Exercise
+import com.trackbit.core.model.ExerciseList
 import com.trackbit.core.model.MuscleGroup
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.text.Collator
@@ -35,8 +38,14 @@ data class ExerciseLibraryUiState(
     val owner: OwnerFilter = OwnerFilter.All,
     /** A top-level group: shows exercises that work it or any of its subdivisions. */
     val muscleGroupId: Int? = null,
+    /** The user's lists, for "add to list". Null until they load. */
+    val lists: List<ExerciseList>? = null,
+    val listsFailed: Boolean = false,
     val message: ExerciseLibraryMessage? = null,
 ) {
+    /** The lists [exerciseId] can be added to: the unfrozen ones. */
+    fun listTargets(exerciseId: Int): ListTargets = ListTargets.of(lists, listsFailed, exerciseId)
+
     /** The top-level groups the filter offers, in the taxonomy's order. */
     val filterGroups: List<MuscleGroup> get() = muscleGroups.filter { it.parentId == null }.sortedWith(GROUP_ORDER)
 
@@ -74,6 +83,9 @@ sealed interface ExerciseLibraryMessage {
     data object Offline : ExerciseLibraryMessage
     data object Failed : ExerciseLibraryMessage
     data class LimitReached(val maxCustomExercises: Int) : ExerciseLibraryMessage
+    data class AddedToList(val listName: String) : ExerciseLibraryMessage
+    data object ListFrozen : ExerciseLibraryMessage
+    data class ListFull(val maxItems: Int) : ExerciseLibraryMessage
 }
 
 /** The taxonomy's order, then by name for groups without one. */
@@ -89,6 +101,7 @@ internal val GROUP_ORDER: Comparator<MuscleGroup> =
 @HiltViewModel
 class ExerciseLibraryViewModel @Inject constructor(
     private val repository: ExerciseLibraryRepository,
+    private val lists: ExerciseListsRepository,
 ) : ViewModel() {
     private val _state = MutableStateFlow(ExerciseLibraryUiState())
     val state: StateFlow<ExerciseLibraryUiState> = _state.asStateFlow()
@@ -99,6 +112,7 @@ class ExerciseLibraryViewModel @Inject constructor(
         viewModelScope.launch {
             val limits = async { repository.limits() }
             val groups = async { repository.muscleGroups() }
+            launch { loadLists() }
             when (val exercises = repository.exercises()) {
                 is ConfigResult.Success -> {
                     val collator = Collator.getInstance()
@@ -118,6 +132,35 @@ class ExerciseLibraryViewModel @Inject constructor(
                     limits = effective ?: state.limits,
                     refreshing = false,
                 )
+            }
+        }
+    }
+
+    /** The add-to-list menu opened: retries the lists if they failed to load. */
+    fun onListsMenu() {
+        if (_state.value.listsFailed) {
+            _state.update { it.copy(listsFailed = false) }
+            viewModelScope.launch { loadLists() }
+        }
+    }
+
+    private suspend fun loadLists() {
+        when (val result = lists.lists()) {
+            is ConfigResult.Success -> _state.update { it.copy(lists = result.value, listsFailed = false) }
+            is ConfigResult.Failure -> _state.update { it.copy(listsFailed = it.lists == null) }
+        }
+    }
+
+    /** Appends [exerciseId] to [listId], like the web's add-to-list menu. */
+    fun addToList(listId: Int, exerciseId: Int) {
+        viewModelScope.launch {
+            when (val result = lists.append(listId, exerciseId)) {
+                is ConfigResult.Success -> _state.update { state ->
+                    val updated = state.lists?.map { if (it.id == listId) it.copy(items = result.value.items) else it }
+                    val name = updated?.find { it.id == listId }?.name.orEmpty()
+                    state.copy(lists = updated, message = ExerciseLibraryMessage.AddedToList(name))
+                }
+                is ConfigResult.Failure -> _state.update { it.copy(message = result.error.toMessage()) }
             }
         }
     }
@@ -142,6 +185,8 @@ class ExerciseLibraryViewModel @Inject constructor(
     private companion object {
         fun ConfigError.toMessage(): ExerciseLibraryMessage = when (this) {
             ConfigError.Offline -> ExerciseLibraryMessage.Offline
+            ConfigError.ExerciseListFrozen -> ExerciseLibraryMessage.ListFrozen
+            is ConfigError.ExerciseListFull -> ExerciseLibraryMessage.ListFull(maxItems)
             else -> ExerciseLibraryMessage.Failed
         }
     }

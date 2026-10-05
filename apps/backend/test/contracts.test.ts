@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { auth } from '../src/lib/auth.js'
 import db from '../src/db/db.js'
-import { exerciseMuscleGroups, exercises, idempotencyKeys, muscleGroups, user } from '../src/db/schema/index.js'
+import { exerciseListItems, exerciseLists, exerciseMuscleGroups, exercises, idempotencyKeys, muscleGroups, user } from '../src/db/schema/index.js'
 import { app, bearer, createHabit, post, signInBearer, signedInUser } from './helpers.js'
 
 // Records the real responses the Android app decodes, as
@@ -230,6 +230,48 @@ describe('Android contracts', () => {
             await post(u.token, '/api/exercise-info/exercises', { name: 'Ring dips', category: 'strength' }), u.secrets)
         await record(NETWORK, 'muscle-group-not-found.json', 'POST /api/exercise-info/exercises',
             await post(u.token, '/api/exercise-info/exercises', { name: 'Ghost', category: 'strength', muscleGroups: [999999] }), u.secrets)
+    })
+
+    it('exercise lists', async () => {
+        const u = await contractUser('lists@test.local')
+        const [squat, press] = await db.insert(exercises)
+            .values([{ name: 'Squat', category: 'strength' }, { name: 'Press', category: 'strength' }])
+            .returning()
+
+        const created = await post(u.token, '/api/exercise-lists', { name: 'Leg day', description: 'Heavy' })
+        const list = await created.clone().json()
+        await record(MODEL, 'exercise-list-created.json', 'POST /api/exercise-lists', created, u.secrets)
+        await record(MODEL, 'exercise-list-items.json', 'PUT /api/exercise-lists/:id/items',
+            await send(u.token, 'PUT', `/api/exercise-lists/${list.id}/items`, {
+                items: [{ exerciseId: squat.id, position: 0, targetSets: 5, targetReps: 5, targetWeight: 100, restSeconds: 180, notes: 'Belt' }],
+            }), u.secrets)
+        await record(MODEL, 'exercise-list-item-appended.json', 'POST /api/exercise-lists/:id/items',
+            await post(u.token, `/api/exercise-lists/${list.id}/items`, { exerciseId: press.id }), u.secrets)
+        await record(MODEL, 'exercise-list-updated.json', 'PATCH /api/exercise-lists/:id',
+            await send(u.token, 'PATCH', `/api/exercise-lists/${list.id}`, { name: 'Legs', description: null }), u.secrets)
+
+        const other = await (await post(u.token, '/api/exercise-lists', { name: 'Arms' })).json()
+        await record(MODEL, 'exercise-lists-reordered.json', 'PATCH /api/exercise-lists/reorder',
+            await send(u.token, 'PATCH', '/api/exercise-lists/reorder', { ids: [other.id, list.id] }), u.secrets)
+
+        await record(NETWORK, 'exercise-list-name-taken.json', 'POST /api/exercise-lists',
+            await post(u.token, '/api/exercise-lists', { name: 'Legs' }))
+        await record(NETWORK, 'exercise-list-not-found.json', 'PATCH /api/exercise-lists/:id',
+            await send(u.token, 'PATCH', '/api/exercise-lists/999999', { name: 'Ghost' }))
+
+        // The default role allows 3 lists: a third reaches the cap, and a fourth inserted by hand is frozen.
+        const core = await (await post(u.token, '/api/exercise-lists', { name: 'Core' })).json()
+        await record(NETWORK, 'exercise-list-limit-reached.json', 'POST /api/exercise-lists',
+            await post(u.token, '/api/exercise-lists', { name: 'One more' }))
+        const [frozen] = await db.insert(exerciseLists).values({ userId: u.id, authorId: u.id, name: 'Frozen', position: 3 }).returning()
+        await record(NETWORK, 'exercise-list-frozen.json', 'POST /api/exercise-lists/:id/items',
+            await post(u.token, `/api/exercise-lists/${frozen.id}/items`, { exerciseId: squat.id }))
+        await record(NETWORK, 'exercise-list-order-frozen.json', 'PATCH /api/exercise-lists/reorder',
+            await send(u.token, 'PATCH', '/api/exercise-lists/reorder', { ids: [frozen.id, other.id, list.id, core.id] }))
+
+        await db.insert(exerciseListItems).values(Array.from({ length: 98 }, (_, i) => ({ listId: list.id, exerciseId: squat.id, position: i + 2 })))
+        await record(NETWORK, 'exercise-list-full.json', 'POST /api/exercise-lists/:id/items',
+            await post(u.token, `/api/exercise-lists/${list.id}/items`, { exerciseId: squat.id }))
     })
 
     it('frozen custom exercise', async () => {

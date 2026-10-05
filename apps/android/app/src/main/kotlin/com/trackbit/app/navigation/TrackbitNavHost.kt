@@ -37,6 +37,8 @@ import com.trackbit.feature.analytics.AnalyticsScreen
 import com.trackbit.feature.auth.SignInScreen
 import com.trackbit.feature.exerciselibrary.ExerciseFormScreen
 import com.trackbit.feature.exerciselibrary.ExerciseLibraryScreen
+import com.trackbit.feature.exerciselists.ExerciseListsScreen
+import com.trackbit.feature.exerciselists.ListEditorScreen
 import com.trackbit.feature.habitsconfig.HabitFormScreen
 import com.trackbit.feature.habitsconfig.HabitsConfigScreen
 import com.trackbit.feature.session.SessionScreen
@@ -81,6 +83,13 @@ data object ExerciseLibraryRoute
 /** The custom exercise form; [exerciseId] null creates one. The name matches `ExerciseFormViewModel.EXERCISE_ID`. */
 @Serializable
 data class ExerciseFormRoute(val exerciseId: Int? = null)
+
+@Serializable
+data object ExerciseListsRoute
+
+/** A list's editor. The name matches `ListEditorViewModel.LIST_ID`. */
+@Serializable
+data class ListEditorRoute(val listId: Int)
 
 /** The signed-in screens the bottom bar switches between, like the web's header links. */
 private enum class TopLevel(val route: Any, @StringRes val label: Int, @DrawableRes val icon: Int) {
@@ -144,6 +153,7 @@ private fun AuthNavHost(graph: Any, onSignOut: () -> Unit) {
                         onOpenAccount = { navController.navigate(AccountRoute) },
                         onOpenHabits = { navController.navigate(HabitsConfigRoute) },
                         onOpenExercises = { navController.navigate(ExerciseLibraryRoute) },
+                        onOpenLists = { navController.navigate(ExerciseListsRoute) },
                         onSignOut = onSignOut,
                     )
                 }
@@ -164,9 +174,21 @@ private fun AuthNavHost(graph: Any, onSignOut: () -> Unit) {
                     )
                 }
                 composable<ExerciseFormRoute> { ExerciseFormScreen(onDone = { navController.popBackStack() }) }
+                composable<ExerciseListsRoute> {
+                    ExerciseListsScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpen = { navController.navigate(ListEditorRoute(it)) },
+                    )
+                }
+                composable<ListEditorRoute> { ListEditorScreen(onDone = { navController.popBackStack() }) }
                 composable<SessionRoute> { entry ->
                     val route = entry.toRoute<SessionRoute>()
-                    SessionScreen(route.habitId, LocalDate.parse(route.day), onBack = { navController.popBackStack() })
+                    SessionScreen(
+                        route.habitId,
+                        LocalDate.parse(route.day),
+                        onBack = { navController.popBackStack() },
+                        onOpenLists = { navController.navigate(ExerciseListsRoute) },
+                    )
                 }
             }
         }

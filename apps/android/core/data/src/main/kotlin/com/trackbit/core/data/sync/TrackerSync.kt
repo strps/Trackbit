@@ -26,7 +26,7 @@ import javax.inject.Singleton
  * Moves tracker data between Room and the server: [flush] sends the outbox, [sync] also pulls
  * `/today` (and history when it's due), [syncHistory] pulls only history, [syncSessions] pulls
  * one day's sessions, the exercise catalog and the picker's sources, [syncQueue] one source's
- * queue, [syncSets] a habit's sets for analytics, [syncExercises] only the catalog, [removeExercise]
+ * queue, [syncSources] the sources and every cached queue after a list write, [syncSets] a habit's sets for analytics, [syncExercises] only the catalog, [removeExercise]
  * drops a deleted exercise. Workers and pull-to-refresh go through here.
  *
  * One at a time: a pull that overlapped a flush could store a snapshot taken before an op that
@@ -86,11 +86,22 @@ internal class TrackerSync @Inject constructor(
     /** Replaces Room's copy of [key]'s queue; a 404 records that it no longer resolves. */
     suspend fun syncQueue(key: String): SyncResult = mutex.withLock {
         val token = tokens.currentToken() ?: return SyncResult.SignedOut
-        val queue = when (val answer = safeCall { exerciseService.source(key) }) {
-            is ApiResult.Success -> answer.value
-            is ApiResult.Failure -> if (answer.error is ApiError.NotFound) null else return answer.error.toPullResult()
+        pullQueueLocked(token, key)
+    }
+
+    /**
+     * A list was written on the server: replaces Room's sources (names, counts, capabilities) and
+     * every queue Room holds, so the picker and new sets' prescriptions follow the edit.
+     */
+    suspend fun syncSources(): SyncResult = mutex.withLock {
+        val token = tokens.currentToken() ?: return SyncResult.SignedOut
+        var result = pullSourcesLocked(token)
+        if (result != SyncResult.Done) return result
+        for (key in db.syncDao().cachedQueueKeys()) {
+            result = worse(result, pullQueueLocked(token, key))
+            if (result == SyncResult.SignedOut) return result
         }
-        if (fenced(token) { db.syncDao().applyQueue(key, queue, clock.instant()) }) SyncResult.Done else SyncResult.SignedOut
+        result
     }
 
     /**
@@ -218,6 +229,14 @@ internal class TrackerSync @Inject constructor(
             is ApiResult.Success -> if (fenced(token) { db.syncDao().applySources(sources.value) }) SyncResult.Done else SyncResult.SignedOut
             is ApiResult.Failure -> sources.error.toPullResult()
         }
+
+    private suspend fun pullQueueLocked(token: String, key: String): SyncResult {
+        val queue = when (val answer = safeCall { exerciseService.source(key) }) {
+            is ApiResult.Success -> answer.value
+            is ApiResult.Failure -> if (answer.error is ApiError.NotFound) null else return answer.error.toPullResult()
+        }
+        return if (fenced(token) { db.syncDao().applyQueue(key, queue, clock.instant()) }) SyncResult.Done else SyncResult.SignedOut
+    }
 
     private suspend fun pullLocked(token: String): SyncResult {
         // The device's day, so the summary is for the day the app shows as today.

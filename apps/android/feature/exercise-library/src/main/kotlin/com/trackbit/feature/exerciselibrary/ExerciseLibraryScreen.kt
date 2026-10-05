@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -48,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.trackbit.core.designsystem.component.AddToListButton
 import com.trackbit.core.designsystem.icon.UiIcons
 import com.trackbit.core.i18n.R
 import com.trackbit.core.model.Exercise
@@ -91,6 +93,8 @@ fun ExerciseLibraryScreen(
         onSearch = viewModel::search,
         onOwner = viewModel::filterOwner,
         onMuscleGroup = viewModel::filterMuscleGroup,
+        onListsMenu = viewModel::onListsMenu,
+        onAddToList = viewModel::addToList,
     )
 }
 
@@ -106,6 +110,8 @@ private fun ExerciseLibraryContent(
     onSearch: (String) -> Unit,
     onOwner: (OwnerFilter) -> Unit,
     onMuscleGroup: (Int?) -> Unit,
+    onListsMenu: () -> Unit,
+    onAddToList: (listId: Int, exerciseId: Int) -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -137,7 +143,7 @@ private fun ExerciseLibraryContent(
             modifier = Modifier.padding(padding).fillMaxSize(),
         ) {
             when {
-                state.exercises != null -> ExerciseList(state, onEdit, onSearch, onOwner, onMuscleGroup)
+                state.exercises != null -> ExerciseList(state, onEdit, onSearch, onOwner, onMuscleGroup, onListsMenu, onAddToList)
                 state.loadFailed -> Column(
                     Modifier.fillMaxSize().padding(24.dp),
                     verticalArrangement = Arrangement.Center,
@@ -162,6 +168,8 @@ private fun ExerciseList(
     onSearch: (String) -> Unit,
     onOwner: (OwnerFilter) -> Unit,
     onMuscleGroup: (Int?) -> Unit,
+    onListsMenu: () -> Unit,
+    onAddToList: (listId: Int, exerciseId: Int) -> Unit,
 ) {
     val visible = state.visible
     LazyColumn(
@@ -225,13 +233,25 @@ private fun ExerciseList(
             }
         }
         items(visible, key = { it.id }) { exercise ->
-            ExerciseRow(exercise, onEdit, Modifier.padding(horizontal = 16.dp))
+            ExerciseRow(
+                exercise = exercise,
+                onEdit = onEdit,
+                addToList = {
+                    AddToListButton(
+                        targets = state.listTargets(exercise.id),
+                        onOpen = onListsMenu,
+                        onPick = { onAddToList(it.id, exercise.id) },
+                        modifier = Modifier.size(32.dp),
+                    )
+                },
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
         }
     }
 }
 
 @Composable
-private fun ExerciseRow(exercise: Exercise, onEdit: (Int) -> Unit, modifier: Modifier) {
+private fun ExerciseRow(exercise: Exercise, onEdit: (Int) -> Unit, addToList: @Composable () -> Unit, modifier: Modifier) {
     val category = ExerciseCategory.of(exercise.category)
     val mine = exercise.userId != null
     val content: @Composable () -> Unit = {
@@ -248,6 +268,7 @@ private fun ExerciseRow(exercise: Exercise, onEdit: (Int) -> Unit, modifier: Mod
                 } else {
                     Badge(null, stringResource(R.string.exercises_badge_system))
                 }
+                addToList()
             }
             Text(
                 exercise.name,
@@ -329,6 +350,9 @@ private fun ExerciseLibraryMessage.text(): String = when (this) {
     ExerciseLibraryMessage.Offline -> stringResource(R.string.android_errors_offline)
     ExerciseLibraryMessage.Failed -> stringResource(R.string.exercises_page_error)
     is ExerciseLibraryMessage.LimitReached -> stringResource(R.string.exercises_page_at_cap, maxCustomExercises)
+    is ExerciseLibraryMessage.AddedToList -> stringResource(R.string.lists_add_to_list_added, listName)
+    ExerciseLibraryMessage.ListFrozen -> stringResource(R.string.errors_limits_exercise_list_frozen_body)
+    is ExerciseLibraryMessage.ListFull -> pluralStringResource(R.plurals.android_lists_full, maxItems, maxItems)
 }
 
 internal const val DISABLED_ALPHA = 0.5f

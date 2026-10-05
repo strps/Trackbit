@@ -81,4 +81,18 @@
     <!-- Exercise library (E3) -->
     <string name="android_exercises_all_muscles">All muscles</string>
     <string name="android_exercises_not_found">This exercise no longer exists.</string>
+    <!-- Exercise lists (E4) -->
+    <string name="android_lists_reorder">Drag to reorder %1$s</string>
+    <string name="android_lists_not_found">This list no longer exists.</string>
+    <plurals name="android_lists_full">
+        <item quantity="one">A list holds at most %1$d exercise.</item>
+        <item quantity="other">A list holds at most %1$d exercises.</item>
+    </plurals>
+    <string name="android_lists_targets_title">Targets</string>
+    <string name="android_lists_targets_hint">Optional. New sets of this exercise start from these values.</string>
+    <string name="android_lists_targets_set">Set targets</string>
+    <string name="android_lists_targets_clear">Clear all</string>
+    <string name="android_lists_notes">Notes</string>
+    <string name="android_lists_range">%1$s–%2$s</string>
+    <string name="android_lists_at_most">At most %1$s</string>
 </resources>

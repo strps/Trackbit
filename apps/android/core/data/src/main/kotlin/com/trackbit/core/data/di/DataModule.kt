@@ -8,11 +8,13 @@ import com.trackbit.core.data.ClearDatabaseOnSignOut
 import com.trackbit.core.data.DayClock
 import com.trackbit.core.data.DefaultAnalyticsRepository
 import com.trackbit.core.data.DefaultExerciseLibraryRepository
+import com.trackbit.core.data.DefaultExerciseListsRepository
 import com.trackbit.core.data.DefaultHabitsRepository
 import com.trackbit.core.data.DefaultRestTimerRepository
 import com.trackbit.core.data.DefaultSessionRepository
 import com.trackbit.core.data.DefaultTrackerRepository
 import com.trackbit.core.data.ExerciseLibraryRepository
+import com.trackbit.core.data.ExerciseListsRepository
 import com.trackbit.core.data.HabitsRepository
 import com.trackbit.core.data.RestTimerRepository
 import com.trackbit.core.data.SessionRepository
@@ -57,6 +59,9 @@ internal abstract class DataModule {
 
     @Binds
     abstract fun exerciseLibraryRepository(repository: DefaultExerciseLibraryRepository): ExerciseLibraryRepository
+
+    @Binds
+    abstract fun exerciseListsRepository(repository: DefaultExerciseListsRepository): ExerciseListsRepository
 
     @Binds
     abstract fun restTimerRepository(repository: DefaultRestTimerRepository): RestTimerRepository

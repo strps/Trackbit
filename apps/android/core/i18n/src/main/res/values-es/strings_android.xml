@@ -82,4 +82,19 @@
     <!-- Biblioteca de ejercicios (E3) -->
     <string name="android_exercises_all_muscles">Todos los músculos</string>
     <string name="android_exercises_not_found">Este ejercicio ya no existe.</string>
+    <!-- Exercise lists (E4) -->
+    <string name="android_lists_reorder">Arrastra para reordenar %1$s</string>
+    <string name="android_lists_not_found">Esta lista ya no existe.</string>
+    <plurals name="android_lists_full">
+        <item quantity="one">Una lista admite como máximo %1$d ejercicio.</item>
+        <item quantity="many">Una lista admite como máximo %1$d de ejercicios.</item>
+        <item quantity="other">Una lista admite como máximo %1$d ejercicios.</item>
+    </plurals>
+    <string name="android_lists_targets_title">Objetivos</string>
+    <string name="android_lists_targets_hint">Opcional. Las series nuevas de este ejercicio empiezan con estos valores.</string>
+    <string name="android_lists_targets_set">Fijar objetivos</string>
+    <string name="android_lists_targets_clear">Borrar todo</string>
+    <string name="android_lists_notes">Notas</string>
+    <string name="android_lists_range">%1$s–%2$s</string>
+    <string name="android_lists_at_most">Como máximo %1$s</string>
 </resources>

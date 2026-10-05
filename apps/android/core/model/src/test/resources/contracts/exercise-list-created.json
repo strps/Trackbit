@@ -1,0 +1,16 @@
+{
+  "request": "POST /api/exercise-lists",
+  "status": 201,
+  "body": {
+    "id": 1,
+    "userId": "user-id",
+    "authorId": "user-id",
+    "name": "Leg day",
+    "description": "Heavy",
+    "position": 0,
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "updatedAt": "2026-01-01T00:00:00.000Z",
+    "items": [],
+    "frozen": false
+  }
+}
