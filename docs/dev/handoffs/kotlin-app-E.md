@@ -1,10 +1,14 @@
 # Handoff: Kotlin app — Workstream E (settings & configuration)
 
 - **Plan:** [kotlin-app.md](../tasks/kotlin-app.md). Read only §4 "Phase 3" (and §0 D3: config needs a connection). Core context: the "Invariants" and "Landmines" of [kotlin-app-D.md](kotlin-app-D.md), [kotlin-app-C.md](kotlin-app-C.md) and [kotlin-app-B.md](kotlin-app-B.md), nothing else.
-- **Status:** Phase 3. E1–E4 done on the emulator; **E5 (auth screens) is next**. The Phase 2 exit check is deferred to the final pass with the real-device check (user).
-- **Branch:** `kotlin-app` · **Last run:** 2026-10-05 (E4, committed c925979)
+- **Status:** Phase 3. E1–E5 done on the emulator; **E6 (issue report) is next**. The Phase 2 exit check is deferred to the final pass with the real-device check (user).
+- **Branch:** `kotlin-app` · **Last run:** 2026-10-05 (E5, committed 3113449)
 
 ## Where we are
+
+Signed out, the sign-in screen links to **Sign up** and **Forgot password?** (`feature/auth`). Sign-up takes name, email, password + confirmation and an optional invite code, sends the app's language and the device's zone, and ends on "check your email" (no session, as on the web). A sign-in refused with `EMAIL_NOT_VERIFIED` offers **Resend verification email**. Forgot password asks for a link (pre-filled with the sign-in email); **the emailed link opens the web's new `/reset-password` page**, where the password is set, and every signed-in device is signed out. Verifying also happens on the web (`/verify-email`), then the user signs in in the app.
+
+E5 on the emulator (API 36, local backend with `RESEND_API_KEY=`): signed out of the dev account; sign-up with an expired seeded invite showed "This invitation code has expired." under the field; with a valid one the user was created (role `tester` from the invite, timezone `America/Costa_Rica`, unverified, invite used up); signing in showed the not-verified text, and Resend → `send-verification-email` 200 and the confirmation; Forgot password (pre-filled) → the reset row was created; resetting by API with that token, then signing in with the new password, opened the tracker. Test user, invites and tokens deleted; the dev account is signed in again. Not exercised: the web reset page in a browser (tsc + backend tests only), Spanish, offline.
 
 The bottom bar is **Tracker / Stats / Settings**. Settings (`feature/account`) shows the signed-in user, a "Configuration" section with **Habits**, and **Log out** (moved from the tracker's overflow menu, which is gone). Habits opens the habits config (`feature/habits-config`): both groups in order, reordered by dragging a row's grip (also past the Anti-Habits header to change group), tap a row to edit, an "Add Habit" FAB that explains the cap instead of opening at it. The form covers name, tracking method, anti-habit, weekly/daily goals (timed: a minutes dialog), 15 icons, 6 presets + a custom gradient editor, and delete with a confirmation.
 
@@ -22,7 +26,7 @@ E2 on the emulator: Español switched the app at once (activity recreated in pla
 
 E1 on the emulator (API 36, local backend, the user's dev account, an admin): drag Otroer into anti-habits → `PATCH /reorder` stored it; a structured session dropped there snapped back with the web's message; editing (anti off, heart, custom gradient with a moved stop) saved and moved the habit to the end of the habits group; creating "Goal Read" (timed, 5 min) and deleting it worked; the tracker showed each change after the background sync. Test data restored. Not exercised: frozen habits, a role without timed/check, the cap, Spanish, dark mode, offline (shows the offline text + retry).
 
-`./gradlew assembleDebug testDebugUnitTest lintDebug` passes, 0 lint issues, 390 tests (core:model's JVM `test` task included). Backend 124 tests.
+`./gradlew assembleDebug testDebugUnitTest lintDebug` passes, 0 lint issues, 405 tests (core:model's JVM `test` task included). Backend 134 tests.
 
 ## Phase 3 task split (E1–E6)
 
@@ -32,9 +36,18 @@ E1 on the emulator (API 36, local backend, the user's dev account, an admin): dr
 | **E2** | Account: locale (per-app language + PATCH), timezone (device's), units, card style, rest default, profile name, change password | ✅ 2026-10-03 |
 | **E3** | Exercise library: browse/search/filter by muscle group, custom exercise CRUD, frozen; backend `muscleGroups` fix | ✅ 2026-10-05 |
 | **E4** | Exercise lists: CRUD, item editor + reorder, prescriptions; "add to list" in the picker and library | ✅ 2026-10-05 |
-| **E5** | Auth screens: sign-up with invite code, forgot password, verify email. Google sign-in is backlog | next |
-| **E6** | Issue report (`POST /api/issues`) | |
+| **E5** | Auth screens: sign-up with invite code, forgot password, verify email. Google sign-in is backlog | ✅ 2026-10-05 |
+| **E6** | Issue report (`POST /api/issues`) | next |
 | **Exit** | Parity with `/tracker`, `/sessions`, `/stats`, `/config/*`, `/account-settings` | |
+
+## Done (E5)
+
+- **Backend** [auth.ts](../../../apps/backend/src/lib/auth.ts): **invited sign-ups were broken since E2** (422): Better-Auth merges the `create.before` hook's data into its input, and `withValidName`'s copy kept `inviteCode` in the insert; the code now leaves the input object first. Invites are consumed by one conditional UPDATE (`consumeInvite`: no shared last use), the code is trimmed (blank = none), and the errors carry stable codes `INVITE_CODE_INVALID` / `_MAX_USES` / `_EXPIRED` (better-call derived them from the translated message). **Password reset was broken for every client**: no client sent `redirectTo`, so the link ended on Better-Auth's error page; `sendResetPassword` now mails `FRONT_URL/reset-password?token=` (`passwordResetUrl`), and `revokeSessionsOnPasswordReset` signs out every device. Tests in [auth-flows.test.ts](../../../apps/backend/test/auth-flows.test.ts); contracts `sign-up-{email-taken,password-too-short,invite-invalid,invite-used-up,invite-expired}.json`.
+- **Web:** new [ResetPassword.tsx](../../../apps/frontend/src/features/auth/ResetPassword.tsx) at `/reset-password` (`reset.*` strings, en/es).
+- **core:model:** `SignUpRequest`, `PasswordResetRequest`, `VerificationEmailRequest`, `AccountRules.signUpLocale`.
+- **core:network / core:auth:** `AuthService.signUp` / `requestPasswordReset` / `sendVerificationEmail`; `AuthRepository.signUp` (locale from `SessionStore.language()`, zone `ZoneId.systemDefault()`), `requestPasswordReset`, `resendVerificationEmail`.
+- **feature/auth:** `SignUpViewModel`/`Screen`, `ForgotPasswordViewModel`/`Screen`, resend on `SignInViewModel`, shared `AuthLayout`. Android-only strings `android_auth_sign_up_*`, `android_auth_forgot_sent`.
+- **app:** `SignUpRoute`, `ForgotPasswordRoute(email)` in the signed-out graph.
 
 ## Done (E4)
 
@@ -80,12 +93,11 @@ E1 on the emulator (API 36, local backend, the user's dev account, an admin): dr
 - **app:** `SettingsRoute`, `HabitsConfigRoute`, `HabitFormRoute(habitId: Int?)`; third tab.
 - **Icons:** grip_vertical, list, log_out, pencil, settings, user (`UI_ICONS` in generate.mjs).
 
-## Next: E5 — auth screens
+## Next: E6 — issue report
 
 1. Run **Verify**.
-2. Read the web's auth pages (`apps/frontend/src/features/auth/`: sign-up with invite code, forgot/reset password, verify email) and the invite check in the backend (`/api/auth/*` hooks, `invites`). Check their write rules the way E1–E4 did and fix them at the server first; record contracts for every new response and error.
-3. Extend `feature/auth` (sign-in today): sign-up (name, email, password, invite code; locale and timezone from the device, as the web sends them), forgot password, and what an unverified account sees (`EMAIL_NOT_VERIFIED` on sign-in). Routing still follows `AuthState` (B invariant).
-4. Landmine: sign-up sends real email unless the backend runs with `RESEND_API_KEY=` (B handoff).
+2. Read the web's issue report (`POST /api/issues`: the route, its schema, and the web form that sends it). Check its write rules the way E1–E5 did and fix them at the server first; record contracts.
+3. Add the report screen (Settings hub entry), with the app version and device as the web sends its context, then the Phase 3 exit check (parity with the web routes listed in the table).
 
 ## Invariants — do not break these
 
@@ -111,7 +123,21 @@ E1 on the emulator (API 36, local backend, the user's dev account, an admin): dr
 - **The editor's item writes run one at a time, each applied to the server's latest items** (`ListEditorViewModel.saveItems`, keyed by item id): a replace-all built from a stale copy would delete an item appended meanwhile. Appends always go through `POST /:id/items`, so every item the editor holds has an id.
 - **Frozen lists stay at the end of the order** (the freeze walks positions); the client refuses such a drag before the server does.
 - **`PUT /:id/items` never relies on the position constraint being deferred**: kept rows are parked on negative positions first.
+- **The reset link is the server's** (`passwordResetUrl` → the web's `/reset-password?token=`); clients never send `redirectTo`. A reset revokes every session, so the app just meets a 401 on its next call.
+- **A field that isn't a user column must be deleted from the hook's input object itself** (`create.before` in `auth.ts`): Better-Auth merges the returned data into it.
+- **Invite errors are branched on `code`**, never on the (translated) message. Sign-up starts no session: routing doesn't change on success.
 - **Server-side user rules live in `auth.ts`'s user hooks** (timezone, locale, name), which cover sign-up, `update-user` and OAuth; `AccountRules` mirrors them.
+
+## Decisions made in E5
+
+| Question | Decision | Why |
+|---|---|---|
+| Where the reset is finished | The web's new `/reset-password` page; the app only requests the link | One page for every client; App Links need the release certificate on the web host (follow-ups). |
+| Who builds the reset link | The server, from the token (`FRONT_URL`) | Root fix: no client sent `redirectTo`, so every link failed. |
+| Sessions after a reset | All revoked (`revokeSessionsOnPasswordReset`) | A reset is how an account is taken back. |
+| Invite code in the app | Always shown, optional | Invites arrive by email; the web shows it only from the link. |
+| Unverified sign-in | Resend button under the message | `sendOnSignIn` would mail on every attempt. |
+| Sign-up language | The app's current language (`SessionStore.language()`), else English | As the web's `detectLocale`. |
 
 ## Decisions made in E4
 
@@ -165,7 +191,10 @@ E1 on the emulator (API 36, local backend, the user's dev account, an admin): dr
 
 ## Landmines
 
+- **Deploy E5's backend and web together**: reset emails now link to the web's `/reset-password`, which only exists in the new frontend.
 - **Production needs migrations 0008–0015** and the `/days` + `/sets` backend (0014 and 0015 are applied to local dev only). Run 0015's audit query (names that collide once trimmed) first.
+- **The local dev server ran with the real `RESEND_API_KEY`** until E5 restarted it from this session with it blank (logging to the session scratchpad). Restart it from your own terminal (`pnpm dev:backend`, or `RESEND_API_KEY= pnpm dev:backend` to keep mail off). Skipped mails only log a warning: read reset tokens from `verification` (`identifier = 'reset-password:<token>'`).
+- **`input keycombination 113 29` didn't select a password field's text** (E5): clear it with `KEYCODE_MOVE_END` and repeated `KEYCODE_DEL`.
 - **The local backend's `tsx watch` once missed an edit for two days** (follow-ups): if a backend change seems absent, compare the dev server's start time with the file's mtime and restart it. In E3 it was restarted from this session (`npx tsx watch --env-file=.env src/dev.ts` in `apps/backend`, logging to the session scratchpad); restart it from your own terminal with `pnpm dev:backend`.
 - **Extended FABs don't show in `uiautomator dump`** (E4): tap them by coordinates (bottom right, ≈ (876, 2220) at 1080×2400).
 - **Drag-to-reorder on the emulator needs `adb shell input draganddrop x1 y1 x2 y2 2500`** on the grip; `input swipe` doesn't start the drag.
@@ -185,10 +214,10 @@ E1 on the emulator (API 36, local backend, the user's dev account, an admin): dr
 
 ```bash
 cd apps/android && ./gradlew --stop
-./gradlew assembleDebug testDebugUnitTest lintDebug --max-workers=2   # green, 0 lint issues, 390 tests
+./gradlew assembleDebug testDebugUnitTest lintDebug --max-workers=2   # green, 0 lint issues, 405 tests (with core:model's `test`)
 pnpm android:generate:check                                          # 59 generated files up to date
 (cd apps/frontend && npx tsc -b)
-pnpm --filter backend test                                           # 124 tests
+pnpm --filter backend test                                           # 134 tests
 ```
 
 ## Open questions
@@ -201,3 +230,4 @@ pnpm --filter backend test                                           # 124 tests
 - 2026-10-03 — E2: account settings (name, language, units, card style, rest, password; timezone = device's, user). Backend: locale + name rules in `auth.ts` hooks; change-password token rotation proven. Android: AppCompat per-app language following the user's locale, `RequestLanguage`, `SessionStore.rotate`, `DeviceTimeZoneSync`, `LocalizedDataSync`. 341 tests, backend 90. Next: E3.
 - 2026-10-05 — E3: exercise library. Backend: exercises router rewritten (muscle groups stored, rules, name-taken, delete with logs), muscle groups list-only, migration 0014 (no blank descriptions) local dev only; web library edit/delete. Android: `ExerciseLibraryRepository`, `TrackerSync.removeExercise`, `feature/exercise-library`, Settings → Exercises. 360 tests, backend 104. Next: E4.
 - 2026-10-05 — E4: exercise lists with per-item targets (Android ahead of the web, user). Backend: list rules + migration 0015 (prescriptions in kg/km), `PATCH /reorder`, `POST /:id/items`, two-phase item positions (the emulator caught a 500 on a swap). Web: reorder/append through them. Android: `ExerciseListsRepository` + `TrackerSync.syncSources`, `feature/exercise-lists`, add-to-list in library and picker. 390 tests, backend 124. Next: E5.
+- 2026-10-05 — E5: auth screens (sign-up with optional invite, forgot password, resend verification). Backend: invited sign-ups fixed (broken since E2), atomic invite use with stable codes, reset link built by the server + sessions revoked on reset; web `/reset-password` page. Android: `AuthRepository` sign-up/reset/resend, `feature/auth` screens. 405 tests, backend 134. Next: E6.
