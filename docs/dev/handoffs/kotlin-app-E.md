@@ -1,10 +1,14 @@
 # Handoff: Kotlin app — Workstream E (settings & configuration)
 
 - **Plan:** [kotlin-app.md](../tasks/kotlin-app.md). Read only §4 "Phase 3" (and §0 D3: config needs a connection). Core context: the "Invariants" and "Landmines" of [kotlin-app-D.md](kotlin-app-D.md), [kotlin-app-C.md](kotlin-app-C.md) and [kotlin-app-B.md](kotlin-app-B.md), nothing else.
-- **Status:** Phase 3. E1–E5 done on the emulator; **E6 (issue report) is next**. The Phase 2 exit check is deferred to the final pass with the real-device check (user).
-- **Branch:** `kotlin-app` · **Last run:** 2026-10-05 (E5, committed 3113449)
+- **Status:** Phase 3. E1–E6 done on the emulator; **the Phase 3 exit check is next**. The Phase 2 exit check is deferred to the final pass with the real-device check (user).
+- **Branch:** `kotlin-app` · **Last run:** 2026-10-05 (E6, not committed yet)
 
 ## Where we are
+
+Settings has **Report a Bug** above Log out (the web's user-menu item). It opens **Get in touch** (`IssueReportScreen`, `feature/account`): Bug / Feedback, the type's question and placeholder, a description, and a line with what the report says sent it (`Trackbit Android 0.1.0 (1) · Google Pixel 8 · Android 16 (API 36)`), like the web's route line. Send shows the web's thanks and closes after 2 s; offline or a failure keeps the text and says why.
+
+E6 on the emulator (API 36, local backend, the user's dev account): Feedback with "  E6 test from the app  " → row stored trimmed, `type` feedback, `path` null, `client` with the emulator's build and device; the thanks showed and the screen closed. Row deleted. Not exercised: offline, Spanish, dark mode, the admin's new Report column in a browser (tsc only).
 
 Signed out, the sign-in screen links to **Sign up** and **Forgot password?** (`feature/auth`). Sign-up takes name, email, password + confirmation and an optional invite code, sends the app's language and the device's zone, and ends on "check your email" (no session, as on the web). A sign-in refused with `EMAIL_NOT_VERIFIED` offers **Resend verification email**. Forgot password asks for a link (pre-filled with the sign-in email); **the emailed link opens the web's new `/reset-password` page**, where the password is set, and every signed-in device is signed out. Verifying also happens on the web (`/verify-email`), then the user signs in in the app.
 
@@ -26,7 +30,7 @@ E2 on the emulator: Español switched the app at once (activity recreated in pla
 
 E1 on the emulator (API 36, local backend, the user's dev account, an admin): drag Otroer into anti-habits → `PATCH /reorder` stored it; a structured session dropped there snapped back with the web's message; editing (anti off, heart, custom gradient with a moved stop) saved and moved the habit to the end of the habits group; creating "Goal Read" (timed, 5 min) and deleting it worked; the tracker showed each change after the background sync. Test data restored. Not exercised: frozen habits, a role without timed/check, the cap, Spanish, dark mode, offline (shows the offline text + retry).
 
-`./gradlew assembleDebug testDebugUnitTest lintDebug` passes, 0 lint issues, 405 tests (core:model's JVM `test` task included). Backend 134 tests.
+`./gradlew assembleDebug testDebugUnitTest lintDebug` passes, 0 lint issues, 414 tests (core:model's JVM `test` task included). Backend 138 tests.
 
 ## Phase 3 task split (E1–E6)
 
@@ -37,8 +41,19 @@ E1 on the emulator (API 36, local backend, the user's dev account, an admin): dr
 | **E3** | Exercise library: browse/search/filter by muscle group, custom exercise CRUD, frozen; backend `muscleGroups` fix | ✅ 2026-10-05 |
 | **E4** | Exercise lists: CRUD, item editor + reorder, prescriptions; "add to list" in the picker and library | ✅ 2026-10-05 |
 | **E5** | Auth screens: sign-up with invite code, forgot password, verify email. Google sign-in is backlog | ✅ 2026-10-05 |
-| **E6** | Issue report (`POST /api/issues`) | next |
-| **Exit** | Parity with `/tracker`, `/sessions`, `/stats`, `/config/*`, `/account-settings` | |
+| **E6** | Issue report (`POST /api/issues`); server rules, `client` column, admin shows reports | ✅ 2026-10-05 |
+| **Exit** | Parity with `/tracker`, `/sessions`, `/stats`, `/config/*`, `/account-settings` | next |
+
+## Done (E6)
+
+- **Backend** [issues.ts](../../../apps/backend/src/routes/app/issues.ts): the body is strict (a client could set `status`), text is trimmed and bounded (description 1–5000, title ≤ 255, path ≤ 500, client ≤ 255, stack trace ≤ 20 000; it took whitespace-only descriptions and unbounded text), and a blank/null optional field is stored as null. New nullable column **`client`** (what sent the report). Migration [0016](../../../apps/backend/drizzle/0016_issue_rules.sql) (local dev only) cleans legacy rows and adds CHECKs `issues_description_not_blank`, `issues_optional_not_blank`. The admin list returns `client`. Tests in [issues.test.ts](../../../apps/backend/test/issues.test.ts). No contract recorded: the app doesn't decode the response (`IssueService.report` returns `Unit`), and the 400 shape is already covered.
+- **Admin** [IssueTable.tsx](../../../apps/admin/src/features/issues/components/IssueTable.tsx): **reports were unreadable**, the table showed title (always null) and path but never the description or stack trace. The "Report" column now shows title, description (4 lines, full on hover), path · client, and a collapsible stack trace.
+- **Web** [FeedbackModal.tsx](../../../apps/frontend/src/shared/components/FeedbackModal.tsx): sends the description trimmed, its user agent as `client`, the stack trace capped at the server's limit, and caps the textarea at 5000.
+- **core:model:** [IssueRequests.kt](../../../apps/android/core/model/src/main/kotlin/com/trackbit/core/model/IssueRequests.kt) (`IssueType`, `IssueRequest`, `IssueRules` with `client(...)`).
+- **core:network / core:data:** `IssueService`; `IssueRepository` (builds `client` from `AppBuild` + `android.os.Build`, returns `ConfigResult`); `AppBuild` provided by `app`'s `AppModule` from `BuildConfig`.
+- **feature/account:** `IssueReportViewModel`/`Screen`, Settings entry; the module now depends on core:data. Strings are the web's `issues.*` + `nav.report_bug`; no Android-only strings.
+- **Icons:** bug, message_square, smartphone.
+- **app:** `IssueReportRoute`.
 
 ## Done (E5)
 
@@ -93,11 +108,11 @@ E1 on the emulator (API 36, local backend, the user's dev account, an admin): dr
 - **app:** `SettingsRoute`, `HabitsConfigRoute`, `HabitFormRoute(habitId: Int?)`; third tab.
 - **Icons:** grip_vertical, list, log_out, pencil, settings, user (`UI_ICONS` in generate.mjs).
 
-## Next: E6 — issue report
+## Next: Phase 3 exit check
 
 1. Run **Verify**.
-2. Read the web's issue report (`POST /api/issues`: the route, its schema, and the web form that sends it). Check its write rules the way E1–E5 did and fix them at the server first; record contracts.
-3. Add the report screen (Settings hub entry), with the app version and device as the web sends its context, then the Phase 3 exit check (parity with the web routes listed in the table).
+2. Walk the web's `/tracker`, `/sessions`, `/stats`, `/config/*` and `/account-settings` against the app, screen by screen; list each gap as fix-now (blocks "a user never needs the web app") or follow-up, and ask the user before fixing the larger ones.
+3. Then update the plan's Phase 3 exit line and decide with the user what comes next (Phase 4 is deferred; the final pass holds the Phase 2 exit and the real-device check).
 
 ## Invariants — do not break these
 
@@ -126,7 +141,18 @@ E1 on the emulator (API 36, local backend, the user's dev account, an admin): dr
 - **The reset link is the server's** (`passwordResetUrl` → the web's `/reset-password?token=`); clients never send `redirectTo`. A reset revokes every session, so the app just meets a 401 on its next call.
 - **A field that isn't a user column must be deleted from the hook's input object itself** (`create.before` in `auth.ts`): Better-Auth merges the returned data into it.
 - **Invite errors are branched on `code`**, never on the (translated) message. Sign-up starts no session: routing doesn't change on success.
+- **`IssueRules` is the report form's and the server's rule set** (`issues.ts` schema); change them together. Clients say what sent a report in `client` (the web its user agent, the app `IssueRules.client`), never inside the description.
 - **Server-side user rules live in `auth.ts`'s user hooks** (timezone, locale, name), which cover sign-up, `update-user` and OAuth; `AccountRules` mirrors them.
+
+## Decisions made in E6
+
+| Question | Decision | Why |
+|---|---|---|
+| App context | New `client` column (build + device); `path` stays the web's route, null from the app | The app has no route worth sending; stuffing device info into `path` or the description would mix fields. |
+| Where the screen lives | `feature/account`, Settings → Report a Bug above Log out | The web's user-menu item; no new module for one screen. |
+| Dialog or screen | Full screen, closing 2 s after the thanks | A multi-line field fits a screen better on a phone; same copy and flow as the web. |
+| Admin couldn't read reports | Fixed in E6 (Report column) | A report nobody can read makes the feature pointless. |
+| Rate limit, crash reports | Follow-ups | Not needed for parity. |
 
 ## Decisions made in E5
 
@@ -192,7 +218,8 @@ E1 on the emulator (API 36, local backend, the user's dev account, an admin): dr
 ## Landmines
 
 - **Deploy E5's backend and web together**: reset emails now link to the web's `/reset-password`, which only exists in the new frontend.
-- **Production needs migrations 0008–0015** and the `/days` + `/sets` backend (0014 and 0015 are applied to local dev only). Run 0015's audit query (names that collide once trimmed) first.
+- **E6's backend needs migration 0016 first** (it writes `client`). The web and admin work against either backend: the old route drops `client`, and a missing one shows as nothing.
+- **Production needs migrations 0008–0016** and the `/days` + `/sets` backend (0014–0016 are applied to local dev only). Run 0015's audit query (names that collide once trimmed) first.
 - **The local dev server ran with the real `RESEND_API_KEY`** until E5 restarted it from this session with it blank (logging to the session scratchpad). Restart it from your own terminal (`pnpm dev:backend`, or `RESEND_API_KEY= pnpm dev:backend` to keep mail off). Skipped mails only log a warning: read reset tokens from `verification` (`identifier = 'reset-password:<token>'`).
 - **`input keycombination 113 29` didn't select a password field's text** (E5): clear it with `KEYCODE_MOVE_END` and repeated `KEYCODE_DEL`.
 - **The local backend's `tsx watch` once missed an edit for two days** (follow-ups): if a backend change seems absent, compare the dev server's start time with the file's mtime and restart it. In E3 it was restarted from this session (`npx tsx watch --env-file=.env src/dev.ts` in `apps/backend`, logging to the session scratchpad); restart it from your own terminal with `pnpm dev:backend`.
@@ -214,10 +241,10 @@ E1 on the emulator (API 36, local backend, the user's dev account, an admin): dr
 
 ```bash
 cd apps/android && ./gradlew --stop
-./gradlew assembleDebug testDebugUnitTest lintDebug --max-workers=2   # green, 0 lint issues, 405 tests (with core:model's `test`)
-pnpm android:generate:check                                          # 59 generated files up to date
-(cd apps/frontend && npx tsc -b)
-pnpm --filter backend test                                           # 134 tests
+./gradlew assembleDebug testDebugUnitTest lintDebug --max-workers=2   # green, 0 lint issues, 414 tests (with core:model's `test`)
+pnpm android:generate:check                                          # 62 generated files up to date
+(cd apps/frontend && npx tsc -b) && (cd apps/admin && npx tsc -b)
+pnpm --filter backend test                                           # 138 tests
 ```
 
 ## Open questions
@@ -231,3 +258,4 @@ pnpm --filter backend test                                           # 134 tests
 - 2026-10-05 — E3: exercise library. Backend: exercises router rewritten (muscle groups stored, rules, name-taken, delete with logs), muscle groups list-only, migration 0014 (no blank descriptions) local dev only; web library edit/delete. Android: `ExerciseLibraryRepository`, `TrackerSync.removeExercise`, `feature/exercise-library`, Settings → Exercises. 360 tests, backend 104. Next: E4.
 - 2026-10-05 — E4: exercise lists with per-item targets (Android ahead of the web, user). Backend: list rules + migration 0015 (prescriptions in kg/km), `PATCH /reorder`, `POST /:id/items`, two-phase item positions (the emulator caught a 500 on a swap). Web: reorder/append through them. Android: `ExerciseListsRepository` + `TrackerSync.syncSources`, `feature/exercise-lists`, add-to-list in library and picker. 390 tests, backend 124. Next: E5.
 - 2026-10-05 — E5: auth screens (sign-up with optional invite, forgot password, resend verification). Backend: invited sign-ups fixed (broken since E2), atomic invite use with stable codes, reset link built by the server + sessions revoked on reset; web `/reset-password` page. Android: `AuthRepository` sign-up/reset/resend, `feature/auth` screens. 405 tests, backend 134. Next: E6.
+- 2026-10-05 — E6: issue report. Backend: strict, trimmed, bounded `POST /api/issues`, new `client` column, migration 0016 (local dev only); admin table shows the report text, context and stack trace (it showed none); web sends its user agent. Android: `IssueRepository` + `AppBuild`, Settings → Report a Bug. 414 tests, backend 138. Next: Phase 3 exit check.
