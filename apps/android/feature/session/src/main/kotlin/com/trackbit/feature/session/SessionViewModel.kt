@@ -43,7 +43,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
@@ -95,8 +94,8 @@ sealed interface SessionMessage {
     data class ListFull(val maxItems: Int) : SessionMessage
 }
 
-/** The add-to-list menus' lists: null until loaded. */
-private data class ListsLoad(val lists: List<ExerciseList>? = null, val failed: Boolean = false)
+/** The add-to-list menus' lists: null until Room holds them; [failed] when pulling them failed meanwhile. */
+private data class ListsLoad(val lists: List<ExerciseList>?, val failed: Boolean)
 
 /**
  * A workout habit's sessions on one day, like the web's activity tracker. Reads come from Room;
@@ -120,7 +119,8 @@ class SessionViewModel @AssistedInject constructor(
     }
 
     private val refreshing = MutableStateFlow(false)
-    private val lists = MutableStateFlow(ListsLoad())
+    private val listsFailed = MutableStateFlow(false)
+    private val lists = combine(exerciseLists.lists(), listsFailed) { lists, failed -> ListsLoad(lists, failed && lists == null) }
     private val message = MutableStateFlow<SessionMessage?>(null)
 
     /** A pull of the sources answered, so a preferred key missing from them really dangles. */
@@ -264,13 +264,11 @@ class SessionViewModel @AssistedInject constructor(
         viewModelScope.launch { preferences.setDefaultRestSeconds(seconds.coerceIn(SessionUser.REST_SECONDS_RANGE)) }
     }
 
-    /** An add-to-list menu opened: (re)loads the user's lists from the server (it needs a connection). */
+    /** An add-to-list menu opened: pulls the user's lists again; the menu shows Room's meanwhile (offline too). */
     fun loadLists() {
+        listsFailed.value = false
         viewModelScope.launch {
-            when (val result = exerciseLists.lists()) {
-                is ConfigResult.Success -> lists.value = ListsLoad(result.value)
-                is ConfigResult.Failure -> lists.update { it.copy(failed = it.lists == null) }
-            }
+            listsFailed.value = exerciseLists.refresh() != SyncResult.Done
         }
     }
 
@@ -278,12 +276,9 @@ class SessionViewModel @AssistedInject constructor(
     fun addToList(listUuid: String, exerciseUuid: String) {
         viewModelScope.launch {
             when (val result = exerciseLists.append(listUuid, exerciseUuid)) {
-                is ConfigResult.Success -> {
-                    val updated = lists.updateAndGet { load ->
-                        load.copy(lists = load.lists?.map { if (it.uuid == listUuid) it.copy(items = result.value.items) else it })
-                    }
-                    message.value = SessionMessage.AddedToList(updated.lists?.find { it.uuid == listUuid }?.name.orEmpty())
-                }
+                // The menus follow Room, which has the new item.
+                is ConfigResult.Success ->
+                    message.value = SessionMessage.AddedToList(state.value.lists?.find { it.uuid == listUuid }?.name.orEmpty())
                 is ConfigResult.Failure -> message.value = when (val error = result.error) {
                     ConfigError.Offline -> SessionMessage.Offline
                     ConfigError.ExerciseListFrozen -> SessionMessage.ListFrozen

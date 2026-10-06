@@ -13,7 +13,7 @@ data class Exercise(
     val userId: String?,
     /** Already localized for the request's locale. */
     val name: String,
-    /** Localized like [name]; null when it has none. Only the library shows it, so Room doesn't keep it. */
+    /** Localized like [name]; null when it has none. */
     val description: String? = null,
     /** An [ExerciseCategory] wire name. */
     val category: String,

@@ -1,22 +1,16 @@
 package com.trackbit.core.model
 
-import com.trackbit.core.model.serialization.InstantSerializer
 import kotlinx.serialization.Serializable
-import java.time.Instant
 
 /** A row of `GET /api/exercise-lists`, and the answer of every list write but delete. */
 @Serializable
 data class ExerciseList(
     /** The app names a list by it; the server's int `id` is the web's. */
     val uuid: String,
-    val userId: String,
-    /** Who wrote the list: [userId] for self-made lists, null for lists older than authorship. */
-    val authorId: String?,
     val name: String,
     val description: String?,
+    /** The list's place in the user's order. */
     val position: Int,
-    @Serializable(with = InstantSerializer::class) val createdAt: Instant?,
-    @Serializable(with = InstantSerializer::class) val updatedAt: Instant?,
     val items: List<ExerciseListItem>,
     /** Over the role's list cap: read-only until it or another list is deleted. */
     val frozen: Boolean,

@@ -5,13 +5,19 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Upsert
+import com.trackbit.core.database.entity.ConfigPart
+import com.trackbit.core.database.entity.ConfigPullEntity
 import com.trackbit.core.database.entity.DayLogEntity
 import com.trackbit.core.database.entity.ExerciseEntity
+import com.trackbit.core.database.entity.ExerciseListEntity
+import com.trackbit.core.database.entity.ExerciseListItemEntity
 import com.trackbit.core.database.entity.ExerciseLogEntity
 import com.trackbit.core.database.entity.ExerciseSourceEntity
 import com.trackbit.core.database.entity.HabitEntity
 import com.trackbit.core.database.entity.HabitSetEntity
 import com.trackbit.core.database.entity.HabitSetPullEntity
+import com.trackbit.core.database.entity.LimitsEntity
+import com.trackbit.core.database.entity.MuscleGroupEntity
 import com.trackbit.core.database.entity.PerformanceEntity
 import com.trackbit.core.database.entity.QueueEntryEntity
 import com.trackbit.core.database.entity.SessionEntity
@@ -20,9 +26,15 @@ import com.trackbit.core.database.entity.toEntity
 import com.trackbit.core.model.DayLog
 import com.trackbit.core.model.DaysResponse
 import com.trackbit.core.model.Exercise
+import com.trackbit.core.model.ExerciseList
+import com.trackbit.core.model.ExerciseListItemsResponse
 import com.trackbit.core.model.ExerciseSessionDetail
 import com.trackbit.core.model.ExerciseSourceDescriptor
+import com.trackbit.core.model.Habit
+import com.trackbit.core.model.HabitOrder
 import com.trackbit.core.model.HabitSetsResponse
+import com.trackbit.core.model.LimitsResponse
+import com.trackbit.core.model.MuscleGroup
 import com.trackbit.core.model.ResolvedQueue
 import com.trackbit.core.model.TodayResponse
 import java.time.Instant
@@ -30,8 +42,9 @@ import java.time.LocalDate
 
 /**
  * Writes server data into Room: `/today` snapshots, the rows tracker writes return, a day's
- * sessions, the exercise catalog, the picker's sources and queues, and the analytics sets. The only way server data reaches tracker tables, so the
- * pending-op guard lives in one place.
+ * sessions, the exercise catalog, the picker's sources and queues, the analytics sets, and the
+ * config (habits, lists, muscle groups, limits) as pulled or as a config write answered. The only
+ * way server data reaches Room, so the pending-op guard lives in one place.
  */
 @Dao
 abstract class SyncDao {
@@ -51,7 +64,7 @@ abstract class SyncDao {
         deleteHabitsNotIn(today.habits.map { it.uuid })
         upsertHabits(
             today.habits.map { habit ->
-                val entity = habit.toEntity(today.day)
+                val entity = habit.toEntity(today.day, local[habit.uuid])
                 val localFirst = local[habit.uuid]?.firstLogDay
                 if (habit.uuid in pendingHabits) entity.copy(firstLogDay = earliest(entity.firstLogDay, localFirst)) else entity
             },
@@ -165,23 +178,145 @@ abstract class SyncDao {
         }
     }
 
-    /** Replaces the exercise catalog. Nothing local is pending against it. */
+    /** Replaces the exercise catalog, pulled at [pulledAt]. Nothing local is pending against it. */
     @Transaction
-    open suspend fun applyExercises(exercises: List<Exercise>) {
+    open suspend fun applyExercises(exercises: List<Exercise>, pulledAt: Instant) {
         deleteExercisesNotIn(exercises.map { it.uuid })
         upsertExercises(exercises.map { it.toEntity() })
+        recordPull(ConfigPullEntity(ConfigPart.Exercises, pulledAt))
+    }
+
+    /** A custom exercise write answered with [exercise]: Room's row becomes the server's. */
+    open suspend fun storeExercise(exercise: Exercise) = upsertExercises(listOf(exercise.toEntity()))
+
+    // Config -------------------------------------------------------------------------------------
+
+    /**
+     * Makes Room's habits match a `GET /api/habits` response pulled at [pulledAt]: deleted ones go
+     * (with their logs), and each habit's config columns are replaced. The tracker's summary and
+     * a pending first log day stay as `/today` and the outbox left them.
+     */
+    @Transaction
+    open suspend fun applyHabits(habits: List<Habit>, pulledAt: Instant) {
+        val local = habits().associateBy { it.uuid }
+        deleteHabitsNotIn(habits.map { it.uuid })
+        upsertHabits(habits.map { it.toEntity(local[it.uuid]) })
+        recordPull(ConfigPullEntity(ConfigPart.Habits, pulledAt))
     }
 
     /**
+     * A habit write answered with [habit]: its config columns become the server's. A new habit
+     * stays unsummarized until the next `/today`.
+     */
+    @Transaction
+    open suspend fun storeHabit(habit: Habit) {
+        upsertHabits(listOf(habit.toEntity(habit(habit.uuid))))
+    }
+
+    /** The habit was deleted on the server, with its logs and sessions. */
+    @Query("DELETE FROM habits WHERE uuid = :uuid")
+    abstract suspend fun removeHabit(uuid: String)
+
+    /** A reorder went through: each habit takes its group and place from [order]. */
+    @Transaction
+    open suspend fun storeHabitOrder(order: List<HabitOrder>) {
+        for (habit in order) setHabitOrder(habit.uuid, habit.order, habit.isAntiHabit)
+    }
+
+    /** Replaces Room's lists and their items with [lists], pulled (or answered by a reorder) at [pulledAt]. */
+    @Transaction
+    open suspend fun applyLists(lists: List<ExerciseList>, pulledAt: Instant) {
+        // Items cascade.
+        deleteAllLists()
+        for (list in lists) insertListWithItems(list)
+        recordPull(ConfigPullEntity(ConfigPart.Lists, pulledAt))
+    }
+
+    /** A list write answered with [list]: Room's copy, items included, becomes the server's. */
+    @Transaction
+    open suspend fun storeList(list: ExerciseList) {
+        upsertList(list.toEntity())
+        deleteItemsOf(list.uuid)
+        insertItems(list.items.map { it.toEntity(list.uuid) })
+    }
+
+    /** An items write answered with [items]: the list's items become the server's. */
+    @Transaction
+    open suspend fun storeListItems(items: ExerciseListItemsResponse) {
+        if (!listExists(items.listUuid)) return
+        deleteItemsOf(items.listUuid)
+        insertItems(items.items.map { it.toEntity(items.listUuid) })
+    }
+
+    /** The list was deleted on the server; its items go with it. */
+    @Query("DELETE FROM exercise_lists WHERE uuid = :uuid")
+    abstract suspend fun removeList(uuid: String)
+
+    /** Replaces the muscle group taxonomy with [groups], pulled at [pulledAt]. */
+    @Transaction
+    open suspend fun applyMuscleGroups(groups: List<MuscleGroup>, pulledAt: Instant) {
+        deleteAllMuscleGroups()
+        insertMuscleGroups(groups.map { it.toEntity() })
+        recordPull(ConfigPullEntity(ConfigPart.MuscleGroups, pulledAt))
+    }
+
+    /** Stores the role's caps from [limits], pulled at [pulledAt]. */
+    @Transaction
+    open suspend fun applyLimits(limits: LimitsResponse, pulledAt: Instant) {
+        upsertLimits(LimitsEntity(effective = limits.effective))
+        recordPull(ConfigPullEntity(ConfigPart.Limits, pulledAt))
+    }
+
+    /** When each config part was last pulled; a part never pulled has no entry. */
+    suspend fun configPulls(): Map<ConfigPart, Instant> = pulls().associate { it.part to it.pulledAt }
+
+    private suspend fun insertListWithItems(list: ExerciseList) {
+        insertList(list.toEntity())
+        insertItems(list.items.map { it.toEntity(list.uuid) })
+    }
+
+    @Query("SELECT * FROM config_pulls")
+    protected abstract suspend fun pulls(): List<ConfigPullEntity>
+
+    @Upsert protected abstract suspend fun recordPull(pull: ConfigPullEntity)
+
+    @Query("UPDATE habits SET `order` = :order, isAntiHabit = :isAntiHabit WHERE uuid = :uuid")
+    protected abstract suspend fun setHabitOrder(uuid: String, order: Int, isAntiHabit: Boolean)
+
+    @Query("SELECT * FROM habits WHERE uuid = :uuid")
+    protected abstract suspend fun habit(uuid: String): HabitEntity?
+
+    @Query("DELETE FROM exercise_lists")
+    protected abstract suspend fun deleteAllLists()
+
+    @Query("SELECT EXISTS(SELECT 1 FROM exercise_lists WHERE uuid = :uuid)")
+    protected abstract suspend fun listExists(uuid: String): Boolean
+
+    @Insert protected abstract suspend fun insertList(list: ExerciseListEntity)
+    @Upsert protected abstract suspend fun upsertList(list: ExerciseListEntity)
+
+    @Query("DELETE FROM exercise_list_items WHERE listUuid = :listUuid")
+    protected abstract suspend fun deleteItemsOf(listUuid: String)
+
+    @Insert protected abstract suspend fun insertItems(items: List<ExerciseListItemEntity>)
+
+    @Query("DELETE FROM muscle_groups")
+    protected abstract suspend fun deleteAllMuscleGroups()
+
+    @Insert protected abstract suspend fun insertMuscleGroups(groups: List<MuscleGroupEntity>)
+    @Upsert protected abstract suspend fun upsertLimits(limits: LimitsEntity)
+
+    /**
      * The user deleted their exercise [uuid] on the server, which took every log of it (and their
-     * sets) and its list items along: drops Room's copies so cached sessions, analytics and queues
-     * stop showing it before their next pull.
+     * sets) and its list items along: drops Room's copies so cached sessions, analytics, lists and
+     * queues stop showing it before their next pull.
      */
     @Transaction
     open suspend fun removeExercise(uuid: String) {
         deleteLogsOf(uuid)
         deleteHabitSetsOf(uuid)
         deleteQueueEntriesOf(uuid)
+        deleteListItemsOf(uuid)
         deleteExercise(uuid)
     }
 
@@ -258,6 +393,9 @@ abstract class SyncDao {
 
     @Query("DELETE FROM queue_entries WHERE exerciseUuid = :uuid")
     protected abstract suspend fun deleteQueueEntriesOf(uuid: String)
+
+    @Query("DELETE FROM exercise_list_items WHERE exerciseUuid = :uuid")
+    protected abstract suspend fun deleteListItemsOf(uuid: String)
 
     @Query("DELETE FROM exercises WHERE uuid = :uuid")
     protected abstract suspend fun deleteExercise(uuid: String)

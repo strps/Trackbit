@@ -122,7 +122,7 @@ class ExerciseLibraryViewModelTest {
         viewModel.addToList(listUuid(1), exerciseUuid(2))
         advanceUntilIdle()
 
-        assertEquals(listOf("lists", "append ${listUuid(1)} ${exerciseUuid(2)}"), lists.calls)
+        assertEquals(listOf("refresh", "append ${listUuid(1)} ${exerciseUuid(2)}"), lists.calls)
         assertEquals(ExerciseLibraryMessage.AddedToList("Push"), viewModel.state.value.message)
         assertEquals(ListTargets.Loaded(listOf(ListTarget(listUuid(1), "Push", 1, contains = true))), viewModel.state.value.listTargets(exerciseUuid(2)))
     }

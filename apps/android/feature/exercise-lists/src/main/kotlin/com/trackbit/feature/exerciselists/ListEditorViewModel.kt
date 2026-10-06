@@ -19,12 +19,12 @@ import com.trackbit.core.model.draft
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.text.Collator
 import javax.inject.Inject
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -33,11 +33,11 @@ import kotlinx.coroutines.sync.withLock
 
 data class ListEditorUiState(
     val loading: Boolean = true,
-    /** Offline, or the list is gone or isn't the user's. */
+    /** Never pulled and offline, or the list is gone or isn't the user's. */
     val loadFailed: Boolean = false,
-    /** The list as last loaded or saved; its items are [items]. */
+    /** Room's list; what the screen shows of its items is [items]. */
     val list: ExerciseList? = null,
-    /** In order. Shows a change at once; a refused write puts the server's back. */
+    /** In order. Shows a change at once; once writes settle, Room's (the server's answer) again. */
     val items: List<ExerciseListItem> = emptyList(),
     /** Every exercise the user can add (system and own), sorted by name; also names the items. */
     val exercises: List<Exercise> = emptyList(),
@@ -69,8 +69,9 @@ data class ListEditorUiState(
 /**
  * One list's editor, the web's `ExerciseListEditor` plus each item's targets (the prescription
  * the session's new sets start from): add exercises, drag to reorder, remove, rename, delete.
- * Every item change is saved at once. Writes go one at a time, each applied to the server's
- * latest items, so an add and a reorder in flight together can't overwrite each other.
+ * It shows Room's list, so it opens offline. Every item change shows at once and is saved at
+ * once. Writes go one at a time, each applied to Room's items as the previous write left them
+ * (its answer), so an add and a reorder in flight together can't overwrite each other.
  */
 @HiltViewModel
 class ListEditorViewModel @Inject constructor(
@@ -88,42 +89,63 @@ class ListEditorViewModel @Inject constructor(
         state.copy(units = units?.takeIf { it != UnitSystem.Unknown } ?: UnitSystem.Metric)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), _state.value)
 
-    /** The items the server has. */
-    private var saved: List<ExerciseListItem> = emptyList()
     private val writes = Mutex()
     private var dragging = false
 
+    /** Item writes shown but not settled: the items on screen are theirs until the last one is. */
+    private var pendingWrites = 0
+
+    /** [load] is deciding whether the list exists; until it has, a missing list isn't reported. */
+    private var loadRunning = false
+
     init {
+        viewModelScope.launch {
+            combine(repository.lists(), library.exercises(), ::Pair).collect { (lists, exercises) ->
+                if (lists == null || exercises == null) return@collect
+                val list = lists.find { it.uuid == listUuid }
+                val collator = Collator.getInstance()
+                _state.update { state ->
+                    when {
+                        list != null -> state.copy(
+                            loading = false,
+                            loadFailed = false,
+                            list = list,
+                            items = if (dragging || pendingWrites > 0) state.items else list.items,
+                            exercises = exercises.sortedWith(compareBy(collator) { e -> e.name }),
+                        )
+                        // Being loaded, deleted from here, or already reported.
+                        loadRunning || state.busy || state.done || state.loadFailed -> state
+                        // Deleted elsewhere.
+                        else -> state.copy(loadFailed = true, list = null, message = ListsMessage.NotFound)
+                    }
+                }
+            }
+        }
         load()
     }
 
+    /** Pulls the lists and the catalog if Room lacks them or this list (a first open, or a retry). */
     fun load() {
-        _state.update { it.copy(loading = true, loadFailed = false) }
         viewModelScope.launch {
-            val exercises = async { library.exercises() }
-            val list = when (val lists = repository.lists()) {
-                is ConfigResult.Success -> lists.value.find { it.uuid == listUuid } ?: return@launch fail(ListsMessage.NotFound)
-                is ConfigResult.Failure -> return@launch fail(lists.error.toListsMessage())
-            }
-            when (val loaded = exercises.await()) {
-                is ConfigResult.Success -> {
-                    saved = list.items
-                    val collator = Collator.getInstance()
-                    _state.update {
-                        it.copy(
-                            loading = false,
-                            list = list,
-                            items = saved,
-                            exercises = loaded.value.sortedWith(compareBy(collator) { e -> e.name }),
-                        )
-                    }
+            loadRunning = true
+            if (currentItems() == null || library.exercises().first() == null) {
+                _state.update { it.copy(loading = true, loadFailed = false) }
+                val result = maxOf(repository.refresh(), library.refresh())
+                val missing = when {
+                    repository.lists().first() == null || library.exercises().first() == null ->
+                        result.toListsMessage() ?: ListsMessage.Failed
+                    currentItems() == null -> ListsMessage.NotFound
+                    else -> null
                 }
-                is ConfigResult.Failure -> fail(loaded.error.toListsMessage())
+                if (missing != null) _state.update { it.copy(loading = false, loadFailed = true, message = missing) }
             }
+            loadRunning = false
         }
     }
 
-    private fun fail(message: ListsMessage) = _state.update { it.copy(loading = false, loadFailed = true, message = message) }
+    /** Room's items of the list, or null if it doesn't hold the list. */
+    private suspend fun currentItems(): List<ExerciseListItem>? =
+        repository.lists().first()?.find { it.uuid == listUuid }?.items
 
     // Items --------------------------------------------------------------------------------------
 
@@ -145,7 +167,7 @@ class ListEditorViewModel @Inject constructor(
     fun drop() {
         dragging = false
         val order = _state.value.items.map { it.uuid }
-        if (order == saved.map { it.uuid }) return
+        if (order == _state.value.list?.items?.map { it.uuid }) return
         saveItems { items ->
             // Items appended meanwhile (not in [order]) keep their place at the end.
             items.sortedBy { item -> order.indexOf(item.uuid).takeIf { it >= 0 } ?: Int.MAX_VALUE }
@@ -173,14 +195,9 @@ class ListEditorViewModel @Inject constructor(
     fun add(exerciseUuid: String) {
         _state.update { it.copy(adding = false) }
         if (!_state.value.editable) return
-        viewModelScope.launch {
-            writes.withLock {
-                when (val result = repository.append(listUuid, exerciseUuid)) {
-                    is ConfigResult.Success -> saved = result.value.items
-                    is ConfigResult.Failure -> _state.update { it.copy(message = result.error.toListsMessage()) }
-                }
-                showSaved()
-            }
+        write {
+            val result = repository.append(listUuid, exerciseUuid)
+            if (result is ConfigResult.Failure) _state.update { it.copy(message = result.error.toListsMessage()) }
         }
     }
 
@@ -197,28 +214,31 @@ class ListEditorViewModel @Inject constructor(
     }
 
     /**
-     * Shows [change] at once, then saves it applied to the server's items as they are when its
-     * turn comes. A refusal shows the server's items again.
+     * Shows [change] at once, then saves it applied to Room's items as they are when its turn
+     * comes. A refusal shows Room's items again.
      */
     private fun saveItems(change: (List<ExerciseListItem>) -> List<ExerciseListItem>) {
         _state.update { it.copy(items = change(it.items)) }
-        viewModelScope.launch {
-            writes.withLock {
-                val items = change(saved)
-                if (items != saved) {
-                    when (val result = repository.saveItems(listUuid, items.map { it.draft })) {
-                        is ConfigResult.Success -> saved = result.value.items
-                        is ConfigResult.Failure -> _state.update { it.copy(message = result.error.toListsMessage()) }
-                    }
-                }
-                showSaved()
+        write {
+            val current = currentItems() ?: return@write
+            val items = change(current)
+            if (items != current) {
+                val result = repository.saveItems(listUuid, items.map { it.draft })
+                if (result is ConfigResult.Failure) _state.update { it.copy(message = result.error.toListsMessage()) }
             }
         }
     }
 
-    /** Shows the server's items, unless a drag is reordering them. */
-    private fun showSaved() {
-        if (!dragging) _state.update { it.copy(items = saved, list = it.list?.copy(items = saved)) }
+    /** Runs [block] after the writes before it; once the last one settles, shows Room's items unless a drag is reordering them. */
+    private fun write(block: suspend () -> Unit) {
+        pendingWrites++
+        viewModelScope.launch {
+            writes.withLock { block() }
+            pendingWrites--
+            if (pendingWrites == 0 && !dragging) {
+                currentItems()?.let { items -> _state.update { it.copy(items = items) } }
+            }
+        }
     }
 
     // The list -----------------------------------------------------------------------------------
@@ -240,9 +260,8 @@ class ListEditorViewModel @Inject constructor(
         _state.update { it.copy(busy = true) }
         viewModelScope.launch {
             when (val result = repository.update(listUuid, request)) {
-                is ConfigResult.Success -> _state.update {
-                    it.copy(busy = false, renaming = null, list = it.list?.copy(name = result.value.name, description = result.value.description))
-                }
+                // Room has the new name, and so [ListEditorUiState.list].
+                is ConfigResult.Success -> _state.update { it.copy(busy = false, renaming = null) }
                 is ConfigResult.Failure -> _state.update {
                     if (result.error == ConfigError.ExerciseListNameTaken) {
                         it.copy(busy = false, renaming = it.renaming?.copy(nameTaken = true))
@@ -260,16 +279,10 @@ class ListEditorViewModel @Inject constructor(
         if (_state.value.busy) return
         _state.update { it.copy(busy = true, confirmingDelete = false) }
         viewModelScope.launch {
+            // One already gone counts as deleted.
             when (val result = repository.delete(listUuid)) {
                 is ConfigResult.Success -> _state.update { it.copy(busy = false, done = true) }
-                // Already gone: what the user wanted.
-                is ConfigResult.Failure -> _state.update {
-                    if (result.error == ConfigError.NotFound) {
-                        it.copy(busy = false, done = true)
-                    } else {
-                        it.copy(busy = false, message = result.error.toListsMessage())
-                    }
-                }
+                is ConfigResult.Failure -> _state.update { it.copy(busy = false, message = result.error.toListsMessage()) }
             }
         }
     }

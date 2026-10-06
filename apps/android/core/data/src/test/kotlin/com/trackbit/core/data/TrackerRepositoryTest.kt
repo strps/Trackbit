@@ -22,7 +22,7 @@ class TrackerRepositoryTest {
     private val db = inMemoryDatabase()
     private val scheduler = FakeScheduler()
     private val clock = FakeClock()
-    private val repository = DefaultTrackerRepository(db, TrackerSync(db, FakeTrackerService(), FakeExerciseService(), FakeTokens(), clock), scheduler, clock)
+    private val repository = DefaultTrackerRepository(db, trackerSync(db, clock = clock), scheduler, clock)
     private val outbox = db.outboxDao()
 
     @After fun close() = db.close()

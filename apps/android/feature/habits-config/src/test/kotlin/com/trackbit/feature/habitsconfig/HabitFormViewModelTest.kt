@@ -107,6 +107,34 @@ class HabitFormViewModelTest {
         assertTrue(viewModel.state.value.done)
     }
 
+    @Test fun `an edit opened offline, before Room holds the habits, says so`() = runTest(dispatcher) {
+        repository.habits = listOf(habit(7))
+        repository.failWith = ConfigError.Offline
+        val viewModel = form(habit = 7)
+        assertTrue(viewModel.state.value.loadFailed)
+        assertEquals(HabitFormMessage.Offline, viewModel.state.value.message)
+
+        repository.failWith = null
+        viewModel.load()
+        advanceUntilIdle()
+        assertFalse(viewModel.state.value.loadFailed)
+    }
+
+    @Test fun `an edit reads Room without pulling, and a pull meanwhile doesn't undo it`() = runTest(dispatcher) {
+        repository.habits = listOf(habit(7, name = "Read"))
+        repository.refresh()
+        repository.failWith = ConfigError.Offline
+        val viewModel = form(habit = 7)
+        assertEquals("Read", viewModel.state.value.form.name)
+
+        viewModel.edit { it.copy(name = "Read more") }
+        repository.failWith = null
+        repository.habits = listOf(habit(7, name = "Renamed on the web"))
+        repository.refresh()
+        advanceUntilIdle()
+        assertEquals("Read more", viewModel.state.value.form.name)
+    }
+
     @Test fun `a habit deleted elsewhere can't be edited`() = runTest(dispatcher) {
         val viewModel = form(habit = 7)
         assertTrue(viewModel.state.value.loadFailed)
@@ -118,6 +146,7 @@ class HabitFormViewModelTest {
             maxHabits = 10, maxCustomExercises = null, maxExerciseLists = null,
             allowedHabitTypes = listOf(HabitType.Count, HabitType.Complex),
         )
+        repository.refresh() // The list the form opens from has pulled them into Room.
         val viewModel = form()
         assertFalse(viewModel.state.value.allows(HabitType.Timed))
         assertTrue(viewModel.state.value.allows(HabitType.Complex))

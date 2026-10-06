@@ -3,17 +3,23 @@ package com.trackbit.feature.exerciselibrary
 import com.trackbit.core.data.ConfigError
 import com.trackbit.core.data.ConfigResult
 import com.trackbit.core.data.ExerciseLibraryRepository
+import com.trackbit.core.data.SyncResult
 import com.trackbit.core.model.EffectiveLimits
 import com.trackbit.core.model.Exercise
 import com.trackbit.core.model.ExerciseRequest
 import com.trackbit.core.model.LastPerformance
-import com.trackbit.core.model.LimitCounts
-import com.trackbit.core.model.LimitsResponse
 import com.trackbit.core.model.MuscleGroup
 import com.trackbit.core.model.MuscleGroupRef
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.yield
 
-/** Answers from its fields; a non-null [failWith] fails the next calls. Suspends, like the network. */
+/**
+ * A server holding [exercises], [muscleGroups] and [limits], and Room's copy, which [refresh]
+ * fills and successful writes update as the real repository stores their answers. A non-null
+ * [failWith] fails the next calls (a refresh with [ConfigError.Offline] as offline). Suspends,
+ * like the network.
+ */
 class FakeExerciseLibraryRepository : ExerciseLibraryRepository {
     var exercises = listOf<Exercise>()
     var muscleGroups = listOf<MuscleGroup>()
@@ -22,30 +28,54 @@ class FakeExerciseLibraryRepository : ExerciseLibraryRepository {
     val created = mutableListOf<ExerciseRequest>()
     val updated = mutableListOf<Pair<String, ExerciseRequest>>()
     val deleted = mutableListOf<String>()
+    var refreshes = 0
+
+    private val room = MutableStateFlow<List<Exercise>?>(null)
+    private val roomGroups = MutableStateFlow<List<MuscleGroup>?>(null)
+    private val roomLimits = MutableStateFlow<EffectiveLimits?>(null)
+
+    override fun exercises(): Flow<List<Exercise>?> = room
+
+    override fun muscleGroups(): Flow<List<MuscleGroup>?> = roomGroups
+
+    override fun limits(): Flow<EffectiveLimits?> = roomLimits
+
+    override suspend fun refresh(): SyncResult {
+        yield()
+        refreshes++
+        return when (failWith) {
+            null -> {
+                room.value = exercises
+                roomGroups.value = muscleGroups
+                roomLimits.value = limits
+                SyncResult.Done
+            }
+            ConfigError.Offline -> SyncResult.Retry
+            else -> SyncResult.Failed
+        }
+    }
 
     private suspend fun <T> answer(value: () -> T): ConfigResult<T> {
         yield()
-        return failWith?.let { ConfigResult.Failure(it) } ?: ConfigResult.Success(value())
+        val failure = failWith ?: return ConfigResult.Success(value()).also { room.value = room.value?.let { exercises } }
+        return ConfigResult.Failure(failure)
     }
-
-    override suspend fun exercises() = answer { exercises }
-
-    override suspend fun muscleGroups() = answer { muscleGroups }
-
-    override suspend fun limits() = answer { LimitsResponse(limits, LimitCounts(0, exercises.count { it.userId != null }, 0)) }
 
     /** Every create sent, refused ones included. */
     override suspend fun create(request: ExerciseRequest): ConfigResult<Exercise> {
         created += request
-        return answer { exercise(100, request.name, mine = true).copy(uuid = request.uuid!!) }
+        return answer { exercise(100, request.name, mine = true).copy(uuid = request.uuid!!).also { exercises = exercises + it } }
     }
 
     override suspend fun update(uuid: String, request: ExerciseRequest) = answer {
         updated += uuid to request
-        exercise(100, request.name, mine = true).copy(uuid = uuid)
+        exercise(100, request.name, mine = true).copy(uuid = uuid).also { new -> exercises = exercises.map { if (it.uuid == uuid) new else it } }
     }
 
-    override suspend fun delete(uuid: String) = answer { deleted += uuid }
+    override suspend fun delete(uuid: String) = answer {
+        deleted += uuid
+        exercises = exercises.filterNot { it.uuid == uuid }
+    }
 }
 
 fun exercise(

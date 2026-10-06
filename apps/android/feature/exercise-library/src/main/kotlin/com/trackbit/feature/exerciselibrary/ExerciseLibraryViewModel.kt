@@ -6,6 +6,7 @@ import com.trackbit.core.data.ConfigError
 import com.trackbit.core.data.ConfigResult
 import com.trackbit.core.data.ExerciseLibraryRepository
 import com.trackbit.core.data.ExerciseListsRepository
+import com.trackbit.core.data.SyncResult
 import com.trackbit.core.designsystem.component.ListTargets
 import com.trackbit.core.model.EffectiveLimits
 import com.trackbit.core.model.Exercise
@@ -14,7 +15,6 @@ import com.trackbit.core.model.MuscleGroup
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.text.Collator
 import javax.inject.Inject
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,7 +29,7 @@ data class ExerciseLibraryUiState(
     val exercises: List<Exercise>? = null,
     /** The taxonomy, for the muscle filter; empty while it hasn't loaded (the filter hides). */
     val muscleGroups: List<MuscleGroup> = emptyList(),
-    /** The first load failed: show a retry instead of a list. */
+    /** Room has no catalog and pulling it failed: show a retry instead of a list. */
     val loadFailed: Boolean = false,
     /** Null when nothing is capped, or until the limits load. */
     val limits: EffectiveLimits? = null,
@@ -38,7 +38,7 @@ data class ExerciseLibraryUiState(
     val owner: OwnerFilter = OwnerFilter.All,
     /** A top-level group: shows exercises that work it or any of its subdivisions. */
     val muscleGroupId: Int? = null,
-    /** The user's lists, for "add to list". Null until they load. */
+    /** The user's lists, for "add to list". Null until Room holds them. */
     val lists: List<ExerciseList>? = null,
     val listsFailed: Boolean = false,
     val message: ExerciseLibraryMessage? = null,
@@ -94,9 +94,9 @@ internal val GROUP_ORDER: Comparator<MuscleGroup> =
 
 /**
  * The exercise library, like the web's `/config/exercises`: system exercises and the user's
- * own, searched by name and filtered by owner and muscle group. It reads the server, not Room's
- * catalog, which keeps neither descriptions nor the library's `frozen`. The screen reloads on
- * resume, which also picks up the form's saves.
+ * own, searched by name and filtered by owner and muscle group. It shows Room's catalog, so it
+ * works offline; the screen pulls it again on resume. The form's saves reach Room, and so the
+ * library, by themselves.
  */
 @HiltViewModel
 class ExerciseLibraryViewModel @Inject constructor(
@@ -106,59 +106,71 @@ class ExerciseLibraryViewModel @Inject constructor(
     private val _state = MutableStateFlow(ExerciseLibraryUiState())
     val state: StateFlow<ExerciseLibraryUiState> = _state.asStateFlow()
 
+    init {
+        viewModelScope.launch {
+            repository.exercises().collect { exercises ->
+                if (exercises == null) return@collect
+                val collator = Collator.getInstance()
+                _state.update { it.copy(exercises = exercises.sortedWith(compareBy(collator) { e -> e.name }), loadFailed = false) }
+            }
+        }
+        viewModelScope.launch {
+            repository.muscleGroups().collect { groups ->
+                if (groups == null) return@collect
+                _state.update { state ->
+                    state.copy(
+                        muscleGroups = groups,
+                        // A filter on a group that's gone would hide everything.
+                        muscleGroupId = state.muscleGroupId?.takeIf { id -> groups.any { it.id == id } },
+                    )
+                }
+            }
+        }
+        viewModelScope.launch {
+            repository.limits().collect { limits -> _state.update { it.copy(limits = limits) } }
+        }
+        viewModelScope.launch {
+            lists.lists().collect { lists -> if (lists != null) _state.update { it.copy(lists = lists, listsFailed = false) } }
+        }
+    }
+
+    /** Pulls the catalog, the muscle groups, the limits and the lists again; Room's copy stays on screen meanwhile. */
     fun refresh() {
         if (_state.value.refreshing) return
         _state.update { it.copy(refreshing = true) }
         viewModelScope.launch {
-            val limits = async { repository.limits() }
-            val groups = async { repository.muscleGroups() }
-            launch { loadLists() }
-            when (val exercises = repository.exercises()) {
-                is ConfigResult.Success -> {
-                    val collator = Collator.getInstance()
-                    _state.update { it.copy(exercises = exercises.value.sortedWith(compareBy(collator) { e -> e.name }), loadFailed = false) }
-                }
-                is ConfigResult.Failure -> _state.update {
-                    it.copy(loadFailed = it.exercises == null, message = exercises.error.toMessage())
-                }
-            }
-            val loadedGroups = (groups.await() as? ConfigResult.Success)?.value
-            val effective = (limits.await() as? ConfigResult.Success)?.value?.effective
-            _state.update { state ->
-                state.copy(
-                    muscleGroups = loadedGroups ?: state.muscleGroups,
-                    // A filter on a group that's gone would hide everything.
-                    muscleGroupId = state.muscleGroupId?.takeIf { id -> (loadedGroups ?: state.muscleGroups).any { it.id == id } },
-                    limits = effective ?: state.limits,
+            launch { pullLists() }
+            val result = repository.refresh()
+            _state.update {
+                it.copy(
                     refreshing = false,
+                    loadFailed = it.exercises == null && result != SyncResult.Done,
+                    message = result.toMessage() ?: it.message,
                 )
             }
         }
     }
 
-    /** The add-to-list menu opened: retries the lists if they failed to load. */
+    /** The add-to-list menu opened: retries the lists if Room has none and pulling them failed. */
     fun onListsMenu() {
         if (_state.value.listsFailed) {
             _state.update { it.copy(listsFailed = false) }
-            viewModelScope.launch { loadLists() }
+            viewModelScope.launch { pullLists() }
         }
     }
 
-    private suspend fun loadLists() {
-        when (val result = lists.lists()) {
-            is ConfigResult.Success -> _state.update { it.copy(lists = result.value, listsFailed = false) }
-            is ConfigResult.Failure -> _state.update { it.copy(listsFailed = it.lists == null) }
-        }
+    private suspend fun pullLists() {
+        val result = lists.refresh()
+        _state.update { it.copy(listsFailed = it.lists == null && result != SyncResult.Done) }
     }
 
-    /** Appends [exerciseUuid] to [listUuid], like the web's add-to-list menu. */
+    /** Appends [exerciseUuid] to [listUuid], like the web's add-to-list menu. The menus follow Room. */
     fun addToList(listUuid: String, exerciseUuid: String) {
         viewModelScope.launch {
             when (val result = lists.append(listUuid, exerciseUuid)) {
                 is ConfigResult.Success -> _state.update { state ->
-                    val updated = state.lists?.map { if (it.uuid == listUuid) it.copy(items = result.value.items) else it }
-                    val name = updated?.find { it.uuid == listUuid }?.name.orEmpty()
-                    state.copy(lists = updated, message = ExerciseLibraryMessage.AddedToList(name))
+                    val name = state.lists?.find { it.uuid == listUuid }?.name.orEmpty()
+                    state.copy(message = ExerciseLibraryMessage.AddedToList(name))
                 }
                 is ConfigResult.Failure -> _state.update { it.copy(message = result.error.toMessage()) }
             }
@@ -183,6 +195,13 @@ class ExerciseLibraryViewModel @Inject constructor(
     }
 
     private companion object {
+        /** Null when there is nothing to say: done, or signed out. */
+        fun SyncResult.toMessage(): ExerciseLibraryMessage? = when (this) {
+            SyncResult.Retry -> ExerciseLibraryMessage.Offline
+            SyncResult.Failed -> ExerciseLibraryMessage.Failed
+            SyncResult.Done, SyncResult.SignedOut -> null
+        }
+
         fun ConfigError.toMessage(): ExerciseLibraryMessage = when (this) {
             ConfigError.Offline -> ExerciseLibraryMessage.Offline
             ConfigError.ExerciseListFrozen -> ExerciseLibraryMessage.ListFrozen

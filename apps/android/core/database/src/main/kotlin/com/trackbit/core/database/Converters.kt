@@ -37,6 +37,11 @@ internal class Converters {
     @TypeConverter fun habitTypeToWire(value: HabitType): String = value.stored()
     @TypeConverter fun wireToHabitType(value: String): HabitType = HabitType.Serializer.fromWire(value)
 
+    /** Comma-separated, each stored like a single [HabitType]. */
+    @TypeConverter fun habitTypesToWire(value: List<HabitType>): String = value.joinToString(",") { it.stored() }
+    @TypeConverter fun wireToHabitTypes(value: String): List<HabitType> =
+        if (value.isEmpty()) emptyList() else value.split(",").map(HabitType.Serializer::fromWire)
+
     @TypeConverter fun colorThemeToWire(value: ColorTheme): String = value.stored()
     @TypeConverter fun wireToColorTheme(value: String): ColorTheme = ColorTheme.Serializer.fromWire(value)
 

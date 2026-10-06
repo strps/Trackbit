@@ -45,12 +45,14 @@ data class TrackedHabit(
     val firstLogDay: LocalDate? = null,
     /**
      * Room holds every log from this day on; an empty day before it may just be unknown. Logs
-     * from [firstLogDay] on are all known once this is on or before it.
+     * from [firstLogDay] on are all known once this is on or before it. Null while the habit
+     * isn't summarized yet: then no log is known, and neither is [firstLogDay].
      */
-    val logsKnownFrom: LocalDate = day,
+    val logsKnownFrom: LocalDate? = day,
 ) : TrackableHabit {
     /** Whether [recent] holds every log the habit has, given a window reaching back to [firstLogDay]. */
-    val allLogsKnown: Boolean get() = firstLogDay == null || !logsKnownFrom.isAfter(firstLogDay)
+    val allLogsKnown: Boolean
+        get() = logsKnownFrom != null && (firstLogDay == null || !logsKnownFrom.isAfter(firstLogDay))
 
     val today: RecentDay get() = recent.last()
 
@@ -82,18 +84,25 @@ internal fun TimerEntity.toHabitTimer(): HabitTimer? = localDay?.let { HabitTime
 internal fun HabitDay.toTrackedHabit(): TrackedHabit {
     val day = current.day
     val logs = recent.associate { it.day to StreakDay(it.rating, it.sessionCount) }
-    // The logs are known from both Room's coverage and the window read.
-    val knownFrom = maxOf(logsKnownFrom, recent.first().day)
-    val streak = if (day.isBefore(habit.summaryDay)) {
-        Streak.endingBefore(habit, logs, day, habit.firstLogDay, knownFrom, habit.summaryDay, habit.streakBeforeDay)
-    } else {
-        // Every log from the summary day on must be known to bridge the streak across the gap.
-        val before = if (habit.summaryDay.isBefore(recent.first().day)) {
-            null
-        } else {
-            Streak.beforeDay(habit, logs, day, habit.firstLogDay, habit.summaryDay, habit.streakBeforeDay)
+    val summaryDay = habit.summaryDay
+    val logsKnownFrom = logsKnownFrom
+    val streak = when {
+        // Not summarized by `/today` yet: nothing to count from.
+        summaryDay == null || logsKnownFrom == null -> null
+        day.isBefore(summaryDay) -> {
+            // The logs are known from both Room's coverage and the window read.
+            val knownFrom = maxOf(logsKnownFrom, recent.first().day)
+            Streak.endingBefore(habit, logs, day, habit.firstLogDay, knownFrom, summaryDay, habit.streakBeforeDay)
         }
-        if (Streak.dayCounts(habit, logs[day], day, habit.firstLogDay)) before?.plus(1) else 0
+        else -> {
+            // Every log from the summary day on must be known to bridge the streak across the gap.
+            val before = if (summaryDay.isBefore(recent.first().day)) {
+                null
+            } else {
+                Streak.beforeDay(habit, logs, day, habit.firstLogDay, summaryDay, habit.streakBeforeDay)
+            }
+            if (Streak.dayCounts(habit, logs[day], day, habit.firstLogDay)) before?.plus(1) else 0
+        }
     }
     return TrackedHabit(
         uuid = habit.uuid,

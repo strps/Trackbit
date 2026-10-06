@@ -1,5 +1,6 @@
 package com.trackbit.feature.exerciselists
 
+import org.junit.Assert.assertFalse
 import com.trackbit.core.data.ConfigError
 import com.trackbit.core.model.EffectiveLimits
 import kotlinx.coroutines.Dispatchers
@@ -96,8 +97,20 @@ class ExerciseListsViewModelTest {
         assertEquals("Core 2", viewModel.names()?.last())
     }
 
+    @Test fun `offline, Room's lists still show, and the refresh says it is offline`() = runTest(dispatcher) {
+        lists.lists = listOf(exerciseList(1, "Push"))
+        lists.refresh()
+        lists.failWith = ConfigError.Offline
+
+        val viewModel = screen()
+        assertFalse(viewModel.state.value.loadFailed)
+        assertEquals(listOf("Push"), viewModel.names())
+        assertEquals(ListsMessage.Offline, viewModel.state.value.message)
+    }
+
     @Test fun `at the cap the add button says why`() = runTest(dispatcher) {
         library.limits = EffectiveLimits(maxHabits = 10, maxCustomExercises = 5, maxExerciseLists = 3, allowedHabitTypes = emptyList())
+        library.refresh() // Room's limits, which the lists' refresh pulls.
         val viewModel = screen()
         viewModel.startCreate()
 

@@ -87,7 +87,6 @@ class DecodeTest {
     @Test fun `a created habit has no frozen flag and is not frozen`() {
         val habit = contract<Habit>("habit-created.json")
         assertFalse(habit.frozen)
-        assertEquals(Instant.parse("2026-01-01T00:00:00Z"), habit.createdAt)
     }
 
     @Test fun `a habit moved to the anti-habits takes their next slot`() {

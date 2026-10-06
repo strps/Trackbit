@@ -24,9 +24,10 @@ data class HabitDay(
     /**
      * Room holds every log of the habit from this day on (as of the last syncs, plus local
      * writes): the week of the last `/today`, or further back when history was pulled. An empty
-     * day before it may just be unknown.
+     * day before it may just be unknown. Null while no `/today` has summarized the habit: none
+     * of its logs is known then.
      */
-    val logsKnownFrom: LocalDate,
+    val logsKnownFrom: LocalDate?,
 ) {
     /** The requested day. */
     val current: RecentDay get() = recent.last()
@@ -86,8 +87,8 @@ abstract class HabitDayDao {
             val first = rows.first()
             // Every pull reaches the device's day, and `sync()` pulls history when stale, so the
             // pulled range and the recent week meet.
-            val recentFrom = first.habit.summaryDay.minusDays(HabitDay.RECENT_DAYS - 1L)
-            HabitDay(first.habit, recent, first.timer, listOfNotNull(recentFrom, first.historyFrom).min())
+            val recentFrom = first.habit.summaryDay?.minusDays(HabitDay.RECENT_DAYS - 1L)
+            HabitDay(first.habit, recent, first.timer, recentFrom?.let { listOfNotNull(it, first.historyFrom).min() })
         }
 }
 

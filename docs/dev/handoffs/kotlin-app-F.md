@@ -1,11 +1,14 @@
 # Handoff: Kotlin app — Workstream F (full offline capability)
 
 - **Plan:** [kotlin-app.md](../tasks/kotlin-app.md). Read only §4 "Phase 4" (decisions F-D1–F-D4 and the F1–F8 split) and §2.2. Core context: the "Invariants" and "Landmines" of [kotlin-app-E.md](kotlin-app-E.md), [kotlin-app-D.md](kotlin-app-D.md), [kotlin-app-C.md](kotlin-app-C.md) and [kotlin-app-B.md](kotlin-app-B.md), nothing else.
-- **Status:** Phase 4, F1 committed (651bc43); F2 committed (422c3c1); **F3 (Room holds the whole config) is next**. Phase 2 and Phase 3 exit checks are deferred to the final pass with the real-device check (user).
-- **Branch:** `kotlin-app` · **Last run:** 2026-10-06 (F2)
+- **Status:** Phase 4, F1 committed (651bc43); F2 committed (422c3c1); F3 done 2026-10-06 (uncommitted); **F4 (config outbox, habits through it) is next**. Phase 2 and Phase 3 exit checks are deferred to the final pass with the real-device check (user).
+- **Branch:** `kotlin-app` · **Last run:** 2026-10-06 (F3)
 
 ## Where we are
 
+**F3:** every config screen reads Room, so each one opens offline once a sync has pulled its data. Room v10 holds the whole config: habits as the form edits them, the library with descriptions, lists with items, muscle groups, limits, and a `config_pulls` marker per part. Writes still go online, and each one stores the server's answer in Room before returning. F4–F6 move them to the outbox. Android has 439 tests and 0 lint issues; the backend is unchanged.
+
+**Before F3 (F2):** 
 No int id of a habit, exercise, list or list item exists on Android any more (F-D1): the DTOs carry only their `uuid` (and `habitUuid`, `exerciseUuid`, `listItemUuid`, `listUuid` for references), so the compiler refuses an int where a row is named. Room v9, the outbox, widgets' Glance state, notification and nav routes all name rows by uuid, and every request uses the uuid form F1 added. Behaviour is unchanged, apart from the two points under "Decisions made in F2".
 
 Room v9 is a **clean reset** (user's choice): a database from versions 1–8 opens empty (outbox and running timers included) and refills from the next sync; the auth session lives outside Room, so the user stays signed in. A widget placed before v9 shows "choose a habit" and works again once one is picked.
@@ -18,12 +21,41 @@ Android 411 tests (414 − 7 removed 1→8 migration tests + 4 new), 0 lint issu
 |---|---|---|
 | **F1** | Backend uuids: migration 0017, idempotent creates, uuid refs on every route the app calls, uuids in its responses, `list:<uuid>` keys; contracts | ✅ 2026-10-06 |
 | **F2** | Android identity: DTOs, Room v9, outbox, widgets, repositories, features and nav by uuid. No behaviour change | ✅ 2026-10-06 (422c3c1) |
-| **F3** | Room holds the whole config; config screens read Room | next |
-| **F4** | Config outbox (field-level ops, per-row dependencies, failed state) + habits through it | |
+| **F3** | Room holds the whole config; config screens read Room | ✅ 2026-10-06 |
+| **F4** | Config outbox (field-level ops, per-row dependencies, failed state) + habits through it | next |
 | **F5** | Exercise library through the outbox | |
 | **F6** | Lists through the outbox; offline-created lists as sources | |
 | **F7** | Preferences through the outbox | |
 | **F8** | Failed-create UX, offline exit check | |
+
+## Done (F3)
+
+- **Room v10**, an auto-migration from 9 (`MigrationTest` checks that a v9 habit, its log and the outbox survive):
+  - `habits` gains `ownColorStops` (default `[]`), and `summaryDay` becomes nullable.
+  - `exercises` gains `description`.
+  - New tables: `exercise_lists`, `exercise_list_items` (FK to the list, cascade; `exerciseUuid` is not an FK), `muscle_groups`, `limits` (one row with an embedded `EffectiveLimits?`; `allowedHabitTypes` is stored comma-separated) and `config_pulls` (`ConfigPart` → `pulledAt`).
+  - Entities: [ConfigEntities.kt](../../../apps/android/core/database/src/main/kotlin/com/trackbit/core/database/entity/ConfigEntities.kt). Reads: [ConfigDao](../../../apps/android/core/database/src/main/kotlin/com/trackbit/core/database/dao/ConfigDao.kt). Writes: `SyncDao` (`applyHabits/Lists/MuscleGroups/Limits`, `storeHabit/HabitOrder/Exercise/List/ListItems`, `removeHabit/List`). `removeExercise` also drops the exercise's list items.
+- **One `habits` table, two pulls:**
+  - `/today` writes everything except `ownColorStops`. It keeps Room's value, or copies its stops in for a Custom habit.
+  - `/habits` writes the config and resolves `colorStops` (`resolveColorStops`). It keeps the tracker summary.
+  - A habit only `/habits` has brought in is **unsummarized** (`summaryDay` null). Its streak is null and `HabitDay`/`TrackedHabit.logsKnownFrom` is null, so `allLogsKnown` is false: its `firstLogDay` is unknown, not "never".
+- **DTOs:** `Habit` lost `userId`/`createdAt`, and `ExerciseList` lost `userId`/`authorId`/`createdAt`/`updatedAt`. Nothing read them, and Room would have had to store them.
+- **`TrackerSync`:**
+  - `syncConfig(vararg ConfigPart)` pulls parts. One that fails doesn't stop the others; the result is the worst.
+  - `sync()` also pulls every part that is due: never pulled, or older than `CONFIG_MAX_AGE` (1 h). That covers sign-in (the first periodic run) and the periodic sync.
+  - `write(call, store)` stores a write's answer under the lock, fenced on the session the write started with. `delete(call, store)` counts a 404 as done, as the outbox does.
+  - `syncExercises`/`removeExercise` are gone. `LocalizedDataSync` now pulls exercises and muscle groups.
+- **Repositories:**
+  - Reads are Flows that are null until their part is pulled: `habits()`, `limits()`, `exercises()`, `muscleGroups()`, `lists()`. `refresh(): SyncResult` pulls habits+limits, catalog+muscle groups+limits, or lists+limits.
+  - Writes return `ConfigResult` as before, after their answer is in Room. A delete that finds the row gone is a success.
+  - In the background: a habit write runs `sync()`, an exercise delete pulls the catalog and then `syncSources()`, and a list write runs `syncSources()`.
+- **VMs:**
+  - The list screens (habits config, library, lists) observe Room and refresh on resume. A failed refresh shows offline/failed as a message; `loadFailed` only when Room has nothing. A reorder in flight keeps its own order (`reordering`), as a drag does.
+  - The forms take a one-time snapshot from Room and pull only when Room lacks the part.
+  - The list editor observes Room. Each item write applies its change to Room's items, read under the write lock. The items on screen stay optimistic until the last pending write settles. A list that disappears from Room shows NotFound.
+  - The session and library add-to-list menus read Room and pull on open.
+- **Tests:** `ConfigSyncTest`, `HabitsRepositoryTest`, Room-backed list and library repository tests, and VM tests for offline-from-Room and follow-Room. `trackerSync(...)` in core:data `Fakes.kt` builds a `TrackerSync` whose `/habits` answers the same habits its `/today` does. The feature fakes model a server plus a Room copy, which `refresh` fills and successful writes update.
+- **Emulator** (API 36, local backend, the user's account): the v9 → v10 install kept the tracker as it was. Online, Habits, Library, Lists and the list editor loaded. Then, in airplane mode with the app killed and relaunched: the habits list, a habit's form, the library, an exercise's form, the add-to-list menu ("Already in this list"), the lists and the list editor all loaded from Room. Each refresh showed "Can't reach Trackbit". Connectivity was restored afterwards. Nothing was written. Not exercised: writes, other locales, a fresh sign-in.
 
 ## Done (F2)
 
@@ -68,14 +100,14 @@ Android 411 tests (414 − 7 removed 1→8 migration tests + 4 new), 0 lint issu
 - **Web:** [use-exercise-lists.ts](../../../apps/frontend/src/features/exercise-lists/use-exercise-lists.ts) `ListItemInput` is named by `uuid` (new items get `crypto.randomUUID()` in `newItemInput`, so the optimistic row has its final identity); [AddToListMenu.tsx](../../../apps/frontend/src/features/exercise-lists/AddToListMenu.tsx) matches `ref.listUuid`.
 - **Contracts** ([contracts.test.ts](../../../apps/backend/test/contracts.test.ts)): every request uses the app's uuid form; client uuids are fixed per test (`uuidsFrom(base)`, ranges of 100 so one test's additions don't renumber another's); server-chosen uuids are normalized to `ffffffff-…-N` by first appearance in the file, inside strings too. The session ids stay `…001`–`…004`.
 
-## Next: F3 — Room holds the whole config; config screens read Room
+## Next: F4: config outbox, habits through it
 
-Read plan §4 F3. Today the config screens call the server directly (`HabitsRepository.habits()`, `ExerciseLibraryRepository.exercises()`, `ExerciseListsRepository.lists()`, `muscleGroups()`, `limits()`), and Room keeps only what tracking needs. F3 moves the reads to Room so F4–F7 can write offline:
+Read plan §4 F4. Room and the screens are ready: the screens follow Room, and a write's answer lands through `SyncDao.store*`.
 
-1. **Room v10** (a real migration from here on; v9 is the base): habits gain what the form edits that `/today` doesn't send (the own `colorStops` for presets, `description` already there; check `GET /api/habits` vs `/today`), the library keeps `description` and per-exercise `frozen` as the library shows them, new `exercise_lists` + `exercise_list_items` tables (by uuid, with prescriptions), `muscle_groups`, and the role `limits`. Decide whether habits stay one table fed by both `/today` and `/habits` (preferred: one row per habit, each pull updating its own columns) before writing entities.
-2. **Sync pulls** in `TrackerSync`: habits config, library, lists, muscle groups, limits, on the same triggers as today's catalog/sources pulls (sign-in, periodic, after a config write), with `ConfigResult`'s error mapping kept for the screens' "offline" state.
-3. **Repositories expose Flows from Room** and the config VMs observe them (habits config list, habit form, library, exercise form, lists, list editor, add-to-list menus). Writes still go online in F3 (F4–F6 move them to the outbox); after a write, the existing background sync refreshes Room.
-4. Verify on the emulator: each config screen loads offline from Room after one online sync.
+1. **Config ops in the outbox.** Field-level updates (F-D2: only the changed fields). Per-row dependencies, so a refused create parks only what builds on it. A failed state with its reason (F-D3).
+2. **Habit create/update/delete/reorder through it.** Each one writes Room optimistically, then queues the op. The flush stores the answer with the same `store*` calls `TrackerSync.write` uses. A create is checked against the cached `limits` and Room's habit count.
+3. **Offline habit creates.** They insert an unsummarized row today. Decide whether a habit created on the device should start summarized: no logs, streak 0, `summaryDay` = today.
+4. Tracker ops on a habit created offline must wait for its create (see Landmines).
 
 ## Invariants — do not break these
 
@@ -89,7 +121,22 @@ Read plan §4 F3. Today the config screens call the server directly (`HabitsRepo
 - **Responses carry the uuid beside each int reference the app reads** (`habitUuid`, `exerciseUuid`, `listItemUuid`, `listUuid`). Adding a reference the app reads means adding its uuid too.
 - **Config updates apply only the fields given** (F-D2: last write wins per field). Never turn an update into a replace.
 - **List source keys are `list:<uuid>`**; the pattern in `@trackbit/types` is the only definition. The app still never parses a key (D invariant); F6 may build `list:<uuid>` for a list created offline, and that is the only place allowed to.
+- **Config screens read Room only.** A config part is "known" once `config_pulls` has it; rows `/today` brings don't count for habits. A write's answer reaches Room before the write returns.
+- **The two habit pulls own different columns.** `/today` must not overwrite `ownColorStops`, and `/habits` must not touch the summary (`summaryDay`, `streakBeforeDay`, `firstLogDay`). A null `summaryDay` means unsummarized: no streak, and no log is known.
 - **Contract client uuids come from the test's own range** (`uuidsFrom(base)`); never a global counter, never random.
+
+## Decisions made in F3
+
+| Question | Decision | Why |
+|---|---|---|
+| One habits table or two | One table; each pull writes only the columns it owns | The tracker, widgets and config read the same rows, and a write's answer updates them all |
+| A habit only `/habits` knows | Unsummarized: `summaryDay` null, streak and `logsKnownFrom` null | Its logs and first log day are unknown. A sentinel date would hide that |
+| "Not pulled yet" vs "empty" | A `config_pulls` row per part | A user can have zero habits or lists, so an empty table doesn't mean anything wasn't pulled |
+| A write's answer | Stored in Room before the write returns (under the sync lock) | Otherwise Room-backed screens show the old rows until the background pull (a created list's editor would say NotFound) |
+| A delete answering 404 | Success, and the row leaves Room | Same rule as the outbox: what the user wanted. The editor's NotFound branch for deletes went |
+| When `sync()` pulls config | When a part is never pulled or older than 1 h; screens pull their parts on resume | Keeps the offline copy fresh without five extra pulls every 15 minutes |
+| Unused DTO fields | Dropped (`Habit.userId/createdAt`, `ExerciseList.userId/authorId/createdAt/updatedAt`) | Nothing read them; storing them would be dead columns |
+| Where config pulls live | `TrackerSync` | They need its lock and session fence, and F4's config ops will flush there too |
 
 ## Decisions made in F2
 
@@ -117,6 +164,10 @@ Read plan §4 F3. Today the config screens call the server directly (`HabitsRepo
 
 ## Landmines
 
+- **Fake `/habits` answers wipe Room.** A config pull deletes habits missing from its answer. In tests, use `trackerSync(...)` from `Fakes.kt` (`/habits` answers what `/today` does), or habits disappear when `sync()` pulls config.
+- **Repository tests must join background syncs before `db.close()`** (their `@After` does). A sync left running fails a later test with "no current transaction".
+- **The dev DB has no muscle groups**, so the exercise form shows "No muscle groups yet" and the library hides its filter. That is data, not a bug.
+
 - **Production needs 0017** (after 0008–0016) **and the backend + web of F1 together**: the new web sends item `uuid`s and reads `ref.listUuid`, which an old backend doesn't have; an old web reads `ref.listId`, which the new backend doesn't send. 0017's rewrite drops preferred keys of other users' lists (there should be none).
 - **A build from before F2 installed over by F2 loses its Room data** (reset); flush its outbox first. The emulator now runs F2.
 - **`assertEquals(Any, Any)` compiles int-vs-uuid comparisons**: when renaming fixtures, a missed `assertEquals(4, x.listItemUuid)` fails only at run time. Grep the tests for bare numbers next to uuid fields.
@@ -130,7 +181,7 @@ Read plan §4 F3. Today the config screens call the server directly (`HabitsRepo
 
 ```bash
 cd apps/android && ./gradlew --stop
-./gradlew assembleDebug testDebugUnitTest lintDebug :core:model:test --max-workers=2   # green, 0 lint issues, 411 tests
+./gradlew assembleDebug testDebugUnitTest lintDebug :core:model:test --max-workers=2   # green, 0 lint issues, 439 tests
 pnpm android:generate:check                                          # 62 generated files up to date
 (cd apps/frontend && npx tsc -b) && (cd apps/admin && npx tsc -b)
 pnpm --filter backend test                                           # 162 tests
@@ -139,9 +190,11 @@ psql "$DATABASE_URL" -c '\d habits' | grep uuid                      # 0017 appl
 
 ## Open questions
 
-- **F3: one `habits` table fed by `/today` and `/habits`, or two?** Default: one, each pull updating its columns. Decide before writing v10's entities.
+- **F4: does a habit created on the device start summarized** (streak 0 from today), or unsummarized until `/today`? Unsummarized is what F3's `storeHabit` does.
+- **The offline snackbar on every resume while offline** (config screens): keep it, or show it only on pull-to-refresh? Revisit in F8.
 
 ## Run log
 
 - 2026-10-06 — Phase 4 planned (F1–F8; uuid identity everywhere, LWW per field, failed creates kept: user). E6 committed (8797597). F1: backend uuids (migration 0017, uuid-refs, every app route by uuid, `list:<uuid>` keys), web list items by uuid, contracts re-recorded with per-test uuid ranges. Backend 162 tests. Next: F2.
 - 2026-10-06 — F2: Android identity by uuid (DTOs without int ids, Room v9 clean reset (user), outbox/widgets/notifications/nav by uuid, forms keep a create's uuid); contracts `day-log-ensured`, `habit-not-found-update` added, `exercise-log` dropped. 411 tests, 0 lint; backend 162. Verified on the emulator, committed (422c3c1). Next: F3.
+- 2026-10-06 — F3: Room v10 holds the whole config (one habits table, two pulls; `config_pulls`); config screens read Room and open offline; writes store their answer; `sync()` pulls due config. 439 tests, 0 lint; backend unchanged. Verified on the emulator (offline after one online sync). Next: F4.

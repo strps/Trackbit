@@ -3,11 +3,15 @@ package com.trackbit.feature.session
 import com.trackbit.core.data.ConfigError
 import com.trackbit.core.data.ConfigResult
 import com.trackbit.core.data.ExerciseListsRepository
+import com.trackbit.core.data.SyncResult
 import com.trackbit.core.model.ExerciseList
 import com.trackbit.core.model.ExerciseListItem
 import com.trackbit.core.model.ExerciseListItemsResponse
 import com.trackbit.core.model.ExerciseListRequest
 import com.trackbit.core.model.ListItemDraft
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.yield
 
 // Fixtures are numbered for readability; these are the uuids the app names them by.
@@ -16,8 +20,10 @@ fun itemUuid(n: Int) = "item-$n"
 fun exerciseUuid(n: Int) = "exercise-$n"
 
 /**
- * A server holding [lists]: writes change them as the API would (an append makes a new item). A
- * non-null [failWith] fails the next calls. Suspends, like the network.
+ * A server holding [lists], and Room's copy of them, which [refresh] fills and successful writes
+ * update as the real repository stores their answers. Writes change [lists] as the API would (an
+ * append makes a new item). A non-null [failWith] fails the next calls (a refresh with
+ * [ConfigError.Offline] as offline). Suspends, like the network.
  */
 class FakeExerciseListsRepository : ExerciseListsRepository {
     var lists = listOf<ExerciseList>()
@@ -25,10 +31,25 @@ class FakeExerciseListsRepository : ExerciseListsRepository {
     val calls = mutableListOf<String>()
     private var nextItem = 1000
 
+    private val room = MutableStateFlow<List<ExerciseList>?>(null)
+
+    override fun lists(): Flow<List<ExerciseList>?> = room.map { it?.sortedBy(ExerciseList::position) }
+
+    override suspend fun refresh(): SyncResult {
+        yield()
+        calls += "refresh"
+        return when (failWith) {
+            null -> SyncResult.Done.also { room.value = lists }
+            ConfigError.Offline -> SyncResult.Retry
+            else -> SyncResult.Failed
+        }
+    }
+
     private suspend fun <T> answer(call: String, value: () -> T): ConfigResult<T> {
         yield()
         calls += call
-        return failWith?.let { ConfigResult.Failure(it) } ?: ConfigResult.Success(value())
+        val failure = failWith ?: return ConfigResult.Success(value()).also { room.value = room.value?.let { lists } }
+        return ConfigResult.Failure(failure)
     }
 
     private fun replace(uuid: String, change: (ExerciseList) -> ExerciseList): ExerciseList {
@@ -36,8 +57,6 @@ class FakeExerciseListsRepository : ExerciseListsRepository {
         lists = lists.map { if (it.uuid == uuid) list else it }
         return list
     }
-
-    override suspend fun lists() = answer("lists") { lists }
 
     override suspend fun create(request: ExerciseListRequest) = answer("create") {
         exerciseList(lists.size + 1, request.name, request.description).copy(uuid = request.uuid!!).also { lists = lists + it }
@@ -70,7 +89,7 @@ class FakeExerciseListsRepository : ExerciseListsRepository {
 }
 
 fun exerciseList(n: Int, name: String = "List $n", description: String? = null, items: List<ExerciseListItem> = emptyList(), frozen: Boolean = false) =
-    ExerciseList(listUuid(n), "user", "user", name, description, position = n, createdAt = null, updatedAt = null, items = items, frozen = frozen)
+    ExerciseList(listUuid(n), name, description, position = n, items = items, frozen = frozen)
 
 fun item(n: Int, exercise: Int, position: Int) =
     ExerciseListItem(itemUuid(n), exerciseUuid(exercise), position, null, null, null, null, null, null, null)

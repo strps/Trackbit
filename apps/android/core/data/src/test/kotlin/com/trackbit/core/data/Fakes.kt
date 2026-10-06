@@ -5,7 +5,9 @@ import androidx.test.core.app.ApplicationProvider
 import com.trackbit.core.auth.AuthRepository
 import com.trackbit.core.auth.AuthState
 import com.trackbit.core.data.sync.SyncScheduler
+import com.trackbit.core.data.sync.TrackerSync
 import com.trackbit.core.database.TrackbitDatabase
+import com.trackbit.core.model.AppendListItemRequest
 import com.trackbit.core.model.CheckRequest
 import com.trackbit.core.model.ColorStop
 import com.trackbit.core.model.ColorTheme
@@ -16,6 +18,11 @@ import com.trackbit.core.model.DayLog
 import com.trackbit.core.model.DaysResponse
 import com.trackbit.core.model.EnsureDayLogRequest
 import com.trackbit.core.model.Exercise
+import com.trackbit.core.model.ExerciseList
+import com.trackbit.core.model.ExerciseListItemsRequest
+import com.trackbit.core.model.ExerciseListItemsResponse
+import com.trackbit.core.model.ExerciseListReorderRequest
+import com.trackbit.core.model.ExerciseListRequest
 import com.trackbit.core.model.ExerciseLog
 import com.trackbit.core.model.ExerciseLogCardStyle
 import com.trackbit.core.model.ExercisePerformance
@@ -23,12 +30,19 @@ import com.trackbit.core.model.ExerciseRequest
 import com.trackbit.core.model.ExerciseSession
 import com.trackbit.core.model.ExerciseSessionDetail
 import com.trackbit.core.model.ExerciseSourceDescriptor
+import com.trackbit.core.model.Habit
 import com.trackbit.core.model.HabitIcon
+import com.trackbit.core.model.HabitReorderRequest
+import com.trackbit.core.model.HabitRequest
 import com.trackbit.core.model.HabitSetsResponse
 import com.trackbit.core.model.HabitType
 import com.trackbit.core.model.IncrementRequest
 import com.trackbit.core.model.LastPerformance
+import com.trackbit.core.model.LimitCounts
+import com.trackbit.core.model.LimitsResponse
 import com.trackbit.core.model.MuscleGroup
+import com.trackbit.core.model.PreferencesRequest
+import com.trackbit.core.model.PreferredExerciseSourceRequest
 import com.trackbit.core.model.QueueEntry
 import com.trackbit.core.model.RecentDay
 import com.trackbit.core.model.ResolvedQueue
@@ -42,7 +56,10 @@ import com.trackbit.core.model.UnitSystem
 import com.trackbit.core.network.ApiResult
 import com.trackbit.core.network.IdempotencyKey
 import com.trackbit.core.network.SessionTokenSource
+import com.trackbit.core.network.service.ExerciseListService
 import com.trackbit.core.network.service.ExerciseService
+import com.trackbit.core.network.service.HabitsService
+import com.trackbit.core.network.service.MeService
 import com.trackbit.core.network.service.TrackerService
 import java.time.Clock
 import java.time.Instant
@@ -94,6 +111,26 @@ fun todayHabit(
     recent = recent,
 )
 
+/** A row of `GET /api/habits` matching [todayHabit] ([n]), with its own stops. */
+fun configHabit(n: Int, type: HabitType = HabitType.Count, frozen: Boolean = false, colorTheme: ColorTheme = ColorTheme.Green) = Habit(
+    uuid = h(n),
+    name = "Habit $n",
+    description = null,
+    type = type,
+    isAntiHabit = false,
+    colorTheme = colorTheme,
+    colorStops = listOf(ColorStop(0f, Rgba(9f, 9f, 9f, 1f))),
+    icon = HabitIcon.Book,
+    weeklyGoal = 5,
+    dailyGoal = 2,
+    order = n,
+    frozen = frozen,
+)
+
+/** The habit as `GET /api/habits` has it: its own stops are its resolved ones. */
+fun TodayHabit.toConfigHabit() =
+    Habit(uuid, name, description, type, isAntiHabit, colorTheme, colorStops, icon, weeklyGoal, dailyGoal, order, frozen)
+
 fun todayResponse(day: LocalDate = DAY, vararg habits: TodayHabit) = TodayResponse(day, habits.toList())
 
 fun dayLog(habitUuid: String, day: LocalDate, rating: Int?) =
@@ -132,6 +169,23 @@ class FakeAuth(defaultRestSeconds: Int = SessionUser.DEFAULT_REST_SECONDS) : Aut
     override suspend fun signOut() = error("unused")
     override suspend fun refresh() = error("unused")
 }
+
+/**
+ * A [TrackerSync] over [db] whose services answer nothing unless a test passes its own, except
+ * `/api/habits`, which answers the habits [tracker]'s `/today` does (a server agrees with itself).
+ */
+internal fun trackerSync(
+    db: TrackbitDatabase,
+    tracker: TrackerService = FakeTrackerService(),
+    exercises: ExerciseService = FakeExerciseService(),
+    tokens: SessionTokenSource = FakeTokens(),
+    clock: Clock = FakeClock(),
+    habits: HabitsService = FakeHabitsService {
+        (tracker as? FakeTrackerService)?.todayAnswer?.invoke()?.habits.orEmpty().map { it.toConfigHabit() }
+    },
+    lists: ExerciseListService = FakeExerciseListService(),
+    me: MeService = FakeMeService(),
+) = TrackerSync(db, tracker, exercises, habits, lists, me, tokens, clock)
 
 class FakeTokens(var token: String? = "t1") : SessionTokenSource {
     override fun currentToken() = token
@@ -312,3 +366,75 @@ fun exercise(n: Int, frozen: Boolean = false, lastPerformance: LastPerformance? 
     lastPerformance = lastPerformance,
     frozen = frozen,
 )
+
+/** Answers `GET /api/habits` from [answer] and records writes; throw from [failure] to fail them. */
+class FakeHabitsService(var answer: () -> List<Habit> = { emptyList() }) : HabitsService {
+    val writes = mutableListOf<Pair<String?, Any?>>()
+    var failure: () -> Unit = {}
+
+    override suspend fun habits(): List<Habit> {
+        yield()
+        return answer()
+    }
+
+    private suspend fun write(uuid: String?, body: Any?) {
+        yield()
+        failure()
+        writes += uuid to body
+    }
+
+    private fun habit(uuid: String, body: HabitRequest) = configHabit(0).copy(
+        uuid = uuid, name = body.name, type = body.type, colorTheme = body.colorTheme, colorStops = body.colorStops,
+    )
+
+    override suspend fun create(body: HabitRequest) = write(null, body).let { habit(body.uuid!!, body) }
+    override suspend fun update(uuid: String, body: HabitRequest) = write(uuid, body).let { habit(uuid, body) }
+    override suspend fun delete(uuid: String) = write(uuid, null)
+    override suspend fun reorder(body: HabitReorderRequest) = write(null, body)
+}
+
+/** Answers `GET /api/exercise-lists` from [answer] and records writes; throw from [failure] to fail them. */
+class FakeExerciseListService(var answer: () -> List<ExerciseList> = { emptyList() }) : ExerciseListService {
+    val writes = mutableListOf<Pair<String?, Any?>>()
+    var failure: () -> Unit = {}
+
+    private suspend fun write(uuid: String?, body: Any?) {
+        yield()
+        failure()
+        writes += uuid to body
+    }
+
+    override suspend fun lists(): List<ExerciseList> {
+        yield()
+        return answer()
+    }
+
+    override suspend fun create(body: ExerciseListRequest) = write(null, body).let { exerciseList(body.uuid!!, body.name) }
+
+    override suspend fun update(uuid: String, body: ExerciseListRequest) = write(uuid, body).let { exerciseList(uuid, body.name) }
+
+    override suspend fun reorder(body: ExerciseListReorderRequest) =
+        write(null, body).let { body.uuids.mapIndexed { i, uuid -> exerciseList(uuid, uuid, position = i) } }
+
+    override suspend fun delete(uuid: String) = write(uuid, null)
+
+    override suspend fun putItems(uuid: String, body: ExerciseListItemsRequest) =
+        write(uuid, body).let { ExerciseListItemsResponse(uuid, emptyList()) }
+
+    override suspend fun append(uuid: String, body: AppendListItemRequest) =
+        write(uuid, body).let { ExerciseListItemsResponse(uuid, emptyList()) }
+}
+
+fun exerciseList(uuid: String, name: String, position: Int = 0) =
+    ExerciseList(uuid, name, description = null, position = position, items = emptyList(), frozen = false)
+
+/** Answers `GET /api/me/limits` from [answer]. */
+class FakeMeService(var answer: () -> LimitsResponse = { LimitsResponse(null, LimitCounts(0, 0, 0)) }) : MeService {
+    override suspend fun updatePreferences(body: PreferencesRequest) = error("unused")
+    override suspend fun updatePreferredExerciseSource(body: PreferredExerciseSourceRequest) = error("unused")
+
+    override suspend fun limits(): LimitsResponse {
+        yield()
+        return answer()
+    }
+}

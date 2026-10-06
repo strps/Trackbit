@@ -100,6 +100,29 @@ class ListEditorViewModelTest {
         assertEquals(ListsMessage.Frozen, viewModel.state.value.message)
     }
 
+    @Test fun `opens offline from Room`() = runTest(dispatcher) {
+        lists.refresh()
+        library.refresh()
+        lists.failWith = ConfigError.Offline
+        library.failWith = ConfigError.Offline
+
+        val viewModel = editor()
+        assertFalse(viewModel.state.value.loadFailed)
+        assertEquals(listOf(10, 11), viewModel.exerciseIds())
+        assertEquals(listOf("refresh"), lists.calls)
+    }
+
+    @Test fun `a list deleted elsewhere shows as gone`() = runTest(dispatcher) {
+        val viewModel = editor()
+
+        lists.lists = emptyList()
+        lists.refresh()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.state.value.loadFailed)
+        assertEquals(ListsMessage.NotFound, viewModel.state.value.message)
+    }
+
     @Test fun `a frozen list is read-only but can be deleted`() = runTest(dispatcher) {
         lists.lists = listOf(exerciseList(1, "Old", items = listOf(item(1, 10, 0)), frozen = true))
         val viewModel = editor()
@@ -110,7 +133,7 @@ class ListEditorViewModelTest {
         viewModel.startRename()
         viewModel.editTargets(itemUuid(1))
         advanceUntilIdle()
-        assertEquals(listOf("lists"), lists.calls)
+        assertEquals(listOf("refresh"), lists.calls)
         assertFalse(viewModel.state.value.adding)
 
         viewModel.delete()

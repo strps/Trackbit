@@ -37,7 +37,7 @@ class SessionRepositoryTest {
     private val tokens = FakeTokens()
     private val scheduler = FakeScheduler()
     private val clock = FakeClock()
-    private val sync = TrackerSync(db, service, exercises, tokens, clock)
+    private val sync = trackerSync(db, service, exercises, tokens, clock)
     private val auth = FakeAuth(defaultRestSeconds = 90)
     private val repository = DefaultSessionRepository(db, sync, scheduler, clock, auth)
     private val rest = DefaultRestTimerRepository(db, clock)
@@ -47,7 +47,7 @@ class SessionRepositoryTest {
     @Before fun seed() = runTest {
         db.syncDao().applyToday(todayResponse(DAY, gym, todayHabit(2), todayHabit(3, type = HabitType.Complex, frozen = true)))
         service.todayAnswer = { todayResponse(DAY, gym, todayHabit(2), todayHabit(3, type = HabitType.Complex, frozen = true)) }
-        db.syncDao().applyExercises(exercises.answer())
+        db.syncDao().applyExercises(exercises.answer(), clock.instant())
     }
 
     @After fun close() = db.close()
@@ -116,7 +116,7 @@ class SessionRepositoryTest {
         // A set logged elsewhere after this one reaches the catalog with a refresh.
         val newer = lastTime.copy(reps = 12, weight = 30.0, rpe = null, createdAt = clock.now.plusSeconds(60))
         exercises.answer = { listOf(exercise(10, lastPerformance = newer)) }
-        db.syncDao().applyExercises(exercises.answer())
+        db.syncDao().applyExercises(exercises.answer(), clock.instant())
         repository.addSet(logId)
         assertEquals(SetValues(reps = 12, weight = 30.0, duration = null, distance = null, rpe = null), sessions().single().logs.single().sets[2].values)
 

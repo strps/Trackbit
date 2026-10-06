@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.trackbit.core.data.ConfigError
 import com.trackbit.core.data.ConfigResult
 import com.trackbit.core.data.ExerciseLibraryRepository
+import com.trackbit.core.data.SyncResult
 import com.trackbit.core.data.newUuid
 import com.trackbit.core.model.Exercise
 import com.trackbit.core.model.ExerciseCategory
@@ -14,10 +15,10 @@ import com.trackbit.core.model.ExerciseRules
 import com.trackbit.core.model.MuscleGroup
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -48,7 +49,7 @@ data class ExerciseFormUiState(
     /** Null for a new exercise. */
     val exerciseUuid: String? = null,
     val loading: Boolean = true,
-    /** Offline, or (editing) the exercise is gone or isn't the user's. */
+    /** Never pulled and offline, or (editing) the exercise is gone or isn't the user's. */
     val loadFailed: Boolean = false,
     val form: ExerciseForm = ExerciseForm(),
     /** The taxonomy the muscle chips offer, in its order. */
@@ -80,7 +81,8 @@ sealed interface ExerciseFormMessage {
 
 /**
  * Creates a custom exercise or edits one of the user's own, like the web's exercise dialog.
- * The route's `exerciseUuid` is null for a new one. System exercises aren't editable.
+ * The route's `exerciseUuid` is null for a new one. System exercises aren't editable. It starts
+ * from Room's copy, taken once so a pull meanwhile can't undo the user's changes.
  */
 @HiltViewModel
 class ExerciseFormViewModel @Inject constructor(
@@ -102,25 +104,26 @@ class ExerciseFormViewModel @Inject constructor(
     fun load() {
         _state.update { it.copy(loading = true, loadFailed = false) }
         viewModelScope.launch {
-            val groups = async { repository.muscleGroups() }
-            val exercise: Exercise? = if (exerciseUuid == null) null else {
-                when (val exercises = repository.exercises()) {
-                    is ConfigResult.Success -> exercises.value.find { it.uuid == exerciseUuid && it.userId != null }
-                        ?: return@launch fail(ExerciseFormMessage.NotFound)
-                    is ConfigResult.Failure -> return@launch fail(exercises.error.toMessage())
-                }
+            // Room holds both once pulled; only a first open pulls them here.
+            var groups = repository.muscleGroups().first()
+            var exercises = repository.exercises().first()
+            if (groups == null || (exerciseUuid != null && exercises == null)) {
+                val result = repository.refresh()
+                groups = repository.muscleGroups().first()
+                exercises = repository.exercises().first()
+                if (groups == null || (exerciseUuid != null && exercises == null)) return@launch fail(result.toLoadMessage())
             }
-            when (val loaded = groups.await()) {
-                is ConfigResult.Success -> _state.update { state ->
-                    state.copy(
-                        loading = false,
-                        muscleGroups = loaded.value.sortedWith(GROUP_ORDER),
-                        form = exercise?.let(ExerciseForm::of) ?: state.form,
-                        frozen = exercise?.frozen ?: false,
-                        logged = exercise?.lastPerformance != null,
-                    )
-                }
-                is ConfigResult.Failure -> fail(loaded.error.toMessage())
+            val exercise: Exercise? = if (exerciseUuid == null) null else {
+                exercises?.find { it.uuid == exerciseUuid && it.userId != null } ?: return@launch fail(ExerciseFormMessage.NotFound)
+            }
+            _state.update { state ->
+                state.copy(
+                    loading = false,
+                    muscleGroups = groups.sortedWith(GROUP_ORDER),
+                    form = exercise?.let(ExerciseForm::of) ?: state.form,
+                    frozen = exercise?.frozen ?: false,
+                    logged = exercise?.lastPerformance != null,
+                )
             }
         }
     }
@@ -189,6 +192,10 @@ class ExerciseFormViewModel @Inject constructor(
         const val EXERCISE_UUID = "exerciseUuid"
 
         private const val NEW_UUID = "newExerciseUuid"
+
+        /** Why a pull that left Room without what the form needs failed. */
+        private fun SyncResult.toLoadMessage(): ExerciseFormMessage =
+            if (this == SyncResult.Retry) ExerciseFormMessage.Offline else ExerciseFormMessage.Failed
 
         private fun ConfigError.toMessage(): ExerciseFormMessage = when (this) {
             ConfigError.Offline -> ExerciseFormMessage.Offline

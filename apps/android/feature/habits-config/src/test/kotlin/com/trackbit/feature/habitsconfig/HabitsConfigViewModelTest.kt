@@ -74,6 +74,26 @@ class HabitsConfigViewModelTest {
         assertEquals(listOf(1, ANTI_HEADER_KEY), viewModel.keys)
     }
 
+    @Test fun `offline, Room's habits still show, and the refresh says it is offline`() = runTest(dispatcher) {
+        repository.habits = listOf(habit(1))
+        repository.refresh()
+        repository.failWith = ConfigError.Offline
+
+        val viewModel = loaded()
+        assertFalse(viewModel.state.value.loadFailed)
+        assertEquals(listOf(1, ANTI_HEADER_KEY), viewModel.keys)
+        assertEquals(HabitsConfigMessage.Offline, viewModel.state.value.message)
+    }
+
+    @Test fun `the list follows Room, so a form's save shows without a reload`() = runTest(dispatcher) {
+        repository.habits = listOf(habit(1))
+        val viewModel = loaded()
+
+        repository.create(HabitForm(name = "Read").request()!!.copy(uuid = habitUuid(2)))
+        advanceUntilIdle()
+        assertEquals(listOf(1, 2, ANTI_HEADER_KEY), viewModel.keys)
+    }
+
     @Test fun `dragging past the header makes a habit an anti-habit`() = runTest(dispatcher) {
         repository.habits = listOf(habit(1), habit(2, order = 1), habit(3, isAntiHabit = true))
         val viewModel = loaded()

@@ -11,7 +11,8 @@ import java.time.Instant
 
 /**
  * The exercise catalog as of the last `GET /api/exercise-info/exercises`: system exercises plus
- * the user's own, named in the locale of that request.
+ * the user's own, named in the locale of that request. The picker, sessions and analytics read
+ * it, and so does the library.
  */
 @Entity(tableName = ExerciseEntity.TABLE)
 data class ExerciseEntity(
@@ -19,6 +20,8 @@ data class ExerciseEntity(
     /** Null for a system exercise. */
     val userId: String?,
     val name: String,
+    /** Localized like [name]. */
+    val description: String?,
     val category: String,
     val defaultWeightUnit: String?,
     val defaultDistanceUnit: String?,
@@ -32,6 +35,7 @@ data class ExerciseEntity(
         uuid = uuid,
         userId = userId,
         name = name,
+        description = description,
         category = category,
         defaultWeightUnit = defaultWeightUnit,
         defaultDistanceUnit = defaultDistanceUnit,
@@ -61,6 +65,7 @@ fun Exercise.toEntity() = ExerciseEntity(
     uuid = uuid,
     userId = userId,
     name = name,
+    description = description,
     category = category,
     defaultWeightUnit = defaultWeightUnit,
     defaultDistanceUnit = defaultDistanceUnit,

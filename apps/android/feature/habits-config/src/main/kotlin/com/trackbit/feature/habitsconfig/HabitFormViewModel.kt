@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.trackbit.core.data.ConfigError
 import com.trackbit.core.data.ConfigResult
 import com.trackbit.core.data.HabitsRepository
+import com.trackbit.core.data.SyncResult
 import com.trackbit.core.data.newUuid
 import com.trackbit.core.model.ColorStop
 import com.trackbit.core.model.ColorTheme
@@ -17,10 +18,10 @@ import com.trackbit.core.model.HabitRules
 import com.trackbit.core.model.HabitType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -66,7 +67,7 @@ data class HabitFormUiState(
     val habitUuid: String? = null,
     /** Editing: the habit is still loading. */
     val loading: Boolean = false,
-    /** Editing: the habit couldn't be loaded (offline, or deleted elsewhere). */
+    /** Editing: the habit couldn't be loaded (never pulled and offline, or deleted elsewhere). */
     val loadFailed: Boolean = false,
     val form: HabitForm = HabitForm(),
     /** Read-only: over the role's limits. It can still be deleted. */
@@ -95,7 +96,11 @@ sealed interface HabitFormMessage {
     data class HabitTypeNotAllowed(val type: HabitType?, val allowed: List<HabitType>) : HabitFormMessage
 }
 
-/** Creates or edits one habit, like the web's habit drawer. The route's `habitUuid` is null for a new one. */
+/**
+ * Creates or edits one habit, like the web's habit drawer. The route's `habitUuid` is null for a
+ * new one. An edit starts from Room's copy, taken once so a pull meanwhile can't undo the user's
+ * changes.
+ */
 @HiltViewModel
 class HabitFormViewModel @Inject constructor(
     private val repository: HabitsRepository,
@@ -110,32 +115,30 @@ class HabitFormViewModel @Inject constructor(
     val state: StateFlow<HabitFormUiState> = _state.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            repository.limits().collect { limits -> _state.update { it.copy(allowedTypes = limits?.allowedHabitTypes) } }
+        }
         load()
     }
 
     fun load() {
-        _state.update { it.copy(loading = habitUuid != null, loadFailed = false) }
+        if (habitUuid == null) return
+        _state.update { it.copy(loading = true, loadFailed = false) }
         viewModelScope.launch {
-            val limits = async { repository.limits() }
-            if (habitUuid != null) {
-                when (val habits = repository.habits()) {
-                    is ConfigResult.Success -> {
-                        val habit = habits.value.find { it.uuid == habitUuid }
-                        _state.update {
-                            if (habit == null) {
-                                it.copy(loading = false, loadFailed = true, message = HabitFormMessage.NotFound)
-                            } else {
-                                it.copy(loading = false, form = HabitForm.of(habit), frozen = habit.frozen)
-                            }
-                        }
-                    }
-                    is ConfigResult.Failure -> _state.update {
-                        it.copy(loading = false, loadFailed = true, message = habits.error.toMessage())
-                    }
+            // Room holds the habits once pulled; only a first open pulls them here.
+            val habits = repository.habits().first() ?: run {
+                val result = repository.refresh()
+                repository.habits().first()
+                    ?: return@launch _state.update { it.copy(loading = false, loadFailed = true, message = result.toLoadMessage()) }
+            }
+            val habit = habits.find { it.uuid == habitUuid }
+            _state.update {
+                if (habit == null) {
+                    it.copy(loading = false, loadFailed = true, message = HabitFormMessage.NotFound)
+                } else {
+                    it.copy(loading = false, form = HabitForm.of(habit), frozen = habit.frozen)
                 }
             }
-            val allowed = (limits.await() as? ConfigResult.Success)?.value?.effective?.allowedHabitTypes
-            _state.update { it.copy(allowedTypes = allowed) }
         }
     }
 
@@ -190,6 +193,10 @@ class HabitFormViewModel @Inject constructor(
         const val HABIT_UUID = "habitUuid"
 
         private const val NEW_UUID = "newHabitUuid"
+
+        /** Why a pull that left Room without the habits failed. */
+        private fun SyncResult.toLoadMessage(): HabitFormMessage =
+            if (this == SyncResult.Retry) HabitFormMessage.Offline else HabitFormMessage.Failed
 
         private fun ConfigError.toMessage(): HabitFormMessage = when (this) {
             ConfigError.Offline -> HabitFormMessage.Offline

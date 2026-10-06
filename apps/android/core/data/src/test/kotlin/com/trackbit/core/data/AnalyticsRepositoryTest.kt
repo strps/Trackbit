@@ -23,7 +23,7 @@ class AnalyticsRepositoryTest {
     private val service = FakeTrackerService()
     private val exercises = FakeExerciseService { listOf(exercise(10).copy(muscleGroups = listOf(MuscleGroupRef(1, "Chest")))) }
     private val tokens = FakeTokens()
-    private val sync = TrackerSync(db, service, exercises, tokens, FakeClock())
+    private val sync = trackerSync(db, service, exercises, tokens)
     private val repository = DefaultAnalyticsRepository(db, sync)
     private val sessions = DefaultSessionRepository(db, sync, FakeScheduler(), FakeClock(), FakeAuth())
 

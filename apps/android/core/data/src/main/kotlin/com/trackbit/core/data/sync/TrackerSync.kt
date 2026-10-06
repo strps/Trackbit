@@ -4,6 +4,8 @@ import androidx.room.withTransaction
 import com.trackbit.core.data.SyncResult
 import com.trackbit.core.database.TrackbitDatabase
 import com.trackbit.core.database.dao.HabitDayKey
+import com.trackbit.core.database.dao.SyncDao
+import com.trackbit.core.database.entity.ConfigPart
 import com.trackbit.core.database.entity.HistoryEntity
 import com.trackbit.core.database.entity.OutboxEntity
 import com.trackbit.core.database.entity.OutboxOpType
@@ -11,7 +13,10 @@ import com.trackbit.core.network.ApiError
 import com.trackbit.core.network.ApiResult
 import com.trackbit.core.network.SessionTokenSource
 import com.trackbit.core.network.safeCall
+import com.trackbit.core.network.service.ExerciseListService
 import com.trackbit.core.network.service.ExerciseService
+import com.trackbit.core.network.service.HabitsService
+import com.trackbit.core.network.service.MeService
 import com.trackbit.core.network.service.TrackerService
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -23,11 +28,13 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Moves tracker data between Room and the server: [flush] sends the outbox, [sync] also pulls
- * `/today` (and history when it's due), [syncHistory] pulls only history, [syncSessions] pulls
- * one day's sessions, the exercise catalog and the picker's sources, [syncQueue] one source's
- * queue, [syncSources] the sources and every cached queue after a list write, [syncSets] a habit's sets for analytics, [syncExercises] only the catalog, [removeExercise]
- * drops a deleted exercise. Workers and pull-to-refresh go through here.
+ * Moves data between Room and the server: [flush] sends the outbox, [sync] also pulls `/today`
+ * (and history and the config when they're due), [syncHistory] pulls only history,
+ * [syncSessions] pulls one day's sessions, the exercise catalog and the picker's sources,
+ * [syncQueue] one source's queue, [syncSources] the sources and every cached queue after a list
+ * write, [syncSets] a habit's sets for analytics, [syncConfig] parts of the config. [write] and
+ * [delete] send a config write and store its answer. Workers, pull-to-refresh and the config
+ * repositories go through here.
  *
  * One at a time: a pull that overlapped a flush could store a snapshot taken before an op that
  * was confirmed meanwhile, and two flushes would send the same op twice.
@@ -41,6 +48,9 @@ internal class TrackerSync @Inject constructor(
     private val db: TrackbitDatabase,
     private val trackerService: TrackerService,
     private val exerciseService: ExerciseService,
+    private val habitsService: HabitsService,
+    private val listService: ExerciseListService,
+    private val meService: MeService,
     private val tokens: SessionTokenSource,
     private val clock: Clock,
 ) {
@@ -55,14 +65,56 @@ internal class TrackerSync @Inject constructor(
         if (flushed.dropped) worse(flushed.result, repairLocked(token, flushed)) else flushed.result
     }
 
-    /** Sends the outbox, then replaces Room's copy of today with the server's. */
+    /**
+     * Sends the outbox, then replaces Room's copy of today with the server's, and pulls history and
+     * the parts of the config that are due (never pulled, or older than [CONFIG_MAX_AGE]).
+     */
     suspend fun sync(): SyncResult = mutex.withLock {
         val token = tokens.currentToken() ?: return SyncResult.SignedOut
         val flushed = flushLocked(token)
         if (flushed.result == SyncResult.SignedOut) return SyncResult.SignedOut
         // Ops still waiting to be retried are safe: the pull leaves their day logs alone.
-        val pulled = worse(flushed.result, repairLocked(token, flushed))
-        if (pulled == SyncResult.SignedOut) pulled else worse(pulled, pullHistoryLocked(token))
+        var result = worse(flushed.result, repairLocked(token, flushed))
+        if (result == SyncResult.SignedOut) return SyncResult.SignedOut
+        result = worse(result, pullHistoryLocked(token))
+        if (result == SyncResult.SignedOut) return SyncResult.SignedOut
+        val pulls = db.syncDao().configPulls()
+        val now = clock.instant()
+        val due = ConfigPart.entries.filter { part ->
+            pulls[part]?.let { Duration.between(it, now) >= CONFIG_MAX_AGE } ?: true
+        }
+        worse(result, pullConfigLocked(token, due))
+    }
+
+    /** Replaces Room's copy of each of [parts] with the server's, e.g. when a config screen opens. */
+    suspend fun syncConfig(vararg parts: ConfigPart): SyncResult = mutex.withLock {
+        val token = tokens.currentToken() ?: return SyncResult.SignedOut
+        pullConfigLocked(token, parts.asList())
+    }
+
+    /**
+     * Sends a config write and, once it succeeds, puts its answer into Room with [store], fenced on
+     * the session the write started with. Storing waits for a running pull, so a pull that read
+     * the server before the write can't land after it with the old rows.
+     */
+    suspend fun <T> write(call: suspend () -> T, store: suspend SyncDao.(T) -> Unit): ApiResult<T> {
+        val token = tokens.currentToken()
+        return stored(token, safeCall(call), store)
+    }
+
+    /** [write] for a delete: one that finds the row gone did what it wanted, so [store] drops Room's copy then too. */
+    suspend fun delete(call: suspend () -> Unit, store: suspend SyncDao.() -> Unit): ApiResult<Unit> {
+        val token = tokens.currentToken()
+        val sent = safeCall(call)
+        val result = if (sent is ApiResult.Failure && sent.error is ApiError.NotFound) ApiResult.Success(Unit) else sent
+        return stored(token, result) { store() }
+    }
+
+    private suspend fun <T> stored(token: String?, result: ApiResult<T>, store: suspend SyncDao.(T) -> Unit): ApiResult<T> {
+        if (result is ApiResult.Success && token != null) {
+            mutex.withLock { fenced(token) { db.syncDao().store(result.value) } }
+        }
+        return result
     }
 
     /**
@@ -117,24 +169,6 @@ internal class TrackerSync @Inject constructor(
         }
         if (result == SyncResult.SignedOut) return SyncResult.SignedOut
         worse(result, pullExercisesLocked(token))
-    }
-
-    /** Replaces Room's exercise catalog, e.g. to rename it after the user's language changed. */
-    suspend fun syncExercises(): SyncResult = mutex.withLock {
-        val token = tokens.currentToken() ?: return SyncResult.SignedOut
-        pullExercisesLocked(token)
-    }
-
-    /**
-     * The user's exercise [uuid] was deleted on the server with its logs and list items: drops
-     * Room's copies, then refreshes the catalog and the sources (their item counts changed).
-     */
-    suspend fun removeExercise(uuid: String): SyncResult = mutex.withLock {
-        val token = tokens.currentToken() ?: return SyncResult.SignedOut
-        if (!fenced(token) { db.syncDao().removeExercise(uuid) }) return SyncResult.SignedOut
-        val result = pullExercisesLocked(token)
-        if (result == SyncResult.SignedOut) return SyncResult.SignedOut
-        worse(result, pullSourcesLocked(token))
     }
 
     /** Pulls the requested history if it's due (see [HistoryEntity]). */
@@ -218,10 +252,37 @@ internal class TrackerSync @Inject constructor(
             is ApiResult.Failure -> sessions.error.toPullResult()
         }
 
-    private suspend fun pullExercisesLocked(token: String): SyncResult =
-        when (val exercises = safeCall { exerciseService.exercises() }) {
-            is ApiResult.Success -> if (fenced(token) { db.syncDao().applyExercises(exercises.value) }) SyncResult.Done else SyncResult.SignedOut
-            is ApiResult.Failure -> exercises.error.toPullResult()
+    private suspend fun pullExercisesLocked(token: String): SyncResult {
+        val now = clock.instant()
+        return pullWithLocked(token, { exerciseService.exercises() }) { db.syncDao().applyExercises(it, now) }
+    }
+
+    /** Pulls each of [parts] in turn; one that fails doesn't stop the others. */
+    private suspend fun pullConfigLocked(token: String, parts: Collection<ConfigPart>): SyncResult {
+        var result = SyncResult.Done
+        for (part in parts) {
+            val now = clock.instant()
+            val dao = db.syncDao()
+            result = worse(
+                result,
+                when (part) {
+                    ConfigPart.Habits -> pullWithLocked(token, { habitsService.habits() }) { dao.applyHabits(it, now) }
+                    ConfigPart.Exercises -> pullExercisesLocked(token)
+                    ConfigPart.Lists -> pullWithLocked(token, { listService.lists() }) { dao.applyLists(it, now) }
+                    ConfigPart.MuscleGroups -> pullWithLocked(token, { exerciseService.muscleGroups() }) { dao.applyMuscleGroups(it, now) }
+                    ConfigPart.Limits -> pullWithLocked(token, { meService.limits() }) { dao.applyLimits(it, now) }
+                },
+            )
+            if (result == SyncResult.SignedOut) break
+        }
+        return result
+    }
+
+    /** Fetches with [call] and, if the session is still [token]'s, stores the answer with [apply]. */
+    private suspend fun <T> pullWithLocked(token: String, call: suspend () -> T, apply: suspend (T) -> Unit): SyncResult =
+        when (val answer = safeCall(call)) {
+            is ApiResult.Success -> if (fenced(token) { apply(answer.value) }) SyncResult.Done else SyncResult.SignedOut
+            is ApiResult.Failure -> answer.error.toPullResult()
         }
 
     private suspend fun pullSourcesLocked(token: String): SyncResult =
@@ -305,6 +366,12 @@ internal class TrackerSync @Inject constructor(
          * comes with every `/today`.
          */
         val HISTORY_MAX_AGE: Duration = Duration.ofHours(6)
+
+        /**
+         * How long a pulled part of the config counts as fresh for [sync]. The config screens pull
+         * their parts whenever they open; this keeps Room's copy usable offline.
+         */
+        val CONFIG_MAX_AGE: Duration = Duration.ofHours(1)
 
         /** The most days one `GET /api/tracker/days` returns (the backend's limit). */
         const val MAX_DAYS_PER_PULL = 371

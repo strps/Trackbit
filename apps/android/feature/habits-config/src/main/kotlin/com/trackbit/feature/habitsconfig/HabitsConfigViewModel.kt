@@ -5,13 +5,13 @@ import androidx.lifecycle.viewModelScope
 import com.trackbit.core.data.ConfigError
 import com.trackbit.core.data.ConfigResult
 import com.trackbit.core.data.HabitsRepository
+import com.trackbit.core.data.SyncResult
 import com.trackbit.core.model.EffectiveLimits
 import com.trackbit.core.model.Habit
 import com.trackbit.core.model.HabitOrder
 import com.trackbit.core.model.HabitRules
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -39,7 +39,7 @@ internal const val ANTI_HEADER_KEY = "anti-habits"
 data class HabitsConfigUiState(
     /** Habits, then [HabitsConfigRow.AntiHeader], then anti-habits. Null until the first load. */
     val rows: List<HabitsConfigRow>? = null,
-    /** The first load failed: show a retry instead of a list. */
+    /** Room has no habits config and pulling it failed: show a retry instead of a list. */
     val loadFailed: Boolean = false,
     /** Null when nothing is capped, or until the limits load. */
     val limits: EffectiveLimits? = null,
@@ -61,9 +61,8 @@ sealed interface HabitsConfigMessage {
 
 /**
  * The habits config list, like the web's `/config/habits`: both groups in order, reordered by
- * dragging (also across groups). It reads the server, not Room: config needs a connection, and
- * only `GET /api/habits` has each habit's own stops. The screen reloads on resume, which also
- * picks up the form's saves.
+ * dragging (also across groups). It shows Room's habits, so it works offline; the screen pulls
+ * them again on resume. The form's saves reach Room, and so the list, by themselves.
  */
 @HiltViewModel
 class HabitsConfigViewModel @Inject constructor(
@@ -72,27 +71,40 @@ class HabitsConfigViewModel @Inject constructor(
     private val _state = MutableStateFlow(HabitsConfigUiState())
     val state: StateFlow<HabitsConfigUiState> = _state.asStateFlow()
 
-    /** The order the server has; a failed reorder returns to it. */
+    /** The order Room has; a failed reorder returns to it. */
     private var saved: List<HabitsConfigRow> = emptyList()
     private var dragging = false
 
+    /** A reorder is on its way: the list keeps showing it until it's settled. */
+    private var reordering = false
+
+    init {
+        viewModelScope.launch {
+            repository.habits().collect { habits ->
+                if (habits == null) return@collect
+                saved = rowsOf(habits)
+                // A drag or a reorder in progress keeps its own order; the drop reconciles with [saved].
+                _state.update { it.copy(rows = if (dragging || reordering) it.rows else saved, loadFailed = false) }
+            }
+        }
+        viewModelScope.launch {
+            repository.limits().collect { limits -> _state.update { it.copy(limits = limits) } }
+        }
+    }
+
+    /** Pulls the habits and the limits again; Room's copy stays on screen meanwhile. */
     fun refresh() {
         if (_state.value.refreshing) return
         _state.update { it.copy(refreshing = true) }
         viewModelScope.launch {
-            val limits = async { repository.limits() }
-            when (val habits = repository.habits()) {
-                is ConfigResult.Success -> {
-                    saved = rowsOf(habits.value)
-                    // A drag in progress keeps its own order; the drop reconciles with [saved].
-                    _state.update { it.copy(rows = if (dragging) it.rows else saved, loadFailed = false) }
-                }
-                is ConfigResult.Failure -> _state.update {
-                    it.copy(loadFailed = it.rows == null, message = habits.error.toMessage())
-                }
+            val result = repository.refresh()
+            _state.update {
+                it.copy(
+                    refreshing = false,
+                    loadFailed = it.rows == null && result != SyncResult.Done,
+                    message = result.toMessage() ?: it.message,
+                )
             }
-            val effective = (limits.await() as? ConfigResult.Success)?.value?.effective
-            _state.update { it.copy(limits = effective ?: it.limits, refreshing = false) }
         }
     }
 
@@ -127,10 +139,16 @@ class HabitsConfigViewModel @Inject constructor(
         }
         val reordered = rowsOf(order.map { byUuid.getValue(it.uuid).copy(order = it.order, isAntiHabit = it.isAntiHabit) })
         _state.update { it.copy(rows = reordered) }
+        reordering = true
         viewModelScope.launch {
-            when (val result = repository.reorder(order)) {
-                is ConfigResult.Success -> saved = reordered
-                is ConfigResult.Failure -> _state.update { it.copy(rows = saved, message = result.error.toMessage()) }
+            val result = repository.reorder(order)
+            reordering = false
+            // Room has the new order once it succeeded; a refusal shows Room's again.
+            _state.update {
+                when (result) {
+                    is ConfigResult.Success -> if (dragging) it else it.copy(rows = reordered)
+                    is ConfigResult.Failure -> it.copy(rows = if (dragging) it.rows else saved, message = result.error.toMessage())
+                }
             }
         }
     }
@@ -160,6 +178,13 @@ class HabitsConfigViewModel @Inject constructor(
             val anti = rows.subList(header + 1, rows.size).filterIsInstance<HabitsConfigRow.Item>()
             return regular.mapIndexed { i, row -> HabitOrder(row.habit.uuid, i, isAntiHabit = false) } +
                 anti.mapIndexed { i, row -> HabitOrder(row.habit.uuid, i, isAntiHabit = true) }
+        }
+
+        /** Null when there is nothing to say: done, or signed out. */
+        fun SyncResult.toMessage(): HabitsConfigMessage? = when (this) {
+            SyncResult.Retry -> HabitsConfigMessage.Offline
+            SyncResult.Failed -> HabitsConfigMessage.Failed
+            SyncResult.Done, SyncResult.SignedOut -> null
         }
 
         fun ConfigError.toMessage(): HabitsConfigMessage = when (this) {

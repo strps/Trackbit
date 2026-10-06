@@ -3,6 +3,7 @@ package com.trackbit.core.data.sync
 import com.trackbit.core.auth.AuthRepository
 import com.trackbit.core.auth.AuthState
 import com.trackbit.core.data.di.DataScope
+import com.trackbit.core.database.entity.ConfigPart
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -14,8 +15,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Re-pulls the server data Room keeps in the user's language (the exercise catalog: exercise
- * and muscle group names) when that language changes, here or on another device. Requests ask
+ * Re-pulls the server data Room keeps in the user's language (the exercise catalog and the
+ * muscle group taxonomy) when that language changes, here or on another device. Requests ask
  * for the session's locale, so the pull already speaks the new one. Call [start] once, from
  * `Application.onCreate`.
  */
@@ -26,7 +27,9 @@ class LocalizedDataSync @Inject internal constructor(
     @DataScope private val scope: CoroutineScope,
 ) {
     fun start() {
-        scope.launch { localeChanges(auth.state).collect { sync.syncExercises() } }
+        scope.launch {
+            localeChanges(auth.state).collect { sync.syncConfig(ConfigPart.Exercises, ConfigPart.MuscleGroups) }
+        }
     }
 }
 

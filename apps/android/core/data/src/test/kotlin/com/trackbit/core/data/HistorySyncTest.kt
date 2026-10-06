@@ -24,7 +24,7 @@ class HistorySyncTest {
     private val tokens = FakeTokens()
     private val scheduler = FakeScheduler()
     private val clock = FakeClock()
-    private val sync = TrackerSync(db, service, FakeExerciseService(), tokens, clock)
+    private val sync = trackerSync(db, service, tokens = tokens, clock = clock)
     private val repository = DefaultTrackerRepository(db, sync, scheduler, clock)
     private val today: LocalDate = LocalDate.now()
     private val start: LocalDate = today.minusDays(60)

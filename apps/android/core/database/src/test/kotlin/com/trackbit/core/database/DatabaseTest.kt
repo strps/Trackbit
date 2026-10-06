@@ -58,6 +58,7 @@ abstract class DatabaseTest {
             icon = HabitIcon.Book,
             colorTheme = ColorTheme.Green,
             colorStops = listOf(ColorStop(0f, Rgba(1f, 2f, 3f, 0.5f))),
+            ownColorStops = emptyList(),
             dailyGoal = 1,
             weeklyGoal = 5,
             order = order,
