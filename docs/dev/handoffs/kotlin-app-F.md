@@ -1,7 +1,7 @@
 # Handoff: Kotlin app — Workstream F (full offline capability)
 
 - **Plan:** [kotlin-app.md](../tasks/kotlin-app.md). Read only §4 "Phase 4" (decisions F-D1–F-D4 and the F1–F8 split) and §2.2. Core context: the "Invariants" and "Landmines" of [kotlin-app-E.md](kotlin-app-E.md), [kotlin-app-D.md](kotlin-app-D.md), [kotlin-app-C.md](kotlin-app-C.md) and [kotlin-app-B.md](kotlin-app-B.md), nothing else.
-- **Status:** Phase 4, F1 done (backend, not committed yet); **F2 (Android identity by uuid) is next**. Phase 2 and Phase 3 exit checks are deferred to the final pass with the real-device check (user).
+- **Status:** Phase 4, F1 done and committed (651bc43); **F2 (Android identity by uuid) is next**. Phase 2 and Phase 3 exit checks are deferred to the final pass with the real-device check (user).
 - **Branch:** `kotlin-app` · **Last run:** 2026-10-06 (F1)
 
 ## Where we are
