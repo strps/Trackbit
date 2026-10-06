@@ -1,7 +1,7 @@
 # Handoff: Kotlin app — Workstream F (full offline capability)
 
 - **Plan:** [kotlin-app.md](../tasks/kotlin-app.md). Read only §4 "Phase 4" (decisions F-D1–F-D4 and the F1–F8 split) and §2.2. Core context: the "Invariants" and "Landmines" of [kotlin-app-E.md](kotlin-app-E.md), [kotlin-app-D.md](kotlin-app-D.md), [kotlin-app-C.md](kotlin-app-C.md) and [kotlin-app-B.md](kotlin-app-B.md), nothing else.
-- **Status:** Phase 4, F1 committed (651bc43); F2 done on the emulator (not committed); **F3 (Room holds the whole config) is next**. Phase 2 and Phase 3 exit checks are deferred to the final pass with the real-device check (user).
+- **Status:** Phase 4, F1 committed (651bc43); F2 committed (422c3c1); **F3 (Room holds the whole config) is next**. Phase 2 and Phase 3 exit checks are deferred to the final pass with the real-device check (user).
 - **Branch:** `kotlin-app` · **Last run:** 2026-10-06 (F2)
 
 ## Where we are
@@ -17,7 +17,7 @@ Android 411 tests (414 − 7 removed 1→8 migration tests + 4 new), 0 lint issu
 | Task | Scope | Status |
 |---|---|---|
 | **F1** | Backend uuids: migration 0017, idempotent creates, uuid refs on every route the app calls, uuids in its responses, `list:<uuid>` keys; contracts | ✅ 2026-10-06 |
-| **F2** | Android identity: DTOs, Room v9, outbox, widgets, repositories, features and nav by uuid. No behaviour change | ✅ 2026-10-06 |
+| **F2** | Android identity: DTOs, Room v9, outbox, widgets, repositories, features and nav by uuid. No behaviour change | ✅ 2026-10-06 (422c3c1) |
 | **F3** | Room holds the whole config; config screens read Room | next |
 | **F4** | Config outbox (field-level ops, per-row dependencies, failed state) + habits through it | |
 | **F5** | Exercise library through the outbox | |
@@ -144,4 +144,4 @@ psql "$DATABASE_URL" -c '\d habits' | grep uuid                      # 0017 appl
 ## Run log
 
 - 2026-10-06 — Phase 4 planned (F1–F8; uuid identity everywhere, LWW per field, failed creates kept: user). E6 committed (8797597). F1: backend uuids (migration 0017, uuid-refs, every app route by uuid, `list:<uuid>` keys), web list items by uuid, contracts re-recorded with per-test uuid ranges. Backend 162 tests. Next: F2.
-- 2026-10-06 — F2: Android identity by uuid (DTOs without int ids, Room v9 clean reset (user), outbox/widgets/notifications/nav by uuid, forms keep a create's uuid); contracts `day-log-ensured`, `habit-not-found-update` added, `exercise-log` dropped. 411 tests, 0 lint; backend 162. Verified on the emulator. Next: F3.
+- 2026-10-06 — F2: Android identity by uuid (DTOs without int ids, Room v9 clean reset (user), outbox/widgets/notifications/nav by uuid, forms keep a create's uuid); contracts `day-log-ensured`, `habit-not-found-update` added, `exercise-log` dropped. 411 tests, 0 lint; backend 162. Verified on the emulator, committed (422c3c1). Next: F3.
