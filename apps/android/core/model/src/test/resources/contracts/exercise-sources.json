@@ -5,9 +5,9 @@
     {
       "ref": {
         "kind": "list",
-        "listId": 1
+        "listUuid": "00000000-0000-4000-8000-000000000302"
       },
-      "key": "list:1",
+      "key": "list:00000000-0000-4000-8000-000000000302",
       "name": "Pull day",
       "itemCount": 1,
       "capabilities": {
@@ -21,9 +21,9 @@
     {
       "ref": {
         "kind": "list",
-        "listId": 2
+        "listUuid": "00000000-0000-4000-8000-000000000304"
       },
-      "key": "list:2",
+      "key": "list:00000000-0000-4000-8000-000000000304",
       "name": "Legs",
       "itemCount": 0,
       "capabilities": {

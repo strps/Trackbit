@@ -4,6 +4,7 @@
   "body": [
     {
       "id": 1,
+      "uuid": "ffffffff-0000-4000-8000-000000000001",
       "userId": null,
       "name": "Bench Press",
       "description": null,
@@ -21,6 +22,7 @@
     },
     {
       "id": 2,
+      "uuid": "00000000-0000-4000-8000-000000000301",
       "userId": "user-id",
       "name": "My row",
       "description": null,

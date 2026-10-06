@@ -34,10 +34,11 @@ describe('GET /api/tracker/sets', () => {
         expect(res.status).toBe(200)
         expect(await res.json()).toEqual({
             habitId: habit.id,
+            habitUuid: habit.uuid,
             sets: [
-                { day: '2026-01-10', exerciseId: bench.id, weight: 60, reps: 8, rpe: null, duration: null, distance: null },
-                { day: '2026-01-10', exerciseId: bench.id, weight: 62.5, reps: 6, rpe: 8, duration: null, distance: null },
-                { day: '2026-01-12', exerciseId: squat.id, weight: 100, reps: 5, rpe: 9, duration: null, distance: null },
+                { day: '2026-01-10', exerciseId: bench.id, exerciseUuid: bench.uuid, weight: 60, reps: 8, rpe: null, duration: null, distance: null },
+                { day: '2026-01-10', exerciseId: bench.id, exerciseUuid: bench.uuid, weight: 62.5, reps: 6, rpe: 8, duration: null, distance: null },
+                { day: '2026-01-12', exerciseId: squat.id, exerciseUuid: squat.uuid, weight: 100, reps: 5, rpe: 9, duration: null, distance: null },
             ],
         })
     })

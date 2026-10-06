@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, date, jsonb, primaryKey, pgEnum, boolean, unique, uniqueIndex, check } from 'drizzle-orm/pg-core';
+import { pgTable, serial, uuid, text, integer, timestamp, date, jsonb, primaryKey, pgEnum, boolean, unique, uniqueIndex, check } from 'drizzle-orm/pg-core';
 import { user } from './user';
 import { relations, sql } from 'drizzle-orm';
 import { exerciseSessions } from './exercises';
@@ -18,6 +18,9 @@ export const DEFAULT_COLOR_STOPS: ColorStop[] = GRADIENT_PRESET_STOPS.custom
 //Habits
 export const habits = pgTable('habits', {
   id: serial('id').primaryKey(),
+  // Chosen by a client that creates the habit offline (Android), else random. Names the habit
+  // in that client's requests, and makes a retried create return the habit it made.
+  uuid: uuid('uuid').defaultRandom().notNull().unique(),
   userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }).notNull(),
   name: text('name').notNull(),
   description: text('description'),

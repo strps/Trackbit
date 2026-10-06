@@ -1,8 +1,9 @@
 {
-  "request": "PATCH /api/exercise-info/exercises/:id",
+  "request": "PATCH /api/exercise-info/exercises/uuid/:uuid",
   "status": 200,
   "body": {
     "id": 3,
+    "uuid": "00000000-0000-4000-8000-000000000307",
     "userId": "user-id",
     "name": "Ring dips",
     "description": null,

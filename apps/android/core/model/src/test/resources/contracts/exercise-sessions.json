@@ -1,5 +1,5 @@
 {
-  "request": "GET /api/tracker/exercise-sessions?habitId=:id&day=2026-01-10",
+  "request": "GET /api/tracker/exercise-sessions?habitUuid=:uuid&day=2026-01-10",
   "status": 200,
   "body": [
     {
@@ -44,7 +44,9 @@
               "rpe": 8,
               "createdAt": "2026-01-01T00:00:00.000Z"
             }
-          ]
+          ],
+          "exerciseUuid": "00000000-0000-4000-8000-000000000301",
+          "listItemUuid": "00000000-0000-4000-8000-000000000303"
         }
       ]
     }

@@ -28,7 +28,7 @@
       "timezone": "America/Costa_Rica",
       "unitSystem": "imperial",
       "exerciseLogCardStyle": "compact",
-      "preferredExerciseSource": "list:1",
+      "preferredExerciseSource": "list:00000000-0000-4000-8000-000000000601",
       "defaultRestSeconds": 120,
       "id": "user-id"
     }

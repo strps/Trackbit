@@ -15,18 +15,24 @@ export interface ExerciseListWithItems extends ExerciseList {
     frozen: boolean;
 }
 
-// The wire shape of PUT /:id/items. An `id` means "keep this row" — the backend
-// diffs on it so `exercise_log.list_item_id` provenance survives a reorder;
-// absent means a new item. Array order *is* the position: the mutation numbers
-// them, so no caller can send a non-permutation.
-export type ListItemInput = { id?: number; exerciseId: number } & Partial<Prescription>;
+// An item for PUT /:id/items. Its `uuid` names it: one the list holds means "keep this row" —
+// the backend diffs on it so `exercise_log.list_item_id` provenance survives a reorder; a new
+// item gets a fresh one here, so the optimistic row already has its final identity. Array order
+// *is* the position: the mutation numbers them, so no caller can send a non-permutation.
+// `exerciseUuid` only fills the optimistic row; the wire names the exercise by id.
+export type ListItemInput = { uuid: string; exerciseId: number; exerciseUuid: string } & Partial<Prescription>;
+
+export function newItemInput(exercise: { id: number; uuid: string }): ListItemInput {
+    return { uuid: crypto.randomUUID(), exerciseId: exercise.id, exerciseUuid: exercise.uuid };
+}
 
 // Existing items round-trip through here so editing order never silently drops a
 // prescription the Phase 4 editor put there.
 export function toItemInput(item: ExerciseListItem): ListItemInput {
     return {
-        id: item.id,
+        uuid: item.uuid,
         exerciseId: item.exerciseId,
+        exerciseUuid: item.exerciseUuid,
         targetSets: item.targetSets,
         targetReps: item.targetReps,
         targetWeight: item.targetWeight,
@@ -107,7 +113,7 @@ const putItems = async ({ listId, items }: { listId: number; items: ListItemInpu
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-            items: items.map((item, index) => ({ ...item, position: index })),
+            items: items.map(({ exerciseUuid: _exerciseUuid, ...item }, index) => ({ ...item, position: index })),
         }),
     });
     if (!res.ok) throw await parseApiError(res, 'Failed to save list items');
@@ -255,7 +261,7 @@ export function useExerciseLists() {
                                 ...item,
                                 // New rows have no id yet; a negative placeholder keeps
                                 // React keys stable until the server response lands.
-                                id: item.id ?? -(index + 1),
+                                id: list.items.find((kept) => kept.uuid === item.uuid)?.id ?? -(index + 1),
                                 listId,
                                 position: index,
                             })),

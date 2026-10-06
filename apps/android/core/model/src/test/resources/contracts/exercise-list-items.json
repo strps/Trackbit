@@ -1,11 +1,13 @@
 {
-  "request": "PUT /api/exercise-lists/:id/items",
+  "request": "PUT /api/exercise-lists/uuid/:uuid/items",
   "status": 200,
   "body": {
     "listId": 1,
+    "listUuid": "00000000-0000-4000-8000-000000000401",
     "items": [
       {
         "id": 1,
+        "uuid": "00000000-0000-4000-8000-000000000402",
         "listId": 1,
         "exerciseId": 1,
         "position": 0,
@@ -15,7 +17,8 @@
         "targetDuration": null,
         "targetDistance": null,
         "restSeconds": 180,
-        "notes": "Belt"
+        "notes": "Belt",
+        "exerciseUuid": "ffffffff-0000-4000-8000-000000000001"
       }
     ]
   }

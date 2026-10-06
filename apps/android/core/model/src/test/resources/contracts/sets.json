@@ -1,12 +1,14 @@
 {
-  "request": "GET /api/tracker/sets?habitId=:id",
+  "request": "GET /api/tracker/sets?habitUuid=:uuid",
   "status": 200,
   "body": {
     "habitId": 1,
+    "habitUuid": "00000000-0000-4000-8000-000000000306",
     "sets": [
       {
         "day": "2026-01-10",
         "exerciseId": 2,
+        "exerciseUuid": "00000000-0000-4000-8000-000000000301",
         "weight": 60.5,
         "reps": 8,
         "rpe": null,
@@ -16,6 +18,7 @@
       {
         "day": "2026-01-10",
         "exerciseId": 2,
+        "exerciseUuid": "00000000-0000-4000-8000-000000000301",
         "weight": 62.5,
         "reps": 6,
         "rpe": 8,

@@ -1,5 +1,5 @@
 import { relations, sql } from 'drizzle-orm';
-import { check, integer, pgTable, real, serial, text, timestamp, unique, uniqueIndex } from 'drizzle-orm/pg-core';
+import { check, integer, pgTable, real, serial, text, timestamp, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { exerciseLogs, exercises } from './exercises';
 import { user } from './user';
 
@@ -9,6 +9,8 @@ import { user } from './user';
 // deliberately no `kind` column, since both are derivable from the data.
 export const exerciseLists = pgTable('exercise_lists', {
     id: serial('id').primaryKey(),
+    // Chosen by a client that creates the list offline (Android), else random; see habits.uuid.
+    uuid: uuid('uuid').defaultRandom().notNull().unique(),
     userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }).notNull(),
     // Set when someone else (trainer) created it; equals userId for self-made
     // lists. Nullable so Phase 5 sharing needs no migration.
@@ -33,6 +35,8 @@ export const exerciseLists = pgTable('exercise_lists', {
 // the same exercise (top set + backoff, circuits flattened into one order).
 export const exerciseListItems = pgTable('exercise_list_items', {
     id: serial('id').primaryKey(),
+    // Chosen by a client that adds the item offline, else random; logs name their item by it.
+    uuid: uuid('uuid').defaultRandom().notNull().unique(),
     listId: integer('list_id')
         .references(() => exerciseLists.id, { onDelete: 'cascade' })
         .notNull(),

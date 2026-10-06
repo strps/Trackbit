@@ -1,13 +1,13 @@
 {
-  "request": "GET /api/exercise-sources/list::id",
+  "request": "GET /api/exercise-sources/list::uuid",
   "status": 200,
   "body": {
     "descriptor": {
       "ref": {
         "kind": "list",
-        "listId": 2
+        "listUuid": "00000000-0000-4000-8000-000000000304"
       },
-      "key": "list:2",
+      "key": "list:00000000-0000-4000-8000-000000000304",
       "name": "Legs",
       "itemCount": 0,
       "capabilities": {

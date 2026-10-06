@@ -7,6 +7,8 @@ import { user } from "./user";
 //Exercises
 export const exercises = pgTable('exercises', {
     id: serial('id').primaryKey(),
+    // Chosen by a client that creates the exercise offline (Android), else random; see habits.uuid.
+    uuid: uuid('uuid').defaultRandom().notNull().unique(),
     // If NULL, it's a "System Default" exercise. If set, it's a user's custom exercise.
     userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }),
     name: text('name').notNull(), // "Bench Press", "Running"

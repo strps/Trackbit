@@ -1,13 +1,13 @@
 {
-  "request": "GET /api/exercise-sources/list::id",
+  "request": "GET /api/exercise-sources/list::uuid",
   "status": 200,
   "body": {
     "descriptor": {
       "ref": {
         "kind": "list",
-        "listId": 1
+        "listUuid": "00000000-0000-4000-8000-000000000302"
       },
-      "key": "list:1",
+      "key": "list:00000000-0000-4000-8000-000000000302",
       "name": "Pull day",
       "itemCount": 1,
       "capabilities": {
@@ -21,8 +21,10 @@
     "entries": [
       {
         "exerciseId": 2,
+        "exerciseUuid": "00000000-0000-4000-8000-000000000301",
         "position": 0,
         "listItemId": 1,
+        "listItemUuid": "00000000-0000-4000-8000-000000000303",
         "prescription": {
           "targetSets": 3,
           "targetReps": 8,

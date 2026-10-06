@@ -8,7 +8,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import { toItemInput, type ExerciseListWithItems, type ListItemInput } from './use-exercise-lists';
+import { newItemInput, toItemInput, type ExerciseListWithItems, type ListItemInput } from './use-exercise-lists';
 
 interface ExerciseListEditorProps {
     list: ExerciseListWithItems | null;
@@ -64,8 +64,8 @@ export const ExerciseListEditor = ({ list, onSaveItems }: ExerciseListEditorProp
         save(list.items.filter((item) => item.id !== itemId).map(toItemInput));
     };
 
-    const addExercise = (exerciseId: number) => {
-        save([...list.items.map(toItemInput), { exerciseId }]);
+    const addExercise = (exercise: { id: number; uuid: string }) => {
+        save([...list.items.map(toItemInput), newItemInput(exercise)]);
         setSearch('');
         setAddOpen(false);
     };
@@ -119,7 +119,7 @@ export const ExerciseListEditor = ({ list, onSaveItems }: ExerciseListEditorProp
                                         return (
                                             <button
                                                 key={exercise.id}
-                                                onClick={() => addExercise(exercise.id)}
+                                                onClick={() => addExercise(exercise)}
                                                 className="flex w-full items-center justify-between rounded-md px-3 py-2.5 text-left text-sm transition-colors hover:bg-accent"
                                             >
                                                 <div className="flex min-w-0 flex-col">

@@ -1,5 +1,5 @@
 {
-  "request": "POST /api/exercise-lists/:id/items",
+  "request": "POST /api/exercise-lists/uuid/:uuid/items",
   "status": 400,
   "body": {
     "error": "exercise_list_full",

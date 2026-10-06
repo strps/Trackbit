@@ -31,13 +31,13 @@ export const AddToListMenu = ({ exerciseId, className, align = 'end' }: AddToLis
 
     const targets = sources.flatMap((source) => {
         if (!source.capabilities.canAppend) return [];
-        // The kind check is only how we reach `listId`; the gate above is the
+        // The kind check is only how we reach `listUuid`; the gate above is the
         // capability. Appending to a non-list source is meaningless, and the
         // backend already reflects that by leaving canAppend false for them.
         const ref = source.ref;
         if (ref.kind !== 'list') return [];
 
-        const list = lists.find((candidate) => candidate.id === ref.listId);
+        const list = lists.find((candidate) => candidate.uuid === ref.listUuid);
         return list ? [{ list, name: source.name ?? list.name }] : [];
     });
 

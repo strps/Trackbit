@@ -9,7 +9,7 @@ A native Android client for Trackbit written in Kotlin + Jetpack Compose. It con
 Before any of these can ship, a thin foundation (auth, API client, local cache) and a few backend changes have to exist. Those are Phase 0 below, split so that several people or agents can work in parallel.
 
 **Branch:** `kotlin-app`
-**Status:** Phase 0 done 2026-09-26 ([handoff](../handoffs/kotlin-app-B.md)). Phase 1 done on the emulator 2026-10-02 ([handoff](../handoffs/kotlin-app-C.md)). Phase 2 D1–D6 done on the emulator by 2026-10-03 ([handoff](../handoffs/kotlin-app-D.md)); its exit check is deferred to the final pass with the real-device check (user, 2026-10-03). Phase 3: split E1–E6, all done on the emulator by 2026-10-05 ([handoff](../handoffs/kotlin-app-E.md)); its exit check (parity with the web routes) is next.
+**Status:** Phase 0 done 2026-09-26 ([handoff](../handoffs/kotlin-app-B.md)). Phase 1 done on the emulator 2026-10-02 ([handoff](../handoffs/kotlin-app-C.md)). Phase 2 D1–D6 done on the emulator by 2026-10-03 ([handoff](../handoffs/kotlin-app-D.md)); its exit check is deferred to the final pass with the real-device check (user, 2026-10-03). Phase 3: split E1–E6, all done on the emulator by 2026-10-05 ([handoff](../handoffs/kotlin-app-E.md)); its exit check (parity with the web routes) is deferred to the final pass too (user, 2026-10-06). Phase 4 full offline (F1–F8) started 2026-10-06 ([handoff](../handoffs/kotlin-app-F.md)).
 **Deferred follow-ups:** [kotlin-app-followups.md](kotlin-app-followups.md) (non-blocking issues and checks, to pick up after Phase 1).
 
 ---
@@ -20,8 +20,8 @@ Before any of these can ship, a thin foundation (auth, API client, local cache) 
 |---|---|---|
 | D1 | **What happens to the Expo app?** The `android` branch has an Expo/React Native app (plan in `docs/tasks/native-app.md` on that branch) at Phase 4b. | **Discontinued.** Kotlin is the Android client. Carry over only its backend change (Better-Auth `bearer` plugin, see A1). Its screens can serve as a UX reference while the branch still exists. **Cleanup:** delete the `android` branch (local and `origin`) once A1 has landed on `kotlin-app`. |
 | D2 | **Android only, or iOS later?** | **Android only.** Plain Kotlin + Compose, no Kotlin Multiplatform. `core/*` stays free of Android UI code, so a future move to KMP remains possible, but that is not a goal. |
-| D3 | **Online-first or offline-first?** | **Offline-tolerant now, fully offline later.** Now: everything reads from a local cache (Room), and tracking writes (habit logs, sets) go through a queue of pending writes (the outbox), so they work without a connection. Configuration screens (habits, library, lists, account) require a connection. Later: full offline capability, deferred to Phase 4. |
-| D4 | **Where do the DTOs come from?** `@trackbit/types` is TypeScript and Kotlin cannot use it. | **Handwritten now, generated later.** Now: handwritten `@Serializable` DTOs in `core/model`, plus contract tests against a local backend. Later: generate them from an OpenAPI spec, deferred to Phase 4. |
+| D3 | **Online-first or offline-first?** | **Offline-tolerant now, fully offline later.** Now: everything reads from a local cache (Room), and tracking writes (habit logs, sets) go through a queue of pending writes (the outbox), so they work without a connection. Configuration screens (habits, library, lists, account) require a connection. Later: full offline capability (Phase 4, scheduled 2026-10-06). |
+| D4 | **Where do the DTOs come from?** `@trackbit/types` is TypeScript and Kotlin cannot use it. | **Handwritten now, generated later.** Now: handwritten `@Serializable` DTOs in `core/model`, plus contract tests against a local backend. Later: generate them from an OpenAPI spec, deferred to Phase 4b. |
 | D5 | **minSdk / targetSdk** | **minSdk 26** (Android 8), which Glance and modern Compose need. Target the latest stable SDK. As built (B1): compileSdk 37, because current AndroidX requires it; targetSdk 36. Raising targetSdk to 37 is a separate change, since it alters runtime behaviour. |
 | D6 | **Distribution** | **Play Console internal testing**, with a debug APK built in CI. Package id **`com.trackbit.app`**. |
 | D7 | **Where the project lives** | **`apps/android/`**, a standalone Gradle project in the monorepo. It is not a pnpm workspace and is not part of Turborepo's `build` pipeline. It gets its own `pnpm android:*` convenience scripts at the root. |
@@ -214,13 +214,35 @@ Split (user, 2026-10-03): a third bottom tab **Settings** hub (`feature/account`
 
 **Exit:** feature parity with `apps/frontend` routes (`/tracker`, `/sessions`, `/stats`, `/config/*`, `/account-settings`).
 
-### Phase 4 — Deferred (decided, not scheduled)
+### Phase 4 — Full offline capability (Workstream F, D3)
 
-**Full offline capability (D3).**
-- [ ] Route configuration writes (habit, exercise, list and preference CRUD) through the outbox too, not only tracking writes.
-- [ ] Client-generated ids, or a temp-id → server-id remapping in the outbox, so offline-created habits and exercises can be referenced by later offline ops (for example, log a habit created offline).
-- [ ] Conflict policy for configuration edits (per-field last-write-wins with `updatedAt` on the server, or reject + refetch).
-- [ ] Limit checks (`/api/me/limits`) cached locally, and a UX for an offline create that the server later rejects.
+**Goal:** everything but sign-in, sign-up, password changes and issue reports works without a connection, and reaches the server exactly once when it comes back.
+
+Decisions (user, 2026-10-06):
+
+| # | Question | Decision |
+|---|---|---|
+| F-D1 | How are rows created offline named? | **By uuid everywhere.** Habits, exercises, exercise lists and list items get a client-chosen `uuid` on the server (as sessions did in D2), which also makes their creates idempotent. Room, the outbox, widgets and every request the app sends name them by uuid; the server's int `id` never identifies a row on Android. |
+| F-D2 | Conflicting config edits | **Last write wins, changed fields only.** An op carries only the fields the user changed and the server applies them as they arrive, so an edit to other fields on the web survives. No `updatedAt` check. |
+| F-D3 | An offline create the server refuses (cap reached elsewhere, name taken) | **Kept and marked failed** with the reason: the row stays in Room, the user renames/retries or deletes it, and what was logged on it waits for that decision. Nothing is dropped silently. |
+| F-D4 | Wire format of uuid references | Requests name a row by uuid in a separate field (`habitUuid` beside `habitId`, exactly one) and by `/uuid/:uuid` paths (the D2 session routes' pattern); responses carry `uuid` beside every reference the app reads (`habitUuid`, `exerciseUuid`, `listItemUuid`). The web keeps its int ids. |
+
+Split:
+
+| Task | Scope |
+|---|---|
+| **F1** | Backend: `uuid` on habits, exercises, exercise lists and list items (migration `0017`), idempotent creates by client uuid, uuid references accepted on every route the app calls and returned in every response it reads; contracts re-recorded |
+| **F2** | Android identity: Room v9 and the outbox key habits, exercises and list items by uuid; widgets' Glance state migrated; DTOs and every repository/feature switched. No behaviour change |
+| **F3** | Room holds the whole config (habits as the form edits them, the library with descriptions and `frozen`, lists + items, muscle groups, limits); config screens read Room; syncs pull it |
+| **F4** | Config outbox: field-level ops (F-D2), per-row dependencies so a failed create parks only what builds on it, the failed state (F-D3); habit create/update/delete/reorder through it, create checked against cached limits |
+| **F5** | Exercise library writes through the outbox |
+| **F6** | List writes (CRUD, reorder, items, append) through the outbox; offline-created lists usable as session sources |
+| **F7** | Preferences through the outbox (name, locale, units, card style, rest, preferred source). Password change stays online |
+| **F8** | Failed-create UX polish (where failures surface, retry/rename/delete), then the offline exit check on the emulator |
+
+**Exit:** with the device offline from the start, create a habit, an exercise and a list, log the habit (app and widget), run a session with that exercise from that list, change preferences; reconnect, and the server holds exactly that, once. A create refused on reconnect (cap) shows as failed and can be fixed or deleted.
+
+### Phase 4b — Deferred (decided, not scheduled)
 
 **OpenAPI-generated DTOs (D4).**
 - [ ] Migrate the backend routes to `@hono/zod-openapi`, so the Zod schemas that already validate requests also describe responses.
@@ -286,7 +308,7 @@ To avoid rework, freeze these before C/D/E fan out:
 
 ## 6. Risks & open issues
 
-- **Type drift (D4).** Handwritten DTOs will drift from the backend. The contract tests catch it in CI until OpenAPI generation lands (Phase 4).
+- **Type drift (D4).** Handwritten DTOs will drift from the backend. The contract tests catch it in CI until OpenAPI generation lands (Phase 4b).
 - **Widget freshness.** Android limits widget update frequency. Updates driven by user action are immediate. Changes made on the web appear only on the next sync (≤15 min) unless push is added later (FCM, backlog).
 - **Timezone edge cases.** After A3 the server owns "today". The device timezone can still differ from the stored one while travelling. Proposal: when the device timezone changes, prompt the user and PATCH preferences.
 - **Outbox conflicts.** Increments are commutative (A4), so reordering is safe, but they are not idempotent: every outbox op carries an `Idempotency-Key` fixed at enqueue time (A7). Absolute edits (set editor) use last-write-wins. That's acceptable for a single-user app, but document it.

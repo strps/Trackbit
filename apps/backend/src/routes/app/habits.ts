@@ -1,4 +1,4 @@
-import { Hono } from 'hono'
+import { Hono, type Context } from 'hono'
 import { validator } from '../../lib/validator.js'
 import { z } from 'zod'
 import db from "../../db/db.js";
@@ -11,6 +11,7 @@ import { localeMiddleware } from '../../middleware/locale.js'
 import { t } from '../../i18n/index.js'
 import { frozenHabitException } from '../../lib/frozen-errors.js'
 import { isUniqueViolation } from '../../lib/db-errors.js'
+import { createdBefore, habitIdByUuid, oneOf, uuidParamSchema } from '../../lib/uuid-refs.js'
 import {
     computeFrozenHabitIds,
     computeFrozenHabitsForUser,
@@ -20,6 +21,10 @@ import {
 const HABIT_ORDER_UNIQUE_CONSTRAINT = 'habits_user_anti_order_uq'
 
 const isHabitOrderConflict = (err: unknown) => isUniqueViolation(err, HABIT_ORDER_UNIQUE_CONSTRAINT)
+
+/** The habit a create with [uuid] already made (a retry), if any; see lib/uuid-refs.ts. */
+const habitCreatedBefore = (uuid: string | undefined, userId: string) =>
+    createdBefore(uuid, (u) => db.select().from(habits).where(eq(habits.uuid, u)), userId)
 
 const HABIT_ORDER_CONFLICT_RESPONSE = {
     error: 'habit_order_conflict',
@@ -80,6 +85,8 @@ app.get('/', async (c) => {
 app.post(
     '/',
     validator('json', z.object({
+        // Chosen by a client creating the habit offline; a retry with it returns the same habit.
+        uuid: z.uuid().optional(),
         name: nameSchema,
         description: z.string().optional(),
         type: habitTypeSchema.default('count'),
@@ -98,6 +105,11 @@ app.post(
     async (c) => {
         const user = c.get('user')
         const body = c.req.valid('json') // Type-safe body from Zod
+
+        // A retried create answers with what it made, before the limits: at the cap it would
+        // otherwise refuse the habit it already created.
+        const existing = await habitCreatedBefore(body.uuid, user.id)
+        if (existing) return c.json(existing, 201)
 
         const limits = await getEffectiveLimits(user.role)
         if (limits) {
@@ -142,6 +154,11 @@ app.post(
 
             return c.json(result[0], 201)
         } catch (err) {
+            // The same create ran concurrently and won.
+            if (isUniqueViolation(err, 'habits_uuid_unique')) {
+                const won = await habitCreatedBefore(body.uuid, user.id)
+                if (won) return c.json(won, 201)
+            }
             if (isHabitOrderConflict(err)) {
                 return c.json(HABIT_ORDER_CONFLICT_RESPONSE, 409)
             }
@@ -149,103 +166,127 @@ app.post(
         }
     }
 )
+
+const habitUpdateSchema = z.object({
+    id: z.number().optional(),
+    name: nameSchema.optional(),
+    description: z.string().optional().nullable(),
+    weeklyGoal: z.number().int().min(1).max(7).optional(),
+    dailyGoal: dailyGoalSchema.optional(),
+    colorTheme: z.enum(COLOR_THEMES).optional(),
+    colorStops: colorStopsSchema.optional(),
+    icon: z.enum(HABIT_ICON_IDS).optional(),
+    type: habitTypeSchema.optional(),
+    isAntiHabit: z.boolean().optional(),
+    order: z.number().int().min(0).optional(),
+}).strict()
+
+/**
+ * Applies the fields given and nothing else, so concurrent edits of different fields (web and an
+ * offline app) both survive: last write wins per field.
+ */
+async function updateHabit(c: Context<AuthEnv>, id: number, body: z.infer<typeof habitUpdateSchema>) {
+    const user = c.get('user')
+    const { id: _bodyId, ...updates } = body
+
+    const frozen = await computeFrozenHabitsForUser(user.id, user.role)
+    if (frozen.has(id)) {
+        throw frozenHabitException(id)
+    }
+
+    if (updates.type) {
+        const limits = await getEffectiveLimits(user.role)
+        if (limits && !limits.allowedHabitTypes.includes(updates.type)) {
+            return c.json({
+                error: 'habit_type_not_allowed',
+                message: `Habit type "${updates.type}" is not allowed for your role.`,
+                allowedHabitTypes: limits.allowedHabitTypes,
+            }, 403)
+        }
+    }
+
+    try {
+        const result = await db.transaction(async (tx) => {
+            const [current] = await tx.select({ type: habits.type, isAntiHabit: habits.isAntiHabit })
+                .from(habits)
+                .where(and(eq(habits.id, id), eq(habits.userId, user.id)))
+                .for('update')
+            if (!current) return 'not_found' as const
+
+            const isAntiHabit = updates.isAntiHabit ?? current.isAntiHabit
+            if (!isAllowedAntiHabit(updates.type ?? current.type, isAntiHabit)) return 'anti_not_allowed' as const
+
+            // Moving between habits and anti-habits takes the next slot of the other group,
+            // as create does; keeping the old order would collide with a habit already there.
+            let order = updates.order
+            if (order === undefined && isAntiHabit !== current.isAntiHabit) {
+                const [{ nextOrder }] = await tx
+                    .select({ nextOrder: sql<number>`COALESCE(MAX(${habits.order}) + 1, 0)` })
+                    .from(habits)
+                    .where(and(eq(habits.userId, user.id), eq(habits.isAntiHabit, isAntiHabit)))
+                order = nextOrder
+            }
+
+            const [row] = await tx.update(habits)
+                .set({ ...updates, ...(order !== undefined && { order }) })
+                .where(and(eq(habits.id, id), eq(habits.userId, user.id)))
+                .returning()
+            return row
+        })
+
+        if (result === 'not_found') return habitNotFound(c)
+        if (result === 'anti_not_allowed') {
+            return c.json(ANTI_HABIT_NOT_ALLOWED_RESPONSE, 400)
+        }
+
+        return c.json(result)
+    } catch (err) {
+        if (isHabitOrderConflict(err)) {
+            return c.json(HABIT_ORDER_CONFLICT_RESPONSE, 409)
+        }
+        throw err
+    }
+}
+
+function habitNotFound(c: Context<AuthEnv>) {
+    return c.json({ error: t('errors', 'habit_not_found', c.get('locale')) }, 404)
+}
 
 // PUT /api/habits/:id
-app.put(
-    '/:id',
-    validator('json', z.object({
-        id: z.number().optional(),
-        name: nameSchema.optional(),
-        description: z.string().optional().nullable(),
-        weeklyGoal: z.number().int().min(1).max(7).optional(),
-        dailyGoal: dailyGoalSchema.optional(),
-        colorTheme: z.enum(COLOR_THEMES).optional(),
-        colorStops: colorStopsSchema.optional(),
-        icon: z.enum(HABIT_ICON_IDS).optional(),
-        type: habitTypeSchema.optional(),
-        isAntiHabit: z.boolean().optional(),
-        order: z.number().int().min(0).optional(),
-    }).strict()),
-    async (c) => {
-        const user = c.get('user')
-        const id = Number(c.req.param('id'))
-        const { id: _bodyId, ...updates } = c.req.valid('json')
+app.put('/:id', validator('json', habitUpdateSchema), (c) => updateHabit(c, Number(c.req.param('id')), c.req.valid('json')))
 
-        const frozen = await computeFrozenHabitsForUser(user.id, user.role)
-        if (frozen.has(id)) {
-            throw frozenHabitException(id)
-        }
-
-        if (updates.type) {
-            const limits = await getEffectiveLimits(user.role)
-            if (limits && !limits.allowedHabitTypes.includes(updates.type)) {
-                return c.json({
-                    error: 'habit_type_not_allowed',
-                    message: `Habit type "${updates.type}" is not allowed for your role.`,
-                    allowedHabitTypes: limits.allowedHabitTypes,
-                }, 403)
-            }
-        }
-
-        try {
-            const result = await db.transaction(async (tx) => {
-                const [current] = await tx.select({ type: habits.type, isAntiHabit: habits.isAntiHabit })
-                    .from(habits)
-                    .where(and(eq(habits.id, id), eq(habits.userId, user.id)))
-                    .for('update')
-                if (!current) return 'not_found' as const
-
-                const isAntiHabit = updates.isAntiHabit ?? current.isAntiHabit
-                if (!isAllowedAntiHabit(updates.type ?? current.type, isAntiHabit)) return 'anti_not_allowed' as const
-
-                // Moving between habits and anti-habits takes the next slot of the other group,
-                // as create does; keeping the old order would collide with a habit already there.
-                let order = updates.order
-                if (order === undefined && isAntiHabit !== current.isAntiHabit) {
-                    const [{ nextOrder }] = await tx
-                        .select({ nextOrder: sql<number>`COALESCE(MAX(${habits.order}) + 1, 0)` })
-                        .from(habits)
-                        .where(and(eq(habits.userId, user.id), eq(habits.isAntiHabit, isAntiHabit)))
-                    order = nextOrder
-                }
-
-                const [row] = await tx.update(habits)
-                    .set({ ...updates, ...(order !== undefined && { order }) })
-                    .where(and(eq(habits.id, id), eq(habits.userId, user.id)))
-                    .returning()
-                return row
-            })
-
-            if (result === 'not_found') {
-                return c.json({ error: t('errors', 'habit_not_found', c.get('locale')) }, 404)
-            }
-            if (result === 'anti_not_allowed') {
-                return c.json(ANTI_HABIT_NOT_ALLOWED_RESPONSE, 400)
-            }
-
-            return c.json(result)
-        } catch (err) {
-            if (isHabitOrderConflict(err)) {
-                return c.json(HABIT_ORDER_CONFLICT_RESPONSE, 409)
-            }
-            throw err
-        }
-    }
-)
+// PUT /api/habits/uuid/:uuid
+app.put('/uuid/:uuid', validator('param', uuidParamSchema), validator('json', habitUpdateSchema), async (c) => {
+    const id = await habitIdByUuid(c.get('user').id, c.req.valid('param').uuid)
+    return id === undefined ? habitNotFound(c) : updateHabit(c, id, c.req.valid('json'))
+})
 
 // PATCH /api/habits/reorder — Batch update order + isAntiHabit
 app.patch(
     '/reorder',
     validator('json', z.object({
+        // Each habit by id or by uuid.
         items: z.array(z.object({
-            id: z.number(),
+            id: z.number().optional(),
+            uuid: z.uuid().optional(),
             order: z.number().int().min(0),
             isAntiHabit: z.boolean(),
-        }))
+        }).refine(oneOf('id', 'uuid'), { message: 'Give id or uuid', path: ['id'] }))
     })),
     async (c) => {
         const user = c.get('user')
-        const { items } = c.req.valid('json')
+        const given = c.req.valid('json').items
+
+        // Uuids become ids. One that names none of the user's habits (deleted meanwhile) is
+        // skipped, as an unknown id always was.
+        const uuids = given.flatMap((it) => it.uuid === undefined ? [] : [it.uuid])
+        const idByUuid = new Map(uuids.length === 0 ? [] : (await db.select({ id: habits.id, uuid: habits.uuid })
+            .from(habits)
+            .where(and(eq(habits.userId, user.id), inArray(habits.uuid, uuids)))).map((row) => [row.uuid, row.id]))
+        const items = given.flatMap(({ uuid, id, ...item }) => {
+            const resolved = uuid === undefined ? id : idByUuid.get(uuid)
+            return resolved === undefined ? [] : [{ ...item, id: resolved }]
+        })
 
         const rows = items.length === 0 ? [] : await db.select({ id: habits.id, type: habits.type, isAntiHabit: habits.isAntiHabit })
             .from(habits)
@@ -305,20 +346,25 @@ app.patch(
     }
 )
 
-// DELETE /api/habits/:id
-app.delete('/:id', async (c) => {
+/** Deletes the habit with its logs and sessions (cascade). */
+async function deleteHabit(c: Context<AuthEnv>, id: number) {
     const user = c.get('user')
-    const id = Number(c.req.param('id'))
-
     const result = await db.delete(habits)
         .where(and(eq(habits.id, id), eq(habits.userId, user.id)))
         .returning()
 
-    if (result.length === 0) {
-        return c.json({ error: t('errors', 'habit_not_found', c.get('locale')) }, 404)
-    }
+    if (result.length === 0) return habitNotFound(c)
 
-    return c.json({ success: true, deletedId: id })
+    return c.json({ success: true, deletedId: id, uuid: result[0].uuid })
+}
+
+// DELETE /api/habits/:id
+app.delete('/:id', (c) => deleteHabit(c, Number(c.req.param('id'))))
+
+// DELETE /api/habits/uuid/:uuid
+app.delete('/uuid/:uuid', validator('param', uuidParamSchema), async (c) => {
+    const id = await habitIdByUuid(c.get('user').id, c.req.valid('param').uuid)
+    return id === undefined ? habitNotFound(c) : deleteHabit(c, id)
 })
 
 export default app

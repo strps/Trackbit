@@ -6,8 +6,13 @@ export interface ColorStop {
     color: [number, number, number] | [number, number, number, number];
 }
 
+// Habits, exercises, lists, list items and the tracker's sessions, logs and sets have a `uuid`
+// besides their `id`: a client that creates them offline (Android) chooses it and names them by
+// it. The web names them by id.
+
 export interface Habit {
     id: number;
+    uuid: string;
     userId: string;
     name: string;
     description: string | null;
@@ -25,6 +30,7 @@ export interface Habit {
 
 export interface Exercise {
     id: number;
+    uuid: string;
     userId: string | null;
     name: string;
     category: string;
@@ -86,13 +92,16 @@ export interface Prescription {
 
 export interface ExerciseListItem extends Prescription {
     id: number;
+    uuid: string;
     listId: number;
     exerciseId: number;
+    exerciseUuid: string;
     position: number;
 }
 
 export interface ExerciseList {
     id: number;
+    uuid: string;
     userId: string;
     // Set when someone else (e.g. a trainer) authored the list; equals userId for
     // self-made lists, null for lists created before authorship was tracked.
@@ -109,18 +118,19 @@ export interface ExerciseList {
 // Identity of an exercise source. `null` (absence of a ref) is browse mode —
 // the full catalog is deliberately NOT a source.
 export type ExerciseSourceRef =
-    | { kind: 'list'; listId: number }
+    | { kind: 'list'; listUuid: string }
     | { kind: 'program'; programId: number }
     | { kind: 'computed'; strategy: string };
 
-// Canonical serialization: `list:12`, `program:3`, `computed:agent-v1`.
-// This regex is the single definition of the key format; the backend builds its
-// zod validator from it so both ends can never drift.
-export const EXERCISE_SOURCE_KEY_PATTERN = /^(?:list|program):\d+$|^computed:[a-z0-9-]+$/;
+// Canonical serialization: `list:<uuid>`, `program:3`, `computed:agent-v1`. A list is named by
+// its uuid so a client can name a list it created offline. This regex is the single definition
+// of the key format; the backend builds its zod validator from it so both ends can never drift.
+export const EXERCISE_SOURCE_KEY_PATTERN =
+    /^list:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$|^program:\d+$|^computed:[a-z0-9-]+$/;
 
 export function serializeSourceKey(ref: ExerciseSourceRef): string {
     switch (ref.kind) {
-        case 'list': return `list:${ref.listId}`;
+        case 'list': return `list:${ref.listUuid}`;
         case 'program': return `program:${ref.programId}`;
         case 'computed': return `computed:${ref.strategy}`;
     }
@@ -136,7 +146,7 @@ export function parseSourceKey(key: string): ExerciseSourceRef | null {
     const value = key.slice(separator + 1);
 
     switch (kind) {
-        case 'list': return { kind: 'list', listId: Number(value) };
+        case 'list': return { kind: 'list', listUuid: value };
         case 'program': return { kind: 'program', programId: Number(value) };
         case 'computed': return { kind: 'computed', strategy: value };
         default: return null;
@@ -164,8 +174,10 @@ export interface ExerciseSourceDescriptor {
 
 export interface QueueEntry {
     exerciseId: number;              // client joins its own exercise cache
+    exerciseUuid: string;
     position: number;
     listItemId: number | null;       // provenance; null for computed sources
+    listItemUuid: string | null;
     prescription: Prescription | null;
 }
 

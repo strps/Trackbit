@@ -12,6 +12,8 @@
     "duration": null,
     "distanceUnit": "km",
     "weightUnit": "kg",
+    "exerciseUuid": "00000000-0000-4000-8000-000000000301",
+    "listItemUuid": "00000000-0000-4000-8000-000000000303",
     "sets": []
   }
 }

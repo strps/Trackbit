@@ -1,5 +1,5 @@
 {
-  "request": "PATCH /api/exercise-info/exercises/:id",
+  "request": "PATCH /api/exercise-info/exercises/uuid/:uuid",
   "status": 403,
   "body": {
     "error": "custom_exercise_frozen",

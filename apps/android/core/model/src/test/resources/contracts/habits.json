@@ -4,6 +4,7 @@
   "body": [
     {
       "id": 2,
+      "uuid": "00000000-0000-4000-8000-000000000102",
       "userId": "user-id",
       "name": "No sugar",
       "description": null,
@@ -48,6 +49,7 @@
     },
     {
       "id": 1,
+      "uuid": "00000000-0000-4000-8000-000000000101",
       "userId": "user-id",
       "name": "Read",
       "description": "Ten pages",
@@ -92,6 +94,7 @@
     },
     {
       "id": 3,
+      "uuid": "00000000-0000-4000-8000-000000000103",
       "userId": "user-id",
       "name": "Gym",
       "description": null,
@@ -136,6 +139,7 @@
     },
     {
       "id": 4,
+      "uuid": "00000000-0000-4000-8000-000000000104",
       "userId": "user-id",
       "name": "Meditate",
       "description": null,

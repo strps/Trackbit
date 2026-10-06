@@ -39,8 +39,36 @@ async function contractUser(email: string, options: { role?: string } = {}) {
 // fraction digits, zone), so a format change still shows up in the diff.
 const TIMESTAMP = /^\d{4}-\d{2}-\d{2}([T ])\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}(:?\d{2})?)?$/
 
-function normalize(value: unknown, secrets: Secrets): unknown {
+// Client uuids are fixed (`clientUuid()`) and kept. A uuid the server chose (a row created
+// without one) is random: each becomes `ffffffff-…-N`, numbered in order of first appearance in
+// the file, so references between rows still match.
+const CLIENT_UUID = /^00000000-0000-4000-8000-\d{12}$/
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+const UUID_INSIDE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g
+
+/** The fixed uuid [n], as the app chooses one for a row it creates. */
+const fixedUuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
+
+/**
+ * Fixed uuids from [base] + 1 on. Each test takes its own range (uuids are unique per table, across
+ * users), so adding a row to one test doesn't renumber the others' contracts.
+ */
+function uuidsFrom(base: number) {
+    let n = base
+    return () => fixedUuid(++n)
+}
+
+type NextUuid = () => string
+
+function serverUuid(uuid: string, uuids: Map<string, string>) {
+    if (CLIENT_UUID.test(uuid)) return uuid
+    if (!uuids.has(uuid)) uuids.set(uuid, `ffffffff-0000-4000-8000-${String(uuids.size + 1).padStart(12, '0')}`)
+    return uuids.get(uuid)!
+}
+
+function normalize(value: unknown, secrets: Secrets, uuids: Map<string, string>): unknown {
     if (typeof value === 'string') {
+        if (UUID.test(value)) return serverUuid(value, uuids)
         const match = TIMESTAMP.exec(value)
         if (match) {
             const [, separator, fraction = '', zone = ''] = match
@@ -50,17 +78,19 @@ function normalize(value: unknown, secrets: Secrets): unknown {
         return Object.keys(secrets)
             .sort((a, b) => b.length - a.length)
             .reduce((s, secret) => s.split(secret).join(secrets[secret]), value)
+            // Inside a string too, e.g. a source key `list:<uuid>`.
+            .replace(UUID_INSIDE, (uuid) => serverUuid(uuid, uuids))
     }
-    if (Array.isArray(value)) return value.map((v) => normalize(v, secrets))
+    if (Array.isArray(value)) return value.map((v) => normalize(v, secrets, uuids))
     if (value && typeof value === 'object') {
-        return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, normalize(v, secrets)]))
+        return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, normalize(v, secrets, uuids)]))
     }
     return value
 }
 
 async function record(dir: string, name: string, request: string, res: Response, secrets: Secrets = {}) {
     const text = await res.text()
-    const contract = { request, status: res.status, body: normalize(text ? JSON.parse(text) : null, secrets) }
+    const contract = { request, status: res.status, body: normalize(text ? JSON.parse(text) : null, secrets, new Map()) }
     recorded[dir].add(name)
     await expect(JSON.stringify(contract, null, 2) + '\n').toMatchFileSnapshot(dir + name)
 }
@@ -75,9 +105,12 @@ const CUSTOM_STOPS = [
     { position: 1, color: [12, 148, 62, 1] },
 ]
 
-/** One habit per shape the app renders: preset and custom colors, anti, complex, and a frozen timed one. */
-async function seedHabits(u: Awaited<ReturnType<typeof contractUser>>) {
-    const create = (body: object) => post(u.token, '/api/habits', body)
+/**
+ * One habit per shape the app renders: preset and custom colors, anti, complex, and a frozen timed
+ * one. Created with client uuids, as the app does.
+ */
+async function seedHabits(u: Awaited<ReturnType<typeof contractUser>>, clientUuid: NextUuid) {
+    const create = (body: object) => post(u.token, '/api/habits', { uuid: clientUuid(), ...body })
     const read = await create({
         name: 'Read', description: 'Ten pages', type: 'count', dailyGoal: 3, weeklyGoal: 5,
         colorTheme: 'custom', colorStops: CUSTOM_STOPS, icon: 'book',
@@ -85,44 +118,45 @@ async function seedHabits(u: Awaited<ReturnType<typeof contractUser>>) {
     const sugar = await (await create({ name: 'No sugar', type: 'count', isAntiHabit: true, colorTheme: 'rose', icon: 'ban' })).json()
     const gym = await (await create({ name: 'Gym', type: 'complex', colorTheme: 'blue', icon: 'dumbbell' })).json()
     // The default role can't create a timed habit, so it is inserted and comes back frozen.
-    const meditate = await createHabit(u.id, { name: 'Meditate', type: 'timed', dailyGoal: 20, order: 10, colorTheme: 'green', icon: 'moon' })
+    const meditate = await createHabit(u.id, { uuid: clientUuid(), name: 'Meditate', type: 'timed', dailyGoal: 20, order: 10, colorTheme: 'green', icon: 'moon' })
     return { read, sugar, gym, meditate }
 }
 
 describe('Android contracts', () => {
     it('habits', async () => {
+        const clientUuid = uuidsFrom(100)
         const u = await contractUser('habits@test.local')
-        const { read } = await seedHabits(u)
+        const { read } = await seedHabits(u, clientUuid)
         await record(MODEL, 'habit-created.json', 'POST /api/habits', read, u.secrets)
         await record(MODEL, 'habits.json', 'GET /api/habits', await get(u.token, '/api/habits'), u.secrets)
-        const habits: { id: number; name: string }[] = await (await get(u.token, '/api/habits')).json()
-        const { id } = habits.find((h) => h.name === 'Read')!
-        await record(MODEL, 'habit-updated.json', 'PUT /api/habits/:id',
-            await send(u.token, 'PUT', `/api/habits/${id}`, { name: 'Read more', isAntiHabit: true }), u.secrets)
+        const habits: { uuid: string; name: string }[] = await (await get(u.token, '/api/habits')).json()
+        const { uuid } = habits.find((h) => h.name === 'Read')!
+        await record(MODEL, 'habit-updated.json', 'PUT /api/habits/uuid/:uuid',
+            await send(u.token, 'PUT', `/api/habits/uuid/${uuid}`, { name: 'Read more', isAntiHabit: true }), u.secrets)
 
         await record(NETWORK, 'habit-type-not-allowed.json', 'POST /api/habits',
-            await post(u.token, '/api/habits', { name: 'Stretch', type: 'timed' }))
-        await record(NETWORK, 'anti-habit-not-allowed.json', 'PUT /api/habits/:id',
-            await send(u.token, 'PUT', `/api/habits/${id}`, { type: 'complex' }))
+            await post(u.token, '/api/habits', { uuid: clientUuid(), name: 'Stretch', type: 'timed' }))
+        await record(NETWORK, 'anti-habit-not-allowed.json', 'PUT /api/habits/uuid/:uuid',
+            await send(u.token, 'PUT', `/api/habits/uuid/${uuid}`, { type: 'complex' }))
         // The default role allows 10 habits; the seed made 4.
         for (let i = 0; i < 6; i++) await post(u.token, '/api/habits', { name: `Habit ${i}` })
         await record(NETWORK, 'habit-limit-reached.json', 'POST /api/habits',
-            await post(u.token, '/api/habits', { name: 'One more' }))
+            await post(u.token, '/api/habits', { uuid: clientUuid(), name: 'One more' }))
     })
 
     it('tracker', async () => {
+        const clientUuid = uuidsFrom(200)
         const u = await contractUser('tracker@test.local')
-        const { read, sugar, gym, meditate } = await seedHabits(u)
-        const readId = (await read.json()).id
+        const { read, sugar, gym, meditate } = await seedHabits(u, clientUuid)
+        const readUuid = (await read.json()).uuid
         for (const [day, rating] of [['2026-01-07', 1], ['2026-01-08', 3], ['2026-01-09', 4]] as const) {
-            await post(u.token, '/api/tracker/check', { habitId: readId, rating, day })
+            await post(u.token, '/api/tracker/check', { habitUuid: readUuid, rating, day })
         }
-        await post(u.token, '/api/tracker/check', { habitId: sugar.id, rating: 0, day: '2026-01-08' })
-        const gymLog = await (await post(u.token, '/api/tracker/day-logs/ensure', { habitId: gym.id, day: '2026-01-09' })).json()
-        await post(u.token, '/api/tracker/exercise-sessions', { dayLogId: gymLog.id })
+        await post(u.token, '/api/tracker/check', { habitUuid: sugar.uuid, rating: 0, day: '2026-01-08' })
+        await post(u.token, '/api/tracker/exercise-sessions', { uuid: clientUuid(), habitUuid: gym.uuid, day: '2026-01-09' })
 
         await record(MODEL, 'day-log.json', 'POST /api/tracker/check/increment',
-            await post(u.token, '/api/tracker/check/increment', { habitId: readId, delta: 2, day: '2026-01-10' }, { 'idempotency-key': 'k-1' }),
+            await post(u.token, '/api/tracker/check/increment', { habitUuid: readUuid, delta: 2, day: '2026-01-10' }, { 'idempotency-key': 'k-1' }),
             u.secrets)
         await record(MODEL, 'today.json', 'GET /api/tracker/today?day=2026-01-10',
             await get(u.token, '/api/tracker/today?day=2026-01-10'), u.secrets)
@@ -130,11 +164,11 @@ describe('Android contracts', () => {
             await get(u.token, '/api/tracker/days?start=2026-01-01&end=2026-01-10'), u.secrets)
 
         await record(NETWORK, 'habit-frozen.json', 'POST /api/tracker/check',
-            await post(u.token, '/api/tracker/check', { habitId: meditate.id, rating: 60_000 }))
+            await post(u.token, '/api/tracker/check', { habitUuid: meditate.uuid, rating: 60_000 }))
         await record(NETWORK, 'habit-not-found.json', 'POST /api/tracker/check',
-            await post(u.token, '/api/tracker/check', { habitId: 999, rating: 1 }))
+            await post(u.token, '/api/tracker/check', { habitUuid: clientUuid(), rating: 1 }))
         await record(NETWORK, 'validation.json', 'POST /api/tracker/check/increment',
-            await post(u.token, '/api/tracker/check/increment', { habitId: readId, delta: 1.5, day: '10/01/2026' }))
+            await post(u.token, '/api/tracker/check/increment', { habitUuid: readUuid, delta: 1.5, day: '10/01/2026' }))
     })
 
     it('idempotency errors', async () => {
@@ -155,18 +189,19 @@ describe('Android contracts', () => {
     })
 
     it('exercises and sessions', async () => {
+        const clientUuid = uuidsFrom(300)
         const u = await contractUser('exercises@test.local')
         const [bench] = await db.insert(exercises).values({ name: 'Bench Press', nameI18n: { en: 'Bench Press', es: 'Press de banca' }, category: 'strength' }).returning()
         const [chest] = await db.insert(muscleGroups).values({ name: 'Chest', nameI18n: { en: 'Chest', es: 'Pecho' }, slug: 'chest' }).returning()
         await db.insert(exerciseMuscleGroups).values({ exerciseId: bench.id, muscleGroupId: chest.id, role: 'primary' })
         const row = await (await post(u.token, '/api/exercise-info/exercises', {
-            name: 'My row', category: 'strength', defaultWeightUnit: 'lbs', defaultDistanceUnit: 'miles', muscleGroups: [],
+            uuid: clientUuid(), name: 'My row', category: 'strength', defaultWeightUnit: 'lbs', defaultDistanceUnit: 'miles', muscleGroups: [],
         })).json()
 
-        const list = await (await post(u.token, '/api/exercise-lists', { name: 'Pull day', description: 'Back and biceps' })).json()
-        await send(u.token, 'PUT', `/api/exercise-lists/${list.id}/items`, {
+        const list = await (await post(u.token, '/api/exercise-lists', { uuid: clientUuid(), name: 'Pull day', description: 'Back and biceps' })).json()
+        await send(u.token, 'PUT', `/api/exercise-lists/uuid/${list.uuid}/items`, {
             items: [{
-                exerciseId: row.id, position: 0, targetSets: 3, targetReps: 8, targetWeight: 60.5,
+                uuid: clientUuid(), exerciseUuid: row.uuid, position: 0, targetSets: 3, targetReps: 8, targetWeight: 60.5,
                 targetDuration: 90, targetDistance: 1.5, restSeconds: 120, notes: 'Pause at the top',
             }],
         })
@@ -175,28 +210,24 @@ describe('Android contracts', () => {
         await record(MODEL, 'exercise-lists.json', 'GET /api/exercise-lists', lists, u.secrets)
 
         // An empty list too: its descriptor has no prescriptions and its queue says why it's empty.
-        const empty = await (await post(u.token, '/api/exercise-lists', { name: 'Legs' })).json()
+        const empty = await (await post(u.token, '/api/exercise-lists', { uuid: clientUuid(), name: 'Legs' })).json()
         await record(MODEL, 'exercise-sources.json', 'GET /api/exercise-sources', await get(u.token, '/api/exercise-sources'), u.secrets)
-        await record(MODEL, 'exercise-source.json', 'GET /api/exercise-sources/list::id',
-            await get(u.token, `/api/exercise-sources/list:${list.id}`), u.secrets)
-        await record(MODEL, 'exercise-source-empty.json', 'GET /api/exercise-sources/list::id',
-            await get(u.token, `/api/exercise-sources/list:${empty.id}`), u.secrets)
-        await record(NETWORK, 'exercise-source-not-found.json', 'GET /api/exercise-sources/list::id',
-            await get(u.token, '/api/exercise-sources/list:999999'), u.secrets)
+        await record(MODEL, 'exercise-source.json', 'GET /api/exercise-sources/list::uuid',
+            await get(u.token, `/api/exercise-sources/list:${list.uuid}`), u.secrets)
+        await record(MODEL, 'exercise-source-empty.json', 'GET /api/exercise-sources/list::uuid',
+            await get(u.token, `/api/exercise-sources/list:${empty.uuid}`), u.secrets)
+        await record(NETWORK, 'exercise-source-not-found.json', 'GET /api/exercise-sources/list::uuid',
+            await get(u.token, `/api/exercise-sources/list:${clientUuid()}`), u.secrets)
 
-        const habit = await createHabit(u.id, { type: 'complex' })
-        // Fixed client uuids, as the app sends them.
-        const ids = {
-            session: '00000000-0000-4000-8000-000000000001',
-            log: '00000000-0000-4000-8000-000000000002',
-            sets: ['00000000-0000-4000-8000-000000000003', '00000000-0000-4000-8000-000000000004'],
-        }
+        const habit = await createHabit(u.id, { uuid: clientUuid(), type: 'complex' })
+        // Client uuids, as the app sends them.
+        const ids = { session: fixedUuid(1), log: fixedUuid(2), sets: [fixedUuid(3), fixedUuid(4)] }
         const session = await post(u.token, '/api/tracker/exercise-sessions',
-            { uuid: ids.session, habitId: habit.id, day: '2026-01-10' }, { 'idempotency-key': 's-1' })
+            { uuid: ids.session, habitUuid: habit.uuid, day: '2026-01-10' }, { 'idempotency-key': 's-1' })
         await record(MODEL, 'exercise-session.json', 'POST /api/tracker/exercise-sessions', session, u.secrets)
 
         const log = await post(u.token, '/api/tracker/exercise-logs', {
-            uuid: ids.log, exerciseSessionUuid: ids.session, exerciseId: row.id, listItemId: item.id,
+            uuid: ids.log, exerciseSessionUuid: ids.session, exerciseUuid: row.uuid, listItemUuid: item.uuid,
         })
         const logId = (await log.clone().json()).id
         await record(MODEL, 'exercise-log-created.json', 'POST /api/tracker/exercise-logs', log, u.secrets)
@@ -209,97 +240,100 @@ describe('Android contracts', () => {
                 uuid: ids.sets[1], exerciseLogUuid: ids.log, number: 2, reps: 6, weight: 62.5, duration: 45_000, distance: 1.25, rpe: 8,
             }),
             u.secrets)
-        await record(MODEL, 'exercise-sessions.json', 'GET /api/tracker/exercise-sessions?habitId=:id&day=2026-01-10',
-            await get(u.token, `/api/tracker/exercise-sessions?habitId=${habit.id}&day=2026-01-10`), u.secrets)
-        await record(MODEL, 'sets.json', 'GET /api/tracker/sets?habitId=:id',
-            await get(u.token, `/api/tracker/sets?habitId=${habit.id}`), u.secrets)
+        await record(MODEL, 'exercise-sessions.json', 'GET /api/tracker/exercise-sessions?habitUuid=:uuid&day=2026-01-10',
+            await get(u.token, `/api/tracker/exercise-sessions?habitUuid=${habit.uuid}&day=2026-01-10`), u.secrets)
+        await record(MODEL, 'sets.json', 'GET /api/tracker/sets?habitUuid=:uuid',
+            await get(u.token, `/api/tracker/sets?habitUuid=${habit.uuid}`), u.secrets)
 
         await record(MODEL, 'exercises.json', 'GET /api/exercise-info/exercises', await get(u.token, '/api/exercise-info/exercises'), u.secrets)
 
         // The library: muscle groups, and a custom exercise's create and update.
         await record(MODEL, 'muscle-groups.json', 'GET /api/exercise-info/muscle-groups', await get(u.token, '/api/exercise-info/muscle-groups'), u.secrets)
+        const dipsUuid = clientUuid()
         const created = await post(u.token, '/api/exercise-info/exercises', {
-            name: 'Dips', description: 'Lean forward', category: 'strength', muscleGroups: [chest.id],
+            uuid: dipsUuid, name: 'Dips', description: 'Lean forward', category: 'strength', muscleGroups: [chest.id],
         })
-        const dipsId = (await created.clone().json()).id
         await record(MODEL, 'exercise-created.json', 'POST /api/exercise-info/exercises', created, u.secrets)
-        await record(MODEL, 'exercise-updated.json', 'PATCH /api/exercise-info/exercises/:id',
-            await send(u.token, 'PATCH', `/api/exercise-info/exercises/${dipsId}`, { name: 'Ring dips', category: 'cardio', description: null, muscleGroups: [] }),
+        await record(MODEL, 'exercise-updated.json', 'PATCH /api/exercise-info/exercises/uuid/:uuid',
+            await send(u.token, 'PATCH', `/api/exercise-info/exercises/uuid/${dipsUuid}`, { name: 'Ring dips', category: 'cardio', description: null, muscleGroups: [] }),
             u.secrets)
         await record(NETWORK, 'exercise-name-taken.json', 'POST /api/exercise-info/exercises',
-            await post(u.token, '/api/exercise-info/exercises', { name: 'Ring dips', category: 'strength' }), u.secrets)
+            await post(u.token, '/api/exercise-info/exercises', { uuid: clientUuid(), name: 'Ring dips', category: 'strength' }), u.secrets)
         await record(NETWORK, 'muscle-group-not-found.json', 'POST /api/exercise-info/exercises',
-            await post(u.token, '/api/exercise-info/exercises', { name: 'Ghost', category: 'strength', muscleGroups: [999999] }), u.secrets)
+            await post(u.token, '/api/exercise-info/exercises', { uuid: clientUuid(), name: 'Ghost', category: 'strength', muscleGroups: [999999] }), u.secrets)
     })
 
     it('exercise lists', async () => {
+        const clientUuid = uuidsFrom(400)
         const u = await contractUser('lists@test.local')
         const [squat, press] = await db.insert(exercises)
             .values([{ name: 'Squat', category: 'strength' }, { name: 'Press', category: 'strength' }])
             .returning()
 
-        const created = await post(u.token, '/api/exercise-lists', { name: 'Leg day', description: 'Heavy' })
+        const created = await post(u.token, '/api/exercise-lists', { uuid: clientUuid(), name: 'Leg day', description: 'Heavy' })
         const list = await created.clone().json()
         await record(MODEL, 'exercise-list-created.json', 'POST /api/exercise-lists', created, u.secrets)
-        await record(MODEL, 'exercise-list-items.json', 'PUT /api/exercise-lists/:id/items',
-            await send(u.token, 'PUT', `/api/exercise-lists/${list.id}/items`, {
-                items: [{ exerciseId: squat.id, position: 0, targetSets: 5, targetReps: 5, targetWeight: 100, restSeconds: 180, notes: 'Belt' }],
+        await record(MODEL, 'exercise-list-items.json', 'PUT /api/exercise-lists/uuid/:uuid/items',
+            await send(u.token, 'PUT', `/api/exercise-lists/uuid/${list.uuid}/items`, {
+                items: [{ uuid: clientUuid(), exerciseUuid: squat.uuid, position: 0, targetSets: 5, targetReps: 5, targetWeight: 100, restSeconds: 180, notes: 'Belt' }],
             }), u.secrets)
-        await record(MODEL, 'exercise-list-item-appended.json', 'POST /api/exercise-lists/:id/items',
-            await post(u.token, `/api/exercise-lists/${list.id}/items`, { exerciseId: press.id }), u.secrets)
-        await record(MODEL, 'exercise-list-updated.json', 'PATCH /api/exercise-lists/:id',
-            await send(u.token, 'PATCH', `/api/exercise-lists/${list.id}`, { name: 'Legs', description: null }), u.secrets)
+        await record(MODEL, 'exercise-list-item-appended.json', 'POST /api/exercise-lists/uuid/:uuid/items',
+            await post(u.token, `/api/exercise-lists/uuid/${list.uuid}/items`, { uuid: clientUuid(), exerciseUuid: press.uuid }), u.secrets)
+        await record(MODEL, 'exercise-list-updated.json', 'PATCH /api/exercise-lists/uuid/:uuid',
+            await send(u.token, 'PATCH', `/api/exercise-lists/uuid/${list.uuid}`, { name: 'Legs', description: null }), u.secrets)
 
-        const other = await (await post(u.token, '/api/exercise-lists', { name: 'Arms' })).json()
+        const other = await (await post(u.token, '/api/exercise-lists', { uuid: clientUuid(), name: 'Arms' })).json()
         await record(MODEL, 'exercise-lists-reordered.json', 'PATCH /api/exercise-lists/reorder',
-            await send(u.token, 'PATCH', '/api/exercise-lists/reorder', { ids: [other.id, list.id] }), u.secrets)
+            await send(u.token, 'PATCH', '/api/exercise-lists/reorder', { uuids: [other.uuid, list.uuid] }), u.secrets)
 
         await record(NETWORK, 'exercise-list-name-taken.json', 'POST /api/exercise-lists',
-            await post(u.token, '/api/exercise-lists', { name: 'Legs' }))
-        await record(NETWORK, 'exercise-list-not-found.json', 'PATCH /api/exercise-lists/:id',
-            await send(u.token, 'PATCH', '/api/exercise-lists/999999', { name: 'Ghost' }))
+            await post(u.token, '/api/exercise-lists', { uuid: clientUuid(), name: 'Legs' }))
+        await record(NETWORK, 'exercise-list-not-found.json', 'PATCH /api/exercise-lists/uuid/:uuid',
+            await send(u.token, 'PATCH', `/api/exercise-lists/uuid/${clientUuid()}`, { name: 'Ghost' }))
 
         // The default role allows 3 lists: a third reaches the cap, and a fourth inserted by hand is frozen.
-        const core = await (await post(u.token, '/api/exercise-lists', { name: 'Core' })).json()
+        const core = await (await post(u.token, '/api/exercise-lists', { uuid: clientUuid(), name: 'Core' })).json()
         await record(NETWORK, 'exercise-list-limit-reached.json', 'POST /api/exercise-lists',
-            await post(u.token, '/api/exercise-lists', { name: 'One more' }))
-        const [frozen] = await db.insert(exerciseLists).values({ userId: u.id, authorId: u.id, name: 'Frozen', position: 3 }).returning()
-        await record(NETWORK, 'exercise-list-frozen.json', 'POST /api/exercise-lists/:id/items',
-            await post(u.token, `/api/exercise-lists/${frozen.id}/items`, { exerciseId: squat.id }))
+            await post(u.token, '/api/exercise-lists', { uuid: clientUuid(), name: 'One more' }))
+        const [frozen] = await db.insert(exerciseLists).values({ uuid: clientUuid(), userId: u.id, authorId: u.id, name: 'Frozen', position: 3 }).returning()
+        await record(NETWORK, 'exercise-list-frozen.json', 'POST /api/exercise-lists/uuid/:uuid/items',
+            await post(u.token, `/api/exercise-lists/uuid/${frozen.uuid}/items`, { uuid: clientUuid(), exerciseUuid: squat.uuid }))
         await record(NETWORK, 'exercise-list-order-frozen.json', 'PATCH /api/exercise-lists/reorder',
-            await send(u.token, 'PATCH', '/api/exercise-lists/reorder', { ids: [frozen.id, other.id, list.id, core.id] }))
+            await send(u.token, 'PATCH', '/api/exercise-lists/reorder', { uuids: [frozen.uuid, other.uuid, list.uuid, core.uuid] }))
 
         await db.insert(exerciseListItems).values(Array.from({ length: 98 }, (_, i) => ({ listId: list.id, exerciseId: squat.id, position: i + 2 })))
-        await record(NETWORK, 'exercise-list-full.json', 'POST /api/exercise-lists/:id/items',
-            await post(u.token, `/api/exercise-lists/${list.id}/items`, { exerciseId: squat.id }))
+        await record(NETWORK, 'exercise-list-full.json', 'POST /api/exercise-lists/uuid/:uuid/items',
+            await post(u.token, `/api/exercise-lists/uuid/${list.uuid}/items`, { uuid: clientUuid(), exerciseUuid: squat.uuid }))
     })
 
     it('frozen custom exercise', async () => {
+        const clientUuid = uuidsFrom(500)
         const u = await contractUser('frozen-exercise@test.local')
         // One over the default role's cap of 5, so one of them is frozen.
         const rows = await db.insert(exercises)
-            .values(Array.from({ length: 6 }, (_, i) => ({ name: `Custom ${i}`, userId: u.id })))
+            .values(Array.from({ length: 6 }, (_, i) => ({ uuid: clientUuid(), name: `Custom ${i}`, userId: u.id })))
             .returning()
-        const habit = await createHabit(u.id, { type: 'complex' })
-        const dayLog = await (await post(u.token, '/api/tracker/day-logs/ensure', { habitId: habit.id })).json()
-        const session = await (await post(u.token, '/api/tracker/exercise-sessions', { dayLogId: dayLog.id })).json()
+        const habit = await createHabit(u.id, { uuid: clientUuid(), type: 'complex' })
+        const session = clientUuid()
+        await post(u.token, '/api/tracker/exercise-sessions', { uuid: session, habitUuid: habit.uuid })
         const frozen = (await (await get(u.token, '/api/exercise-info/exercises')).json())
             .find((e: { frozen: boolean }) => e.frozen)
-        expect(rows.map((r) => r.id)).toContain(frozen.id)
+        expect(rows.map((r) => r.uuid)).toContain(frozen.uuid)
 
         await record(NETWORK, 'custom-exercise-frozen.json', 'POST /api/tracker/exercise-logs',
-            await post(u.token, '/api/tracker/exercise-logs', { exerciseSessionId: session.id, exerciseId: frozen.id }))
-        await record(NETWORK, 'custom-exercise-frozen-update.json', 'PATCH /api/exercise-info/exercises/:id',
-            await send(u.token, 'PATCH', `/api/exercise-info/exercises/${frozen.id}`, { name: 'Thawed' }))
+            await post(u.token, '/api/tracker/exercise-logs', { uuid: clientUuid(), exerciseSessionUuid: session, exerciseUuid: frozen.uuid }))
+        await record(NETWORK, 'custom-exercise-frozen-update.json', 'PATCH /api/exercise-info/exercises/uuid/:uuid',
+            await send(u.token, 'PATCH', `/api/exercise-info/exercises/uuid/${frozen.uuid}`, { name: 'Thawed' }))
         await record(NETWORK, 'custom-exercise-limit-reached.json', 'POST /api/exercise-info/exercises',
-            await post(u.token, '/api/exercise-info/exercises', { name: 'One more', category: 'strength' }))
+            await post(u.token, '/api/exercise-info/exercises', { uuid: clientUuid(), name: 'One more', category: 'strength' }))
     })
 
     it('session and preferences', async () => {
+        const clientUuid = uuidsFrom(600)
         const u = await contractUser('session@test.local')
-        await post(u.token, '/api/exercise-lists', { name: 'Push day' })
+        const push = await (await post(u.token, '/api/exercise-lists', { uuid: clientUuid(), name: 'Push day' })).json()
         await send(u.token, 'PATCH', '/api/me/preferences', {
-            locale: 'es', unitSystem: 'imperial', exerciseLogCardStyle: 'compact', preferredExerciseSource: 'list:1',
+            locale: 'es', unitSystem: 'imperial', exerciseLogCardStyle: 'compact', preferredExerciseSource: `list:${push.uuid}`,
             defaultRestSeconds: 120,
         })
         await record(MODEL, 'session.json', 'GET /api/auth/get-session', await get(u.token, '/api/auth/get-session'), u.secrets)

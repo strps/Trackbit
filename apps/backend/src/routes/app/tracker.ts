@@ -18,6 +18,16 @@ import { MAX_STREAK_DAYS, streakEndingAt, type StreakDay } from '../../lib/strea
 import { idempotency } from '../../middleware/idempotency.js'
 import { t, negotiateFromHeader } from '../../i18n/index.js'
 import { frozenExerciseException, frozenHabitException } from '../../lib/frozen-errors.js'
+import {
+    atMostOne,
+    exerciseUuids,
+    listItemIdByUuid,
+    listItemUuids,
+    oneOf,
+    uuidConflictException,
+    visibleExerciseIdByUuid,
+    withLogUuids,
+} from '../../lib/uuid-refs.js'
 
 
 type AuthEnv = {
@@ -29,6 +39,21 @@ type AuthEnv = {
 const app = new Hono<AuthEnv>()
 
 app.use('*', requireAuth)
+
+/** A habit named by id (the web) or by uuid (a client that creates habits offline). */
+type HabitRef = { habitId?: number; habitUuid?: string };
+
+const habitIdSchema = z.number().int().positive();
+
+/** Body fields naming a habit; refine the object with [habitRefGiven]. */
+const habitRefFields = { habitId: habitIdSchema.optional(), habitUuid: z.uuid().optional() };
+const habitRefGiven = oneOf('habitId', 'habitUuid');
+const habitRefMessage = { message: 'Give habitId or habitUuid', path: ['habitId'] };
+
+const habitQuerySchema = z.object({
+    habitId: z.coerce.number().int().positive().optional(),
+    habitUuid: z.uuid().optional(),
+}).refine(habitRefGiven, habitRefMessage);
 
 //============================================================================================
 //--- HISTORY ROUTE ---
@@ -145,6 +170,7 @@ app.get(
                 const firstLogDay = firstLogDayByHabit.get(h.id) ?? null;
                 return {
                     id: h.id,
+                    uuid: h.uuid,
                     name: h.name,
                     description: h.description,
                     type: h.type,
@@ -189,12 +215,19 @@ app.get(
     async (c) => {
         const user = c.get('user');
         const { start, end } = c.req.valid('query');
-        const owned = db.select({ id: habits.id }).from(habits).where(eq(habits.userId, user.id));
-        const days = await daySummaries(inArray(dayLogs.habitId, owned), start, end);
+        const owned = await db.select({ id: habits.id, uuid: habits.uuid }).from(habits).where(eq(habits.userId, user.id));
+        const uuidOf = new Map(owned.map((h) => [h.id, h.uuid]));
+        const days = owned.length === 0 ? [] : await daySummaries(inArray(dayLogs.habitId, [...uuidOf.keys()]), start, end);
         return c.json({
             start,
             end,
-            days: days.map((d) => ({ habitId: d.habitId, day: d.localDay, rating: d.rating, sessionCount: d.sessionCount })),
+            days: days.map((d) => ({
+                habitId: d.habitId,
+                habitUuid: uuidOf.get(d.habitId)!,
+                day: d.localDay,
+                rating: d.rating,
+                sessionCount: d.sessionCount,
+            })),
         });
     }
 );
@@ -207,14 +240,14 @@ app.get(
 
 app.get(
     '/sets',
-    validator('query', z.object({ habitId: z.coerce.number().int().positive() })),
+    validator('query', habitQuerySchema),
     async (c) => {
-        const { habitId } = c.req.valid('query');
-        await assertOwnedHabit(c, habitId);
+        const habit = await ownedHabit(c, c.req.valid('query'));
         const sets = await db
             .select({
                 day: dayLogs.localDay,
                 exerciseId: exerciseLogs.exerciseId,
+                exerciseUuid: exercises.uuid,
                 weight: exercisePerformances.weight,
                 reps: exercisePerformances.reps,
                 rpe: exercisePerformances.rpe,
@@ -225,13 +258,14 @@ app.get(
             .innerJoin(exerciseLogs, eq(exerciseLogs.id, exercisePerformances.exerciseLogId))
             .innerJoin(exerciseSessions, eq(exerciseSessions.id, exerciseLogs.exerciseSessionId))
             .innerJoin(dayLogs, eq(dayLogs.id, exerciseSessions.dayLogId))
-            .where(eq(dayLogs.habitId, habitId))
+            .innerJoin(exercises, eq(exercises.id, exerciseLogs.exerciseId))
+            .where(eq(dayLogs.habitId, habit.id))
             .orderBy(
                 asc(dayLogs.localDay), asc(exerciseSessions.createdAt), asc(exerciseSessions.id),
                 asc(exerciseLogs.createdAt), asc(exerciseLogs.id),
                 asc(exercisePerformances.createdAt), asc(exercisePerformances.id),
             );
-        return c.json({ habitId, sets });
+        return c.json({ habitId: habit.id, habitUuid: habit.uuid, sets });
     }
 );
 
@@ -248,21 +282,27 @@ function notFoundException(c: Context, key: 'habit_not_found' | 'not_found_or_un
     });
 }
 
-async function assertOwnedHabit(c: Context, habitId: number) {
+/** The user's habit [ref] names; 404 if it names none of theirs. */
+async function ownedHabit(c: Context, ref: HabitRef): Promise<{ id: number; uuid: string }> {
     const [owned] = await db
-        .select({ id: habits.id })
+        .select({ id: habits.id, uuid: habits.uuid })
         .from(habits)
-        .where(and(eq(habits.id, habitId), eq(habits.userId, c.get('user').id)))
+        .where(and(
+            ref.habitId != null ? eq(habits.id, ref.habitId) : eq(habits.uuid, ref.habitUuid!),
+            eq(habits.userId, c.get('user').id),
+        ))
         .limit(1);
     if (!owned) throw notFoundException(c, 'habit_not_found');
+    return owned;
 }
 
 /** The habit must belong to the user and not be frozen. */
-async function assertTrackableHabit(c: Context, habitId: number) {
-    await assertOwnedHabit(c, habitId);
+async function trackableHabit(c: Context, ref: HabitRef): Promise<{ id: number; uuid: string }> {
+    const habit = await ownedHabit(c, ref);
     const user = c.get('user');
     const frozen = await computeFrozenHabitsForUser(user.id, user.role);
-    if (frozen.has(habitId)) throw frozenHabitException(habitId);
+    if (frozen.has(habit.id)) throw frozenHabitException(habit.id);
+    return habit;
 }
 
 // Who a row under a habit belongs to, in one query; undefined when the row doesn't exist.
@@ -343,20 +383,21 @@ async function assertLoggableExercise(c: Context, exerciseId: number) {
     if (frozen.has(exerciseId)) throw frozenExerciseException(exerciseId);
 }
 
-const habitIdSchema = z.number().int().positive();
+// Day log writes answer with the row, plus the habit's uuid for clients that name habits by it.
 
 // Sets the day's rating to an absolute value.
 app.post(
     '/check',
     idempotency,
     validator('json', z.object({
-        habitId: habitIdSchema,
+        ...habitRefFields,
         rating: z.number().int(),
         day: localDaySchema.optional(),
-    }).strict()),
+    }).strict().refine(habitRefGiven, habitRefMessage)),
     async (c) => {
-        const { habitId, rating, day } = c.req.valid('json');
-        await assertTrackableHabit(c, habitId);
+        const { rating, day, ...ref } = c.req.valid('json');
+        const habit = await trackableHabit(c, ref);
+        const habitId = habit.id;
         const localDay = resolveDay(c.get('user'), day);
 
         const [row] = await db
@@ -368,7 +409,7 @@ app.post(
             })
             .returning();
 
-        return c.json(row);
+        return c.json({ ...row, habitUuid: habit.uuid });
     }
 );
 
@@ -378,13 +419,14 @@ app.post(
     '/check/increment',
     idempotency,
     validator('json', z.object({
-        habitId: habitIdSchema,
+        ...habitRefFields,
         delta: z.number().int().refine((d) => d !== 0, 'delta must not be 0'),
         day: localDaySchema.optional(),
-    }).strict()),
+    }).strict().refine(habitRefGiven, habitRefMessage)),
     async (c) => {
-        const { habitId, delta, day } = c.req.valid('json');
-        await assertTrackableHabit(c, habitId);
+        const { delta, day, ...ref } = c.req.valid('json');
+        const habit = await trackableHabit(c, ref);
+        const habitId = habit.id;
         const localDay = resolveDay(c.get('user'), day);
 
         const [row] = await db
@@ -396,7 +438,7 @@ app.post(
             })
             .returning();
 
-        return c.json(row);
+        return c.json({ ...row, habitUuid: habit.uuid });
     }
 );
 
@@ -405,12 +447,13 @@ app.post(
     '/day-logs/ensure',
     idempotency,
     validator('json', z.object({
-        habitId: habitIdSchema,
+        ...habitRefFields,
         day: localDaySchema.optional(),
-    }).strict()),
+    }).strict().refine(habitRefGiven, habitRefMessage)),
     async (c) => {
-        const { habitId, day } = c.req.valid('json');
-        await assertTrackableHabit(c, habitId);
+        const { day, ...ref } = c.req.valid('json');
+        const habit = await trackableHabit(c, ref);
+        const habitId = habit.id;
         const localDay = resolveDay(c.get('user'), day);
 
         await db
@@ -424,7 +467,7 @@ app.post(
             .where(and(eq(dayLogs.habitId, habitId), eq(dayLogs.localDay, localDay)))
             .limit(1);
 
-        return c.json(row);
+        return c.json({ ...row, habitUuid: habit.uuid });
     }
 );
 
@@ -488,15 +531,6 @@ app.route('/day-logs', dayLogsRouter);
 
 const positiveInt = z.number().int().positive();
 
-/** Exactly one of [a] and [b]: a parent given by id or by uuid. */
-const oneOf = (a: string, b: string) => (body: Record<string, unknown>) => (body[a] == null) !== (body[b] == null);
-
-function uuidConflictException() {
-    return new HTTPException(409, {
-        res: Response.json({ error: 'uuid_conflict', message: 'This uuid already names another row.' }, { status: 409 }),
-    });
-}
-
 /**
  * The row a create with [uuid] already made, or undefined if there is none. It must sit under the
  * same parent ([sameParent]), or the uuid is someone else's.
@@ -530,7 +564,7 @@ const sessionSchemas = defineCrudSchemas(exerciseSessions, {
     omitFromCreateUpdate: ['id', 'uuid', 'createdAt'],
 });
 
-// Starts a session on a day log, given by id or by (habitId, day). The second form ensures the
+// Starts a session on a day log, given by id or by (habit, day). The second form ensures the
 // day's log first, so a client can start a session without knowing the log's id (the Android
 // outbox, offline).
 app.post(
@@ -538,7 +572,7 @@ app.post(
     idempotency,
     validator('json', z.union([
         z.object({ uuid: z.uuid().optional(), dayLogId: positiveInt }).strict(),
-        z.object({ uuid: z.uuid().optional(), habitId: habitIdSchema, day: localDaySchema.optional() }).strict(),
+        z.object({ uuid: z.uuid().optional(), ...habitRefFields, day: localDaySchema.optional() }).strict().refine(habitRefGiven, habitRefMessage),
     ])),
     async (c) => {
         const body = c.req.valid('json');
@@ -547,16 +581,16 @@ app.post(
             await assertWritable(c, await dayLogOwner(body.dayLogId));
             dayLogId = body.dayLogId;
         } else {
-            await assertTrackableHabit(c, body.habitId);
+            const { id: habitId } = await trackableHabit(c, body);
             const localDay = resolveDay(c.get('user'), body.day);
             await db
                 .insert(dayLogs)
-                .values({ habitId: body.habitId, localDay })
+                .values({ habitId, localDay })
                 .onConflictDoNothing({ target: [dayLogs.habitId, dayLogs.localDay] });
             const [log] = await db
                 .select({ id: dayLogs.id })
                 .from(dayLogs)
-                .where(and(eq(dayLogs.habitId, body.habitId), eq(dayLogs.localDay, localDay)))
+                .where(and(eq(dayLogs.habitId, habitId), eq(dayLogs.localDay, localDay)))
                 .limit(1);
             dayLogId = log.id;
         }
@@ -575,13 +609,13 @@ app.post(
 );
 
 // One habit's sessions on one day, oldest first, each with its logs and their sets: what a session
-// screen shows. Unlike /history, sized for one day.
+// screen shows. Unlike /history, sized for one day. Logs carry their exercise's and list item's uuid.
 app.get(
     '/exercise-sessions',
-    validator('query', z.object({ habitId: z.coerce.number().int().positive(), day: localDaySchema })),
+    validator('query', habitQuerySchema.and(z.object({ day: localDaySchema }))),
     async (c) => {
-        const { habitId, day } = c.req.valid('query');
-        await assertOwnedHabit(c, habitId);
+        const { day, ...ref } = c.req.valid('query');
+        const { id: habitId } = await ownedHabit(c, ref);
 
         const log = await db.query.dayLogs.findFirst({
             where: and(eq(dayLogs.habitId, habitId), eq(dayLogs.localDay, day)),
@@ -601,7 +635,17 @@ app.get(
                 },
             },
         });
-        return c.json(log?.exerciseSessions ?? []);
+        const sessions = log?.exerciseSessions ?? [];
+        type Log = { exerciseId: number; listItemId: number | null };
+        const logs: Log[] = sessions.flatMap((session) => session.exerciseLogs);
+        const [exerciseUuid, listItemUuid] = await Promise.all([
+            exerciseUuids(logs.map((l) => l.exerciseId)),
+            listItemUuids(logs.map((l) => l.listItemId)),
+        ]);
+        return c.json(sessions.map((session) => ({
+            ...session,
+            exerciseLogs: session.exerciseLogs.map((l: Log) => withLogUuids(l, exerciseUuid, listItemUuid)),
+        })));
     }
 );
 
@@ -639,8 +683,8 @@ const exerciseLogUpdateSchema = exerciseLogsSchemas.create
         { message: 'At least one field must be provided for update' }
     );
 
-// Adds an exercise to a session (by id or uuid), optionally with first sets. Returns the log
-// with `sets`.
+// Adds an exercise to a session (by id or uuid), optionally with first sets. The exercise and the
+// list item may be named by id or uuid too. Returns the log with `sets` and both uuids.
 app.post(
     '/exercise-logs',
     idempotency,
@@ -648,9 +692,11 @@ app.post(
         uuid: z.uuid().optional(),
         exerciseSessionId: positiveInt.optional(),
         exerciseSessionUuid: z.uuid().optional(),
-        exerciseId: positiveInt,
+        exerciseId: positiveInt.optional(),
+        exerciseUuid: z.uuid().optional(),
         // Provenance: the list item this was logged from, when it came from a source queue.
         listItemId: positiveInt.nullable().optional(),
+        listItemUuid: z.uuid().nullable().optional(),
         distance: z.number().nullable().optional(),
         duration: z.number().int().nullable().optional(),
         distanceUnit: z.string().nullable().optional(),
@@ -664,20 +710,31 @@ app.post(
         ).optional(),
     }).strict().refine(oneOf('exerciseSessionId', 'exerciseSessionUuid'), {
         message: 'Give exerciseSessionId or exerciseSessionUuid', path: ['exerciseSessionId'],
+    }).refine(oneOf('exerciseId', 'exerciseUuid'), {
+        message: 'Give exerciseId or exerciseUuid', path: ['exerciseId'],
+    }).refine(atMostOne('listItemId', 'listItemUuid'), {
+        message: 'Give listItemId or listItemUuid, not both', path: ['listItemId'],
     })),
     async (c) => {
-        const { uuid, exerciseSessionId, exerciseSessionUuid, exercisePerformances: sets, listItemId: itemId, ...values } = c.req.valid('json');
+        const {
+            uuid, exerciseSessionId, exerciseSessionUuid, exercisePerformances: sets,
+            exerciseId: givenExerciseId, exerciseUuid: givenExerciseUuid,
+            listItemId: givenItemId, listItemUuid: givenItemUuid, ...values
+        } = c.req.valid('json');
         const user = c.get('user');
 
         const session = await sessionOwner(exerciseSessionId != null
             ? eq(exerciseSessions.id, exerciseSessionId)
             : eq(exerciseSessions.uuid, exerciseSessionUuid!));
         await assertWritable(c, session);
-        await assertLoggableExercise(c, values.exerciseId);
+        const exerciseId = givenExerciseId ?? await visibleExerciseIdByUuid(user.id, givenExerciseUuid!);
+        if (exerciseId === undefined) throw notFoundException(c, 'not_found_or_unauthorized');
+        await assertLoggableExercise(c, exerciseId);
 
         // Provenance: only accept a list item that belongs to one of the
         // user's own lists, otherwise the log would point at someone else's
         // routine and skew their adherence reporting.
+        const itemId = givenItemUuid != null ? (await listItemIdByUuid(user.id, givenItemUuid) ?? -1) : givenItemId;
         let listItemId: number | null = null;
         if (itemId != null) {
             const [ownedItem] = await db
@@ -695,17 +752,18 @@ app.post(
                     res: Response.json({
                         error: 'exercise_list_item_not_found',
                         message: 'The referenced list item does not exist or is not yours.',
-                        listItemId: itemId,
+                        ...(givenItemUuid != null ? { listItemUuid: givenItemUuid } : { listItemId: itemId }),
                     }, { status: 400 }),
                 });
             }
             listItemId = ownedItem.id;
         }
 
+        const [exerciseUuid, listItemUuid] = await Promise.all([exerciseUuids([exerciseId]), listItemUuids([listItemId])]);
         return await db.transaction(async (tx) => {
             const [created] = await tx
                 .insert(exerciseLogs)
-                .values({ ...values, uuid, exerciseSessionId: session!.id, listItemId })
+                .values({ ...values, exerciseId, uuid, exerciseSessionId: session!.id, listItemId })
                 .onConflictDoNothing({ target: exerciseLogs.uuid })
                 .returning();
             if (!created) {
@@ -716,7 +774,8 @@ app.post(
                 const existingSets = await tx.select().from(exercisePerformances)
                     .where(eq(exercisePerformances.exerciseLogId, log!.id))
                     .orderBy(asc(exercisePerformances.createdAt), asc(exercisePerformances.id));
-                return c.json({ ...log, sets: existingSets });
+                const uuids = log!.listItemId === listItemId ? listItemUuid : await listItemUuids([log!.listItemId]);
+                return c.json({ ...withLogUuids(log!, await exerciseUuids([log!.exerciseId]), uuids), sets: existingSets });
             }
 
             // If sets provided, use them. If not, do not insert any set.
@@ -731,7 +790,7 @@ app.post(
                     }))
                 ).returning();
             }
-            return c.json({ ...created, sets: setRes });
+            return c.json({ ...withLogUuids(created, exerciseUuid, listItemUuid), sets: setRes });
         });
     }
 );

@@ -3,6 +3,7 @@
   "status": 201,
   "body": {
     "id": 3,
+    "uuid": "00000000-0000-4000-8000-000000000307",
     "userId": "user-id",
     "name": "Dips",
     "description": "Lean forward",

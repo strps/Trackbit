@@ -82,9 +82,9 @@ describe('GET /api/tracker/days', () => {
             start: '2026-01-01',
             end: '2026-01-10',
             days: [
-                { habitId: read.id, day: '2026-01-01', rating: 2, sessionCount: 0 },
-                { habitId: read.id, day: '2026-01-05', rating: 2, sessionCount: 0 },
-                { habitId: gym.id, day: '2026-01-03', rating: null, sessionCount: 2 },
+                { habitId: read.id, habitUuid: read.uuid, day: '2026-01-01', rating: 2, sessionCount: 0 },
+                { habitId: read.id, habitUuid: read.uuid, day: '2026-01-05', rating: 2, sessionCount: 0 },
+                { habitId: gym.id, habitUuid: gym.uuid, day: '2026-01-03', rating: null, sessionCount: 2 },
             ],
         })
     })

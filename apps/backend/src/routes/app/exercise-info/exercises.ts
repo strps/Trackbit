@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { z } from 'zod';
 import { and, asc, count, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import db from '../../../db/db.js';
@@ -8,6 +8,7 @@ import { isUniqueViolation } from '../../../lib/db-errors.js';
 import { computeFrozenExercisesForUser, getEffectiveLimits } from '../../../lib/user-limits.js';
 import { frozenExerciseException } from '../../../lib/frozen-errors.js';
 import { t } from '../../../i18n/index.js';
+import { createdBefore, ownExerciseIdByUuid, uuidParamSchema } from '../../../lib/uuid-refs.js';
 
 type AuthEnv = {
     Variables: {
@@ -31,7 +32,11 @@ const exerciseBodySchema = z.object({
     muscleGroups: z.array(z.number().int().positive()).max(50).transform((ids) => [...new Set(ids)]),
 }).strict()
 
-const createSchema = exerciseBodySchema.extend({ muscleGroups: exerciseBodySchema.shape.muscleGroups.default([]) })
+const createSchema = exerciseBodySchema.extend({
+    // Chosen by a client creating the exercise offline; a retry with it returns the same exercise.
+    uuid: z.uuid().optional(),
+    muscleGroups: exerciseBodySchema.shape.muscleGroups.default([]),
+})
 const updateSchema = exerciseBodySchema.partial().refine(
     (data) => Object.values(data).some((value) => value !== undefined),
     { message: 'At least one field must be provided for update' },
@@ -70,6 +75,7 @@ async function loadExercises(user: { id: string; role?: string | null }, locale:
         .with(latestSetSubquery)
         .select({
             id: exercises.id,
+            uuid: exercises.uuid,
             userId: exercises.userId,
             name: sql<string>`COALESCE(${exercises.nameI18n}->>${locale}, ${exercises.nameI18n}->>'en', ${exercises.name})`.as('name'),
             description: sql<string | null>`COALESCE(${exercises.descriptionI18n}->>${locale}, ${exercises.descriptionI18n}->>'en', ${exercises.description})`.as('description'),
@@ -123,7 +129,7 @@ async function loadExercises(user: { id: string; role?: string | null }, locale:
 
 /** The user's own exercise [id], or undefined (missing, a system one, or another user's). */
 async function ownedExercise(userId: string, id: number) {
-    const [row] = await db.select({ id: exercises.id }).from(exercises)
+    const [row] = await db.select({ id: exercises.id, uuid: exercises.uuid }).from(exercises)
         .where(and(eq(exercises.id, id), eq(exercises.userId, userId)))
     return row
 }
@@ -160,10 +166,18 @@ const exerciseRouter = new Hono<AuthEnv>()
 
 exerciseRouter.get('/', async (c) => c.json(await loadExercises(c.get('user'), c.get('locale') ?? 'en')))
 
+/** The exercise a create with [uuid] already made (a retry), if any; see lib/uuid-refs.ts. */
+const exerciseCreatedBefore = (uuid: string | undefined, userId: string) =>
+    createdBefore(uuid, (u) => db.select({ id: exercises.id, userId: exercises.userId }).from(exercises).where(eq(exercises.uuid, u)), userId)
+
 exerciseRouter.post('/', validator('json', createSchema), async (c) => {
     const user = c.get('user')
     const locale = c.get('locale') ?? 'en'
     const { muscleGroups: groupIds, ...values } = c.req.valid('json')
+
+    // A retried create answers with what it made, before the limits (see habits).
+    const existing = await exerciseCreatedBefore(values.uuid, user.id)
+    if (existing) return c.json((await loadExercises(user, locale, existing.id))[0], 201)
 
     const limits = await getEffectiveLimits(user.role)
     if (limits && limits.maxCustomExercises != null) {
@@ -191,21 +205,28 @@ exerciseRouter.post('/', validator('json', createSchema), async (c) => {
         return c.json(exercise, 201)
     } catch (err) {
         if (err instanceof UnknownMuscleGroup) return c.json(unknownMuscleGroupResponse, 400)
+        // The same create ran concurrently and won.
+        if (isUniqueViolation(err, 'exercises_uuid_unique')) {
+            const won = await exerciseCreatedBefore(values.uuid, user.id)
+            if (won) return c.json((await loadExercises(user, locale, won.id))[0], 201)
+        }
         if (isUniqueViolation(err, EXERCISE_NAME_UNIQUE_INDEX)) return c.json(nameTakenResponse(locale), 409)
         throw err
     }
 })
 
-// Only the user's own (custom) exercises can change; system ones are read-only.
-exerciseRouter.patch('/:id', validator('param', idParamSchema), validator('json', updateSchema), async (c) => {
+const notFound = (c: Context<AuthEnv>) => c.json({ error: t('errors', 'not_found_or_unauthorized', c.get('locale') ?? 'en') }, 404)
+
+/**
+ * Only the user's own (custom) exercises can change; system ones are read-only. Applies the fields
+ * given and nothing else, so concurrent edits of different fields both survive.
+ */
+async function updateExercise(c: Context<AuthEnv>, id: number | undefined, body: z.infer<typeof updateSchema>) {
     const user = c.get('user')
     const locale = c.get('locale') ?? 'en'
-    const { id } = c.req.valid('param')
-    const { muscleGroups: groupIds, ...values } = c.req.valid('json')
+    const { muscleGroups: groupIds, ...values } = body
 
-    if (!(await ownedExercise(user.id, id))) {
-        return c.json({ error: t('errors', 'not_found_or_unauthorized', locale) }, 404)
-    }
+    if (id === undefined || !(await ownedExercise(user.id, id))) return notFound(c)
     const frozen = await computeFrozenExercisesForUser(user.id, user.role)
     if (frozen.has(id)) throw frozenExerciseException(id)
 
@@ -221,24 +242,31 @@ exerciseRouter.patch('/:id', validator('param', idParamSchema), validator('json'
         if (isUniqueViolation(err, EXERCISE_NAME_UNIQUE_INDEX)) return c.json(nameTakenResponse(locale), 409)
         throw err
     }
-})
+}
+
+exerciseRouter.patch('/:id', validator('param', idParamSchema), validator('json', updateSchema),
+    (c) => updateExercise(c, c.req.valid('param').id, c.req.valid('json')))
+
+exerciseRouter.patch('/uuid/:uuid', validator('param', uuidParamSchema), validator('json', updateSchema),
+    async (c) => updateExercise(c, await ownExerciseIdByUuid(c.get('user').id, c.req.valid('param').uuid), c.req.valid('json')))
 
 // Deletes the exercise with every log of it (and their sets): the sessions stay, without it.
 // Frozen ones can be deleted too; that's how a slot is freed. Only the owner logs a custom
 // exercise, so its logs are all this user's. The foreign key stays NO ACTION so that deleting
 // a system exercise (admin) can't silently wipe every user's history.
-exerciseRouter.delete('/:id', validator('param', idParamSchema), async (c) => {
-    const user = c.get('user')
-    const { id } = c.req.valid('param')
-
-    if (!(await ownedExercise(user.id, id))) {
-        return c.json({ error: t('errors', 'not_found_or_unauthorized', c.get('locale') ?? 'en') }, 404)
-    }
+async function deleteExercise(c: Context<AuthEnv>, id: number | undefined) {
+    const owned = id === undefined ? undefined : await ownedExercise(c.get('user').id, id)
+    if (!owned) return notFound(c)
     await db.transaction(async (tx) => {
-        await tx.delete(exerciseLogs).where(eq(exerciseLogs.exerciseId, id))
-        await tx.delete(exercises).where(eq(exercises.id, id))
+        await tx.delete(exerciseLogs).where(eq(exerciseLogs.exerciseId, owned.id))
+        await tx.delete(exercises).where(eq(exercises.id, owned.id))
     })
-    return c.json({ success: true, id })
-})
+    return c.json({ success: true, id: owned.id, uuid: owned.uuid })
+}
+
+exerciseRouter.delete('/:id', validator('param', idParamSchema), (c) => deleteExercise(c, c.req.valid('param').id))
+
+exerciseRouter.delete('/uuid/:uuid', validator('param', uuidParamSchema),
+    async (c) => deleteExercise(c, await ownExerciseIdByUuid(c.get('user').id, c.req.valid('param').uuid)))
 
 export default exerciseRouter;

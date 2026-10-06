@@ -4,6 +4,7 @@
   "body": [
     {
       "id": 1,
+      "uuid": "00000000-0000-4000-8000-000000000302",
       "userId": "user-id",
       "authorId": "user-id",
       "name": "Pull day",
@@ -14,6 +15,7 @@
       "items": [
         {
           "id": 1,
+          "uuid": "00000000-0000-4000-8000-000000000303",
           "listId": 1,
           "exerciseId": 2,
           "position": 0,
@@ -23,7 +25,8 @@
           "targetDuration": 90,
           "targetDistance": 1.5,
           "restSeconds": 120,
-          "notes": "Pause at the top"
+          "notes": "Pause at the top",
+          "exerciseUuid": "00000000-0000-4000-8000-000000000301"
         }
       ],
       "frozen": false

@@ -1,8 +1,9 @@
 {
-  "request": "PATCH /api/exercise-lists/:id",
+  "request": "PATCH /api/exercise-lists/uuid/:uuid",
   "status": 200,
   "body": {
     "id": 1,
+    "uuid": "00000000-0000-4000-8000-000000000401",
     "userId": "user-id",
     "authorId": "user-id",
     "name": "Legs",
@@ -13,6 +14,7 @@
     "items": [
       {
         "id": 1,
+        "uuid": "00000000-0000-4000-8000-000000000402",
         "listId": 1,
         "exerciseId": 1,
         "position": 0,
@@ -22,10 +24,12 @@
         "targetDuration": null,
         "targetDistance": null,
         "restSeconds": 180,
-        "notes": "Belt"
+        "notes": "Belt",
+        "exerciseUuid": "ffffffff-0000-4000-8000-000000000001"
       },
       {
         "id": 2,
+        "uuid": "00000000-0000-4000-8000-000000000403",
         "listId": 1,
         "exerciseId": 2,
         "position": 1,
@@ -35,7 +39,8 @@
         "targetDuration": null,
         "targetDistance": null,
         "restSeconds": null,
-        "notes": null
+        "notes": null,
+        "exerciseUuid": "ffffffff-0000-4000-8000-000000000002"
       }
     ],
     "frozen": false

@@ -7,36 +7,42 @@
     "days": [
       {
         "habitId": 1,
+        "habitUuid": "00000000-0000-4000-8000-000000000201",
         "day": "2026-01-07",
         "rating": 1,
         "sessionCount": 0
       },
       {
         "habitId": 1,
+        "habitUuid": "00000000-0000-4000-8000-000000000201",
         "day": "2026-01-08",
         "rating": 3,
         "sessionCount": 0
       },
       {
         "habitId": 1,
+        "habitUuid": "00000000-0000-4000-8000-000000000201",
         "day": "2026-01-09",
         "rating": 4,
         "sessionCount": 0
       },
       {
         "habitId": 1,
+        "habitUuid": "00000000-0000-4000-8000-000000000201",
         "day": "2026-01-10",
         "rating": 2,
         "sessionCount": 0
       },
       {
         "habitId": 2,
+        "habitUuid": "00000000-0000-4000-8000-000000000202",
         "day": "2026-01-08",
         "rating": 0,
         "sessionCount": 0
       },
       {
         "habitId": 3,
+        "habitUuid": "00000000-0000-4000-8000-000000000203",
         "day": "2026-01-09",
         "rating": null,
         "sessionCount": 1

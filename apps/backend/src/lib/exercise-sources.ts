@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from 'drizzle-orm'
+import { and, asc, eq, getTableColumns, inArray } from 'drizzle-orm'
 import type {
     ExerciseSourceDescriptor,
     ExerciseSourceRef,
@@ -10,14 +10,24 @@ import type {
 import { serializeSourceKey } from '@trackbit/types'
 import db from '../db/db.js'
 import { exerciseListItems, exerciseLists } from '../db/schema/app/exercise-lists.js'
+import { exercises } from '../db/schema/app/exercises.js'
 import { computeFrozenListIds, computeFrozenListsForUser, getEffectiveLimits } from './user-limits.js'
 
 // Resolution for every exercise source kind lives here. Adding a kind (Phase 4
 // programs, Phase 5 computed strategies) means adding a branch here and nothing
 // else: the two endpoints and the picker both stay untouched.
 
-type ListItemRow = typeof exerciseListItems.$inferSelect
+/** An item with its exercise's uuid, which clients that name exercises by uuid read. */
+export type ListItemRow = typeof exerciseListItems.$inferSelect & { exerciseUuid: string }
 type ListRow = typeof exerciseLists.$inferSelect
+
+/** Items with their exercise's uuid; add `.where(…).orderBy(…)`. */
+export function selectItems(tx: Pick<typeof db, 'select'> = db) {
+    return tx
+        .select({ ...getTableColumns(exerciseListItems), exerciseUuid: exercises.uuid })
+        .from(exerciseListItems)
+        .innerJoin(exercises, eq(exercises.id, exerciseListItems.exerciseId))
+}
 
 function prescriptionOf(item: ListItemRow): Prescription | null {
     const prescription: Prescription = {
@@ -48,7 +58,7 @@ function capabilitiesOf(ref: ExerciseSourceRef, frozen: boolean, prescribes: boo
 }
 
 function listDescriptor(list: ListRow, items: ListItemRow[], frozen: boolean): ExerciseSourceDescriptor {
-    const ref: ExerciseSourceRef = { kind: 'list', listId: list.id }
+    const ref: ExerciseSourceRef = { kind: 'list', listUuid: list.uuid }
     const prescribes = items.some((item) => prescriptionOf(item) !== null)
 
     return {
@@ -64,8 +74,10 @@ function listDescriptor(list: ListRow, items: ListItemRow[], frozen: boolean): E
 function toQueueEntries(items: ListItemRow[]): QueueEntry[] {
     return items.map((item) => ({
         exerciseId: item.exerciseId,
+        exerciseUuid: item.exerciseUuid,
         position: item.position,
         listItemId: item.id,
+        listItemUuid: item.uuid,
         prescription: prescriptionOf(item),
     }))
 }
@@ -89,9 +101,7 @@ export async function loadOwnedListsWithItems(userId: string): Promise<ListWithI
 
     if (lists.length === 0) return []
 
-    const items = await db
-        .select()
-        .from(exerciseListItems)
+    const items = await selectItems()
         .where(inArray(exerciseListItems.listId, lists.map((list) => list.id)))
         .orderBy(asc(exerciseListItems.listId), asc(exerciseListItems.position))
 
@@ -103,27 +113,25 @@ export async function loadOwnedListsWithItems(userId: string): Promise<ListWithI
     return lists.map((list) => ({ list, items: byList.get(list.id) ?? [] }))
 }
 
-// One list the user owns, or null — the single guard every read path funnels
-// through, so an unknown or unowned id is always indistinguishable from absent.
+// One list the user owns (by id or uuid), or null — the single guard every read
+// path funnels through, so an unknown or unowned id is always indistinguishable from absent.
 export async function loadOwnedListWithItems(
     userId: string,
-    listId: number
+    list: { id: number } | { uuid: string }
 ): Promise<ListWithItems | null> {
-    const [list] = await db
+    const [row] = await db
         .select()
         .from(exerciseLists)
-        .where(and(eq(exerciseLists.id, listId), eq(exerciseLists.userId, userId)))
+        .where(and('id' in list ? eq(exerciseLists.id, list.id) : eq(exerciseLists.uuid, list.uuid), eq(exerciseLists.userId, userId)))
         .limit(1)
 
-    if (!list) return null
+    if (!row) return null
 
-    const items = await db
-        .select()
-        .from(exerciseListItems)
-        .where(eq(exerciseListItems.listId, list.id))
+    const items = await selectItems()
+        .where(eq(exerciseListItems.listId, row.id))
         .orderBy(asc(exerciseListItems.position))
 
-    return { list, items }
+    return { list: row, items }
 }
 
 // GET /api/exercise-sources — everything the user can currently pick from.
@@ -154,7 +162,7 @@ export async function resolveExerciseSource(
         return null
     }
 
-    const found = await loadOwnedListWithItems(userId, ref.listId)
+    const found = await loadOwnedListWithItems(userId, { uuid: ref.listUuid })
     if (!found) return null
 
     const { list, items } = found

@@ -1,5 +1,5 @@
 {
-  "request": "GET /api/exercise-sources/list::id",
+  "request": "GET /api/exercise-sources/list::uuid",
   "status": 404,
   "body": {
     "error": "Exercise source not found"

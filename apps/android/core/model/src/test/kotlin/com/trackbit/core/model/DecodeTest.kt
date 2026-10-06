@@ -236,7 +236,7 @@ class DecodeTest {
 
     @Test fun exerciseSources() {
         val (pull, legs) = contract<List<ExerciseSourceDescriptor>>("exercise-sources.json")
-        assertEquals("list:1", pull.key)
+        assertEquals("list:00000000-0000-4000-8000-000000000302", pull.key)
         assertEquals("Pull day", pull.name)
         assertNull(pull.nameKey)
         assertEquals(1, pull.itemCount)
@@ -247,7 +247,7 @@ class DecodeTest {
 
     @Test fun exerciseSource() {
         val queue = contract<ResolvedQueue>("exercise-source.json")
-        assertEquals("list:1", queue.descriptor.key)
+        assertEquals("list:00000000-0000-4000-8000-000000000302", queue.descriptor.key)
         assertNull(queue.emptyReason)
         val entry = queue.entries.single()
         assertEquals(1, entry.listItemId)
@@ -268,7 +268,7 @@ class DecodeTest {
         assertEquals("America/Costa_Rica", session.user.timezone)
         assertEquals(UnitSystem.Imperial, session.user.unitSystem)
         assertEquals(ExerciseLogCardStyle.Compact, session.user.exerciseLogCardStyle)
-        assertEquals("list:1", session.user.preferredExerciseSource)
+        assertEquals("list:00000000-0000-4000-8000-000000000601", session.user.preferredExerciseSource)
         assertEquals(120, session.user.defaultRestSeconds)
     }
 

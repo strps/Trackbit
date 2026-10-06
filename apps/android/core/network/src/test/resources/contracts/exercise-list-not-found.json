@@ -1,5 +1,5 @@
 {
-  "request": "PATCH /api/exercise-lists/:id",
+  "request": "PATCH /api/exercise-lists/uuid/:uuid",
   "status": 404,
   "body": {
     "error": "Exercise list not found"
