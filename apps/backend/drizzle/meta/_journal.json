@@ -113,6 +113,13 @@
       "when": 1791226663661,
       "tag": "0015_exercise_list_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1791240375624,
+      "tag": "0016_issue_rules",
+      "breakpoints": true
     }
   ]
 }

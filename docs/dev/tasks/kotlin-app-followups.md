@@ -88,5 +88,8 @@ These are covered by unit tests but were not exercised on the emulator for W1. R
 - **The web analytics heatmap rates a workout day by its exercise-log count**, the app (tracker, widgets, analytics) by its session count (D6). Pick one on the web.
 - **The web's exercise chart preselects the catalog's first exercise**, even one the habit never logged (D6). The app preselects the first exercise with sets. The web also lists exercises logged without sets; the app's list comes from `/sets`, so it doesn't.
 
+- **No rate limit on `POST /api/issues`** (E6): any signed-in user can file reports without limit (text is bounded: description ≤ 5000, stack trace ≤ 20 000). `middleware/rateLimit.ts` is unused and keys by IP through `hono/cloudflare-workers`; a per-user limit would fit better if reports get abused.
+- **The app doesn't offer a crash report** (E6): the web's error page pre-fills the stack trace; the app has no uncaught-exception hook. Store the last crash and offer it on the report screen on the next launch, if crashes turn up.
+
 - **Local smoke user** `b10-smoke@example.com` exists in the local dev DB only. Delete it when it's no longer useful.
 - **Timezones:** the web tracker takes "today" from the browser's timezone, and the app and widgets use the stored one. The plan's §6 proposal isn't built. Revisit if users travel across timezones and see mismatched days.

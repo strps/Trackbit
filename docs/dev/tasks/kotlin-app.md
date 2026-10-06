@@ -9,7 +9,7 @@ A native Android client for Trackbit written in Kotlin + Jetpack Compose. It con
 Before any of these can ship, a thin foundation (auth, API client, local cache) and a few backend changes have to exist. Those are Phase 0 below, split so that several people or agents can work in parallel.
 
 **Branch:** `kotlin-app`
-**Status:** Phase 0 done 2026-09-26 ([handoff](../handoffs/kotlin-app-B.md)). Phase 1 done on the emulator 2026-10-02 ([handoff](../handoffs/kotlin-app-C.md)). Phase 2 D1–D6 done on the emulator by 2026-10-03 ([handoff](../handoffs/kotlin-app-D.md)); its exit check is deferred to the final pass with the real-device check (user, 2026-10-03). Phase 3 in progress: split E1–E6, E1 (Settings tab + habits config) done 2026-10-03 ([handoff](../handoffs/kotlin-app-E.md)).
+**Status:** Phase 0 done 2026-09-26 ([handoff](../handoffs/kotlin-app-B.md)). Phase 1 done on the emulator 2026-10-02 ([handoff](../handoffs/kotlin-app-C.md)). Phase 2 D1–D6 done on the emulator by 2026-10-03 ([handoff](../handoffs/kotlin-app-D.md)); its exit check is deferred to the final pass with the real-device check (user, 2026-10-03). Phase 3: split E1–E6, all done on the emulator by 2026-10-05 ([handoff](../handoffs/kotlin-app-E.md)); its exit check (parity with the web routes) is next.
 **Deferred follow-ups:** [kotlin-app-followups.md](kotlin-app-followups.md) (non-blocking issues and checks, to pick up after Phase 1).
 
 ---
@@ -210,7 +210,7 @@ Split (user, 2026-10-03): a third bottom tab **Settings** hub (`feature/account`
 - [x] **Exercise lists** (E4 2026-10-05, `feature/exercise-lists`): CRUD, reorder lists (`PATCH /reorder`, one transaction) and items, per-item targets (prescriptions, kg/km, ahead of the web, user), add to list from the picker/library (`POST /:id/items`); rules in `ExerciseListRules`, migration `0015`
 - [x] **Account** (E2, 2026-10-03): profile name, locale (en/es; the app's language follows the user's), timezone (kept the device's automatically, user), unit system, card style, default rest, change password (`PATCH /api/me/preferences`, Better-Auth `update-user` / `change-password`); sign-out is on the Settings hub. Preferred exercise source stays in the session picker
 - [x] **Auth screens** (E5 2026-10-05, `feature/auth`): sign-up (optional invite code; app language + device zone), forgot password (the emailed link opens the web's new `/reset-password`, which revokes every session), resend verification on `EMAIL_NOT_VERIFIED`. Server fixes: invited sign-ups (broken since E2), atomic invite use with stable error codes, server-built reset link. Google sign-in deferred to the backlog (user, 2026-10-03): it needs an Android OAuth client in Google Cloud and a Better-Auth id-token sign-in.
-- [ ] Feedback/issue report (`POST /api/issues`)
+- [x] **Issue report** (E6 2026-10-05, `feature/account`): Settings → Report a Bug, bug or feedback, sent with the app's version and device (`client`, new column). Server rules: text trimmed and bounded, strict body, migration `0016`; the admin's issue table now shows the report itself
 
 **Exit:** feature parity with `apps/frontend` routes (`/tracker`, `/sessions`, `/stats`, `/config/*`, `/account-settings`).
 

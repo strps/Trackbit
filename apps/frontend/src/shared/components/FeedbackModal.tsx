@@ -8,6 +8,11 @@ import { useTranslation } from "react-i18next";
 
 const API_URL = `${import.meta.env.VITE_API_URL}/issues`;
 
+// The server's limits (`POST /api/issues`).
+const DESCRIPTION_MAX = 5000;
+const CLIENT_MAX = 255;
+const STACK_TRACE_MAX = 20_000;
+
 const TYPE_IDS = [
     { value: "bug" as const, icon: Bug },
     { value: "feedback" as const, icon: MessageSquare },
@@ -54,9 +59,10 @@ export const FeedbackModal = ({ open, onClose, initialStackTrace, initialType }:
                 credentials: "include",
                 body: JSON.stringify({
                     type,
-                    description,
+                    description: description.trim(),
                     path,
-                    ...(stackTrace ? { stackTrace } : {}),
+                    client: navigator.userAgent.slice(0, CLIENT_MAX),
+                    ...(stackTrace ? { stackTrace: stackTrace.slice(0, STACK_TRACE_MAX) } : {}),
                 }),
             });
             if (!res.ok) throw new Error("Failed to submit");
@@ -111,6 +117,7 @@ export const FeedbackModal = ({ open, onClose, initialStackTrace, initialType }:
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
                                     rows={4}
+                                    maxLength={DESCRIPTION_MAX}
                                     className="resize-none"
                                 />
                             </div>

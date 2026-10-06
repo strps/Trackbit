@@ -31,6 +31,7 @@ app.get('/', async (c) => {
             type: issues.type,
             title: issues.title,
             path: issues.path,
+            client: issues.client,
             description: issues.description,
             stackTrace: issues.stackTrace,
             status: issues.status,

@@ -7,6 +7,8 @@ export interface AdminIssue {
     type: 'bug' | 'feedback'
     title: string | null
     path: string | null
+    /** What sent it: the web's user agent, or the app's version and device. */
+    client: string | null
     description: string
     stackTrace: string | null
     status: 'open' | 'resolved' | 'closed'

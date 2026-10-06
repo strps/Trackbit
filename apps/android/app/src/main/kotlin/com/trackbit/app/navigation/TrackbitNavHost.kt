@@ -32,6 +32,7 @@ import com.trackbit.core.auth.AuthState
 import com.trackbit.core.designsystem.icon.UiIcons
 import com.trackbit.core.i18n.R
 import com.trackbit.feature.account.AccountScreen
+import com.trackbit.feature.account.IssueReportScreen
 import com.trackbit.feature.account.SettingsScreen
 import com.trackbit.feature.analytics.AnalyticsScreen
 import com.trackbit.feature.auth.ForgotPasswordScreen
@@ -99,6 +100,9 @@ data object ExerciseListsRoute
 /** A list's editor. The name matches `ListEditorViewModel.LIST_ID`. */
 @Serializable
 data class ListEditorRoute(val listId: Int)
+
+@Serializable
+data object IssueReportRoute
 
 /** The signed-in screens the bottom bar switches between, like the web's header links. */
 private enum class TopLevel(val route: Any, @StringRes val label: Int, @DrawableRes val icon: Int) {
@@ -174,10 +178,12 @@ private fun AuthNavHost(graph: Any, onSignOut: () -> Unit) {
                         onOpenHabits = { navController.navigate(HabitsConfigRoute) },
                         onOpenExercises = { navController.navigate(ExerciseLibraryRoute) },
                         onOpenLists = { navController.navigate(ExerciseListsRoute) },
+                        onReportIssue = { navController.navigate(IssueReportRoute) },
                         onSignOut = onSignOut,
                     )
                 }
                 composable<AccountRoute> { AccountScreen(onBack = { navController.popBackStack() }) }
+                composable<IssueReportRoute> { IssueReportScreen(onBack = { navController.popBackStack() }) }
                 composable<HabitsConfigRoute> {
                     HabitsConfigScreen(
                         onBack = { navController.popBackStack() },

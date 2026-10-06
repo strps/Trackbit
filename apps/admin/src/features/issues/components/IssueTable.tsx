@@ -76,17 +76,26 @@ function buildColumns(
             },
         },
         {
-            accessorKey: "title",
-            header: ({ column }) => <DataTableColumnHeader column={column} title="Title / Path" />,
+            accessorKey: "description",
+            header: ({ column }) => <DataTableColumnHeader column={column} title="Report" />,
             cell: ({ row }) => {
                 const issue = row.original;
                 return (
-                    <div className="grid gap-0.5 max-w-64">
-                        <span className="font-medium truncate">
-                            {issue.title ?? <span className="text-muted-foreground italic">No title</span>}
-                        </span>
-                        {issue.path && (
-                            <span className="text-xs text-muted-foreground font-mono truncate">{issue.path}</span>
+                    <div className="grid gap-1 max-w-md">
+                        {issue.title && <span className="font-medium truncate">{issue.title}</span>}
+                        <p className="text-sm whitespace-pre-wrap break-words line-clamp-4" title={issue.description}>
+                            {issue.description}
+                        </p>
+                        {(issue.path || issue.client) && (
+                            <span className="text-xs text-muted-foreground font-mono truncate" title={issue.client ?? undefined}>
+                                {[issue.path, issue.client].filter(Boolean).join(" · ")}
+                            </span>
+                        )}
+                        {issue.stackTrace && (
+                            <details className="text-xs">
+                                <summary className="cursor-pointer text-muted-foreground">Stack trace</summary>
+                                <pre className="mt-1 max-h-60 overflow-auto whitespace-pre-wrap break-all font-mono">{issue.stackTrace}</pre>
+                            </details>
                         )}
                     </div>
                 );

@@ -11,6 +11,7 @@ object UiIcons {
     val ArrowLeft = R.drawable.ic_ui_arrow_left
     val BarChart = R.drawable.ic_ui_bar_chart
     val BarChart2 = R.drawable.ic_ui_bar_chart_2
+    val Bug = R.drawable.ic_ui_bug
     val CalendarDays = R.drawable.ic_ui_calendar_days
     val CalendarSearch = R.drawable.ic_ui_calendar_search
     val Check = R.drawable.ic_ui_check
@@ -29,6 +30,7 @@ object UiIcons {
     val Lock = R.drawable.ic_ui_lock
     val LogOut = R.drawable.ic_ui_log_out
     val MapPin = R.drawable.ic_ui_map_pin
+    val MessageSquare = R.drawable.ic_ui_message_square
     val Minus = R.drawable.ic_ui_minus
     val MoreVertical = R.drawable.ic_ui_more_vertical
     val Pencil = R.drawable.ic_ui_pencil
@@ -39,6 +41,7 @@ object UiIcons {
     val Search = R.drawable.ic_ui_search
     val Settings = R.drawable.ic_ui_settings
     val ShieldAlert = R.drawable.ic_ui_shield_alert
+    val Smartphone = R.drawable.ic_ui_smartphone
     val Stop = R.drawable.ic_ui_stop
     val Timer = R.drawable.ic_ui_timer
     val Trash = R.drawable.ic_ui_trash

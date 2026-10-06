@@ -7,6 +7,7 @@ import com.trackbit.core.network.service.AuthService
 import com.trackbit.core.network.service.ExerciseListService
 import com.trackbit.core.network.service.ExerciseService
 import com.trackbit.core.network.service.HabitsService
+import com.trackbit.core.network.service.IssueService
 import com.trackbit.core.network.service.MeService
 import com.trackbit.core.network.service.TrackerService
 import com.trackbit.core.network.trackbitOkHttpClient
@@ -56,4 +57,8 @@ object NetworkModule {
     @Provides
     @Singleton
     fun meService(retrofit: Retrofit): MeService = retrofit.create()
+
+    @Provides
+    @Singleton
+    fun issueService(retrofit: Retrofit): IssueService = retrofit.create()
 }

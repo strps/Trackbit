@@ -15,25 +15,32 @@ const app = new Hono<AuthEnv>()
 
 app.use('*', requireAuth)
 
+// The report form's rules (web and Android `IssueRules`). Text is stored trimmed; a blank
+// optional field (omitted, null or blank) is stored as null.
+const optionalText = (max: number) => z.string().trim().max(max).nullish().transform((s) => s || null)
+
+const issueBodySchema = z.object({
+    type: z.enum(['bug', 'feedback']).default('bug'),
+    title: optionalText(255),
+    path: optionalText(500),
+    client: optionalText(255),
+    description: z.string().trim().min(1).max(5000),
+    stackTrace: optionalText(20_000),
+}).strict()
+
 app.post(
     '/',
-    validator('json', z.object({
-        type: z.enum(['bug', 'feedback']).default('bug'),
-        title: z.string().max(255).optional(),
-        path: z.string().optional(),
-        description: z.string().min(1),
-        stackTrace: z.string().optional(),
-    })),
+    validator('json', issueBodySchema),
     async (c) => {
         const user = c.get('user')
         const body = c.req.valid('json')
 
-        const result = await db.insert(issues).values({
+        const [issue] = await db.insert(issues).values({
             ...body,
             userId: user.id,
         }).returning()
 
-        return c.json(result[0], 201)
+        return c.json(issue, 201)
     }
 )
 
