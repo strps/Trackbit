@@ -15,8 +15,8 @@ interface TimerDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun start(timer: TimerEntity): Long
 
-    @Query("SELECT * FROM timers WHERE habitId = :habitId")
-    suspend fun forHabit(habitId: Int): TimerEntity?
+    @Query("SELECT * FROM timers WHERE habitUuid = :habitUuid")
+    suspend fun forHabit(habitUuid: String): TimerEntity?
 
     @Query("DELETE FROM timers WHERE id = :id")
     suspend fun delete(id: Long)
@@ -25,7 +25,7 @@ interface TimerDao {
     suspend fun setStartedAt(id: Long, startedAt: Instant)
 
     /** Every running habit timer, oldest first. */
-    @Query("SELECT * FROM timers WHERE habitId IS NOT NULL ORDER BY startedAt, id")
+    @Query("SELECT * FROM timers WHERE habitUuid IS NOT NULL ORDER BY startedAt, id")
     fun observeHabitTimers(): Flow<List<TimerEntity>>
 
     @Query("SELECT * FROM timers WHERE endsAt IS NOT NULL LIMIT 1")
@@ -44,6 +44,6 @@ interface TimerDao {
     @Transaction
     suspend fun replaceRest(startedAt: Instant, endsAt: Instant): Long {
         deleteRest()
-        return start(TimerEntity(habitId = null, localDay = null, startedAt = startedAt, endsAt = endsAt))
+        return start(TimerEntity(habitUuid = null, localDay = null, startedAt = startedAt, endsAt = endsAt))
     }
 }

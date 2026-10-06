@@ -26,22 +26,23 @@ interface ExerciseListsRepository {
     /** Every list with its items, in order. */
     suspend fun lists(): ConfigResult<List<ExerciseList>>
 
+    /** [request] names the new list by its uuid, picked once per form so a retry can't create it twice. */
     suspend fun create(request: ExerciseListRequest): ConfigResult<ExerciseList>
 
     /** Renames the list; a frozen one fails with [ConfigError.ExerciseListFrozen]. */
-    suspend fun update(id: Int, request: ExerciseListRequest): ConfigResult<ExerciseList>
+    suspend fun update(uuid: String, request: ExerciseListRequest): ConfigResult<ExerciseList>
 
     /** Every list in its new order. Frozen lists must stay at the end. */
-    suspend fun reorder(ids: List<Int>): ConfigResult<List<ExerciseList>>
+    suspend fun reorder(uuids: List<String>): ConfigResult<List<ExerciseList>>
 
     /** Deletes the list (frozen too); logs made from it keep their exercise. */
-    suspend fun delete(id: Int): ConfigResult<Unit>
+    suspend fun delete(uuid: String): ConfigResult<Unit>
 
     /** Replaces the list's items with [items], in this order, prescriptions included. */
-    suspend fun saveItems(id: Int, items: List<ListItemDraft>): ConfigResult<ExerciseListItemsResponse>
+    suspend fun saveItems(uuid: String, items: List<ListItemDraft>): ConfigResult<ExerciseListItemsResponse>
 
-    /** Appends [exerciseId] at the end of the list, unprescribed. */
-    suspend fun append(id: Int, exerciseId: Int): ConfigResult<ExerciseListItemsResponse>
+    /** Appends [exerciseUuid] at the end of list [uuid] as a new item, unprescribed. */
+    suspend fun append(uuid: String, exerciseUuid: String): ConfigResult<ExerciseListItemsResponse>
 }
 
 internal class DefaultExerciseListsRepository @Inject constructor(
@@ -51,18 +52,23 @@ internal class DefaultExerciseListsRepository @Inject constructor(
 ) : ExerciseListsRepository {
     override suspend fun lists() = safeCall { service.lists() }.toConfigResult()
 
-    override suspend fun create(request: ExerciseListRequest) = write { service.create(request) }
+    override suspend fun create(request: ExerciseListRequest): ConfigResult<ExerciseList> {
+        requireNotNull(request.uuid) { "A create names its list" }
+        return write { service.create(request) }
+    }
 
-    override suspend fun update(id: Int, request: ExerciseListRequest) = write { service.update(id, request) }
+    override suspend fun update(uuid: String, request: ExerciseListRequest) =
+        write { service.update(uuid, request.copy(uuid = null)) }
 
-    override suspend fun reorder(ids: List<Int>) = write { service.reorder(ExerciseListReorderRequest(ids)) }
+    override suspend fun reorder(uuids: List<String>) = write { service.reorder(ExerciseListReorderRequest(uuids)) }
 
-    override suspend fun delete(id: Int) = write { service.delete(id) }
+    override suspend fun delete(uuid: String) = write { service.delete(uuid) }
 
-    override suspend fun saveItems(id: Int, items: List<ListItemDraft>) =
-        write { service.putItems(id, ExerciseListItemsRequest.of(items)) }
+    override suspend fun saveItems(uuid: String, items: List<ListItemDraft>) =
+        write { service.putItems(uuid, ExerciseListItemsRequest.of(items)) }
 
-    override suspend fun append(id: Int, exerciseId: Int) = write { service.append(id, AppendListItemRequest(exerciseId)) }
+    override suspend fun append(uuid: String, exerciseUuid: String) =
+        write { service.append(uuid, AppendListItemRequest(newUuid(), exerciseUuid)) }
 
     private suspend fun <T> write(call: suspend () -> T): ConfigResult<T> {
         val result = safeCall(call)

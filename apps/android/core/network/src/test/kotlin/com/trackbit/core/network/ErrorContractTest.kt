@@ -47,8 +47,14 @@ class ErrorContractTest {
 
     @After fun tearDown() = server.close()
 
+    private companion object {
+        const val HABIT = "00000000-0000-4000-8000-000000000201"
+        const val ROW = "00000000-0000-4000-8000-000000000301"
+        const val LIST = "00000000-0000-4000-8000-000000000401"
+    }
+
     private suspend fun increment(): ApiError =
-        (safeCall { tracker.increment(IncrementRequest(4, 1), IdempotencyKey.random()) } as ApiResult.Failure).error
+        (safeCall { tracker.increment(IncrementRequest(HABIT, 1), IdempotencyKey.random()) } as ApiResult.Failure).error
 
     private suspend fun createHabit(): ApiError {
         val request = HabitRequest(
@@ -66,7 +72,8 @@ class ErrorContractTest {
 
     private suspend fun createList(): ApiError = listError { lists.create(ExerciseListRequest("Legs", null)) }
 
-    private suspend fun appendTo(listId: Int): ApiError = listError { lists.append(listId, AppendListItemRequest(1)) }
+    private suspend fun appendTo(): ApiError =
+        listError { lists.append(LIST, AppendListItemRequest("00000000-0000-4000-8000-000000000402", ROW)) }
 
     private suspend fun signIn(): ApiResult<String> = auth.signIn("a@test.local", "password-1234")
 
@@ -78,8 +85,8 @@ class ErrorContractTest {
 
     /** What the app makes of each contract. A newly recorded contract must be added here. */
     private val expectations: Map<String, suspend () -> Unit> = mapOf(
-        "habit-frozen.json" to { assertEquals(ApiError.HabitFrozen(4), increment()) },
-        "custom-exercise-frozen.json" to { assertEquals(ApiError.CustomExerciseFrozen(1), increment()) },
+        "habit-frozen.json" to { assertEquals(ApiError.HabitFrozen, increment()) },
+        "custom-exercise-frozen.json" to { assertEquals(ApiError.CustomExerciseFrozen, increment()) },
         "habit-limit-reached.json" to { assertEquals(ApiError.HabitLimitReached(10), createHabit()) },
         "habit-type-not-allowed.json" to { assertEquals(ApiError.HabitTypeNotAllowed(listOf("count", "complex")), createHabit()) },
         // The form never sends it (the switch hides for structured sessions); a plain 400 if it did.
@@ -87,8 +94,8 @@ class ErrorContractTest {
             assertEquals(ApiError.Validation("Structured sessions cannot be anti-habits.", emptyList(), "anti_habit_not_allowed"), createHabit())
         },
         "custom-exercise-frozen-update.json" to {
-            val result = safeCall { exercises.updateExercise(1, exerciseRequest) } as ApiResult.Failure
-            assertEquals(ApiError.CustomExerciseFrozen(1), result.error)
+            val result = safeCall { exercises.updateExercise(ROW, exerciseRequest) } as ApiResult.Failure
+            assertEquals(ApiError.CustomExerciseFrozen, result.error)
         },
         "custom-exercise-limit-reached.json" to { assertEquals(ApiError.CustomExerciseLimitReached(5), createExercise()) },
         "exercise-name-taken.json" to { assertEquals(ApiError.ExerciseNameTaken, createExercise()) },
@@ -101,17 +108,23 @@ class ErrorContractTest {
         },
         "exercise-list-name-taken.json" to { assertEquals(ApiError.ExerciseListNameTaken, createList()) },
         "exercise-list-limit-reached.json" to { assertEquals(ApiError.ExerciseListLimitReached(3), createList()) },
-        "exercise-list-frozen.json" to { assertEquals(ApiError.ExerciseListFrozen, appendTo(5)) },
+        "exercise-list-frozen.json" to { assertEquals(ApiError.ExerciseListFrozen, appendTo()) },
         "exercise-list-order-frozen.json" to {
-            assertEquals(ApiError.ExerciseListFrozen, listError { lists.reorder(ExerciseListReorderRequest(listOf(5, 4, 1, 3))) })
+            assertEquals(ApiError.ExerciseListFrozen, listError { lists.reorder(ExerciseListReorderRequest(listOf(LIST))) })
         },
-        "exercise-list-full.json" to { assertEquals(ApiError.ExerciseListFull(100), appendTo(1)) },
+        "exercise-list-full.json" to { assertEquals(ApiError.ExerciseListFull(100), appendTo()) },
         "exercise-list-not-found.json" to {
-            assertEquals(ApiError.NotFound("Exercise list not found"), listError { lists.update(999999, ExerciseListRequest("Ghost", null)) })
+            assertEquals(ApiError.NotFound("Exercise list not found"), listError { lists.update(LIST, ExerciseListRequest("Ghost", null)) })
         },
         "habit-not-found.json" to { assertEquals(ApiError.NotFound("Habit not found"), increment()) },
+        "habit-not-found-update.json" to {
+            val request = HabitRequest(
+                "Gone", HabitType.Count, false, 5, 1, ColorTheme.Green, GradientPresets.getValue(ColorTheme.Custom), HabitIcon.Star,
+            )
+            assertEquals(ApiError.NotFound("Habit not found"), listError { habits.update(HABIT, request) })
+        },
         "exercise-source-not-found.json" to {
-            val result = safeCall { exercises.source("list:999999") } as ApiResult.Failure
+            val result = safeCall { exercises.source("list:$LIST") } as ApiResult.Failure
             assertEquals(ApiError.NotFound("Exercise source not found"), result.error)
         },
         "validation.json" to {

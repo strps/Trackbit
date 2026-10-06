@@ -17,11 +17,14 @@ sealed interface ApiError {
      */
     data class Unauthorized(val code: String?, val message: String?) : ApiError
 
+    // The frozen bodies name their row by the server's int id, which the app never uses; to say
+    // which row, the server must add its uuid first.
+
     /** 403 `habit_frozen`: the habit is over the user's role limits and read-only. */
-    data class HabitFrozen(val habitId: Int?) : ApiError
+    data object HabitFrozen : ApiError
 
     /** 403 `custom_exercise_frozen`. */
-    data class CustomExerciseFrozen(val exerciseId: Int?) : ApiError
+    data object CustomExerciseFrozen : ApiError
 
     /** 403 `habit_limit_reached`: creating one more habit would pass the role's [maxHabits]. */
     data class HabitLimitReached(val maxHabits: Int?) : ApiError
@@ -88,8 +91,8 @@ sealed interface ApiError {
             val message = json.string("message") ?: error
             return when {
                 status == 401 -> Unauthorized(json.string("code"), message)
-                status == 403 && error == "habit_frozen" -> HabitFrozen(json.int("habitId"))
-                status == 403 && error == "custom_exercise_frozen" -> CustomExerciseFrozen(json.int("exerciseId"))
+                status == 403 && error == "habit_frozen" -> HabitFrozen
+                status == 403 && error == "custom_exercise_frozen" -> CustomExerciseFrozen
                 status == 403 && error == "habit_limit_reached" -> HabitLimitReached(json.int("maxHabits"))
                 status == 403 && error == "habit_type_not_allowed" -> HabitTypeNotAllowed(json.strings("allowedHabitTypes"))
                 status == 403 && error == "custom_exercise_limit_reached" -> CustomExerciseLimitReached(json.int("maxCustomExercises"))

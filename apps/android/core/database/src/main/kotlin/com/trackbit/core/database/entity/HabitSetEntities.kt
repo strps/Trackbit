@@ -13,16 +13,16 @@ import java.time.LocalDate
 /** One set, at [ordinal] in the server's order (oldest day first). */
 @Entity(
     tableName = HabitSetEntity.TABLE,
-    primaryKeys = ["habitId", "ordinal"],
+    primaryKeys = ["habitUuid", "ordinal"],
     foreignKeys = [
-        ForeignKey(entity = HabitEntity::class, parentColumns = ["id"], childColumns = ["habitId"], onDelete = ForeignKey.CASCADE),
+        ForeignKey(entity = HabitEntity::class, parentColumns = ["uuid"], childColumns = ["habitUuid"], onDelete = ForeignKey.CASCADE),
     ],
 )
 data class HabitSetEntity(
-    val habitId: Int,
+    val habitUuid: String,
     val ordinal: Int,
     val day: LocalDate,
-    val exerciseId: Int,
+    val exerciseUuid: String,
     /** Kilograms. */
     val weight: Double?,
     val reps: Int?,
@@ -31,22 +31,22 @@ data class HabitSetEntity(
     val duration: Int?,
     val distance: Double?,
 ) {
-    fun toModel() = HabitSet(day, exerciseId, weight, reps, rpe, duration, distance)
+    fun toModel() = HabitSet(day, exerciseUuid, weight, reps, rpe, duration, distance)
 
     companion object {
         const val TABLE = "habit_sets"
     }
 }
 
-/** When [habitId]'s sets were last pulled. No row: never, so an empty list means "not known yet". */
+/** When [habitUuid]'s sets were last pulled. No row: never, so an empty list means "not known yet". */
 @Entity(
     tableName = HabitSetPullEntity.TABLE,
     foreignKeys = [
-        ForeignKey(entity = HabitEntity::class, parentColumns = ["id"], childColumns = ["habitId"], onDelete = ForeignKey.CASCADE),
+        ForeignKey(entity = HabitEntity::class, parentColumns = ["uuid"], childColumns = ["habitUuid"], onDelete = ForeignKey.CASCADE),
     ],
 )
 data class HabitSetPullEntity(
-    @PrimaryKey val habitId: Int,
+    @PrimaryKey val habitUuid: String,
     val pulledAt: Instant,
 ) {
     companion object {

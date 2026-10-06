@@ -35,10 +35,10 @@ class ExerciseListRulesTest {
 
     @Test fun `a request refuses an invalid prescription and too many items`() {
         assertThrows(IllegalArgumentException::class.java) {
-            ExerciseListItemsRequest.of(listOf(ListItemDraft(null, 1, Prescription.NONE.copy(targetReps = 0))))
+            ExerciseListItemsRequest.of(listOf(ListItemDraft("item", "exercise", Prescription.NONE.copy(targetReps = 0))))
         }
         assertThrows(IllegalArgumentException::class.java) {
-            ExerciseListItemsRequest.of(List(101) { ListItemDraft(null, 1, Prescription.NONE) })
+            ExerciseListItemsRequest.of(List(101) { ListItemDraft("item-$it", "exercise", Prescription.NONE) })
         }
     }
 }

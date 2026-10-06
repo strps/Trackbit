@@ -23,12 +23,12 @@ interface ExerciseService {
     suspend fun createExercise(@Body body: ExerciseRequest): Exercise
 
     /** One of the user's own exercises; a system one answers 404, a frozen one 403. */
-    @PATCH("api/exercise-info/exercises/{id}")
-    suspend fun updateExercise(@Path("id") id: Int, @Body body: ExerciseRequest): Exercise
+    @PATCH("api/exercise-info/exercises/uuid/{uuid}")
+    suspend fun updateExercise(@Path("uuid") uuid: String, @Body body: ExerciseRequest): Exercise
 
     /** Deletes one of the user's own exercises with every log of it (and their sets) and its list items. */
-    @DELETE("api/exercise-info/exercises/{id}")
-    suspend fun deleteExercise(@Path("id") id: Int)
+    @DELETE("api/exercise-info/exercises/uuid/{uuid}")
+    suspend fun deleteExercise(@Path("uuid") uuid: String)
 
     /** The shared muscle group taxonomy. */
     @GET("api/exercise-info/muscle-groups")

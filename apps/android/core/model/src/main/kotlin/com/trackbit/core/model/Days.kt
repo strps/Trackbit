@@ -17,7 +17,7 @@ data class DaysResponse(
 
 @Serializable
 data class HabitDayValue(
-    val habitId: Int,
+    val habitUuid: String,
     @Serializable(with = LocalDateSerializer::class) val day: LocalDate,
     val rating: Int?,
     val sessionCount: Int,

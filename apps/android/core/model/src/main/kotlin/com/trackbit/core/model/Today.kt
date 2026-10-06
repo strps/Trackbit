@@ -13,7 +13,7 @@ data class TodayResponse(
 
 @Serializable
 data class TodayHabit(
-    val id: Int,
+    val uuid: String,
     val name: String,
     val description: String?,
     override val type: HabitType,

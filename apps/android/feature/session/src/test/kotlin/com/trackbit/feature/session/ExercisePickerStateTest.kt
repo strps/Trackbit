@@ -23,7 +23,7 @@ class ExercisePickerStateTest {
 
     /** Row (item 10), Bench (item 11), Row again (item 12). */
     private val queue = SourceQueue.Resolved(
-        listOf(QueueEntry(2, 0, 10, null), QueueEntry(1, 1, 11, null), QueueEntry(2, 2, 12, null)),
+        listOf(QueueEntry(exerciseUuid(2), 0, itemUuid(10), null), QueueEntry(exerciseUuid(1), 1, itemUuid(11), null), QueueEntry(exerciseUuid(2), 2, itemUuid(12), null)),
         emptyReason = null,
     )
 
@@ -31,18 +31,20 @@ class ExercisePickerStateTest {
         SessionUiState(day = day, exercises = catalog, source = source, queue = queue)
 
     private fun session(vararg logs: Pair<Int, Int?>) = TrackedSession(
-        id = "s", habitId = 1, day = day, createdAt = Instant.EPOCH,
-        logs = logs.mapIndexed { i, (exerciseId, item) -> TrackedExerciseLog("l$i", exerciseId, item, null, null, null, null, emptyList()) },
+        id = "s", habitUuid = "habit-1", day = day, createdAt = Instant.EPOCH,
+        logs = logs.mapIndexed { i, (exercise, item) ->
+            TrackedExerciseLog("l$i", exerciseUuid(exercise), item?.let(::itemUuid), null, null, null, null, emptyList())
+        },
     )
 
     @Test fun `with a source, Play adds the cursor's entry and walks the queue`() {
         val fresh = exercisePicker(state(), session(), browsePick = null)
         assertFalse(fresh.browsing)
-        assertEquals(QueueEntry(2, 0, 10, null), fresh.nextEntry)
+        assertEquals(QueueEntry(exerciseUuid(2), 0, itemUuid(10), null), fresh.nextEntry)
         assertEquals("Row", fresh.selected?.name)
 
         val second = exercisePicker(state(), session(2 to 10), browsePick = null)
-        assertEquals(QueueEntry(1, 1, 11, null), second.nextEntry)
+        assertEquals(QueueEntry(exerciseUuid(1), 1, itemUuid(11), null), second.nextEntry)
         assertEquals(listOf(true, false, false), second.done)
         assertEquals(listOf(false, true, false), second.queueRows.map { it.highlighted })
     }
@@ -52,7 +54,7 @@ class ExercisePickerStateTest {
         assertTrue(resumed.browsing)
         assertNull(resumed.nextEntry)
         assertEquals("Bench", resumed.selected?.name)
-        assertEquals("Squat", exercisePicker(state(source = null), session(1 to null), browsePick = 3).selected?.name)
+        assertEquals("Squat", exercisePicker(state(source = null), session(1 to null), browsePick = exerciseUuid(3)).selected?.name)
         assertNull(exercisePicker(state(source = null), session(), browsePick = null).selected)
     }
 
@@ -79,7 +81,7 @@ class ExercisePickerStateTest {
         val rows = picker.search("o").associateBy { it.exercise.name }
         assertEquals(setOf("Row"), rows.keys)
         // Row's first entry (item 10) is done, so the link moves on to item 12.
-        assertEquals(12, rows.getValue("Row").entry?.listItemId)
+        assertEquals(itemUuid(12), rows.getValue("Row").entry?.listItemUuid)
 
         val all = picker.search("")
         assertEquals(listOf("Bench", "Row", "Squat"), all.map { it.exercise.name })
@@ -90,6 +92,6 @@ class ExercisePickerStateTest {
         assertTrue("nothing links in browse mode", browsing.all { it.entry == null })
     }
 
-    private fun exercise(id: Int, name: String) =
-        Exercise(id, userId = null, name = name, category = "strength", defaultWeightUnit = "kg", defaultDistanceUnit = "km", lastPerformance = null)
+    private fun exercise(n: Int, name: String) =
+        Exercise(exerciseUuid(n), userId = null, name = name, category = "strength", defaultWeightUnit = "kg", defaultDistanceUnit = "km", lastPerformance = null)
 }

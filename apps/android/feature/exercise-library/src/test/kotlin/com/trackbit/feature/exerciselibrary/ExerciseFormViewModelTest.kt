@@ -17,6 +17,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -38,8 +39,9 @@ class ExerciseFormViewModelTest {
 
     @After fun tearDown() = Dispatchers.resetMain()
 
-    private fun TestScope.form(exerciseId: Int? = null): ExerciseFormViewModel {
-        val viewModel = ExerciseFormViewModel(repository, SavedStateHandle(mapOf(ExerciseFormViewModel.EXERCISE_ID to exerciseId)))
+    private fun TestScope.form(n: Int? = null, savedState: SavedStateHandle = SavedStateHandle()): ExerciseFormViewModel {
+        if (n != null) savedState[ExerciseFormViewModel.EXERCISE_UUID] = exerciseUuid(n)
+        val viewModel = ExerciseFormViewModel(repository, savedState)
         advanceUntilIdle()
         return viewModel
     }
@@ -54,8 +56,29 @@ class ExerciseFormViewModelTest {
         viewModel.save()
         advanceUntilIdle()
 
-        assertEquals(ExerciseRequest("Dips", null, ExerciseCategory.Flexibility, listOf(1, 2)), repository.created.single())
+        val created = repository.created.single()
+        assertEquals(ExerciseRequest("Dips", null, ExerciseCategory.Flexibility, listOf(1, 2)), created.copy(uuid = null))
+        assertNotNull(created.uuid)
         assertTrue(viewModel.state.value.done)
+    }
+
+    @Test fun `a retried create sends the same uuid, after process death too`() = runTest(dispatcher) {
+        val savedState = SavedStateHandle()
+        val viewModel = form(savedState = savedState)
+        viewModel.edit { it.copy(name = "Dips") }
+        repository.failWith = ConfigError.Offline
+        viewModel.save()
+        advanceUntilIdle()
+        repository.failWith = null
+        viewModel.save()
+        advanceUntilIdle()
+
+        val restored = form(savedState = savedState)
+        restored.edit { it.copy(name = "Dips") }
+        restored.save()
+        advanceUntilIdle()
+        assertEquals(1, repository.created.map { it.uuid }.distinct().size)
+        assertEquals(3, repository.created.size)
     }
 
     @Test fun `problems show only after trying to save, and nothing is sent`() = runTest(dispatcher) {
@@ -79,7 +102,7 @@ class ExerciseFormViewModelTest {
         viewModel.toggleMuscleGroup(1)
         viewModel.save()
         advanceUntilIdle()
-        assertEquals(7 to ExerciseRequest("Dips", "Lean forward", ExerciseCategory.Cardio, emptyList()), repository.updated.single())
+        assertEquals(exerciseUuid(7) to ExerciseRequest("Dips", "Lean forward", ExerciseCategory.Cardio, emptyList()), repository.updated.single())
     }
 
     @Test fun `a system exercise or a missing one doesn't open`() = runTest(dispatcher) {
@@ -97,7 +120,7 @@ class ExerciseFormViewModelTest {
 
         viewModel.delete()
         advanceUntilIdle()
-        assertEquals(listOf(8), repository.deleted)
+        assertEquals(listOf(exerciseUuid(8)), repository.deleted)
         assertTrue(viewModel.state.value.done)
     }
 

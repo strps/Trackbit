@@ -15,8 +15,9 @@ import java.time.LocalDate
 class AnalyticsDataTest {
     private val today = LocalDate.of(2026, 10, 3) // a Saturday
 
+    // Exercise fixtures are named by their number: exercise 1's uuid is "1".
     private fun set(daysAgo: Long, exerciseId: Int = 1, weight: Double? = 50.0, reps: Int? = 5, rpe: Int? = null) =
-        HabitSet(today.minusDays(daysAgo), exerciseId, weight, reps, rpe, duration = null, distance = null)
+        HabitSet(today.minusDays(daysAgo), exerciseId.toString(), weight, reps, rpe, duration = null, distance = null)
 
     @Test fun `ranges keep days strictly after the cutoff`() {
         assertTrue(TimeRange.OneMonth.includes(LocalDate.of(2026, 9, 4), today))
@@ -47,7 +48,7 @@ class AnalyticsDataTest {
             set(3, exerciseId = 2, weight = 100.0),
             set(1, weight = null, reps = 10), // no weight: no point
         )
-        val series = exerciseSeries(sets, 1, ExerciseMetric.MaxWeight, TimeRange.ThreeMonths, today)
+        val series = exerciseSeries(sets, "1", ExerciseMetric.MaxWeight, TimeRange.ThreeMonths, today)
         assertEquals(
             listOf(
                 ExercisePoint(today.minusDays(20), 55.0, isPr = true),
@@ -62,11 +63,16 @@ class AnalyticsDataTest {
 
     @Test fun `volume, estimated 1RM and RPE per day, to one decimal`() {
         val sets = listOf(set(2, weight = 60.0, reps = 8, rpe = 7), set(2, weight = 62.5, reps = 6, rpe = 8), set(2, weight = 70.0, reps = 0))
-        fun value(metric: ExerciseMetric) = exerciseSeries(sets, 1, metric, TimeRange.All, today).points.single().value
+        fun value(metric: ExerciseMetric) = exerciseSeries(sets, "1", metric, TimeRange.All, today).points.single().value
         assertEquals(855.0, value(ExerciseMetric.TotalVolume), 0.0)
         assertEquals("Epley, ignoring sets of 0 reps", 76.0, value(ExerciseMetric.EstimatedOneRm), 0.0)
         assertEquals(7.5, value(ExerciseMetric.AvgRpe), 0.0)
-        assertTrue(exerciseSeries(sets, 1, ExerciseMetric.MaxWeight, TimeRange.OneMonth, today.plusMonths(2)).points.isEmpty())
+        assertTrue(exerciseSeries(sets, "1", ExerciseMetric.MaxWeight, TimeRange.OneMonth, today.plusMonths(2)).points.isEmpty())
+    }
+
+    @Test fun `stacked exercises go in the order they were first logged`() {
+        val sets = listOf(set(9, exerciseId = 3), set(8, exerciseId = 1), set(1, exerciseId = 3))
+        assertEquals(listOf("3", "1"), weeklyVolume(sets, TimeRange.All, today).exercises)
     }
 
     @Test fun `weekly volume groups by ISO week, per exercise, with the week's RPE`() {
@@ -78,11 +84,11 @@ class AnalyticsDataTest {
         )
         val volume = weeklyVolume(sets, TimeRange.All, today)
         assertEquals(listOf(LocalDate.of(2026, 9, 21), LocalDate.of(2026, 9, 28)), volume.weeks.map { it.weekStart })
-        assertEquals(mapOf(1 to 500.0, 2 to 500.0), volume.weeks[0].byExercise)
+        assertEquals(mapOf("1" to 500.0, "2" to 500.0), volume.weeks[0].byExercise)
         assertEquals(1000.0, volume.weeks[0].total, 0.0)
         assertEquals(7.5, volume.weeks[0].avgRpe!!, 0.0)
         assertNull(volume.weeks[1].avgRpe)
-        assertEquals(listOf(1, 2), volume.exerciseIds)
+        assertEquals(listOf("1", "2"), volume.exercises)
         assertEquals(1400.0, volume.totalVolume, 0.0)
         assertEquals(7.5, volume.avgRpe!!, 0.0)
         assertEquals(LocalDate.of(2026, 9, 21), volume.peakWeek!!.weekStart)
@@ -111,11 +117,11 @@ class AnalyticsDataTest {
 
     @Test fun `the exercise picker offers only exercises with sets, in catalog order`() {
         val catalog = listOf(exercise(3), exercise(1), exercise(2))
-        assertEquals(listOf(3, 1), usedExercises(listOf(set(1, exerciseId = 1), set(1, exerciseId = 3), set(1, exerciseId = 9)), catalog).map { it.id })
+        assertEquals(listOf("3", "1"), usedExercises(listOf(set(1, exerciseId = 1), set(1, exerciseId = 3), set(1, exerciseId = 9)), catalog).map { it.uuid })
     }
 
     private fun exercise(id: Int, vararg groups: MuscleGroupRef) = Exercise(
-        id = id, userId = null, name = "Exercise $id", category = "strength",
+        uuid = id.toString(), userId = null, name = "Exercise $id", category = "strength",
         defaultWeightUnit = null, defaultDistanceUnit = null, lastPerformance = null, muscleGroups = groups.toList(),
     )
 }

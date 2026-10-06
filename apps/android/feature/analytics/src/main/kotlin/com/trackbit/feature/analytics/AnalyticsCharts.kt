@@ -92,7 +92,7 @@ private val Amber = Color(0xFFF59E0B)
 private val Emerald = Color(0xFF10B981)
 private val Purple = Color(0xFF8B5CF6)
 
-/** The stacked bars' colors, by exercise in id order (the web's `EXERCISE_COLORS`). */
+/** The stacked bars' colors, by exercise in [VolumeData.exercises] order (the web's `EXERCISE_COLORS`). */
 private val ExerciseColors = listOf(
     Color(0xFF3B82F6), Color(0xFF10B981), Color(0xFFF59E0B), Color(0xFF8B5CF6), Color(0xFFEF4444),
     Color(0xFF06B6D4), Color(0xFFF97316), Color(0xFF84CC16), Color(0xFFEC4899), Color(0xFF6366F1),
@@ -110,11 +110,11 @@ internal fun ExerciseChartCard(sets: List<HabitSet>, catalog: List<Exercise>, un
         OutlinedCard(Modifier.fillMaxWidth()) { CenteredText(R.string.analytics_exercise_empty) }
         return
     }
-    var exerciseId by rememberSaveable { mutableStateOf<Int?>(null) }
+    var exerciseUuid by rememberSaveable { mutableStateOf<String?>(null) }
     var metric by rememberSaveable { mutableStateOf(ExerciseMetric.MaxWeight) }
     var range by rememberSaveable { mutableStateOf(TimeRange.DEFAULT) }
-    val exercise = used.find { it.id == exerciseId } ?: used.first()
-    val series = remember(sets, exercise.id, metric, range, today) { exerciseSeries(sets, exercise.id, metric, range, today) }
+    val exercise = used.find { it.uuid == exerciseUuid } ?: used.first()
+    val series = remember(sets, exercise.uuid, metric, range, today) { exerciseSeries(sets, exercise.uuid, metric, range, today) }
     val isWeight = metric != ExerciseMetric.AvgRpe
     val unit = if (isWeight) weightUnit(units) else "RPE"
     val values = remember(series, units, isWeight) { series.points.map { if (isWeight) kgToDisplay(it.value, units) else it.value } }
@@ -122,7 +122,7 @@ internal fun ExerciseChartCard(sets: List<HabitSet>, catalog: List<Exercise>, un
     ChartCard(
         icon = UiIcons.TrendingUp,
         tint = Blue,
-        header = { ExerciseDropdown(used, exercise) { exerciseId = it } },
+        header = { ExerciseDropdown(used, exercise) { exerciseUuid = it } },
         controls = {
             Segmented(
                 listOf(
@@ -157,7 +157,7 @@ internal fun ExerciseChartCard(sets: List<HabitSet>, catalog: List<Exercise>, un
 }
 
 @Composable
-private fun ExerciseDropdown(exercises: List<Exercise>, selected: Exercise, onSelect: (Int) -> Unit) {
+private fun ExerciseDropdown(exercises: List<Exercise>, selected: Exercise, onSelect: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box {
         TextButton(onClick = { open = true }) {
@@ -176,7 +176,7 @@ private fun ExerciseDropdown(exercises: List<Exercise>, selected: Exercise, onSe
                     text = { Text(exercise.name) },
                     onClick = {
                         open = false
-                        onSelect(exercise.id)
+                        onSelect(exercise.uuid)
                     },
                 )
             }
@@ -275,17 +275,18 @@ internal fun VolumeChartCard(sets: List<HabitSet>, catalog: List<Exercise>, unit
                 Triple(stringResource(R.string.analytics_volume_weeks_tracked), volume.weeks.size.toString(), null),
             ),
         )
-        val names = remember(catalog) { catalog.associate { it.id to it.name } }
+        val unknown = stringResource(R.string.tracker_activity_unknown_exercise)
+        val names = remember(catalog, unknown) { catalog.associate { it.uuid to it.name }.withDefault { unknown } }
         ProvideVicoTheme(rememberM3VicoTheme()) {
             VolumeChart(volume, breakdown, showRpe, units, unit, names)
         }
         if (breakdown == VolumeBreakdown.ByExercise) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                volume.exerciseIds.forEachIndexed { i, id ->
+                volume.exercises.forEachIndexed { i, uuid ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(8.dp).background(ExerciseColors[i % ExerciseColors.size], CircleShape))
                         Text(
-                            names[id] ?: "#$id",
+                            names.getValue(uuid),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(start = 4.dp),
@@ -298,9 +299,9 @@ internal fun VolumeChartCard(sets: List<HabitSet>, catalog: List<Exercise>, unit
 }
 
 @Composable
-private fun VolumeChart(volume: VolumeData, breakdown: VolumeBreakdown, showRpe: Boolean, units: UnitSystem, unit: String, names: Map<Int, String>) {
+private fun VolumeChart(volume: VolumeData, breakdown: VolumeBreakdown, showRpe: Boolean, units: UnitSystem, unit: String, names: Map<String, String>) {
     val stacked = breakdown == VolumeBreakdown.ByExercise
-    val columnColors = if (stacked) volume.exerciseIds.indices.map { ExerciseColors[it % ExerciseColors.size] } else listOf(Emerald)
+    val columnColors = if (stacked) volume.exercises.indices.map { ExerciseColors[it % ExerciseColors.size] } else listOf(Emerald)
     val columns = columnColors.map { rememberLineComponent(Fill(it), 12.dp, RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)) }
     val columnLayer = rememberColumnCartesianLayer(
         columnProvider = remember(columns) { ColumnCartesianLayer.ColumnProvider.series(columns) },
@@ -326,9 +327,9 @@ private fun VolumeChart(volume: VolumeData, breakdown: VolumeBreakdown, showRpe:
         buildString {
             append(week.weekStart.format(weekFormat))
             if (stacked) {
-                for (id in volume.exerciseIds) {
-                    val kg = week.byExercise[id] ?: continue
-                    append("\n${names[id] ?: "#$id"}: ${formatNumber(kgToDisplay(kg, units))} $unit")
+                for (uuid in volume.exercises) {
+                    val kg = week.byExercise[uuid] ?: continue
+                    append("\n${names.getValue(uuid)}: ${formatNumber(kgToDisplay(kg, units))} $unit")
                 }
             } else {
                 append("\n$volumeLabel: ${formatNumber(kgToDisplay(week.total, units))} $unit")
@@ -351,7 +352,7 @@ private fun VolumeChart(volume: VolumeData, breakdown: VolumeBreakdown, showRpe:
     val model = remember(volume, stacked, withRpe, units) {
         val bars = ColumnCartesianLayerModel.build {
             if (stacked) {
-                for (id in volume.exerciseIds) series(volume.weeks.map { kgToDisplay(it.byExercise[id] ?: 0.0, units) })
+                for (uuid in volume.exercises) series(volume.weeks.map { kgToDisplay(it.byExercise[uuid] ?: 0.0, units) })
             } else {
                 series(volume.weeks.map { kgToDisplay(it.total, units) })
             }

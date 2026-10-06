@@ -66,6 +66,8 @@ These are covered by unit tests but were not exercised on the emulator for W1. R
 - **No in-app alert without notification permission** (D5): with `POST_NOTIFICATIONS` denied, the end of a rest is silent. Vibrating from the session screen when it's in the foreground would cover that case.
 - **Adding a set in compact cards opens the set editor sheet over the rest bar** (D5); the countdown shows once the sheet closes.
 
+- **The stacked volume chart's exercise colors differ from the web's** (F2). The web orders exercises by int id, which the app no longer has, so the app orders them by first logged set: the same exercise may get another color on each client. Matching would need a shared, id-free order (e.g. by `exercises.created_at`, sent in `/sets`).
+
 ## Housekeeping
 
 - **Invites aren't tied to their email** (E5): the admin route always stores the recipient in `invites.email`, but sign-up accepts the code with any email. Decide whether a code should only work for its recipient (case-insensitive match in `consumeInvite`, `auth.ts`).
@@ -74,6 +76,7 @@ These are covered by unit tests but were not exercised on the emulator for W1. R
 
 - **The web has no prescription editor** (E4, Android only, user): the web's list editor still edits only order and membership; its round-trip keeps the targets the app writes. Add the fields there (kg/km, the server's bounds in `exercise-lists.ts`) when the programs phase comes.
 - **`exercise_list_items_list_position_uq` isn't deferrable on the local dev DB** although `0006` asks for it (and a pushed schema never is). Since E4 the route writes positions in two phases and doesn't need it; check production with `SELECT condeferrable FROM pg_constraint WHERE conname = 'exercise_list_items_list_position_uq'` and drop the `DEFERRABLE` expectation from the docs if it differs.
+- **The web's `PATCH /api/tracker/exercise-logs/:id` answers without `exerciseUuid`/`listItemUuid`** (F2): it's the generic CRUD router, which has no after-update hook. The app doesn't call it, so `exercise-log.json` is no longer recorded; add the uuids (and the contract) if the app ever edits a log's distance or duration.
 - **The list cap is checked before the insert** (`POST /api/exercise-lists`), so two creates at once can pass it; the freeze then covers the extra list. Same pattern as habits and custom exercises.
 
 - **`@trackbit/types` has no `uuid` on sessions, logs and sets** (D2 added the column). The web ignores it; its optimistic rows use negative temp ids. Adopting client uuids on the web too would let it drop the temp-id swapping in `useActivityTracker.ts`, and then the types should carry `uuid`.

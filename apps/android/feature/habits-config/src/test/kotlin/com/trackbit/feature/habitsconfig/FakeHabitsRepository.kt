@@ -22,8 +22,8 @@ class FakeHabitsRepository : HabitsRepository {
     var failWith: ConfigError? = null
     val reorders = mutableListOf<List<HabitOrder>>()
     val created = mutableListOf<HabitRequest>()
-    val updated = mutableListOf<Pair<Int, HabitRequest>>()
-    val deleted = mutableListOf<Int>()
+    val updated = mutableListOf<Pair<String, HabitRequest>>()
+    val deleted = mutableListOf<String>()
 
     private suspend fun <T> answer(value: () -> T): ConfigResult<T> {
         yield()
@@ -34,31 +34,35 @@ class FakeHabitsRepository : HabitsRepository {
 
     override suspend fun limits() = answer { LimitsResponse(limits, LimitCounts(habits.size, 0, 0)) }
 
-    override suspend fun create(request: HabitRequest) = answer {
+    /** Every create sent, refused ones included. */
+    override suspend fun create(request: HabitRequest): ConfigResult<Habit> {
         created += request
-        habit(100, request.name)
+        return answer { habit(100, request.name).copy(uuid = request.uuid!!) }
     }
 
-    override suspend fun update(id: Int, request: HabitRequest) = answer {
-        updated += id to request
-        habit(id, request.name)
+    override suspend fun update(uuid: String, request: HabitRequest) = answer {
+        updated += uuid to request
+        habit(100, request.name).copy(uuid = uuid)
     }
 
-    override suspend fun delete(id: Int) = answer { deleted += id }
+    override suspend fun delete(uuid: String) = answer { deleted += uuid }
 
     override suspend fun reorder(order: List<HabitOrder>) = answer { reorders += order }
 }
 
+// Fixtures are numbered for readability; this is the uuid the app names them by.
+fun habitUuid(n: Int) = "habit-$n"
+
 fun habit(
-    id: Int,
-    name: String = "Habit $id",
+    n: Int,
+    name: String = "Habit $n",
     type: HabitType = HabitType.Count,
     isAntiHabit: Boolean = false,
     order: Int = 0,
     frozen: Boolean = false,
     dailyGoal: Int = 3,
 ) = Habit(
-    id = id,
+    uuid = habitUuid(n),
     userId = "user",
     name = name,
     description = null,

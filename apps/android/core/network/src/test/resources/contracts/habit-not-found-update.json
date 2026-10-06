@@ -1,0 +1,7 @@
+{
+  "request": "PUT /api/habits/uuid/:uuid",
+  "status": 404,
+  "body": {
+    "error": "Habit not found"
+  }
+}

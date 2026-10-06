@@ -15,7 +15,7 @@ import java.time.Instant
  */
 @Entity(tableName = ExerciseEntity.TABLE)
 data class ExerciseEntity(
-    @PrimaryKey val id: Int,
+    @PrimaryKey val uuid: String,
     /** Null for a system exercise. */
     val userId: String?,
     val name: String,
@@ -29,7 +29,7 @@ data class ExerciseEntity(
     @Embedded(prefix = "last_") val lastPerformance: LastPerformanceColumns?,
 ) {
     fun toExercise() = Exercise(
-        id = id,
+        uuid = uuid,
         userId = userId,
         name = name,
         category = category,
@@ -58,7 +58,7 @@ data class LastPerformanceColumns(
 )
 
 fun Exercise.toEntity() = ExerciseEntity(
-    id = id,
+    uuid = uuid,
     userId = userId,
     name = name,
     category = category,

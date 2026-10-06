@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.trackbit.core.data.ConfigError
 import com.trackbit.core.data.ConfigResult
 import com.trackbit.core.data.HabitsRepository
+import com.trackbit.core.data.newUuid
 import com.trackbit.core.model.ColorStop
 import com.trackbit.core.model.ColorTheme
 import com.trackbit.core.model.GradientPresets
@@ -62,7 +63,7 @@ data class HabitForm(
 
 data class HabitFormUiState(
     /** Null for a new habit. */
-    val habitId: Int? = null,
+    val habitUuid: String? = null,
     /** Editing: the habit is still loading. */
     val loading: Boolean = false,
     /** Editing: the habit couldn't be loaded (offline, or deleted elsewhere). */
@@ -79,7 +80,7 @@ data class HabitFormUiState(
     /** Saved or deleted: the screen closes. */
     val done: Boolean = false,
 ) {
-    val isNew: Boolean get() = habitId == null
+    val isNew: Boolean get() = habitUuid == null
     val canSave: Boolean get() = !loading && !loadFailed && !frozen && !busy
 
     fun allows(type: HabitType) = allowedTypes == null || type in allowedTypes
@@ -94,15 +95,18 @@ sealed interface HabitFormMessage {
     data class HabitTypeNotAllowed(val type: HabitType?, val allowed: List<HabitType>) : HabitFormMessage
 }
 
-/** Creates or edits one habit, like the web's habit drawer. The route's `habitId` is null for a new one. */
+/** Creates or edits one habit, like the web's habit drawer. The route's `habitUuid` is null for a new one. */
 @HiltViewModel
 class HabitFormViewModel @Inject constructor(
     private val repository: HabitsRepository,
     savedState: SavedStateHandle,
 ) : ViewModel() {
-    private val habitId: Int? = savedState[HABIT_ID]
+    private val habitUuid: String? = savedState[HABIT_UUID]
 
-    private val _state = MutableStateFlow(HabitFormUiState(habitId = habitId, loading = habitId != null))
+    /** A new habit's uuid, kept across process death so a retried save can't create it twice. */
+    private val newHabitUuid: String by lazy { savedState[NEW_UUID] ?: newUuid().also { savedState[NEW_UUID] = it } }
+
+    private val _state = MutableStateFlow(HabitFormUiState(habitUuid = habitUuid, loading = habitUuid != null))
     val state: StateFlow<HabitFormUiState> = _state.asStateFlow()
 
     init {
@@ -110,13 +114,13 @@ class HabitFormViewModel @Inject constructor(
     }
 
     fun load() {
-        _state.update { it.copy(loading = habitId != null, loadFailed = false) }
+        _state.update { it.copy(loading = habitUuid != null, loadFailed = false) }
         viewModelScope.launch {
             val limits = async { repository.limits() }
-            if (habitId != null) {
+            if (habitUuid != null) {
                 when (val habits = repository.habits()) {
                     is ConfigResult.Success -> {
-                        val habit = habits.value.find { it.id == habitId }
+                        val habit = habits.value.find { it.uuid == habitUuid }
                         _state.update {
                             if (habit == null) {
                                 it.copy(loading = false, loadFailed = true, message = HabitFormMessage.NotFound)
@@ -154,16 +158,20 @@ class HabitFormViewModel @Inject constructor(
         }
         _state.update { it.copy(busy = true, showProblems = true) }
         viewModelScope.launch {
-            val result = if (habitId == null) repository.create(request) else repository.update(habitId, request)
+            val result = if (habitUuid == null) {
+                repository.create(request.copy(uuid = newHabitUuid))
+            } else {
+                repository.update(habitUuid, request)
+            }
             finish(result)
         }
     }
 
     fun delete() {
-        val id = habitId ?: return
+        val uuid = habitUuid ?: return
         if (_state.value.busy) return
         _state.update { it.copy(busy = true) }
-        viewModelScope.launch { finish(repository.delete(id)) }
+        viewModelScope.launch { finish(repository.delete(uuid)) }
     }
 
     fun onMessageShown(message: HabitFormMessage) {
@@ -178,8 +186,10 @@ class HabitFormViewModel @Inject constructor(
     }
 
     companion object {
-        /** The route's argument (`HabitFormRoute.habitId`). */
-        const val HABIT_ID = "habitId"
+        /** The route's argument (`HabitFormRoute.habitUuid`). */
+        const val HABIT_UUID = "habitUuid"
+
+        private const val NEW_UUID = "newHabitUuid"
 
         private fun ConfigError.toMessage(): HabitFormMessage = when (this) {
             ConfigError.Offline -> HabitFormMessage.Offline

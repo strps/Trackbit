@@ -7,7 +7,8 @@ import java.time.Instant
 /** A row of `GET /api/habits`, also returned by habit create and update. */
 @Serializable
 data class Habit(
-    val id: Int,
+    /** The app names a habit by it; the server's int `id` is the web's. */
+    val uuid: String,
     val userId: String,
     val name: String,
     val description: String?,

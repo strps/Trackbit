@@ -41,18 +41,18 @@ class ExerciseListsViewModelTest {
 
     @Test fun `a drag is sent as the whole order when it ends`() = runTest(dispatcher) {
         val viewModel = screen()
-        viewModel.move(2, 1)
+        viewModel.move(listUuid(2), listUuid(1))
         assertEquals(listOf("Pull", "Push", "Legs"), viewModel.names())
         viewModel.drop()
         advanceUntilIdle()
 
-        assertEquals("reorder [2, 1, 3]", lists.calls.last())
+        assertEquals("reorder ${listOf(listUuid(2), listUuid(1), listUuid(3))}", lists.calls.last())
         assertEquals(listOf("Pull", "Push", "Legs"), viewModel.names())
     }
 
     @Test fun `frozen lists stay at the end`() = runTest(dispatcher) {
         val viewModel = screen()
-        viewModel.move(3, 2)
+        viewModel.move(listUuid(3), listUuid(2))
         viewModel.drop()
         advanceUntilIdle()
 
@@ -63,7 +63,7 @@ class ExerciseListsViewModelTest {
 
     @Test fun `a refused reorder puts the server's order back`() = runTest(dispatcher) {
         val viewModel = screen()
-        viewModel.move(2, 1)
+        viewModel.move(listUuid(2), listUuid(1))
         lists.failWith = ConfigError.Offline
         viewModel.drop()
         advanceUntilIdle()
@@ -72,9 +72,10 @@ class ExerciseListsViewModelTest {
         assertEquals(ListsMessage.Offline, viewModel.state.value.message)
     }
 
-    @Test fun `creating opens the new list, and a taken name keeps the dialog`() = runTest(dispatcher) {
+    @Test fun `creating opens the new list, and a taken name keeps the dialog and its uuid`() = runTest(dispatcher) {
         val viewModel = screen()
         viewModel.startCreate()
+        val uuid = checkNotNull(viewModel.state.value.creating!!.newUuid)
         viewModel.editCreate { it.edit(name = "  ") }
         viewModel.create()
         assertTrue(viewModel.state.value.creating!!.showProblems)
@@ -91,7 +92,7 @@ class ExerciseListsViewModelTest {
         viewModel.create()
         advanceUntilIdle()
         assertNull(viewModel.state.value.creating)
-        assertEquals(4, viewModel.state.value.created)
+        assertEquals("the retry names the same list", uuid, viewModel.state.value.created)
         assertEquals("Core 2", viewModel.names()?.last())
     }
 

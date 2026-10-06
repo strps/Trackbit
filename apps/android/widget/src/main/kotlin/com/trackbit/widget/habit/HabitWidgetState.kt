@@ -2,7 +2,7 @@ package com.trackbit.widget.habit
 
 import android.content.Context
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.glance.GlanceId
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.state.getAppWidgetState
@@ -23,15 +23,18 @@ import java.time.LocalDate
  * kept in the instance's Glance state (the default Preferences definition), and it is all that
  * is stored: everything shown comes from Room.
  */
-internal val HabitIdKey = intPreferencesKey("habitId")
+internal val HabitUuidKey = stringPreferencesKey("habitUuid")
 
-/** The habit widget [id] shows, or null until one is chosen. */
-internal suspend fun GlanceAppWidget.chosenHabitId(context: Context, id: GlanceId): Int? =
-    getAppWidgetState<Preferences>(context, id)[HabitIdKey]
+/**
+ * The habit widget [id] shows, or null until one is chosen. A widget placed before habits had
+ * uuids (Room version 9) holds only an int key, which nothing reads: it asks for its habit again.
+ */
+internal suspend fun GlanceAppWidget.chosenHabitUuid(context: Context, id: GlanceId): String? =
+    getAppWidgetState<Preferences>(context, id)[HabitUuidKey]
 
-/** Points the habit widget [id] at [habitId] and re-renders it. */
-internal suspend fun GlanceAppWidget.chooseHabit(context: Context, id: GlanceId, habitId: Int) {
-    updateAppWidgetState(context, id) { it[HabitIdKey] = habitId }
+/** Points the habit widget [id] at [habitUuid] and re-renders it. */
+internal suspend fun GlanceAppWidget.chooseHabit(context: Context, id: GlanceId, habitUuid: String) {
+    updateAppWidgetState(context, id) { it[HabitUuidKey] = habitUuid }
     update(context, id)
 }
 
@@ -48,8 +51,8 @@ internal sealed interface HabitWidgetState {
 }
 
 /**
- * What one habit widget shows, for its chosen [habitId] (null until configured), as [observe]
- * reads it on each day. The id is a flow because reconfiguring changes it while a Glance session
+ * What one habit widget shows, for its chosen [habitUuid] (null until configured), as [observe]
+ * reads it on each day. The uuid is a flow because reconfiguring changes it while a Glance session
  * is running.
  *
  * Nothing about the choice is cleared on sign-out or deletion: the state is derived each time, so
@@ -59,20 +62,20 @@ internal sealed interface HabitWidgetState {
 internal fun habitWidgetState(
     auth: Flow<AuthState>,
     day: Flow<LocalDate>,
-    habitId: Flow<Int?>,
-    observe: (habitId: Int, day: LocalDate) -> Flow<TrackedHabit?>,
+    habitUuid: Flow<String?>,
+    observe: (habitUuid: String, day: LocalDate) -> Flow<TrackedHabit?>,
 ): Flow<HabitWidgetState> = auth
     .filterNot { it is AuthState.Loading }
     .map { it is AuthState.SignedIn }
     .distinctUntilChanged()
     .flatMapLatest { signedIn ->
         if (!signedIn) return@flatMapLatest flowOf(HabitWidgetState.SignedOut)
-        habitId.distinctUntilChanged().flatMapLatest { id ->
-            if (id == null) {
+        habitUuid.distinctUntilChanged().flatMapLatest { uuid ->
+            if (uuid == null) {
                 flowOf(HabitWidgetState.Unconfigured)
             } else {
                 day.flatMapLatest { d ->
-                    observe(id, d).map { habit ->
+                    observe(uuid, d).map { habit ->
                         habit?.let(HabitWidgetState::Tracking) ?: HabitWidgetState.HabitRemoved
                     }
                 }

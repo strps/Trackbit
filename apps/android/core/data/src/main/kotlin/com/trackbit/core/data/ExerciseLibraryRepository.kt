@@ -30,13 +30,14 @@ interface ExerciseLibraryRepository {
     /** The role's caps and the user's counts. */
     suspend fun limits(): ConfigResult<LimitsResponse>
 
+    /** [request] names the new exercise by its uuid, picked once per form so a retry can't create it twice. */
     suspend fun create(request: ExerciseRequest): ConfigResult<Exercise>
 
     /** One of the user's own exercises; a frozen one fails with [ConfigError.CustomExerciseFrozen]. */
-    suspend fun update(id: Int, request: ExerciseRequest): ConfigResult<Exercise>
+    suspend fun update(uuid: String, request: ExerciseRequest): ConfigResult<Exercise>
 
     /** Deletes one of the user's own exercises (frozen too) with every log of it and its list items. */
-    suspend fun delete(id: Int): ConfigResult<Unit>
+    suspend fun delete(uuid: String): ConfigResult<Unit>
 }
 
 internal class DefaultExerciseLibraryRepository @Inject constructor(
@@ -51,13 +52,16 @@ internal class DefaultExerciseLibraryRepository @Inject constructor(
 
     override suspend fun limits() = safeCall { meService.limits() }.toConfigResult()
 
-    override suspend fun create(request: ExerciseRequest) =
-        write({ exerciseService.createExercise(request) }) { sync.syncExercises() }
+    override suspend fun create(request: ExerciseRequest): ConfigResult<Exercise> {
+        requireNotNull(request.uuid) { "A create names its exercise" }
+        return write({ exerciseService.createExercise(request) }) { sync.syncExercises() }
+    }
 
-    override suspend fun update(id: Int, request: ExerciseRequest) =
-        write({ exerciseService.updateExercise(id, request) }) { sync.syncExercises() }
+    override suspend fun update(uuid: String, request: ExerciseRequest) =
+        write({ exerciseService.updateExercise(uuid, request.copy(uuid = null)) }) { sync.syncExercises() }
 
-    override suspend fun delete(id: Int) = write({ exerciseService.deleteExercise(id) }) { sync.removeExercise(id) }
+    override suspend fun delete(uuid: String) =
+        write({ exerciseService.deleteExercise(uuid) }) { sync.removeExercise(uuid) }
 
     private suspend fun <T> write(call: suspend () -> T, then: suspend () -> Unit): ConfigResult<T> {
         val result = safeCall(call)

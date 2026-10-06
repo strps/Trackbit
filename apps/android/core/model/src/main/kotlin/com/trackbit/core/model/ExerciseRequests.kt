@@ -23,7 +23,7 @@ enum class ExerciseCategory(override val wire: String?) : WireEnum {
 }
 
 /**
- * `POST /api/exercise-info/exercises` and `PATCH …/:id`: every field the custom exercise form
+ * `POST /api/exercise-info/exercises` and `PATCH …/uuid/:uuid`: every field the custom exercise form
  * edits, all sent each time (a null [description] clears it, an empty [muscleGroups] unlinks
  * them all). The units keep their server defaults; the form doesn't show them.
  */
@@ -34,6 +34,8 @@ data class ExerciseRequest(
     val category: ExerciseCategory,
     /** [MuscleGroup] ids. */
     val muscleGroups: List<Int>,
+    /** A create's new uuid, which makes a retry return the first exercise; null (left out) for an update. */
+    val uuid: String? = null,
 ) {
     init {
         val problems = ExerciseRules.problems(name, description, category)

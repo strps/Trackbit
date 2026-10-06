@@ -103,7 +103,7 @@ class HabitPickerActivity : ComponentActivity() {
         choosing = true
         lifecycleScope.launch {
             val glanceId = GlanceAppWidgetManager(this@HabitPickerActivity).getGlanceIdBy(appWidgetId)
-            widget.chooseHabit(applicationContext, glanceId, habit.id)
+            widget.chooseHabit(applicationContext, glanceId, habit.uuid)
             setResult(RESULT_OK, result(appWidgetId))
             finish()
         }
@@ -145,7 +145,7 @@ private fun HabitPicker(state: TodayWidgetState?, onPick: (TrackedHabit) -> Unit
                 state is TodayWidgetState.SignedOut -> CenteredText(I18nR.string.android_widget_sign_in)
                 state is TodayWidgetState.Tracking && state.habits.isEmpty() -> CenteredText(I18nR.string.tracker_empty)
                 state is TodayWidgetState.Tracking -> LazyColumn {
-                    items(state.habits, key = { it.id }) { habit -> HabitItem(habit, onPick) }
+                    items(state.habits, key = { it.uuid }) { habit -> HabitItem(habit, onPick) }
                 }
             }
         }

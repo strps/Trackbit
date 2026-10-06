@@ -13,11 +13,11 @@ import javax.inject.Inject
  * [TrackerRepository], exercise names and muscle groups from [SessionRepository.observeExercises].
  */
 interface AnalyticsRepository {
-    /** Workout habit [habitId]'s sets as of the last [refresh], oldest day first; null if never pulled. */
-    fun observeSets(habitId: Int): Flow<List<HabitSet>?>
+    /** Workout habit [habitUuid]'s sets as of the last [refresh], oldest day first; null if never pulled. */
+    fun observeSets(habitUuid: String): Flow<List<HabitSet>?>
 
-    /** Reloads [habitId]'s sets and the exercise catalog. */
-    suspend fun refresh(habitId: Int): SyncResult
+    /** Reloads [habitUuid]'s sets and the exercise catalog. */
+    suspend fun refresh(habitUuid: String): SyncResult
 }
 
 internal class DefaultAnalyticsRepository @Inject constructor(
@@ -26,10 +26,10 @@ internal class DefaultAnalyticsRepository @Inject constructor(
 ) : AnalyticsRepository {
     private val dao = db.habitSetDao()
 
-    override fun observeSets(habitId: Int): Flow<List<HabitSet>?> =
-        combine(dao.observePull(habitId), dao.observeSets(habitId)) { pull, sets ->
+    override fun observeSets(habitUuid: String): Flow<List<HabitSet>?> =
+        combine(dao.observePull(habitUuid), dao.observeSets(habitUuid)) { pull, sets ->
             if (pull == null) null else sets.map { it.toModel() }
         }
 
-    override suspend fun refresh(habitId: Int): SyncResult = sync.syncSets(habitId)
+    override suspend fun refresh(habitUuid: String): SyncResult = sync.syncSets(habitUuid)
 }

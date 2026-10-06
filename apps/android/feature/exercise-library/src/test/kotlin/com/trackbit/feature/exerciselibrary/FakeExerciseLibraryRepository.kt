@@ -20,8 +20,8 @@ class FakeExerciseLibraryRepository : ExerciseLibraryRepository {
     var limits: EffectiveLimits? = null
     var failWith: ConfigError? = null
     val created = mutableListOf<ExerciseRequest>()
-    val updated = mutableListOf<Pair<Int, ExerciseRequest>>()
-    val deleted = mutableListOf<Int>()
+    val updated = mutableListOf<Pair<String, ExerciseRequest>>()
+    val deleted = mutableListOf<String>()
 
     private suspend fun <T> answer(value: () -> T): ConfigResult<T> {
         yield()
@@ -34,22 +34,23 @@ class FakeExerciseLibraryRepository : ExerciseLibraryRepository {
 
     override suspend fun limits() = answer { LimitsResponse(limits, LimitCounts(0, exercises.count { it.userId != null }, 0)) }
 
-    override suspend fun create(request: ExerciseRequest) = answer {
+    /** Every create sent, refused ones included. */
+    override suspend fun create(request: ExerciseRequest): ConfigResult<Exercise> {
         created += request
-        exercise(100, request.name, mine = true)
+        return answer { exercise(100, request.name, mine = true).copy(uuid = request.uuid!!) }
     }
 
-    override suspend fun update(id: Int, request: ExerciseRequest) = answer {
-        updated += id to request
-        exercise(id, request.name, mine = true)
+    override suspend fun update(uuid: String, request: ExerciseRequest) = answer {
+        updated += uuid to request
+        exercise(100, request.name, mine = true).copy(uuid = uuid)
     }
 
-    override suspend fun delete(id: Int) = answer { deleted += id }
+    override suspend fun delete(uuid: String) = answer { deleted += uuid }
 }
 
 fun exercise(
-    id: Int,
-    name: String = "Exercise $id",
+    n: Int,
+    name: String = "Exercise $n",
     mine: Boolean = false,
     frozen: Boolean = false,
     category: String = "strength",
@@ -57,7 +58,7 @@ fun exercise(
     muscles: List<MuscleGroupRef> = emptyList(),
     logged: Boolean = false,
 ) = Exercise(
-    id = id,
+    uuid = exerciseUuid(n),
     userId = if (mine) "user" else null,
     name = name,
     description = description,

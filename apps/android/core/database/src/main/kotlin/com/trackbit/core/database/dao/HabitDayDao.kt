@@ -42,16 +42,16 @@ abstract class HabitDayDao {
     /** Every habit, in display order, on [day], with the [days] days ending at it. */
     fun observeDay(day: LocalDate, days: Int = HabitDay.RECENT_DAYS): Flow<List<HabitDay>> {
         require(days >= 1) { "days must be at least 1" }
-        return observeWithLogs(windowStart(day, days), day, habitId = null).map { rows -> rows.toHabitDays(day, days) }
+        return observeWithLogs(windowStart(day, days), day, habitUuid = null).map { rows -> rows.toHabitDays(day, days) }
     }
 
     /**
      * One habit on [day] with the [days] days ending at it, or null if it doesn't exist (any
      * more). Room has logs before the recent week only while history is kept ([HistoryDao]).
      */
-    fun observeHabitDay(habitId: Int, day: LocalDate, days: Int = HabitDay.RECENT_DAYS): Flow<HabitDay?> {
+    fun observeHabitDay(habitUuid: String, day: LocalDate, days: Int = HabitDay.RECENT_DAYS): Flow<HabitDay?> {
         require(days >= 1) { "days must be at least 1" }
-        return observeWithLogs(windowStart(day, days), day, habitId).map { rows -> rows.toHabitDays(day, days).firstOrNull() }
+        return observeWithLogs(windowStart(day, days), day, habitUuid).map { rows -> rows.toHabitDays(day, days).firstOrNull() }
     }
 
     // One query, so habits, logs and timers always come from the same database state: stopping a
@@ -60,24 +60,24 @@ abstract class HabitDayDao {
     @Query(
         """
         SELECT habits.*,
-            day_logs.habitId AS log_habitId, day_logs.localDay AS log_localDay,
+            day_logs.habitUuid AS log_habitUuid, day_logs.localDay AS log_localDay,
             day_logs.rating AS log_rating, day_logs.sessionCount AS log_sessionCount,
-            timers.id AS timer_id, timers.habitId AS timer_habitId,
+            timers.id AS timer_id, timers.habitUuid AS timer_habitUuid,
             timers.localDay AS timer_localDay, timers.startedAt AS timer_startedAt,
             (SELECT MIN(syncedStart) FROM history) AS historyFrom
         FROM habits
-        LEFT JOIN day_logs ON day_logs.habitId = habits.id AND day_logs.localDay BETWEEN :start AND :end
-        LEFT JOIN timers ON timers.habitId = habits.id
-        WHERE :habitId IS NULL OR habits.id = :habitId
-        ORDER BY habits.`order`, habits.id
+        LEFT JOIN day_logs ON day_logs.habitUuid = habits.uuid AND day_logs.localDay BETWEEN :start AND :end
+        LEFT JOIN timers ON timers.habitUuid = habits.uuid
+        WHERE :habitUuid IS NULL OR habits.uuid = :habitUuid
+        ORDER BY habits.`order`, habits.uuid
         """,
     )
-    protected abstract fun observeWithLogs(start: LocalDate, end: LocalDate, habitId: Int?): Flow<List<HabitDayRow>>
+    protected abstract fun observeWithLogs(start: LocalDate, end: LocalDate, habitUuid: String?): Flow<List<HabitDayRow>>
 
     private fun windowStart(day: LocalDate, days: Int) = day.minusDays(days - 1L)
 
     private fun List<HabitDayRow>.toHabitDays(day: LocalDate, days: Int): List<HabitDay> =
-        groupBy { it.habit.id }.values.map { rows ->
+        groupBy { it.habit.uuid }.values.map { rows ->
             val byDay = rows.mapNotNull { it.log }.associateBy { it.localDay }
             val recent = (days - 1 downTo 0).map { back ->
                 val d = day.minusDays(back.toLong())

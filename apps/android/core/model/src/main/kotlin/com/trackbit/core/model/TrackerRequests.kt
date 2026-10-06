@@ -10,7 +10,7 @@ import java.time.LocalDate
 /** `POST /api/tracker/check`: set the day's rating to an absolute value. */
 @Serializable
 data class CheckRequest(
-    val habitId: Int,
+    val habitUuid: String,
     val rating: Int,
     @Serializable(with = LocalDateSerializer::class) val day: LocalDate? = null,
 )
@@ -18,7 +18,7 @@ data class CheckRequest(
 /** `POST /api/tracker/check/increment`: add [delta] (never 0) to the day's rating. */
 @Serializable
 data class IncrementRequest(
-    val habitId: Int,
+    val habitUuid: String,
     val delta: Int,
     @Serializable(with = LocalDateSerializer::class) val day: LocalDate? = null,
 ) {
@@ -30,7 +30,7 @@ data class IncrementRequest(
 /** `POST /api/tracker/day-logs/ensure`: get the day's log, creating an empty one. */
 @Serializable
 data class EnsureDayLogRequest(
-    val habitId: Int,
+    val habitUuid: String,
     @Serializable(with = LocalDateSerializer::class) val day: LocalDate? = null,
 )
 
@@ -41,7 +41,7 @@ data class EnsureDayLogRequest(
 @Serializable
 data class CreateSessionRequest(
     val uuid: String,
-    val habitId: Int,
+    val habitUuid: String,
     @Serializable(with = LocalDateSerializer::class) val day: LocalDate,
 )
 
@@ -50,9 +50,9 @@ data class CreateSessionRequest(
 data class CreateExerciseLogRequest(
     val uuid: String,
     val exerciseSessionUuid: String,
-    val exerciseId: Int,
+    val exerciseUuid: String,
     /** The list item it was picked from, for adherence; null for an ad-hoc pick. */
-    val listItemId: Int?,
+    val listItemUuid: String?,
 )
 
 /**

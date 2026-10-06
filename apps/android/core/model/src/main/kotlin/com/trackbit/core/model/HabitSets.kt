@@ -4,10 +4,10 @@ import com.trackbit.core.model.serialization.LocalDateSerializer
 import kotlinx.serialization.Serializable
 import java.time.LocalDate
 
-/** `GET /api/tracker/sets?habitId=`: every set of one workout habit, oldest day first. */
+/** `GET /api/tracker/sets?habitUuid=`: every set of one workout habit, oldest day first. */
 @Serializable
 data class HabitSetsResponse(
-    val habitId: Int,
+    val habitUuid: String,
     val sets: List<HabitSet>,
 )
 
@@ -15,7 +15,7 @@ data class HabitSetsResponse(
 @Serializable
 data class HabitSet(
     @Serializable(with = LocalDateSerializer::class) val day: LocalDate,
-    val exerciseId: Int,
+    val exerciseUuid: String,
     /** Kilograms. */
     val weight: Double?,
     val reps: Int?,

@@ -17,7 +17,7 @@ class ApiErrorTest {
 
     private suspend fun incrementFailing(code: Int, body: String): ApiError {
         server.enqueue(code, body)
-        val result = safeCall { tracker.increment(IncrementRequest(3, 1), IdempotencyKey.random()) }
+        val result = safeCall { tracker.increment(IncrementRequest("h3", 1), IdempotencyKey.random()) }
         return (result as ApiResult.Failure).error
     }
 
@@ -42,7 +42,7 @@ class ApiErrorTest {
 
     @Test fun `maps no connection to Network`() = runTest {
         server.close()
-        val result = safeCall { tracker.increment(IncrementRequest(3, 1), IdempotencyKey.random()) }
+        val result = safeCall { tracker.increment(IncrementRequest("h3", 1), IdempotencyKey.random()) }
         assertTrue((result as ApiResult.Failure).error is ApiError.Network)
     }
 }

@@ -6,6 +6,7 @@ import com.trackbit.core.data.ConfigError
 import com.trackbit.core.data.ConfigResult
 import com.trackbit.core.data.ExerciseLibraryRepository
 import com.trackbit.core.data.ExerciseListsRepository
+import com.trackbit.core.data.newUuid
 import com.trackbit.core.model.EffectiveLimits
 import com.trackbit.core.model.ExerciseList
 import com.trackbit.core.model.ExerciseListRequest
@@ -32,7 +33,7 @@ data class ExerciseListsUiState(
     val busy: Boolean = false,
     val message: ListsMessage? = null,
     /** A list was just created: the screen opens it. */
-    val created: Int? = null,
+    val created: String? = null,
 ) {
     val atListCap: Boolean
         get() = limits?.maxExerciseLists?.let { max -> lists.orEmpty().size >= max } ?: false
@@ -46,12 +47,14 @@ data class ListForm(
     val showProblems: Boolean = false,
     /** The server refused the name as a duplicate; cleared when the name changes. */
     val nameTaken: Boolean = false,
+    /** A create's uuid, picked when the dialog opens so a retried save can't create the list twice. Null for a rename. */
+    val newUuid: String? = null,
 ) {
     val problems: Set<ExerciseListRules.Problem> get() = ExerciseListRules.problems(name, description)
 
     /** Null while [problems] isn't empty. A blank description clears it. */
     fun request(): ExerciseListRequest? =
-        if (problems.isNotEmpty()) null else ExerciseListRequest(name.trim(), description.trim().ifEmpty { null })
+        if (problems.isNotEmpty()) null else ExerciseListRequest(name.trim(), description.trim().ifEmpty { null }, newUuid)
 
     fun edit(name: String = this.name, description: String = this.description) =
         copy(name = name, description = description, nameTaken = nameTaken && name == this.name)
@@ -117,12 +120,12 @@ class ExerciseListsViewModel @Inject constructor(
     }
 
     /** A drag passed [to]: the dragged list ([from]) takes its place. */
-    fun move(from: Int, to: Int) {
+    fun move(from: String, to: String) {
         dragging = true
         _state.update { state ->
             val lists = state.lists?.toMutableList() ?: return@update state
-            val fromIndex = lists.indexOfFirst { it.id == from }
-            val toIndex = lists.indexOfFirst { it.id == to }
+            val fromIndex = lists.indexOfFirst { it.uuid == from }
+            val toIndex = lists.indexOfFirst { it.uuid == to }
             if (fromIndex < 0 || toIndex < 0) return@update state
             lists.add(toIndex, lists.removeAt(fromIndex))
             state.copy(lists = lists)
@@ -133,14 +136,14 @@ class ExerciseListsViewModel @Inject constructor(
     fun drop() {
         dragging = false
         val lists = _state.value.lists ?: return
-        if (lists.map { it.id } == saved.map { it.id }) return
+        if (lists.map { it.uuid } == saved.map { it.uuid }) return
         // The freeze walks the order, so frozen lists stay at the end (the server refuses otherwise).
         if (lists.dropWhile { !it.frozen }.any { !it.frozen }) {
             _state.update { it.copy(lists = saved, message = ListsMessage.Frozen) }
             return
         }
         viewModelScope.launch {
-            when (val result = repository.reorder(lists.map { it.id })) {
+            when (val result = repository.reorder(lists.map { it.uuid })) {
                 is ConfigResult.Success -> {
                     saved = result.value
                     if (!dragging) _state.update { it.copy(lists = saved) }
@@ -157,7 +160,7 @@ class ExerciseListsViewModel @Inject constructor(
         if (state.atListCap && max != null) {
             _state.update { it.copy(message = ListsMessage.LimitReached(max)) }
         } else {
-            _state.update { it.copy(creating = ListForm()) }
+            _state.update { it.copy(creating = ListForm(newUuid = newUuid())) }
         }
     }
 
@@ -176,7 +179,7 @@ class ExerciseListsViewModel @Inject constructor(
             when (val result = repository.create(request)) {
                 is ConfigResult.Success -> {
                     saved = saved + result.value
-                    _state.update { it.copy(busy = false, creating = null, lists = saved, created = result.value.id) }
+                    _state.update { it.copy(busy = false, creating = null, lists = saved, created = result.value.uuid) }
                 }
                 is ConfigResult.Failure -> _state.update { state ->
                     // A taken name shows under the field and keeps the dialog open, as on the web.

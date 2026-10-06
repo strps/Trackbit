@@ -83,23 +83,23 @@ data object AccountRoute
 @Serializable
 data object HabitsConfigRoute
 
-/** The habit form; [habitId] null creates one. The name matches `HabitFormViewModel.HABIT_ID`. */
+/** The habit form; [habitUuid] null creates one. The name matches `HabitFormViewModel.HABIT_UUID`. */
 @Serializable
-data class HabitFormRoute(val habitId: Int? = null)
+data class HabitFormRoute(val habitUuid: String? = null)
 
 @Serializable
 data object ExerciseLibraryRoute
 
-/** The custom exercise form; [exerciseId] null creates one. The name matches `ExerciseFormViewModel.EXERCISE_ID`. */
+/** The custom exercise form; [exerciseUuid] null creates one. The name matches `ExerciseFormViewModel.EXERCISE_UUID`. */
 @Serializable
-data class ExerciseFormRoute(val exerciseId: Int? = null)
+data class ExerciseFormRoute(val exerciseUuid: String? = null)
 
 @Serializable
 data object ExerciseListsRoute
 
-/** A list's editor. The name matches `ListEditorViewModel.LIST_ID`. */
+/** A list's editor. The name matches `ListEditorViewModel.LIST_UUID`. */
 @Serializable
-data class ListEditorRoute(val listId: Int)
+data class ListEditorRoute(val listUuid: String)
 
 @Serializable
 data object IssueReportRoute
@@ -113,7 +113,7 @@ private enum class TopLevel(val route: Any, @StringRes val label: Int, @Drawable
 
 /** A workout habit's session on [day] (ISO date). */
 @Serializable
-data class SessionRoute(val habitId: Int, val day: String)
+data class SessionRoute(val habitUuid: String, val day: String)
 
 /**
  * Routes on [authState]: each auth state owns one graph, and a change of state swaps graphs,
@@ -168,7 +168,7 @@ private fun AuthNavHost(graph: Any, onSignOut: () -> Unit) {
             navigation<SignedInGraph>(startDestination = TrackerRoute) {
                 composable<TrackerRoute> {
                     TrackerScreen(
-                        onOpenSession = { habitId, day -> navController.navigate(SessionRoute(habitId, day.toString())) },
+                        onOpenSession = { habitUuid, day -> navController.navigate(SessionRoute(habitUuid, day.toString())) },
                     )
                 }
                 composable<AnalyticsRoute> { AnalyticsScreen() }
@@ -210,7 +210,7 @@ private fun AuthNavHost(graph: Any, onSignOut: () -> Unit) {
                 composable<SessionRoute> { entry ->
                     val route = entry.toRoute<SessionRoute>()
                     SessionScreen(
-                        route.habitId,
+                        route.habitUuid,
                         LocalDate.parse(route.day),
                         onBack = { navController.popBackStack() },
                         onOpenLists = { navController.navigate(ExerciseListsRoute) },

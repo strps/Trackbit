@@ -8,9 +8,9 @@ import kotlinx.coroutines.flow.Flow
 /** The cached exercise catalog. Only [SyncDao.applyExercises] writes it. */
 @Dao
 interface ExerciseDao {
-    @Query("SELECT * FROM exercises ORDER BY name COLLATE NOCASE, id")
+    @Query("SELECT * FROM exercises ORDER BY name COLLATE NOCASE, uuid")
     fun observeAll(): Flow<List<ExerciseEntity>>
 
-    @Query("SELECT * FROM exercises WHERE id = :id")
-    suspend fun get(id: Int): ExerciseEntity?
+    @Query("SELECT * FROM exercises WHERE uuid = :uuid")
+    suspend fun get(uuid: String): ExerciseEntity?
 }

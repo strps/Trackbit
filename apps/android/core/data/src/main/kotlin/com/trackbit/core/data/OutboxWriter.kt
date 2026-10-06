@@ -14,19 +14,19 @@ internal class OutboxWriter(private val db: TrackbitDatabase, private val schedu
     private val outboxDao = db.outboxDao()
 
     /** Applies [change] and queues the op it returns, in one transaction, then starts a flush. */
-    suspend fun write(habitId: Int, change: suspend () -> OutboxEntity?): WriteResult =
-        flushIfQueued(db.withTransaction { queue(habitId, change) })
+    suspend fun write(habitUuid: String, change: suspend () -> OutboxEntity?): WriteResult =
+        flushIfQueued(db.withTransaction { queue(habitUuid, change) })
 
     /**
-     * Inside a transaction: applies [change] and queues its op, unless [habitId]'s habit is frozen
+     * Inside a transaction: applies [change] and queues its op, unless [habitUuid]'s habit is frozen
      * or gone. A null op from [change] means it found nothing to do ([WriteResult.NoChange]).
      */
-    suspend fun queue(habitId: Int, change: suspend () -> OutboxEntity?): WriteResult {
-        val habit = habitDao.get(habitId) ?: return WriteResult.HabitNotFound
+    suspend fun queue(habitUuid: String, change: suspend () -> OutboxEntity?): WriteResult {
+        val habit = habitDao.get(habitUuid) ?: return WriteResult.HabitNotFound
         if (habit.frozen) return WriteResult.HabitFrozen
         val op = change() ?: return WriteResult.NoChange
         // The server's first log day is its earliest row; an anti-habit streak starts there.
-        habitDao.extendFirstLogDay(habitId, op.localDay)
+        habitDao.extendFirstLogDay(habitUuid, op.localDay)
         outboxDao.enqueue(op)
         return WriteResult.Queued
     }

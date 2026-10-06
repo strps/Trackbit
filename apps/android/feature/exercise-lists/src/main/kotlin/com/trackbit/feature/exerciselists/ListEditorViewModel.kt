@@ -49,7 +49,7 @@ data class ListEditorUiState(
     /** The exercise picker is open. */
     val adding: Boolean = false,
     /** The item whose targets are being edited. */
-    val editingItem: Int? = null,
+    val editingItem: String? = null,
     /** A rename or delete is in flight. */
     val busy: Boolean = false,
     val message: ListsMessage? = null,
@@ -63,7 +63,7 @@ data class ListEditorUiState(
 
     val atItemCap: Boolean get() = items.size >= ExerciseListRules.MAX_ITEMS
 
-    fun exercise(id: Int): Exercise? = exercises.find { it.id == id }
+    fun exercise(uuid: String): Exercise? = exercises.find { it.uuid == uuid }
 }
 
 /**
@@ -79,7 +79,7 @@ class ListEditorViewModel @Inject constructor(
     auth: AuthRepository,
     savedState: SavedStateHandle,
 ) : ViewModel() {
-    private val listId: Int = checkNotNull(savedState[LIST_ID])
+    private val listUuid: String = checkNotNull(savedState[LIST_UUID])
 
     private val _state = MutableStateFlow(ListEditorUiState())
 
@@ -102,7 +102,7 @@ class ListEditorViewModel @Inject constructor(
         viewModelScope.launch {
             val exercises = async { library.exercises() }
             val list = when (val lists = repository.lists()) {
-                is ConfigResult.Success -> lists.value.find { it.id == listId } ?: return@launch fail(ListsMessage.NotFound)
+                is ConfigResult.Success -> lists.value.find { it.uuid == listUuid } ?: return@launch fail(ListsMessage.NotFound)
                 is ConfigResult.Failure -> return@launch fail(lists.error.toListsMessage())
             }
             when (val loaded = exercises.await()) {
@@ -128,13 +128,13 @@ class ListEditorViewModel @Inject constructor(
     // Items --------------------------------------------------------------------------------------
 
     /** A drag passed [to]: the dragged item ([from]) takes its place. */
-    fun move(from: Int, to: Int) {
+    fun move(from: String, to: String) {
         if (!_state.value.editable) return
         dragging = true
         _state.update { state ->
             val items = state.items.toMutableList()
-            val fromIndex = items.indexOfFirst { it.id == from }
-            val toIndex = items.indexOfFirst { it.id == to }
+            val fromIndex = items.indexOfFirst { it.uuid == from }
+            val toIndex = items.indexOfFirst { it.uuid == to }
             if (fromIndex < 0 || toIndex < 0) return@update state
             items.add(toIndex, items.removeAt(fromIndex))
             state.copy(items = items)
@@ -144,17 +144,17 @@ class ListEditorViewModel @Inject constructor(
     /** The drag ended: saves the new order. */
     fun drop() {
         dragging = false
-        val order = _state.value.items.map { it.id }
-        if (order == saved.map { it.id }) return
+        val order = _state.value.items.map { it.uuid }
+        if (order == saved.map { it.uuid }) return
         saveItems { items ->
             // Items appended meanwhile (not in [order]) keep their place at the end.
-            items.sortedBy { item -> order.indexOf(item.id).takeIf { it >= 0 } ?: Int.MAX_VALUE }
+            items.sortedBy { item -> order.indexOf(item.uuid).takeIf { it >= 0 } ?: Int.MAX_VALUE }
         }
     }
 
-    fun remove(itemId: Int) {
+    fun remove(itemUuid: String) {
         if (!_state.value.editable) return
-        saveItems { items -> items.filterNot { it.id == itemId } }
+        saveItems { items -> items.filterNot { it.uuid == itemUuid } }
     }
 
     fun startAdding() {
@@ -169,13 +169,13 @@ class ListEditorViewModel @Inject constructor(
 
     fun stopAdding() = _state.update { it.copy(adding = false) }
 
-    /** Appends [exerciseId] at the end (a list may hold an exercise twice: a top set and a backoff). */
-    fun add(exerciseId: Int) {
+    /** Appends [exerciseUuid] at the end (a list may hold an exercise twice: a top set and a backoff). */
+    fun add(exerciseUuid: String) {
         _state.update { it.copy(adding = false) }
         if (!_state.value.editable) return
         viewModelScope.launch {
             writes.withLock {
-                when (val result = repository.append(listId, exerciseId)) {
+                when (val result = repository.append(listUuid, exerciseUuid)) {
                     is ConfigResult.Success -> saved = result.value.items
                     is ConfigResult.Failure -> _state.update { it.copy(message = result.error.toListsMessage()) }
                 }
@@ -184,16 +184,16 @@ class ListEditorViewModel @Inject constructor(
         }
     }
 
-    fun editTargets(itemId: Int) {
-        if (_state.value.editable) _state.update { it.copy(editingItem = itemId) }
+    fun editTargets(itemUuid: String) {
+        if (_state.value.editable) _state.update { it.copy(editingItem = itemUuid) }
     }
 
     fun stopEditingTargets() = _state.update { it.copy(editingItem = null) }
 
-    fun saveTargets(itemId: Int, prescription: Prescription) {
+    fun saveTargets(itemUuid: String, prescription: Prescription) {
         _state.update { it.copy(editingItem = null) }
         if (!_state.value.editable || ExerciseListRules.problems(prescription).isNotEmpty()) return
-        saveItems { items -> items.map { if (it.id == itemId) it.with(prescription) else it } }
+        saveItems { items -> items.map { if (it.uuid == itemUuid) it.with(prescription) else it } }
     }
 
     /**
@@ -206,7 +206,7 @@ class ListEditorViewModel @Inject constructor(
             writes.withLock {
                 val items = change(saved)
                 if (items != saved) {
-                    when (val result = repository.saveItems(listId, items.map { it.draft })) {
+                    when (val result = repository.saveItems(listUuid, items.map { it.draft })) {
                         is ConfigResult.Success -> saved = result.value.items
                         is ConfigResult.Failure -> _state.update { it.copy(message = result.error.toListsMessage()) }
                     }
@@ -239,7 +239,7 @@ class ListEditorViewModel @Inject constructor(
         val request = form.request() ?: return _state.update { it.copy(renaming = form.copy(showProblems = true)) }
         _state.update { it.copy(busy = true) }
         viewModelScope.launch {
-            when (val result = repository.update(listId, request)) {
+            when (val result = repository.update(listUuid, request)) {
                 is ConfigResult.Success -> _state.update {
                     it.copy(busy = false, renaming = null, list = it.list?.copy(name = result.value.name, description = result.value.description))
                 }
@@ -260,7 +260,7 @@ class ListEditorViewModel @Inject constructor(
         if (_state.value.busy) return
         _state.update { it.copy(busy = true, confirmingDelete = false) }
         viewModelScope.launch {
-            when (val result = repository.delete(listId)) {
+            when (val result = repository.delete(listUuid)) {
                 is ConfigResult.Success -> _state.update { it.copy(busy = false, done = true) }
                 // Already gone: what the user wanted.
                 is ConfigResult.Failure -> _state.update {
@@ -280,7 +280,7 @@ class ListEditorViewModel @Inject constructor(
 
     companion object {
         /** The route's argument. */
-        const val LIST_ID = "listId"
+        const val LIST_UUID = "listUuid"
     }
 }
 

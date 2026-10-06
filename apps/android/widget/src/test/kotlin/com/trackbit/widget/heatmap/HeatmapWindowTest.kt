@@ -5,6 +5,7 @@ import androidx.compose.ui.unit.dp
 import com.trackbit.core.model.RecentDay
 import com.trackbit.widget.FakeTrackerRepository
 import com.trackbit.widget.habit
+import com.trackbit.widget.habitUuid
 import com.trackbit.core.model.HistoryOwner
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -61,10 +62,10 @@ class HeatmapWindowTest {
         val tracker = FakeTrackerRepository()
         tracker.days.value = mapOf(today to listOf(habit(1, day = today)))
 
-        val habit = observeWithHistory(tracker, 1, window).first()
+        val habit = observeWithHistory(tracker, habitUuid(1), window).first()
 
-        assertEquals(1, habit!!.id)
+        assertEquals(habitUuid(1), habit!!.uuid)
         assertEquals(listOf(HistoryOwner.Heatmap to window.start), tracker.historyRequests)
-        assertEquals(listOf(Triple(1, today, window.days)), tracker.observed)
+        assertEquals(listOf(Triple(habitUuid(1), today, window.days)), tracker.observed)
     }
 }

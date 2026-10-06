@@ -7,7 +7,8 @@ import java.time.Instant
 /** A row of `GET /api/exercise-lists`, and the answer of every list write but delete. */
 @Serializable
 data class ExerciseList(
-    val id: Int,
+    /** The app names a list by it; the server's int `id` is the web's. */
+    val uuid: String,
     val userId: String,
     /** Who wrote the list: [userId] for self-made lists, null for lists older than authorship. */
     val authorId: String?,
@@ -24,9 +25,9 @@ data class ExerciseList(
 /** An entry of a list. The `target*` fields and [restSeconds] form an optional prescription. */
 @Serializable
 data class ExerciseListItem(
-    val id: Int,
-    val listId: Int,
-    val exerciseId: Int,
+    /** Logs made from the item name it by this ([ExerciseLog.listItemUuid]). */
+    val uuid: String,
+    val exerciseUuid: String,
     val position: Int,
     val targetSets: Int?,
     val targetReps: Int?,

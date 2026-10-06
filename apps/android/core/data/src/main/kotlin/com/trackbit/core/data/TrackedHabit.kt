@@ -17,7 +17,7 @@ import java.time.LocalDate
 
 /** A habit on one day, as tracker screens and widgets show it. Everything comes from Room. */
 data class TrackedHabit(
-    val id: Int,
+    val uuid: String,
     val name: String,
     val description: String?,
     override val type: HabitType,
@@ -96,7 +96,7 @@ internal fun HabitDay.toTrackedHabit(): TrackedHabit {
         if (Streak.dayCounts(habit, logs[day], day, habit.firstLogDay)) before?.plus(1) else 0
     }
     return TrackedHabit(
-        id = habit.id,
+        uuid = habit.uuid,
         name = habit.name,
         description = habit.description,
         type = habit.type,

@@ -13,12 +13,12 @@ import com.trackbit.core.model.HabitType
 import com.trackbit.widget.widgetEntryPoint
 import java.time.LocalDate
 
-private val HabitIdKey = ActionParameters.Key<Int>("habitId")
+private val HabitUuidKey = ActionParameters.Key<String>("habitUuid")
 private val DayKey = ActionParameters.Key<String>("day")
 
 /** Identifies the row tapped: its habit and the day it shows, which is the day written to. */
 internal fun habitParameters(habit: TrackedHabit): ActionParameters =
-    actionParametersOf(HabitIdKey to habit.id, DayKey to habit.day.toString())
+    actionParametersOf(HabitUuidKey to habit.uuid, DayKey to habit.day.toString())
 
 /**
  * A tap on a habit row. It writes through [TrackerRepository] (Room + outbox) and never calls the
@@ -27,39 +27,39 @@ internal fun habitParameters(habit: TrackedHabit): ActionParameters =
  */
 internal abstract class HabitAction : ActionCallback {
     final override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        val habitId = requireNotNull(parameters[HabitIdKey]) { "Missing habit id" }
+        val habitUuid = requireNotNull(parameters[HabitUuidKey]) { "Missing habit uuid" }
         val day = LocalDate.parse(requireNotNull(parameters[DayKey]) { "Missing day" })
-        write(context.widgetEntryPoint().tracker(), habitId, day)
+        write(context.widgetEntryPoint().tracker(), habitUuid, day)
     }
 
-    abstract suspend fun write(tracker: TrackerRepository, habitId: Int, day: LocalDate)
+    abstract suspend fun write(tracker: TrackerRepository, habitUuid: String, day: LocalDate)
 }
 
 /** Check habits: done ↔ not done. */
 internal class ToggleHabitAction : HabitAction() {
-    override suspend fun write(tracker: TrackerRepository, habitId: Int, day: LocalDate) {
-        tracker.toggle(habitId, day)
+    override suspend fun write(tracker: TrackerRepository, habitUuid: String, day: LocalDate) {
+        tracker.toggle(habitUuid, day)
     }
 }
 
 /** Count habits: +1. */
 internal class IncrementHabitAction : HabitAction() {
-    override suspend fun write(tracker: TrackerRepository, habitId: Int, day: LocalDate) {
-        tracker.increment(habitId, day, 1)
+    override suspend fun write(tracker: TrackerRepository, habitUuid: String, day: LocalDate) {
+        tracker.increment(habitUuid, day, 1)
     }
 }
 
 /** Timed habits: starts a timer that logs to the row's day when it stops. */
 internal class StartTimerAction : HabitAction() {
-    override suspend fun write(tracker: TrackerRepository, habitId: Int, day: LocalDate) {
-        tracker.startTimer(habitId, day)
+    override suspend fun write(tracker: TrackerRepository, habitUuid: String, day: LocalDate) {
+        tracker.startTimer(habitUuid, day)
     }
 }
 
 /** Timed habits: stops the running timer, which logs to the day it started for. */
 internal class StopTimerAction : HabitAction() {
-    override suspend fun write(tracker: TrackerRepository, habitId: Int, day: LocalDate) {
-        tracker.stopTimer(habitId)
+    override suspend fun write(tracker: TrackerRepository, habitUuid: String, day: LocalDate) {
+        tracker.stopTimer(habitUuid)
     }
 }
 

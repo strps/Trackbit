@@ -46,6 +46,7 @@ import com.trackbit.widget.ui.openAppAction
 import java.time.Instant
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.UUID
 
 /** [showDate]: false for a preview, whose sample day isn't today. */
 @Composable
@@ -96,7 +97,7 @@ private fun HabitList(habits: List<TrackedHabit>, openApp: Action) {
     val context = LocalContext.current
     val (anti, regular) = habits.partition { it.isAntiHabit }
     LazyColumn {
-        items(regular, itemId = { it.id.toLong() }) { HabitRow(it, openApp) }
+        items(regular, itemId = { it.itemId }) { HabitRow(it, openApp) }
         if (anti.isNotEmpty()) {
             item {
                 Text(
@@ -105,7 +106,7 @@ private fun HabitList(habits: List<TrackedHabit>, openApp: Action) {
                     modifier = GlanceModifier.padding(top = 8.dp, bottom = 2.dp),
                 )
             }
-            items(anti, itemId = { it.id.toLong() }) { HabitRow(it, openApp) }
+            items(anti, itemId = { it.itemId }) { HabitRow(it, openApp) }
         }
     }
 }
@@ -191,3 +192,7 @@ private fun RowButton(@DrawableRes icon: Int, description: String, onClick: Acti
         modifier = GlanceModifier.size(36.dp),
     )
 }
+
+/** Glance's lazy list wants a stable Long per row: the habit's uuid folded to 64 bits. */
+private val TrackedHabit.itemId: Long
+    get() = UUID.fromString(uuid).let { it.mostSignificantBits xor it.leastSignificantBits }

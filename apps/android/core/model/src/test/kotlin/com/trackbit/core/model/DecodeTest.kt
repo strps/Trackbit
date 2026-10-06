@@ -11,6 +11,7 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -35,6 +36,7 @@ class DecodeTest {
         "habit-created.json" to Habit.serializer(),
         "habit-updated.json" to Habit.serializer(),
         "day-log.json" to DayLog.serializer(),
+        "day-log-ensured.json" to DayLog.serializer(),
         "today.json" to TodayResponse.serializer(),
         "days.json" to DaysResponse.serializer(),
         "exercises.json" to ListSerializer(Exercise.serializer()),
@@ -44,7 +46,6 @@ class DecodeTest {
         "sets.json" to HabitSetsResponse.serializer(),
         "exercise-session.json" to ExerciseSession.serializer(),
         "exercise-log-created.json" to ExerciseLog.serializer(),
-        "exercise-log.json" to ExerciseLog.serializer(),
         "exercise-performance.json" to ExercisePerformance.serializer(),
         "exercise-sessions.json" to ListSerializer(ExerciseSessionDetail.serializer()),
         "exercise-lists.json" to ListSerializer(ExerciseList.serializer()),
@@ -71,6 +72,7 @@ class DecodeTest {
     @Test fun habits() {
         val habits = contract<List<Habit>>("habits.json").associateBy { it.name }
         val read = habits.getValue("Read")
+        assertEquals("00000000-0000-4000-8000-000000000101", read.uuid)
         assertEquals(HabitType.Count, read.type)
         assertEquals(ColorTheme.Custom, read.colorTheme)
         assertEquals(HabitIcon.Book, read.icon)
@@ -97,8 +99,12 @@ class DecodeTest {
 
     @Test fun dayLog() {
         val log = contract<DayLog>("day-log.json")
+        assertEquals("00000000-0000-4000-8000-000000000201", log.habitUuid)
         assertEquals(day("2026-01-10"), log.localDay)
         assertEquals(2, log.rating)
+        val ensured = contract<DayLog>("day-log-ensured.json")
+        assertEquals("00000000-0000-4000-8000-000000000203", ensured.habitUuid)
+        assertNull(ensured.rating)
     }
 
     @Test fun today() {
@@ -107,6 +113,7 @@ class DecodeTest {
         val habits = today.habits.associateBy { it.name }
 
         val read = habits.getValue("Read")
+        assertEquals("00000000-0000-4000-8000-000000000201", read.uuid)
         assertEquals((4..10).map { day("2026-01-%02d".format(it)) }, read.recent.map { it.day })
         assertEquals(listOf(null, null, null, 1, 3, 4, 2), read.recent.map { it.rating })
         assertEquals(day("2026-01-07"), read.firstLogDay)
@@ -124,13 +131,15 @@ class DecodeTest {
         assertEquals(day("2026-01-01"), days.start)
         assertEquals(day("2026-01-10"), days.end)
         val gym = days.days.single { it.sessionCount > 0 }
-        assertEquals(HabitDayValue(gym.habitId, day("2026-01-09"), rating = null, sessionCount = 1), gym)
-        assertEquals(listOf(1, 3, 4, 2), days.days.filter { it.habitId == days.days.first().habitId }.map { it.rating })
+        assertEquals(HabitDayValue("00000000-0000-4000-8000-000000000203", day("2026-01-09"), rating = null, sessionCount = 1), gym)
+        assertEquals(listOf(1, 3, 4, 2), days.days.filter { it.habitUuid == days.days.first().habitUuid }.map { it.rating })
     }
 
     @Test fun exercises() {
         val exercises = contract<List<Exercise>>("exercises.json").associateBy { it.name }
         val system = exercises.getValue("Bench Press")
+        assertEquals("ffffffff-0000-4000-8000-000000000001", system.uuid)
+        assertEquals("00000000-0000-4000-8000-000000000301", exercises.getValue("My row").uuid)
         assertNull(system.userId)
         assertNull(system.lastPerformance)
         assertEquals(listOf(MuscleGroupRef(1, "Chest")), system.muscleGroups)
@@ -158,10 +167,12 @@ class DecodeTest {
 
     @Test fun sets() {
         val sets = contract<HabitSetsResponse>("sets.json")
+        assertEquals("00000000-0000-4000-8000-000000000306", sets.habitUuid)
+        val row = "00000000-0000-4000-8000-000000000301"
         assertEquals(
             listOf(
-                HabitSet(day("2026-01-10"), exerciseId = 2, weight = 60.5, reps = 8, rpe = null, duration = null, distance = null),
-                HabitSet(day("2026-01-10"), exerciseId = 2, weight = 62.5, reps = 6, rpe = 8, duration = 45_000, distance = 1.25),
+                HabitSet(day("2026-01-10"), exerciseUuid = row, weight = 60.5, reps = 8, rpe = null, duration = null, distance = null),
+                HabitSet(day("2026-01-10"), exerciseUuid = row, weight = 62.5, reps = 6, rpe = 8, duration = 45_000, distance = 1.25),
             ),
             sets.sets,
         )
@@ -171,10 +182,9 @@ class DecodeTest {
         val session = contract<ExerciseSession>("exercise-session.json")
         assertEquals(1, session.dayLogId)
         assertEquals("00000000-0000-4000-8000-000000000001", session.uuid)
-        assertEquals(1, contract<ExerciseLog>("exercise-log-created.json").listItemId)
-        val log = contract<ExerciseLog>("exercise-log.json")
-        assertEquals(5.25, log.distance)
-        assertEquals(1500, log.duration)
+        val created = contract<ExerciseLog>("exercise-log-created.json")
+        assertEquals("00000000-0000-4000-8000-000000000301", created.exerciseUuid)
+        assertEquals("00000000-0000-4000-8000-000000000303", created.listItemUuid)
         val set = contract<ExercisePerformance>("exercise-performance.json")
         assertEquals(62.5, set.weight)
         assertEquals(1.25, set.distance)
@@ -187,7 +197,10 @@ class DecodeTest {
         assertEquals("00000000-0000-4000-8000-000000000001", session.uuid)
         val log = session.exerciseLogs.single()
         assertEquals("00000000-0000-4000-8000-000000000002", log.uuid)
-        assertEquals(1, log.listItemId)
+        assertEquals("00000000-0000-4000-8000-000000000301", log.exerciseUuid)
+        assertNotNull(log.listItemUuid)
+        assertEquals(5.25, log.distance)
+        assertEquals(1500, log.duration)
         assertEquals(listOf(1, 2), log.exercisePerformances.map { it.number })
         assertEquals(SetValues(reps = 8, weight = 60.5, duration = null, distance = null, rpe = null), log.exercisePerformances[0].values)
     }
@@ -200,7 +213,11 @@ class DecodeTest {
     }
 
     @Test fun exerciseLists() {
-        val item = contract<List<ExerciseList>>("exercise-lists.json").single().items.single()
+        val list = contract<List<ExerciseList>>("exercise-lists.json").single()
+        val item = list.items.single()
+        assertEquals(36, list.uuid.length)
+        assertEquals(36, item.uuid.length)
+        assertEquals(36, item.exerciseUuid.length)
         assertEquals(120, item.restSeconds)
         assertEquals(60.5, item.targetWeight)
         assertEquals(1.5, item.targetDistance)
@@ -210,26 +227,31 @@ class DecodeTest {
         val updated = contract<ExerciseList>("exercise-list-updated.json")
         assertEquals("Legs", updated.name)
         assertNull(updated.description)
-        assertEquals(listOf(1, 2), updated.items.map { it.exerciseId })
+        assertEquals(2, updated.items.map { it.exerciseUuid }.distinct().size)
         assertEquals(Prescription(5, 5, 100.0, null, null, 180, "Belt"), updated.items[0].prescription)
         assertTrue(updated.items[1].prescription.isEmpty)
 
         assertEquals(listOf("Arms", "Legs"), contract<List<ExerciseList>>("exercise-lists-reordered.json").map { it.name })
         val appended = contract<ExerciseListItemsResponse>("exercise-list-item-appended.json")
         assertEquals(listOf(0, 1), appended.items.map { it.position })
+        assertEquals(36, appended.listUuid.length)
+        assertEquals(
+            "00000000-0000-4000-8000-000000000401",
+            contract<ExerciseListItemsResponse>("exercise-list-items.json").listUuid,
+        )
     }
 
-    @Test fun `list items encode every target, and leave out a new item's id`() {
+    @Test fun `list items encode every target and name rows by uuid`() {
         val request = ExerciseListItemsRequest.of(
             listOf(
-                ListItemDraft(7, 1, Prescription.NONE.copy(targetSets = 3, notes = "  ")),
-                ListItemDraft(null, 2, Prescription.NONE),
+                ListItemDraft("i7", "e1", Prescription.NONE.copy(targetSets = 3, notes = "  ")),
+                ListItemDraft("i8", "e2", Prescription.NONE),
             ),
         )
         assertEquals(
             """{"items":[""" +
-                """{"id":7,"exerciseId":1,"position":0,"targetSets":3,"targetReps":null,"targetWeight":null,"targetDuration":null,"targetDistance":null,"restSeconds":null,"notes":null},""" +
-                """{"exerciseId":2,"position":1,"targetSets":null,"targetReps":null,"targetWeight":null,"targetDuration":null,"targetDistance":null,"restSeconds":null,"notes":null}]}""",
+                """{"uuid":"i7","exerciseUuid":"e1","position":0,"targetSets":3,"targetReps":null,"targetWeight":null,"targetDuration":null,"targetDistance":null,"restSeconds":null,"notes":null},""" +
+                """{"uuid":"i8","exerciseUuid":"e2","position":1,"targetSets":null,"targetReps":null,"targetWeight":null,"targetDuration":null,"targetDistance":null,"restSeconds":null,"notes":null}]}""",
             TrackbitJson.encodeToString(ExerciseListItemsRequest.serializer(), request),
         )
     }
@@ -250,7 +272,8 @@ class DecodeTest {
         assertEquals("list:00000000-0000-4000-8000-000000000302", queue.descriptor.key)
         assertNull(queue.emptyReason)
         val entry = queue.entries.single()
-        assertEquals(1, entry.listItemId)
+        assertEquals("00000000-0000-4000-8000-000000000301", entry.exerciseUuid)
+        assertEquals("00000000-0000-4000-8000-000000000303", entry.listItemUuid)
         val prescription = checkNotNull(entry.prescription)
         assertEquals(8, prescription.targetReps)
         assertEquals(60.5, prescription.targetWeight)
@@ -288,7 +311,7 @@ class DecodeTest {
     }
 
     @Test fun `values from a newer server fall back instead of failing the response`() {
-        val json = """{"id":8,"userId":"u","name":"Levitate","description":null,"type":"levitation",
+        val json = """{"id":8,"uuid":"h","userId":"u","name":"Levitate","description":null,"type":"levitation",
             "isAntiHabit":false,"colorTheme":"aurora","colorStops":[{"position":0,"color":[0,0,0]}],
             "icon":"Activity","weeklyGoal":7,"dailyGoal":1,"order":1,"createdAt":null,"frozen":true,
             "someNewField":{"nested":true}}"""

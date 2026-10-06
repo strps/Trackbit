@@ -17,13 +17,13 @@ import java.time.LocalDate
 @Entity(
     tableName = SessionEntity.TABLE,
     foreignKeys = [
-        ForeignKey(entity = HabitEntity::class, parentColumns = ["id"], childColumns = ["habitId"], onDelete = ForeignKey.CASCADE),
+        ForeignKey(entity = HabitEntity::class, parentColumns = ["uuid"], childColumns = ["habitUuid"], onDelete = ForeignKey.CASCADE),
     ],
-    indices = [Index("habitId", "localDay")],
+    indices = [Index("habitUuid", "localDay")],
 )
 data class SessionEntity(
     @PrimaryKey val uuid: String,
-    val habitId: Int,
+    val habitUuid: String,
     val localDay: LocalDate,
     val createdAt: Instant,
 ) {
@@ -44,9 +44,9 @@ data class ExerciseLogEntity(
     @PrimaryKey val uuid: String,
     val sessionUuid: String,
     /** Not a foreign key: the catalog is replaced wholesale and may lag behind. */
-    val exerciseId: Int,
+    val exerciseUuid: String,
     /** The list item it was picked from, or null for an ad-hoc pick. */
-    val listItemId: Int?,
+    val listItemUuid: String?,
     val createdAt: Instant,
     val distance: Double?,
     /** Seconds. */

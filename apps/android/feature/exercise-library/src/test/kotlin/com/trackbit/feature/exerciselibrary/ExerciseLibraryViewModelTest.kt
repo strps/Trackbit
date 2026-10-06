@@ -117,24 +117,24 @@ class ExerciseLibraryViewModelTest {
     @Test fun `add to list appends to an unfrozen list and says so`() = runTest(dispatcher) {
         lists.lists = listOf(exerciseList(1, "Push"), exerciseList(2, "Frozen", frozen = true))
         val viewModel = library()
-        assertEquals(ListTargets.Loaded(listOf(ListTarget(1, "Push", 0, contains = false))), viewModel.state.value.listTargets(2))
+        assertEquals(ListTargets.Loaded(listOf(ListTarget(listUuid(1), "Push", 0, contains = false))), viewModel.state.value.listTargets(exerciseUuid(2)))
 
-        viewModel.addToList(1, 2)
+        viewModel.addToList(listUuid(1), exerciseUuid(2))
         advanceUntilIdle()
 
-        assertEquals(listOf("lists", "append 1 2"), lists.calls)
+        assertEquals(listOf("lists", "append ${listUuid(1)} ${exerciseUuid(2)}"), lists.calls)
         assertEquals(ExerciseLibraryMessage.AddedToList("Push"), viewModel.state.value.message)
-        assertEquals(ListTargets.Loaded(listOf(ListTarget(1, "Push", 1, contains = true))), viewModel.state.value.listTargets(2))
+        assertEquals(ListTargets.Loaded(listOf(ListTarget(listUuid(1), "Push", 1, contains = true))), viewModel.state.value.listTargets(exerciseUuid(2)))
     }
 
     @Test fun `lists that failed to load are retried when the menu opens`() = runTest(dispatcher) {
         lists.failWith = ConfigError.Offline
         val viewModel = library()
-        assertEquals(ListTargets.Offline, viewModel.state.value.listTargets(2))
+        assertEquals(ListTargets.Offline, viewModel.state.value.listTargets(exerciseUuid(2)))
 
         lists.failWith = null
         viewModel.onListsMenu()
         advanceUntilIdle()
-        assertEquals(ListTargets.Loaded(emptyList()), viewModel.state.value.listTargets(2))
+        assertEquals(ListTargets.Loaded(emptyList()), viewModel.state.value.listTargets(exerciseUuid(2)))
     }
 }

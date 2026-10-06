@@ -61,7 +61,7 @@ import java.time.format.FormatStyle
  */
 @Composable
 fun TrackerScreen(
-    onOpenSession: (habitId: Int, day: LocalDate) -> Unit,
+    onOpenSession: (habitUuid: String, day: LocalDate) -> Unit,
     viewModel: TrackerViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -76,14 +76,14 @@ fun TrackerScreen(
     }
 
     // The habit whose time is being edited, by id: the row's data stays live underneath.
-    var editingTimeOf by rememberSaveable { mutableStateOf<Int?>(null) }
+    var editingTimeOf by rememberSaveable { mutableStateOf<String?>(null) }
     val actions = remember(viewModel) {
         HabitRowActions(
             onIncrement = viewModel::increment,
             onToggle = viewModel::toggle,
             onToggleTimer = viewModel::toggleTimer,
-            onEditTime = { editingTimeOf = it.id },
-            onOpenSession = { onOpenSession(it.id, it.day) },
+            onEditTime = { editingTimeOf = it.uuid },
+            onOpenSession = { onOpenSession(it.uuid, it.day) },
         )
     }
 
@@ -96,7 +96,7 @@ fun TrackerScreen(
         onMoveDay = viewModel::moveDay,
     )
 
-    val editing = editingTimeOf?.let { id -> state.habits?.find { it.id == id } }
+    val editing = editingTimeOf?.let { uuid -> state.habits?.find { it.uuid == uuid } }
     if (editing != null) {
         DurationDialog(
             title = stringResource(R.string.android_tracker_time_title, editing.name),
@@ -167,7 +167,7 @@ private fun LazyListScope.habitItems(habits: List<TrackedHabit>?, actions: Habit
         habits.isEmpty() -> item { CenteredText(R.string.tracker_empty) }
         else -> {
             val (anti, regular) = habits.partition { it.isAntiHabit }
-            items(regular, key = { it.id }) { HabitRow(it, actions) }
+            items(regular, key = { it.uuid }) { HabitRow(it, actions) }
             if (anti.isNotEmpty()) {
                 item(key = "anti-habits") {
                     Row(
@@ -188,7 +188,7 @@ private fun LazyListScope.habitItems(habits: List<TrackedHabit>?, actions: Habit
                         )
                     }
                 }
-                items(anti, key = { it.id }) { HabitRow(it, actions) }
+                items(anti, key = { it.uuid }) { HabitRow(it, actions) }
             }
         }
     }

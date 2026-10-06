@@ -57,13 +57,19 @@ import retrofit2.Response
 
 val DAY: LocalDate = LocalDate.of(2026, 9, 26)
 
+// Fixtures are numbered for readability; these are the uuids the app names them by.
+fun h(n: Int) = "habit-$n"
+fun ex(n: Int) = "exercise-$n"
+fun item(n: Int) = "item-$n"
+fun lst(n: Int) = "list-$n"
+
 fun inMemoryDatabase(): TrackbitDatabase = Room
     .inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), TrackbitDatabase::class.java)
     .allowMainThreadQueries()
     .build()
 
 fun todayHabit(
-    id: Int,
+    n: Int,
     type: HabitType = HabitType.Count,
     isAntiHabit: Boolean = false,
     frozen: Boolean = false,
@@ -71,8 +77,8 @@ fun todayHabit(
     streakBeforeDay: Int = 0,
     recent: List<RecentDay> = emptyList(),
 ) = TodayHabit(
-    id = id,
-    name = "Habit $id",
+    uuid = h(n),
+    name = "Habit $n",
     description = null,
     type = type,
     isAntiHabit = isAntiHabit,
@@ -81,7 +87,7 @@ fun todayHabit(
     colorStops = listOf(ColorStop(0f, Rgba(1f, 2f, 3f, 1f))),
     dailyGoal = 2,
     weeklyGoal = 5,
-    order = id,
+    order = n,
     frozen = frozen,
     firstLogDay = firstLogDay,
     streakBeforeDay = streakBeforeDay,
@@ -90,8 +96,8 @@ fun todayHabit(
 
 fun todayResponse(day: LocalDate = DAY, vararg habits: TodayHabit) = TodayResponse(day, habits.toList())
 
-fun dayLog(habitId: Int, day: LocalDate, rating: Int?) =
-    DayLog(id = 1, habitId = habitId, rating = rating, notes = null, localDay = day, timeStamp = Instant.EPOCH, createdAt = Instant.EPOCH)
+fun dayLog(habitUuid: String, day: LocalDate, rating: Int?) =
+    DayLog(id = 1, habitUuid = habitUuid, rating = rating, notes = null, localDay = day, timeStamp = Instant.EPOCH, createdAt = Instant.EPOCH)
 
 fun httpError(status: Int, body: String = "{}") = HttpException(Response.error<Any>(status, body.toResponseBody()))
 
@@ -151,9 +157,9 @@ class FakeTrackerService : TrackerService {
     var todayAnswer: () -> TodayResponse = { todayResponse() }
     var respond: (Any) -> DayLog = { body ->
         when (body) {
-            is CheckRequest -> dayLog(body.habitId, body.day!!, body.rating)
-            is IncrementRequest -> dayLog(body.habitId, body.day!!, body.delta)
-            is EnsureDayLogRequest -> dayLog(body.habitId, body.day!!, null)
+            is CheckRequest -> dayLog(body.habitUuid, body.day!!, body.rating)
+            is IncrementRequest -> dayLog(body.habitUuid, body.day!!, body.delta)
+            is EnsureDayLogRequest -> dayLog(body.habitUuid, body.day!!, null)
             else -> error("unexpected $body")
         }
     }
@@ -166,11 +172,11 @@ class FakeTrackerService : TrackerService {
         return daysAnswer(start, end)
     }
 
-    var setsAnswer: (Int) -> HabitSetsResponse = { HabitSetsResponse(it, emptyList()) }
+    var setsAnswer: (String) -> HabitSetsResponse = { HabitSetsResponse(it, emptyList()) }
 
-    override suspend fun sets(habitId: Int): HabitSetsResponse {
+    override suspend fun sets(habitUuid: String): HabitSetsResponse {
         yield()
-        return setsAnswer(habitId)
+        return setsAnswer(habitUuid)
     }
 
     override suspend fun today(day: LocalDate?): TodayResponse {
@@ -184,12 +190,12 @@ class FakeTrackerService : TrackerService {
 
     /** Answers session writes; throw from it to fail one. */
     var sessionRespond: (Any) -> Unit = {}
-    var sessionsAnswer: (Int, LocalDate) -> List<ExerciseSessionDetail> = { _, _ -> emptyList() }
-    val sessionsRequests = mutableListOf<Pair<Int, LocalDate>>()
+    var sessionsAnswer: (String, LocalDate) -> List<ExerciseSessionDetail> = { _, _ -> emptyList() }
+    val sessionsRequests = mutableListOf<Pair<String, LocalDate>>()
 
-    override suspend fun sessions(habitId: Int, day: LocalDate): List<ExerciseSessionDetail> {
-        sessionsRequests += habitId to day
-        return sessionsAnswer(habitId, day)
+    override suspend fun sessions(habitUuid: String, day: LocalDate): List<ExerciseSessionDetail> {
+        sessionsRequests += habitUuid to day
+        return sessionsAnswer(habitUuid, day)
     }
 
     override suspend fun createSession(body: CreateSessionRequest, key: IdempotencyKey): ExerciseSession {
@@ -201,7 +207,7 @@ class FakeTrackerService : TrackerService {
 
     override suspend fun createExerciseLog(body: CreateExerciseLogRequest, key: IdempotencyKey): ExerciseLog {
         recordSession(body, key)
-        return ExerciseLog(1, body.uuid, body.exerciseId, 1, body.listItemId, null, null, null, null, null)
+        return ExerciseLog(1, body.uuid, body.exerciseUuid, 1, body.listItemUuid, null, null, null, null, null)
     }
 
     override suspend fun deleteExerciseLog(uuid: String, key: IdempotencyKey) = recordSession(Deleted("log", uuid), key)
@@ -248,11 +254,11 @@ class FakeExerciseService(var answer: () -> List<Exercise> = { emptyList() }) : 
     }
 
     var muscleGroupsAnswer: () -> List<MuscleGroup> = { emptyList() }
-    /** Answers a create (id null) or an update; throw [httpError] to fail it. */
-    var writeAnswer: (id: Int?, body: ExerciseRequest) -> Exercise = { id, body ->
-        exercise(id ?: 100).copy(userId = "user", name = body.name, description = body.description)
+    /** Answers a create (uuid null) or an update; throw [httpError] to fail it. */
+    var writeAnswer: (uuid: String?, body: ExerciseRequest) -> Exercise = { uuid, body ->
+        exercise(100).copy(uuid = uuid ?: body.uuid!!, userId = "user", name = body.name, description = body.description)
     }
-    val writes = mutableListOf<Pair<Int?, ExerciseRequest?>>()
+    val writes = mutableListOf<Pair<String?, ExerciseRequest?>>()
 
     override suspend fun createExercise(body: ExerciseRequest): Exercise {
         yield()
@@ -260,15 +266,15 @@ class FakeExerciseService(var answer: () -> List<Exercise> = { emptyList() }) : 
         return writeAnswer(null, body)
     }
 
-    override suspend fun updateExercise(id: Int, body: ExerciseRequest): Exercise {
+    override suspend fun updateExercise(uuid: String, body: ExerciseRequest): Exercise {
         yield()
-        writes += id to body
-        return writeAnswer(id, body)
+        writes += uuid to body
+        return writeAnswer(uuid, body)
     }
 
-    override suspend fun deleteExercise(id: Int) {
+    override suspend fun deleteExercise(uuid: String) {
         yield()
-        writes += id to null
+        writes += uuid to null
     }
 
     override suspend fun muscleGroups(): List<MuscleGroup> {
@@ -296,10 +302,10 @@ fun source(key: String, name: String = key) =
 fun queue(key: String, vararg entries: QueueEntry) =
     ResolvedQueue(source(key), entries.toList(), emptyReason = null, generatedAt = Instant.EPOCH)
 
-fun exercise(id: Int, frozen: Boolean = false, lastPerformance: LastPerformance? = null) = Exercise(
-    id = id,
+fun exercise(n: Int, frozen: Boolean = false, lastPerformance: LastPerformance? = null) = Exercise(
+    uuid = ex(n),
     userId = if (frozen) "user" else null,
-    name = "Exercise $id",
+    name = "Exercise $n",
     category = "strength",
     defaultWeightUnit = "kg",
     defaultDistanceUnit = "km",

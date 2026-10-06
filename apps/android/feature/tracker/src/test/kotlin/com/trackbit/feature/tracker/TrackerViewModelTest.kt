@@ -180,7 +180,8 @@ private fun habit(
     value: Long = 0,
     timer: HabitTimer? = null,
 ) = TrackedHabit(
-    id = id,
+    // The uuid is the fixture's number, so recorded writes read "start 1 …".
+    uuid = id.toString(),
     name = "Habit $id",
     description = null,
     type = type,
@@ -223,17 +224,17 @@ private class FakeTrackerRepository : TrackerRepository {
         return habits.map { list -> list.map { it.copy(day = day) } }
     }
 
-    override fun observeHabit(habitId: Int, day: LocalDate, days: Int): Flow<TrackedHabit?> =
-        observeDay(day, days).map { list -> list.find { it.id == habitId } }
+    override fun observeHabit(habitUuid: String, day: LocalDate, days: Int): Flow<TrackedHabit?> =
+        observeDay(day, days).map { list -> list.find { it.uuid == habitUuid } }
 
-    override suspend fun setRating(habitId: Int, day: LocalDate, rating: Int) = record("set $habitId $day $rating")
+    override suspend fun setRating(habitUuid: String, day: LocalDate, rating: Int) = record("set $habitUuid $day $rating")
 
-    override suspend fun increment(habitId: Int, day: LocalDate, delta: Int) =
-        record("increment $habitId $day $delta")
+    override suspend fun increment(habitUuid: String, day: LocalDate, delta: Int) =
+        record("increment $habitUuid $day $delta")
 
-    override suspend fun toggle(habitId: Int, day: LocalDate) = record("toggle $habitId $day")
+    override suspend fun toggle(habitUuid: String, day: LocalDate) = record("toggle $habitUuid $day")
 
-    override suspend fun ensureDayLog(habitId: Int, day: LocalDate) = record("ensure $habitId $day")
+    override suspend fun ensureDayLog(habitUuid: String, day: LocalDate) = record("ensure $habitUuid $day")
 
     override fun observeRunningTimers(): Flow<List<TrackedHabit>> = throw UnsupportedOperationException()
     override suspend fun requestHistory(owner: HistoryOwner, start: LocalDate) {
@@ -246,11 +247,11 @@ private class FakeTrackerRepository : TrackerRepository {
         history += "release"
     }
 
-    override suspend fun startTimer(habitId: Int, day: LocalDate) = record("start $habitId $day")
+    override suspend fun startTimer(habitUuid: String, day: LocalDate) = record("start $habitUuid $day")
 
-    override suspend fun stopTimer(habitId: Int) = record("stop $habitId")
+    override suspend fun stopTimer(habitUuid: String) = record("stop $habitUuid")
 
-    override suspend fun addToTimer(habitId: Int, ms: Long) = record("add $habitId $ms")
+    override suspend fun addToTimer(habitUuid: String, ms: Long) = record("add $habitUuid $ms")
 
     override suspend fun refresh(): SyncResult {
         refreshes++

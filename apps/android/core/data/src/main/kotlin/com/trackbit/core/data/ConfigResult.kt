@@ -54,11 +54,11 @@ internal fun <T> ApiResult<T>.toConfigResult(type: HabitType? = null): ConfigRes
     is ApiResult.Failure -> ConfigResult.Failure(
         when (val e = error) {
             is ApiError.Network -> ConfigError.Offline
-            is ApiError.HabitFrozen -> ConfigError.HabitFrozen
+            ApiError.HabitFrozen -> ConfigError.HabitFrozen
             is ApiError.HabitLimitReached -> ConfigError.HabitLimitReached(e.maxHabits ?: 0)
             is ApiError.HabitTypeNotAllowed ->
                 ConfigError.HabitTypeNotAllowed(type, e.allowed.mapNotNull { wire -> HabitType.entries.find { it.wire == wire } })
-            is ApiError.CustomExerciseFrozen -> ConfigError.CustomExerciseFrozen
+            ApiError.CustomExerciseFrozen -> ConfigError.CustomExerciseFrozen
             is ApiError.CustomExerciseLimitReached -> ConfigError.CustomExerciseLimitReached(e.maxCustomExercises ?: 0)
             ApiError.ExerciseNameTaken -> ConfigError.ExerciseNameTaken
             ApiError.ExerciseListFrozen -> ConfigError.ExerciseListFrozen

@@ -4,6 +4,7 @@ import com.trackbit.core.auth.AuthState
 import com.trackbit.widget.DAY
 import com.trackbit.widget.FakeTrackerRepository
 import com.trackbit.widget.habit
+import com.trackbit.widget.habitUuid
 import com.trackbit.widget.user
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -16,12 +17,12 @@ class HabitWidgetStateTest {
     private val tracker = FakeTrackerRepository()
     private val auth = MutableStateFlow<AuthState>(AuthState.Loading)
     private val day = MutableStateFlow(DAY)
-    private val habitId = MutableStateFlow<Int?>(null)
+    private val chosen = MutableStateFlow<String?>(null)
 
     @Test fun `follows the session, the chosen habit and the day`() = runTest {
         val states = mutableListOf<HabitWidgetState>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            habitWidgetState(auth, day, habitId) { id, d -> tracker.observeHabit(id, d) }.collect { states += it }
+            habitWidgetState(auth, day, chosen) { id, d -> tracker.observeHabit(id, d) }.collect { states += it }
         }
         val tomorrow = DAY.plusDays(1)
         tracker.days.value = mapOf(
@@ -33,16 +34,16 @@ class HabitWidgetStateTest {
         auth.value = AuthState.SignedIn(user())
         assertEquals(HabitWidgetState.Unconfigured, states.last())
 
-        habitId.value = 1
+        chosen.value = habitUuid(1)
         assertEquals(HabitWidgetState.Tracking(habit(1)), states.last())
 
-        habitId.value = 2
+        chosen.value = habitUuid(2)
         assertEquals("reconfigured", HabitWidgetState.Tracking(habit(2)), states.last())
 
         day.value = tomorrow
         assertEquals("habit 2 has no row tomorrow", HabitWidgetState.HabitRemoved, states.last())
 
-        habitId.value = 1
+        chosen.value = habitUuid(1)
         assertEquals(HabitWidgetState.Tracking(habit(1, day = tomorrow, value = 1)), states.last())
 
         auth.value = AuthState.SignedOut
@@ -52,10 +53,10 @@ class HabitWidgetStateTest {
     @Test fun `a deleted habit comes back if it reappears`() = runTest {
         val states = mutableListOf<HabitWidgetState>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            habitWidgetState(auth, day, habitId) { id, d -> tracker.observeHabit(id, d) }.collect { states += it }
+            habitWidgetState(auth, day, chosen) { id, d -> tracker.observeHabit(id, d) }.collect { states += it }
         }
         auth.value = AuthState.SignedIn(user())
-        habitId.value = 1
+        chosen.value = habitUuid(1)
         tracker.days.value = mapOf(DAY to listOf(habit(1)))
         assertEquals(HabitWidgetState.Tracking(habit(1)), states.last())
 

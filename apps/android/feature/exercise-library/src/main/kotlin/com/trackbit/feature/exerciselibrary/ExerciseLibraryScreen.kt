@@ -63,7 +63,7 @@ import com.trackbit.core.model.ExerciseCategory
 fun ExerciseLibraryScreen(
     onBack: () -> Unit,
     onAdd: () -> Unit,
-    onEdit: (exerciseId: Int) -> Unit,
+    onEdit: (exerciseUuid: String) -> Unit,
     viewModel: ExerciseLibraryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -105,13 +105,13 @@ private fun ExerciseLibraryContent(
     snackbar: SnackbarHostState,
     onBack: () -> Unit,
     onAdd: () -> Unit,
-    onEdit: (Int) -> Unit,
+    onEdit: (String) -> Unit,
     onRefresh: () -> Unit,
     onSearch: (String) -> Unit,
     onOwner: (OwnerFilter) -> Unit,
     onMuscleGroup: (Int?) -> Unit,
     onListsMenu: () -> Unit,
-    onAddToList: (listId: Int, exerciseId: Int) -> Unit,
+    onAddToList: (listUuid: String, exerciseUuid: String) -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -164,12 +164,12 @@ private fun ExerciseLibraryContent(
 @Composable
 private fun ExerciseList(
     state: ExerciseLibraryUiState,
-    onEdit: (Int) -> Unit,
+    onEdit: (String) -> Unit,
     onSearch: (String) -> Unit,
     onOwner: (OwnerFilter) -> Unit,
     onMuscleGroup: (Int?) -> Unit,
     onListsMenu: () -> Unit,
-    onAddToList: (listId: Int, exerciseId: Int) -> Unit,
+    onAddToList: (listUuid: String, exerciseUuid: String) -> Unit,
 ) {
     val visible = state.visible
     LazyColumn(
@@ -232,15 +232,15 @@ private fun ExerciseList(
                 )
             }
         }
-        items(visible, key = { it.id }) { exercise ->
+        items(visible, key = { it.uuid }) { exercise ->
             ExerciseRow(
                 exercise = exercise,
                 onEdit = onEdit,
                 addToList = {
                     AddToListButton(
-                        targets = state.listTargets(exercise.id),
+                        targets = state.listTargets(exercise.uuid),
                         onOpen = onListsMenu,
-                        onPick = { onAddToList(it.id, exercise.id) },
+                        onPick = { onAddToList(it.uuid, exercise.uuid) },
                         modifier = Modifier.size(32.dp),
                     )
                 },
@@ -251,7 +251,7 @@ private fun ExerciseList(
 }
 
 @Composable
-private fun ExerciseRow(exercise: Exercise, onEdit: (Int) -> Unit, addToList: @Composable () -> Unit, modifier: Modifier) {
+private fun ExerciseRow(exercise: Exercise, onEdit: (String) -> Unit, addToList: @Composable () -> Unit, modifier: Modifier) {
     val category = ExerciseCategory.of(exercise.category)
     val mine = exercise.userId != null
     val content: @Composable () -> Unit = {
@@ -305,7 +305,7 @@ private fun ExerciseRow(exercise: Exercise, onEdit: (Int) -> Unit, addToList: @C
     }
     // Only the user's own open the form; a frozen one opens read-only (it can still be deleted).
     if (mine) {
-        Card(onClick = { onEdit(exercise.id) }, modifier = modifier.fillMaxWidth()) { content() }
+        Card(onClick = { onEdit(exercise.uuid) }, modifier = modifier.fillMaxWidth()) { content() }
     } else {
         Card(modifier = modifier.fillMaxWidth()) { content() }
     }

@@ -29,7 +29,7 @@ internal data class ExercisePickerState(
     /** What the trigger names and Play adds: the cursor's exercise, or in browse mode the last pick. */
     val selected: Exercise?,
     private val exercises: List<Exercise>,
-    private val exercisesById: Map<Int, Exercise>,
+    private val exercisesByUuid: Map<String, Exercise>,
 ) {
     val browsing: Boolean get() = source == null
 
@@ -38,7 +38,7 @@ internal data class ExercisePickerState(
 
     /** The source's entries that the catalog knows, in queue order. */
     val queueRows: List<PickerRow>
-        get() = entries.mapIndexedNotNull { i, entry -> exercisesById[entry.exerciseId]?.let { row(it, i) } }
+        get() = entries.mapIndexedNotNull { i, entry -> exercisesByUuid[entry.exerciseUuid]?.let { row(it, i) } }
 
     /**
      * The catalog filtered by [query]. A search always covers the whole catalog (a source is
@@ -46,15 +46,15 @@ internal data class ExercisePickerState(
      * picking it from the results still moves the cursor on.
      */
     fun search(query: String): List<PickerRow> {
-        val linked = HashMap<Int, Int>()
+        val linked = HashMap<String, Int>()
         if (!browsing) {
             entries.forEachIndexed { i, entry ->
-                val current = linked[entry.exerciseId]
-                if (current == null || (done[current] && !done[i])) linked[entry.exerciseId] = i
+                val current = linked[entry.exerciseUuid]
+                if (current == null || (done[current] && !done[i])) linked[entry.exerciseUuid] = i
             }
         }
         val q = query.trim()
-        return exercises.filter { it.name.contains(q, ignoreCase = true) }.map { exercise -> row(exercise, linked[exercise.id]) }
+        return exercises.filter { it.name.contains(q, ignoreCase = true) }.map { exercise -> row(exercise, linked[exercise.uuid]) }
     }
 
     private fun row(exercise: Exercise, index: Int?) = PickerRow(
@@ -79,16 +79,16 @@ internal data class PickerRow(
  * [browsePick] is the exercise last picked in browse mode; without one, Play repeats the
  * session's last logged exercise, so a resumed session finds it armed.
  */
-internal fun exercisePicker(state: SessionUiState, session: TrackedSession, browsePick: Int?): ExercisePickerState {
+internal fun exercisePicker(state: SessionUiState, session: TrackedSession, browsePick: String?): ExercisePickerState {
     val queue = state.queue
     val source = state.source.takeIf { queue !is SourceQueue.Gone }
     val resolved = (queue as? SourceQueue.Resolved).takeIf { source != null }
     val entries = resolved?.entries.orEmpty()
-    val logs = session.logs.map { QueueLog(it.exerciseId, it.listItemId) }
+    val logs = session.logs.map { QueueLog(it.exerciseUuid, it.listItemUuid) }
     val cursor = nextQueueIndex(entries, logs)
-    val selectedId = when {
-        source == null -> browsePick ?: session.logs.lastOrNull()?.exerciseId
-        else -> entries.getOrNull(cursor)?.exerciseId
+    val selectedUuid = when {
+        source == null -> browsePick ?: session.logs.lastOrNull()?.exerciseUuid
+        else -> entries.getOrNull(cursor)?.exerciseUuid
     }
     return ExercisePickerState(
         source = source,
@@ -97,8 +97,8 @@ internal fun exercisePicker(state: SessionUiState, session: TrackedSession, brow
         done = queueDone(entries, logs),
         cursor = cursor,
         emptyReason = resolved?.emptyReason,
-        selected = selectedId?.let(state::exercise),
+        selected = selectedUuid?.let(state::exercise),
         exercises = state.exercises,
-        exercisesById = state.exercisesById,
+        exercisesByUuid = state.exercisesByUuid,
     )
 }

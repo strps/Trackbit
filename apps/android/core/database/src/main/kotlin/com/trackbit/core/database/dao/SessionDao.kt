@@ -14,45 +14,45 @@ import java.time.LocalDate
 /** Reads of a day's sessions and the optimistic session writes, mirroring the server's routes. */
 @Dao
 abstract class SessionDao {
-    /** [habitId]'s sessions on [day] with their logs and sets, unordered. */
+    /** [habitUuid]'s sessions on [day] with their logs and sets, unordered. */
     @Transaction
-    @Query("SELECT * FROM exercise_sessions WHERE habitId = :habitId AND localDay = :day")
-    abstract fun observeDay(habitId: Int, day: LocalDate): Flow<List<SessionWithLogs>>
+    @Query("SELECT * FROM exercise_sessions WHERE habitUuid = :habitUuid AND localDay = :day")
+    abstract fun observeDay(habitUuid: String, day: LocalDate): Flow<List<SessionWithLogs>>
 
     // The day log each row belongs to: what its outbox ops are keyed by.
 
-    @Query("SELECT habitId, localDay FROM exercise_sessions WHERE uuid = :uuid")
+    @Query("SELECT habitUuid, localDay FROM exercise_sessions WHERE uuid = :uuid")
     abstract suspend fun sessionDay(uuid: String): HabitDayKey?
 
     @Query(
-        "SELECT s.habitId, s.localDay FROM exercise_logs l JOIN exercise_sessions s ON s.uuid = l.sessionUuid " +
+        "SELECT s.habitUuid, s.localDay FROM exercise_logs l JOIN exercise_sessions s ON s.uuid = l.sessionUuid " +
             "WHERE l.uuid = :uuid",
     )
     abstract suspend fun logDay(uuid: String): HabitDayKey?
 
     @Query(
-        "SELECT s.habitId, s.localDay FROM exercise_performances p JOIN exercise_logs l ON l.uuid = p.logUuid " +
+        "SELECT s.habitUuid, s.localDay FROM exercise_performances p JOIN exercise_logs l ON l.uuid = p.logUuid " +
             "JOIN exercise_sessions s ON s.uuid = l.sessionUuid WHERE p.uuid = :uuid",
     )
     abstract suspend fun setDay(uuid: String): HabitDayKey?
 
-    @Query("SELECT exerciseId FROM exercise_logs WHERE uuid = :uuid")
-    abstract suspend fun exerciseOfLog(uuid: String): Int?
+    @Query("SELECT exerciseUuid FROM exercise_logs WHERE uuid = :uuid")
+    abstract suspend fun exerciseOfLog(uuid: String): String?
 
-    @Query("SELECT listItemId FROM exercise_logs WHERE uuid = :uuid")
-    abstract suspend fun listItemOfLog(uuid: String): Int?
+    @Query("SELECT listItemUuid FROM exercise_logs WHERE uuid = :uuid")
+    abstract suspend fun listItemOfLog(uuid: String): String?
 
     @Query(
-        "SELECT l.exerciseId FROM exercise_performances p JOIN exercise_logs l ON l.uuid = p.logUuid WHERE p.uuid = :uuid",
+        "SELECT l.exerciseUuid FROM exercise_performances p JOIN exercise_logs l ON l.uuid = p.logUuid WHERE p.uuid = :uuid",
     )
-    abstract suspend fun exerciseOfSet(uuid: String): Int?
+    abstract suspend fun exerciseOfSet(uuid: String): String?
 
-    /** The newest set of [exerciseId] in Room, from any session. */
+    /** The newest set of [exerciseUuid] in Room, from any session. */
     @Query(
         "SELECT p.* FROM exercise_performances p JOIN exercise_logs l ON l.uuid = p.logUuid " +
-            "WHERE l.exerciseId = :exerciseId ORDER BY p.createdAt DESC, p.number DESC LIMIT 1",
+            "WHERE l.exerciseUuid = :exerciseUuid ORDER BY p.createdAt DESC, p.number DESC LIMIT 1",
     )
-    abstract suspend fun latestSet(exerciseId: Int): PerformanceEntity?
+    abstract suspend fun latestSet(exerciseUuid: String): PerformanceEntity?
 
     @Query("SELECT COUNT(*) FROM exercise_performances WHERE logUuid = :logUuid")
     abstract suspend fun setCount(logUuid: String): Int

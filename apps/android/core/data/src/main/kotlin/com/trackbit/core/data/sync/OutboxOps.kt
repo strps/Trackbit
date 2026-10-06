@@ -21,25 +21,25 @@ import java.time.LocalDate
 // was made to, which is also the Room row it changed optimistically. Session ops carry the uuids
 // the app chose, so they need nothing from earlier ops' responses.
 
-internal fun checkOp(habitId: Int, day: LocalDate, rating: Int) = OutboxEntity(
+internal fun checkOp(habitUuid: String, day: LocalDate, rating: Int) = OutboxEntity(
     type = OutboxOpType.Check,
-    habitId = habitId,
+    habitUuid = habitUuid,
     localDay = day,
-    payload = TrackbitJson.encodeToString(CheckRequest(habitId, rating, day)),
+    payload = TrackbitJson.encodeToString(CheckRequest(habitUuid, rating, day)),
 )
 
-internal fun incrementOp(habitId: Int, day: LocalDate, delta: Int) = OutboxEntity(
+internal fun incrementOp(habitUuid: String, day: LocalDate, delta: Int) = OutboxEntity(
     type = OutboxOpType.Increment,
-    habitId = habitId,
+    habitUuid = habitUuid,
     localDay = day,
-    payload = TrackbitJson.encodeToString(IncrementRequest(habitId, delta, day)),
+    payload = TrackbitJson.encodeToString(IncrementRequest(habitUuid, delta, day)),
 )
 
-internal fun ensureDayLogOp(habitId: Int, day: LocalDate) = OutboxEntity(
+internal fun ensureDayLogOp(habitUuid: String, day: LocalDate) = OutboxEntity(
     type = OutboxOpType.EnsureDayLog,
-    habitId = habitId,
+    habitUuid = habitUuid,
     localDay = day,
-    payload = TrackbitJson.encodeToString(EnsureDayLogRequest(habitId, day)),
+    payload = TrackbitJson.encodeToString(EnsureDayLogRequest(habitUuid, day)),
 )
 
 /** A row named by its uuid: the payload of the delete ops. */
@@ -52,7 +52,7 @@ internal data class SetUpdate(val uuid: String, val values: SetValues)
 
 internal fun createSessionOp(body: CreateSessionRequest) = OutboxEntity(
     type = OutboxOpType.CreateSession,
-    habitId = body.habitId,
+    habitUuid = body.habitUuid,
     localDay = body.day,
     payload = TrackbitJson.encodeToString(body),
 )
@@ -73,7 +73,7 @@ internal fun deleteOp(type: OutboxOpType, day: HabitDayKey, uuid: String): Outbo
 }
 
 private fun sessionOp(type: OutboxOpType, day: HabitDayKey, payload: String) =
-    OutboxEntity(type = type, habitId = day.habitId, localDay = day.localDay, payload = payload)
+    OutboxEntity(type = type, habitUuid = day.habitUuid, localDay = day.localDay, payload = payload)
 
 /**
  * Sends [op] with the key it was queued with. Returns the day log a tracker write answers with,

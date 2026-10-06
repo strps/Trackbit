@@ -30,21 +30,24 @@ class ListEditorViewModelTest {
     @Before fun setUp() {
         Dispatchers.setMain(dispatcher)
         library.exercises = listOf(exercise(10, "Squat"), exercise(11, "Bench"), exercise(12, "Row"))
-        lists.lists = listOf(exerciseList(1, "Push", items = listOf(item(1, 1, 10, 0), item(2, 1, 11, 1))))
+        lists.lists = listOf(exerciseList(1, "Push", items = listOf(item(1, 10, 0), item(2, 11, 1))))
     }
 
     @After fun tearDown() = Dispatchers.resetMain()
 
-    private fun TestScope.editor(listId: Int = 1, units: UnitSystem = UnitSystem.Metric): ListEditorViewModel {
-        val viewModel = ListEditorViewModel(lists, library, FakeAuthRepository(units), SavedStateHandle(mapOf(ListEditorViewModel.LIST_ID to listId)))
+    private fun TestScope.editor(list: Int = 1, units: UnitSystem = UnitSystem.Metric): ListEditorViewModel {
+        val viewModel = ListEditorViewModel(lists, library, FakeAuthRepository(units), SavedStateHandle(mapOf(ListEditorViewModel.LIST_UUID to listUuid(list))))
         backgroundScope.launch { viewModel.state.collect {} }
         advanceUntilIdle()
         return viewModel
     }
 
-    private fun ListEditorViewModel.exerciseIds() = state.value.items.map { it.exerciseId }
+    // Exercises by fixture number: exerciseUuid(10) is 10.
+    private fun ListEditorViewModel.exerciseIds() = state.value.items.map { it.exerciseUuid.number() }
 
-    private fun serverIds() = lists.lists.single().items.map { it.exerciseId }
+    private fun serverIds() = lists.lists.single().items.map { it.exerciseUuid.number() }
+
+    private fun String.number() = substringAfterLast('-').toInt()
 
     @Test fun `loads the list with the catalog sorted by name, in the user's units`() = runTest(dispatcher) {
         val viewModel = editor(units = UnitSystem.Imperial)
@@ -56,26 +59,26 @@ class ListEditorViewModelTest {
     }
 
     @Test fun `a list that's gone fails the load`() = runTest(dispatcher) {
-        val viewModel = editor(listId = 9)
+        val viewModel = editor(list = 9)
         assertTrue(viewModel.state.value.loadFailed)
         assertEquals(ListsMessage.NotFound, viewModel.state.value.message)
     }
 
-    @Test fun `a drag saves the new order with the items' ids`() = runTest(dispatcher) {
+    @Test fun `a drag saves the new order with the items' uuids`() = runTest(dispatcher) {
         val viewModel = editor()
-        viewModel.move(2, 1)
+        viewModel.move(itemUuid(2), itemUuid(1))
         viewModel.drop()
         advanceUntilIdle()
 
-        assertEquals("save 1 [11, 10]", lists.calls.last())
-        assertEquals(listOf(2, 1), lists.lists.single().items.map { it.id })
+        assertEquals("save ${listUuid(1)} ${listOf(exerciseUuid(11), exerciseUuid(10))}", lists.calls.last())
+        assertEquals(listOf(itemUuid(2), itemUuid(1)), lists.lists.single().items.map { it.uuid })
         assertEquals(listOf(11, 10), viewModel.exerciseIds())
     }
 
     @Test fun `an add and a reorder in flight together both land`() = runTest(dispatcher) {
         val viewModel = editor()
-        viewModel.add(12)
-        viewModel.move(2, 1)
+        viewModel.add(exerciseUuid(12))
+        viewModel.move(itemUuid(2), itemUuid(1))
         viewModel.drop()
         advanceUntilIdle()
 
@@ -86,26 +89,26 @@ class ListEditorViewModelTest {
     @Test fun `remove and targets are saved, and a refusal shows the server's items`() = runTest(dispatcher) {
         val viewModel = editor()
         val targets = Prescription.NONE.copy(targetSets = 3, targetReps = 5, targetWeight = 100.0, notes = "  Belt ")
-        viewModel.saveTargets(1, targets)
+        viewModel.saveTargets(itemUuid(1), targets)
         advanceUntilIdle()
         assertEquals(targets.copy(notes = "Belt"), lists.lists.single().items.first().prescription)
 
         lists.failWith = ConfigError.ExerciseListFrozen
-        viewModel.remove(2)
+        viewModel.remove(itemUuid(2))
         advanceUntilIdle()
         assertEquals(listOf(10, 11), viewModel.exerciseIds())
         assertEquals(ListsMessage.Frozen, viewModel.state.value.message)
     }
 
     @Test fun `a frozen list is read-only but can be deleted`() = runTest(dispatcher) {
-        lists.lists = listOf(exerciseList(1, "Old", items = listOf(item(1, 1, 10, 0)), frozen = true))
+        lists.lists = listOf(exerciseList(1, "Old", items = listOf(item(1, 10, 0)), frozen = true))
         val viewModel = editor()
         assertFalse(viewModel.state.value.editable)
 
-        viewModel.remove(1)
+        viewModel.remove(itemUuid(1))
         viewModel.startAdding()
         viewModel.startRename()
-        viewModel.editTargets(1)
+        viewModel.editTargets(itemUuid(1))
         advanceUntilIdle()
         assertEquals(listOf("lists"), lists.calls)
         assertFalse(viewModel.state.value.adding)
@@ -134,7 +137,7 @@ class ListEditorViewModelTest {
     }
 
     @Test fun `a full list says so instead of opening the picker`() = runTest(dispatcher) {
-        lists.lists = listOf(exerciseList(1, "Long", items = List(100) { item(it + 1, 1, 10, it) }))
+        lists.lists = listOf(exerciseList(1, "Long", items = List(100) { item(it + 1, 10, it) }))
         val viewModel = editor()
         viewModel.startAdding()
         advanceUntilIdle()

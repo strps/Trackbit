@@ -23,7 +23,7 @@ class SessionFormatTest {
     private fun set(rpe: Int?) = TrackedSet("p", 1, SetValues.EMPTY.copy(rpe = rpe))
 
     private fun exercise(category: String) = Exercise(
-        id = 1, userId = null, name = "E", category = category,
+        uuid = exerciseUuid(1), userId = null, name = "E", category = category,
         defaultWeightUnit = null, defaultDistanceUnit = null, lastPerformance = null,
     )
 }

@@ -64,7 +64,7 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 fun HabitsConfigScreen(
     onBack: () -> Unit,
     onAdd: () -> Unit,
-    onEdit: (habitId: Int) -> Unit,
+    onEdit: (habitUuid: String) -> Unit,
     viewModel: HabitsConfigViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -103,7 +103,7 @@ private fun HabitsConfigContent(
     snackbar: SnackbarHostState,
     onBack: () -> Unit,
     onAdd: () -> Unit,
-    onEdit: (Int) -> Unit,
+    onEdit: (String) -> Unit,
     onRefresh: () -> Unit,
     onMove: (from: Any, to: Any) -> Unit,
     onDrop: () -> Unit,
@@ -158,7 +158,7 @@ private fun HabitsConfigContent(
 @Composable
 private fun HabitList(
     rows: List<HabitsConfigRow>,
-    onEdit: (Int) -> Unit,
+    onEdit: (String) -> Unit,
     onMove: (from: Any, to: Any) -> Unit,
     onDrop: () -> Unit,
 ) {
@@ -229,12 +229,12 @@ private fun EmptyGroup(text: Int) {
 private fun ReorderableCollectionItemScope.HabitConfigRow(
     habit: Habit,
     isDragging: Boolean,
-    onEdit: (Int) -> Unit,
+    onEdit: (String) -> Unit,
     onDrop: () -> Unit,
 ) {
     val accent = resolveColorStops(habit.colorTheme, habit.colorStops).colorAt(1f)
     Card(
-        onClick = { onEdit(habit.id) },
+        onClick = { onEdit(habit.uuid) },
         modifier = Modifier.fillMaxWidth().then(if (isDragging) Modifier.shadow(8.dp, CardDefaults.shape) else Modifier),
     ) {
         Row(

@@ -75,11 +75,11 @@ data class SessionUiState(
     val lists: List<ExerciseList>? = null,
     val listsFailed: Boolean = false,
 ) {
-    fun listTargets(exerciseId: Int): ListTargets = ListTargets.of(lists, listsFailed, exerciseId)
+    fun listTargets(exerciseUuid: String): ListTargets = ListTargets.of(lists, listsFailed, exerciseUuid)
 
-    internal val exercisesById: Map<Int, Exercise> = exercises.associateBy { it.id }
+    internal val exercisesByUuid: Map<String, Exercise> = exercises.associateBy { it.uuid }
 
-    fun exercise(id: Int): Exercise? = exercisesById[id]
+    fun exercise(uuid: String): Exercise? = exercisesByUuid[uuid]
 
     /** A frozen habit's session is shown read-only, like its tracker row. */
     val readOnly: Boolean get() = habit?.frozen == true
@@ -105,7 +105,7 @@ private data class ListsLoad(val lists: List<ExerciseList>? = null, val failed: 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel(assistedFactory = SessionViewModel.Factory::class)
 class SessionViewModel @AssistedInject constructor(
-    @Assisted private val habitId: Int,
+    @Assisted private val habitUuid: String,
     @Assisted private val day: LocalDate,
     private val sessions: SessionRepository,
     tracker: TrackerRepository,
@@ -116,7 +116,7 @@ class SessionViewModel @AssistedInject constructor(
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
-        fun create(habitId: Int, day: LocalDate): SessionViewModel
+        fun create(habitUuid: String, day: LocalDate): SessionViewModel
     }
 
     private val refreshing = MutableStateFlow(false)
@@ -154,8 +154,8 @@ class SessionViewModel @AssistedInject constructor(
     }
 
     private val content = combine(
-        tracker.observeHabit(habitId, day).map<_, TrackedHabit?> { it }.onStart { emit(null) },
-        sessions.observeSessions(habitId, day).map<_, List<TrackedSession>?> { it }.onStart { emit(null) },
+        tracker.observeHabit(habitUuid, day).map<_, TrackedHabit?> { it }.onStart { emit(null) },
+        sessions.observeSessions(habitUuid, day).map<_, List<TrackedSession>?> { it }.onStart { emit(null) },
         sessions.observeExercises().onStart { emit(emptyList()) },
     ) { habit, sessions, exercises -> Triple(habit, sessions, exercises) }
 
@@ -209,7 +209,7 @@ class SessionViewModel @AssistedInject constructor(
         if (!refreshing.compareAndSet(expect = false, update = true)) return
         viewModelScope.launch {
             try {
-                val result = sessions.refresh(habitId, day)
+                val result = sessions.refresh(habitUuid, day)
                 if (result == SyncResult.Done) {
                     sourcesPulled.value = true
                     if (queue) sourcePick.first().source?.let { sessions.refreshQueue(it.key) }
@@ -230,13 +230,13 @@ class SessionViewModel @AssistedInject constructor(
         viewModelScope.launch { preferences.setPreferredExerciseSource(key) }
     }
 
-    fun startSession() = write { sessions.startSession(habitId, day) }
+    fun startSession() = write { sessions.startSession(habitUuid, day) }
 
     fun deleteSession(sessionId: String) = write { sessions.deleteSession(sessionId) }
 
-    /** Adds [exerciseId] to a session; [listItemId] is the queue entry it was picked as, if any. */
-    fun addExercise(sessionId: String, exerciseId: Int, listItemId: Int?) =
-        write { sessions.addExercise(sessionId, exerciseId, listItemId) }
+    /** Adds [exerciseUuid] to a session; [listItemUuid] is the queue entry it was picked as, if any. */
+    fun addExercise(sessionId: String, exerciseUuid: String, listItemUuid: String?) =
+        write { sessions.addExercise(sessionId, exerciseUuid, listItemUuid) }
 
     fun removeExercise(logId: String) = write { sessions.removeExercise(logId) }
 
@@ -274,15 +274,15 @@ class SessionViewModel @AssistedInject constructor(
         }
     }
 
-    /** Appends [exerciseId] to [listId], like the web picker's add-to-list menu. */
-    fun addToList(listId: Int, exerciseId: Int) {
+    /** Appends [exerciseUuid] to [listUuid], like the web picker's add-to-list menu. */
+    fun addToList(listUuid: String, exerciseUuid: String) {
         viewModelScope.launch {
-            when (val result = exerciseLists.append(listId, exerciseId)) {
+            when (val result = exerciseLists.append(listUuid, exerciseUuid)) {
                 is ConfigResult.Success -> {
                     val updated = lists.updateAndGet { load ->
-                        load.copy(lists = load.lists?.map { if (it.id == listId) it.copy(items = result.value.items) else it })
+                        load.copy(lists = load.lists?.map { if (it.uuid == listUuid) it.copy(items = result.value.items) else it })
                     }
-                    message.value = SessionMessage.AddedToList(updated.lists?.find { it.id == listId }?.name.orEmpty())
+                    message.value = SessionMessage.AddedToList(updated.lists?.find { it.uuid == listUuid }?.name.orEmpty())
                 }
                 is ConfigResult.Failure -> message.value = when (val error = result.error) {
                     ConfigError.Offline -> SessionMessage.Offline

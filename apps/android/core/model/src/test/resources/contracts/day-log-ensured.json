@@ -1,0 +1,14 @@
+{
+  "request": "POST /api/tracker/day-logs/ensure",
+  "status": 200,
+  "body": {
+    "id": 7,
+    "habitId": 3,
+    "rating": null,
+    "notes": null,
+    "localDay": "2026-01-10",
+    "timeStamp": "2026-01-01T00:00:00.000Z",
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "habitUuid": "00000000-0000-4000-8000-000000000203"
+  }
+}

@@ -55,7 +55,7 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 @Composable
 fun ExerciseListsScreen(
     onBack: () -> Unit,
-    onOpen: (listId: Int) -> Unit,
+    onOpen: (listUuid: String) -> Unit,
     viewModel: ExerciseListsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -76,10 +76,10 @@ fun ExerciseListsScreen(
     }
 
     // A new list opens straight away, as the web selects it.
-    state.created?.let { id ->
-        LaunchedEffect(id) {
+    state.created?.let { uuid ->
+        LaunchedEffect(uuid) {
             viewModel.onCreatedOpened()
-            onOpen(id)
+            onOpen(uuid)
         }
     }
 
@@ -113,9 +113,9 @@ private fun ExerciseListsContent(
     snackbar: SnackbarHostState,
     onBack: () -> Unit,
     onAdd: () -> Unit,
-    onOpen: (Int) -> Unit,
+    onOpen: (String) -> Unit,
     onRefresh: () -> Unit,
-    onMove: (from: Int, to: Int) -> Unit,
+    onMove: (from: String, to: String) -> Unit,
     onDrop: () -> Unit,
 ) {
     Scaffold(
@@ -168,12 +168,12 @@ private fun ExerciseListsContent(
 @Composable
 private fun Lists(
     lists: List<ExerciseList>,
-    onOpen: (Int) -> Unit,
-    onMove: (from: Int, to: Int) -> Unit,
+    onOpen: (String) -> Unit,
+    onMove: (from: String, to: String) -> Unit,
     onDrop: () -> Unit,
 ) {
     val listState = rememberLazyListState()
-    val reorderState = rememberReorderableLazyListState(listState) { from, to -> onMove(from.key as Int, to.key as Int) }
+    val reorderState = rememberReorderableLazyListState(listState) { from, to -> onMove(from.key as String, to.key as String) }
 
     LazyColumn(
         state = listState,
@@ -201,8 +201,8 @@ private fun Lists(
                 }
             }
         }
-        items(lists, key = { it.id }) { list ->
-            ReorderableItem(reorderState, key = list.id) { isDragging ->
+        items(lists, key = { it.uuid }) { list ->
+            ReorderableItem(reorderState, key = list.uuid) { isDragging ->
                 ListRow(list, isDragging, onOpen, onDrop)
             }
         }
@@ -213,11 +213,11 @@ private fun Lists(
 private fun ReorderableCollectionItemScope.ListRow(
     list: ExerciseList,
     isDragging: Boolean,
-    onOpen: (Int) -> Unit,
+    onOpen: (String) -> Unit,
     onDrop: () -> Unit,
 ) {
     Card(
-        onClick = { onOpen(list.id) },
+        onClick = { onOpen(list.uuid) },
         modifier = Modifier.fillMaxWidth().then(if (isDragging) Modifier.shadow(8.dp, CardDefaults.shape) else Modifier),
     ) {
         Row(

@@ -2,7 +2,7 @@ package com.trackbit.core.database.di
 
 import android.content.Context
 import androidx.room.Room
-import com.trackbit.core.database.Migrations
+import com.trackbit.core.database.Migrations.withMigrations
 import com.trackbit.core.database.TrackbitDatabase
 import com.trackbit.core.database.dao.DayLogDao
 import com.trackbit.core.database.dao.HabitDao
@@ -24,7 +24,7 @@ object DatabaseModule {
     @Singleton
     fun database(@ApplicationContext context: Context): TrackbitDatabase =
         Room.databaseBuilder(context, TrackbitDatabase::class.java, TrackbitDatabase.NAME)
-            .addMigrations(*Migrations.ALL)
+            .withMigrations()
             .build()
 
     @Provides fun habitDao(db: TrackbitDatabase): HabitDao = db.habitDao()

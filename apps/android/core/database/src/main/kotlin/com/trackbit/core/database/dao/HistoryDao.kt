@@ -43,7 +43,7 @@ abstract class HistoryDao {
     @Query(
         """
         DELETE FROM day_logs WHERE localDay < :day AND NOT EXISTS (
-            SELECT 1 FROM outbox WHERE outbox.habitId = day_logs.habitId AND outbox.localDay = day_logs.localDay
+            SELECT 1 FROM outbox WHERE outbox.habitUuid = day_logs.habitUuid AND outbox.localDay = day_logs.localDay
         )
         """,
     )

@@ -66,17 +66,17 @@ internal class TrackerSync @Inject constructor(
     }
 
     /**
-     * Sends the outbox, then replaces Room's sessions of [habitId] on [day] with the server's
+     * Sends the outbox, then replaces Room's sessions of [habitUuid] on [day] with the server's
      * (unless ops for that day are still pending) and refreshes the exercise catalog and the
      * picker's sources.
      */
-    suspend fun syncSessions(habitId: Int, day: LocalDate): SyncResult = mutex.withLock {
+    suspend fun syncSessions(habitUuid: String, day: LocalDate): SyncResult = mutex.withLock {
         val token = tokens.currentToken() ?: return SyncResult.SignedOut
         val flushed = flushLocked(token)
         if (flushed.result == SyncResult.SignedOut) return SyncResult.SignedOut
         var result = if (flushed.dropped) worse(flushed.result, repairLocked(token, flushed)) else flushed.result
         if (result == SyncResult.SignedOut) return SyncResult.SignedOut
-        result = worse(result, pullSessionsLocked(token, HabitDayKey(habitId, day)))
+        result = worse(result, pullSessionsLocked(token, HabitDayKey(habitUuid, day)))
         if (result == SyncResult.SignedOut) return SyncResult.SignedOut
         result = worse(result, pullExercisesLocked(token))
         if (result == SyncResult.SignedOut) return SyncResult.SignedOut
@@ -105,12 +105,12 @@ internal class TrackerSync @Inject constructor(
     }
 
     /**
-     * Replaces Room's copy of [habitId]'s sets (for analytics) and refreshes the exercise catalog,
+     * Replaces Room's copy of [habitUuid]'s sets (for analytics) and refreshes the exercise catalog,
      * which names their exercises and muscle groups. Sets still in the outbox aren't in the pull.
      */
-    suspend fun syncSets(habitId: Int): SyncResult = mutex.withLock {
+    suspend fun syncSets(habitUuid: String): SyncResult = mutex.withLock {
         val token = tokens.currentToken() ?: return SyncResult.SignedOut
-        val result = when (val sets = safeCall { trackerService.sets(habitId) }) {
+        val result = when (val sets = safeCall { trackerService.sets(habitUuid) }) {
             is ApiResult.Success ->
                 if (fenced(token) { db.syncDao().applySets(sets.value, clock.instant()) }) SyncResult.Done else return SyncResult.SignedOut
             is ApiResult.Failure -> sets.error.toPullResult()
@@ -126,12 +126,12 @@ internal class TrackerSync @Inject constructor(
     }
 
     /**
-     * The user's exercise [id] was deleted on the server with its logs and list items: drops
+     * The user's exercise [uuid] was deleted on the server with its logs and list items: drops
      * Room's copies, then refreshes the catalog and the sources (their item counts changed).
      */
-    suspend fun removeExercise(id: Int): SyncResult = mutex.withLock {
+    suspend fun removeExercise(uuid: String): SyncResult = mutex.withLock {
         val token = tokens.currentToken() ?: return SyncResult.SignedOut
-        if (!fenced(token) { db.syncDao().removeExercise(id) }) return SyncResult.SignedOut
+        if (!fenced(token) { db.syncDao().removeExercise(uuid) }) return SyncResult.SignedOut
         val result = pullExercisesLocked(token)
         if (result == SyncResult.SignedOut) return SyncResult.SignedOut
         worse(result, pullSourcesLocked(token))
@@ -167,7 +167,7 @@ internal class TrackerSync @Inject constructor(
                 FailureAction.Drop -> {
                     if (!fenced(token) { drop(op) }) return done(SyncResult.SignedOut)
                     dropped = true
-                    if (op.type.isSessionOp) sessionDays += HabitDayKey(op.habitId, op.localDay)
+                    if (op.type.isSessionOp) sessionDays += HabitDayKey(op.habitUuid, op.localDay)
                 }
                 FailureAction.Retry, FailureAction.RetryCounted -> {
                     if (action == FailureAction.RetryCounted && !fenced(token) { outbox.recordFailure(op.id) }) {
@@ -193,7 +193,7 @@ internal class TrackerSync @Inject constructor(
         val sessions = db.sessionDao()
         when (op.type) {
             OutboxOpType.CreateSession -> if (sessions.deleteSession(uuid) > 0) {
-                db.dayLogDao().addSessions(op.habitId, op.localDay, -1)
+                db.dayLogDao().addSessions(op.habitUuid, op.localDay, -1)
             }
             OutboxOpType.CreateExerciseLog -> sessions.deleteLog(uuid)
             OutboxOpType.CreatePerformance -> sessions.deleteSet(uuid)
@@ -212,9 +212,9 @@ internal class TrackerSync @Inject constructor(
     }
 
     private suspend fun pullSessionsLocked(token: String, day: HabitDayKey): SyncResult =
-        when (val sessions = safeCall { trackerService.sessions(day.habitId, day.localDay) }) {
+        when (val sessions = safeCall { trackerService.sessions(day.habitUuid, day.localDay) }) {
             is ApiResult.Success ->
-                if (fenced(token) { db.syncDao().applySessions(day.habitId, day.localDay, sessions.value) }) SyncResult.Done else SyncResult.SignedOut
+                if (fenced(token) { db.syncDao().applySessions(day.habitUuid, day.localDay, sessions.value) }) SyncResult.Done else SyncResult.SignedOut
             is ApiResult.Failure -> sessions.error.toPullResult()
         }
 

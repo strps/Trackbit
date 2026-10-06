@@ -8,7 +8,7 @@ import java.time.Instant
 
 // Exercise sources: what the session picker offers besides the whole catalog (browse mode, which
 // is not a source). See docs/dev/tasks/exercise-programs.md. The app names a source by its
-// canonical [ExerciseSourceDescriptor.key] (`list:12`, `program:3`, `computed:<strategy>`) and
+// canonical [ExerciseSourceDescriptor.key] (`list:<uuid>`, `program:3`, `computed:<strategy>`) and
 // never parses it: the server's `ref` is left undecoded, so a new source kind needs no app change.
 
 /** A row of `GET /api/exercise-sources`: what the source dropdown lists. */
@@ -50,10 +50,10 @@ data class ResolvedQueue(
 @Serializable
 data class QueueEntry(
     /** The app names it from its own exercise catalog. */
-    val exerciseId: Int,
+    val exerciseUuid: String,
     val position: Int,
     /** The list item it comes from (a log's provenance); null for computed sources. */
-    val listItemId: Int?,
+    val listItemUuid: String?,
     /** Null when nothing is prescribed. */
     val prescription: Prescription?,
 )
@@ -91,7 +91,7 @@ enum class QueueEmptyReason(override val wire: String?) : WireEnum {
 }
 
 /** The part of a session's log that the queue cursor reads. */
-data class QueueLog(val exerciseId: Int, val listItemId: Int?)
+data class QueueLog(val exerciseUuid: String, val listItemUuid: String?)
 
 /**
  * Which of [entries] are done in a session with [logs]: an entry is done when a log came from
@@ -99,10 +99,10 @@ data class QueueLog(val exerciseId: Int, val listItemId: Int?)
  * advances. Entries without a list item (computed sources) match by exercise.
  */
 fun queueDone(entries: List<QueueEntry>, logs: List<QueueLog>): List<Boolean> {
-    val doneItems = logs.mapNotNullTo(HashSet()) { it.listItemId }
-    val doneExercises = logs.mapTo(HashSet()) { it.exerciseId }
+    val doneItems = logs.mapNotNullTo(HashSet()) { it.listItemUuid }
+    val doneExercises = logs.mapTo(HashSet()) { it.exerciseUuid }
     return entries.map { entry ->
-        if (entry.listItemId != null) entry.listItemId in doneItems else entry.exerciseId in doneExercises
+        if (entry.listItemUuid != null) entry.listItemUuid in doneItems else entry.exerciseUuid in doneExercises
     }
 }
 
@@ -117,7 +117,7 @@ fun nextQueueIndex(entries: List<QueueEntry>, logs: List<QueueLog>): Int {
     if (firstPending != -1) return firstPending
     for (log in logs.asReversed()) {
         val last = entries.indexOfFirst { entry ->
-            if (log.listItemId != null) entry.listItemId == log.listItemId else entry.exerciseId == log.exerciseId
+            if (log.listItemUuid != null) entry.listItemUuid == log.listItemUuid else entry.exerciseUuid == log.exerciseUuid
         }
         if (last != -1) return (last + 1) % entries.size
     }

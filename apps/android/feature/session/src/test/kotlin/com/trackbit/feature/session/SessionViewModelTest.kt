@@ -69,7 +69,7 @@ class SessionViewModelTest {
 
     /** Subscribes to [SessionViewModel.state] for the test, as the screen would. */
     private fun TestScope.subscribed(): SessionViewModel {
-        val viewModel = SessionViewModel(habitId = 1, day = DAY, sessions = sessions, tracker = tracker, auth = auth, preferences = preferences, restTimers = restTimers, exerciseLists = lists)
+        val viewModel = SessionViewModel(habitUuid = "1", day = DAY, sessions = sessions, tracker = tracker, auth = auth, preferences = preferences, restTimers = restTimers, exerciseLists = lists)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
         return viewModel
     }
@@ -108,11 +108,11 @@ class SessionViewModelTest {
 
         val state = subscribed().state.value
 
-        assertEquals(listOf(1 to DAY), sessions.observed)
+        assertEquals(listOf("1" to DAY), sessions.observed)
         assertEquals("Gym", state.habit?.name)
         assertEquals(listOf("s-1"), state.sessions?.map { it.id })
-        assertEquals("Exercise 10", state.exercise(10)?.name)
-        assertNull(state.exercise(11))
+        assertEquals("Exercise 10", state.exercise(exerciseUuid(10))?.name)
+        assertNull(state.exercise(exerciseUuid(11)))
         assertEquals(UnitSystem.Imperial, state.unitSystem)
         assertEquals(ExerciseLogCardStyle.Compact, state.cardStyle)
         assertFalse(state.readOnly)
@@ -138,7 +138,7 @@ class SessionViewModelTest {
     @Test fun `opening refreshes the day, and a failed refresh says so until shown`() = runTest {
         sessions.refreshResult = SyncResult.Retry
         val viewModel = subscribed()
-        assertEquals(listOf(1 to DAY), sessions.refreshes)
+        assertEquals(listOf("1" to DAY), sessions.refreshes)
         assertEquals(SessionMessage.Offline, viewModel.state.value.message)
         assertFalse(viewModel.state.value.refreshing)
 
@@ -153,7 +153,7 @@ class SessionViewModelTest {
         val values = SetValues(reps = 8, weight = 60.0, duration = null, distance = null, rpe = 7)
 
         viewModel.startSession()
-        viewModel.addExercise("s-1", 10, listItemId = 4)
+        viewModel.addExercise("s-1", exerciseUuid(10), listItemUuid = itemUuid(4))
         viewModel.addSet("l-1")
         viewModel.updateSet("p-1", values)
         viewModel.deleteSet("p-1")
@@ -161,7 +161,7 @@ class SessionViewModelTest {
         viewModel.deleteSession("s-1")
 
         assertEquals(
-            listOf("start 1 $DAY", "add s-1 10 4", "set l-1", "update p-1 $values", "delete set p-1", "remove l-1", "delete s-1"),
+            listOf("start 1 $DAY", "add s-1 ${exerciseUuid(10)} ${itemUuid(4)}", "set l-1", "update p-1 $values", "delete set p-1", "remove l-1", "delete s-1"),
             sessions.writes,
         )
         assertNull(viewModel.state.value.message)
@@ -169,12 +169,12 @@ class SessionViewModelTest {
 
     @Test fun `the preferred source resolves through the sources, and its queue is pulled`() = runTest {
         sessions.sources.value = listOf(source("list:1"), source("list:2"))
-        sessions.queues["list:2"] = MutableStateFlow(SourceQueue.Resolved(listOf(QueueEntry(10, 0, 4, null)), null))
+        sessions.queues["list:2"] = MutableStateFlow(SourceQueue.Resolved(listOf(QueueEntry(exerciseUuid(10), 0, itemUuid(4), null)), null))
         auth.state.value = AuthState.SignedIn(user(preferredSource = "list:2"))
 
         val viewModel = subscribed()
         assertEquals("list:2", viewModel.state.value.source?.key)
-        assertEquals(SourceQueue.Resolved(listOf(QueueEntry(10, 0, 4, null)), null), viewModel.state.value.queue)
+        assertEquals(SourceQueue.Resolved(listOf(QueueEntry(exerciseUuid(10), 0, itemUuid(4), null)), null), viewModel.state.value.queue)
         assertEquals("once on open", listOf("list:2"), sessions.queueRefreshes)
 
         viewModel.selectSource("list:1")
@@ -230,19 +230,19 @@ class SessionViewModelTest {
     }
 
     @Test fun `add to list offers the unfrozen lists from the server and appends`() = runTest {
-        lists.lists = listOf(exerciseList(1, "Legs", items = listOf(item(1, 1, 10, 0))), exerciseList(2, "Old", frozen = true))
+        lists.lists = listOf(exerciseList(1, "Legs", items = listOf(item(1, 10, 0))), exerciseList(2, "Old", frozen = true))
         val viewModel = subscribed()
-        assertEquals(ListTargets.Loading, viewModel.state.value.listTargets(11))
+        assertEquals(ListTargets.Loading, viewModel.state.value.listTargets(exerciseUuid(11)))
 
         viewModel.loadLists()
         advanceUntilIdle()
-        assertEquals(ListTargets.Loaded(listOf(ListTarget(1, "Legs", 1, contains = false))), viewModel.state.value.listTargets(11))
-        assertEquals(ListTargets.Loaded(listOf(ListTarget(1, "Legs", 1, contains = true))), viewModel.state.value.listTargets(10))
+        assertEquals(ListTargets.Loaded(listOf(ListTarget(listUuid(1), "Legs", 1, contains = false))), viewModel.state.value.listTargets(exerciseUuid(11)))
+        assertEquals(ListTargets.Loaded(listOf(ListTarget(listUuid(1), "Legs", 1, contains = true))), viewModel.state.value.listTargets(exerciseUuid(10)))
 
-        viewModel.addToList(1, 11)
+        viewModel.addToList(listUuid(1), exerciseUuid(11))
         advanceUntilIdle()
         assertEquals(SessionMessage.AddedToList("Legs"), viewModel.state.value.message)
-        assertEquals(ListTargets.Loaded(listOf(ListTarget(1, "Legs", 2, contains = true))), viewModel.state.value.listTargets(11))
+        assertEquals(ListTargets.Loaded(listOf(ListTarget(listUuid(1), "Legs", 2, contains = true))), viewModel.state.value.listTargets(exerciseUuid(11)))
     }
 
     @Test fun `add to list says why it failed`() = runTest {
@@ -250,17 +250,17 @@ class SessionViewModelTest {
         lists.failWith = ConfigError.Offline
         viewModel.loadLists()
         advanceUntilIdle()
-        assertEquals(ListTargets.Offline, viewModel.state.value.listTargets(10))
+        assertEquals(ListTargets.Offline, viewModel.state.value.listTargets(exerciseUuid(10)))
 
         lists.failWith = ConfigError.ExerciseListFull(100)
-        viewModel.addToList(1, 10)
+        viewModel.addToList(listUuid(1), exerciseUuid(10))
         advanceUntilIdle()
         assertEquals(SessionMessage.ListFull(100), viewModel.state.value.message)
     }
 }
 
 private fun habit(frozen: Boolean = false) = TrackedHabit(
-    id = 1,
+    uuid = "1",
     name = "Gym",
     description = null,
     type = HabitType.Complex,
@@ -278,10 +278,10 @@ private fun habit(frozen: Boolean = false) = TrackedHabit(
 )
 
 private fun session(id: String, logs: List<TrackedExerciseLog> = emptyList()) =
-    TrackedSession(id = id, habitId = 1, day = DAY, createdAt = Instant.EPOCH, logs = logs)
+    TrackedSession(id = id, habitUuid = "1", day = DAY, createdAt = Instant.EPOCH, logs = logs)
 
-private fun exercise(id: Int) = Exercise(
-    id = id, userId = null, name = "Exercise $id", category = "strength",
+private fun exercise(n: Int) = Exercise(
+    uuid = exerciseUuid(n), userId = null, name = "Exercise $n", category = "strength",
     defaultWeightUnit = "kg", defaultDistanceUnit = "km", lastPerformance = null,
 )
 
@@ -306,14 +306,14 @@ private inline fun <reified T> unused(): T = Proxy.newProxyInstance(T::class.jav
 private class FakeSessionRepository : SessionRepository by unused() {
     val sessions = MutableStateFlow<List<TrackedSession>?>(null)
     val exercises = MutableStateFlow<List<Exercise>>(emptyList())
-    val observed = mutableListOf<Pair<Int, LocalDate>>()
-    val refreshes = mutableListOf<Pair<Int, LocalDate>>()
+    val observed = mutableListOf<Pair<String, LocalDate>>()
+    val refreshes = mutableListOf<Pair<String, LocalDate>>()
     var refreshResult = SyncResult.Done
     val writes = mutableListOf<String>()
     var writeResult = WriteResult.Queued
 
-    override fun observeSessions(habitId: Int, day: LocalDate): Flow<List<TrackedSession>> {
-        observed += habitId to day
+    override fun observeSessions(habitUuid: String, day: LocalDate): Flow<List<TrackedSession>> {
+        observed += habitUuid to day
         // Room hasn't answered until the test sets a value.
         return sessions.filterNotNull()
     }
@@ -333,8 +333,8 @@ private class FakeSessionRepository : SessionRepository by unused() {
         return SyncResult.Done
     }
 
-    override suspend fun refresh(habitId: Int, day: LocalDate): SyncResult {
-        refreshes += habitId to day
+    override suspend fun refresh(habitUuid: String, day: LocalDate): SyncResult {
+        refreshes += habitUuid to day
         return refreshResult
     }
 
@@ -343,9 +343,9 @@ private class FakeSessionRepository : SessionRepository by unused() {
         return writeResult
     }
 
-    override suspend fun startSession(habitId: Int, day: LocalDate) = write("start $habitId $day")
+    override suspend fun startSession(habitUuid: String, day: LocalDate) = write("start $habitUuid $day")
     override suspend fun deleteSession(sessionId: String) = write("delete $sessionId")
-    override suspend fun addExercise(sessionId: String, exerciseId: Int, listItemId: Int?) = write("add $sessionId $exerciseId $listItemId")
+    override suspend fun addExercise(sessionId: String, exerciseUuid: String, listItemUuid: String?) = write("add $sessionId $exerciseUuid $listItemUuid")
     override suspend fun removeExercise(logId: String) = write("remove $logId")
     override suspend fun addSet(logId: String) = write("set $logId")
     override suspend fun updateSet(setId: String, values: SetValues) = write("update $setId $values")
@@ -355,7 +355,7 @@ private class FakeSessionRepository : SessionRepository by unused() {
 private class FakeTrackerRepository : TrackerRepository by unused() {
     val habit = MutableStateFlow<TrackedHabit?>(null)
 
-    override fun observeHabit(habitId: Int, day: LocalDate, days: Int): Flow<TrackedHabit?> = habit
+    override fun observeHabit(habitUuid: String, day: LocalDate, days: Int): Flow<TrackedHabit?> = habit
 }
 
 private class FakeAuthRepository : AuthRepository by unused() {

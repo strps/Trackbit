@@ -39,9 +39,9 @@ interface TrackerService {
     @GET("api/tracker/days")
     suspend fun days(@Query("start") start: LocalDate, @Query("end") end: LocalDate): DaysResponse
 
-    /** Every set of workout habit [habitId], for the analytics charts. */
+    /** Every set of workout habit [habitUuid], for the analytics charts. */
     @GET("api/tracker/sets")
-    suspend fun sets(@Query("habitId") habitId: Int): HabitSetsResponse
+    suspend fun sets(@Query("habitUuid") habitUuid: String): HabitSetsResponse
 
     @POST("api/tracker/check")
     suspend fun check(@Body body: CheckRequest, @Tag key: IdempotencyKey): DayLog
@@ -54,7 +54,7 @@ interface TrackerService {
 
     /** One habit's sessions on [day], oldest first, with their logs and sets. */
     @GET("api/tracker/exercise-sessions")
-    suspend fun sessions(@Query("habitId") habitId: Int, @Query("day") day: LocalDate): List<ExerciseSessionDetail>
+    suspend fun sessions(@Query("habitUuid") habitUuid: String, @Query("day") day: LocalDate): List<ExerciseSessionDetail>
 
     @POST("api/tracker/exercise-sessions")
     suspend fun createSession(@Body body: CreateSessionRequest, @Tag key: IdempotencyKey): ExerciseSession

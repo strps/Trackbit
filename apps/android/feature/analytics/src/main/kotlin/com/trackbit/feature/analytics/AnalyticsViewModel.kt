@@ -83,27 +83,27 @@ class AnalyticsViewModel @Inject constructor(
     private val habits: Flow<Pair<LocalDate, List<TrackedHabit>>> =
         today.flatMapLatest { today -> tracker.observeDay(today, 1).map { today to it } }
 
-    private val pickedId: Flow<Int?> = savedState.getStateFlow<Int?>(HABIT_ID, null)
+    private val picked: Flow<String?> = savedState.getStateFlow<String?>(HABIT_UUID, null)
 
-    /** The picked habit's id, or the first habit's; null without habits. */
-    private val habitId: Flow<Int?> = combine(habits, pickedId) { (_, habits), picked ->
-        habits.find { it.id == picked }?.id ?: habits.firstOrNull()?.id
+    /** The picked habit's uuid, or the first habit's; null without habits. */
+    private val habitUuid: Flow<String?> = combine(habits, picked) { (_, habits), picked ->
+        habits.find { it.uuid == picked }?.uuid ?: habits.firstOrNull()?.uuid
     }.distinctUntilChanged()
 
-    private val habit: Flow<TrackedHabit?> = combine(habits, habitId) { (today, habits), id ->
-        habits.find { it.id == id }?.let { Triple(today, it.id, it.firstLogDay) }
+    private val habit: Flow<TrackedHabit?> = combine(habits, habitUuid) { (today, habits), uuid ->
+        habits.find { it.uuid == uuid }?.let { Triple(today, it.uuid, it.firstLogDay) }
     }.distinctUntilChanged().flatMapLatest { picked ->
         if (picked == null) {
             flowOf(null)
         } else {
-            val (today, id, firstLogDay) = picked
-            tracker.observeHabit(id, today, daysBack(today, firstLogDay))
+            val (today, uuid, firstLogDay) = picked
+            tracker.observeHabit(uuid, today, daysBack(today, firstLogDay))
         }
     }
 
-    private val sets: Flow<List<HabitSet>?> = combine(habits, habitId) { (_, habits), id ->
-        habits.find { it.id == id }?.takeIf { it.type == HabitType.Complex }?.id
-    }.distinctUntilChanged().flatMapLatest { id -> if (id == null) flowOf(null) else analytics.observeSets(id) }
+    private val sets: Flow<List<HabitSet>?> = combine(habits, habitUuid) { (_, habits), uuid ->
+        habits.find { it.uuid == uuid }?.takeIf { it.type == HabitType.Complex }?.uuid
+    }.distinctUntilChanged().flatMapLatest { uuid -> if (uuid == null) flowOf(null) else analytics.observeSets(uuid) }
 
     private val unitSystem: Flow<UnitSystem> = auth.state.map { state ->
         (state as? AuthState.SignedIn)?.user?.unitSystem?.takeIf { it != UnitSystem.Unknown } ?: UnitSystem.Metric
@@ -139,15 +139,15 @@ class AnalyticsViewModel @Inject constructor(
         }
         // A workout habit's sets are pulled when it is picked (and on pull-to-refresh).
         viewModelScope.launch {
-            combine(habits, habitId) { (_, habits), id -> habits.find { it.id == id }?.takeIf { it.type == HabitType.Complex }?.id }
+            combine(habits, habitUuid) { (_, habits), uuid -> habits.find { it.uuid == uuid }?.takeIf { it.type == HabitType.Complex }?.uuid }
                 .distinctUntilChanged()
                 .filterNotNull()
-                .collect { id -> report(analytics.refresh(id)) }
+                .collect { uuid -> report(analytics.refresh(uuid)) }
         }
     }
 
-    fun selectHabit(id: Int) {
-        savedState[HABIT_ID] = id
+    fun selectHabit(uuid: String) {
+        savedState[HABIT_UUID] = uuid
     }
 
     fun refresh() {
@@ -156,7 +156,7 @@ class AnalyticsViewModel @Inject constructor(
             try {
                 var result = tracker.refresh()
                 val workout = state.value.habit?.takeIf { it.type == HabitType.Complex }
-                if (workout != null && result != SyncResult.SignedOut) result = maxOf(result, analytics.refresh(workout.id))
+                if (workout != null && result != SyncResult.SignedOut) result = maxOf(result, analytics.refresh(workout.uuid))
                 report(result)
             } finally {
                 refreshing.value = false
@@ -178,7 +178,7 @@ class AnalyticsViewModel @Inject constructor(
     }
 
     internal companion object {
-        const val HABIT_ID = "habitId"
+        const val HABIT_UUID = "habitUuid"
 
         /** The heatmap's span: 53 calendar weeks always cover a year ending in any weekday. */
         const val HEATMAP_DAYS = 53 * 7

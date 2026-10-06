@@ -3,11 +3,16 @@ package com.trackbit.core.model
 import kotlinx.serialization.Serializable
 
 /**
- * `POST /api/exercise-lists` and `PATCH …/:id`: the list's name and description, both sent each
- * time (a null [description] clears it).
+ * `POST /api/exercise-lists` and `PATCH …/uuid/:uuid`: the list's name and description, both sent
+ * each time (a null [description] clears it).
  */
 @Serializable
-data class ExerciseListRequest(val name: String, val description: String?) {
+data class ExerciseListRequest(
+    val name: String,
+    val description: String?,
+    /** A create's new uuid, which makes a retry return the first list; null (left out) for an update. */
+    val uuid: String? = null,
+) {
     init {
         val problems = ExerciseListRules.problems(name, description)
         require(problems.isEmpty()) { "Invalid list: $problems" }
@@ -16,13 +21,13 @@ data class ExerciseListRequest(val name: String, val description: String?) {
 
 /** `PATCH /api/exercise-lists/reorder`: every one of the user's lists, in its new order. */
 @Serializable
-data class ExerciseListReorderRequest(val ids: List<Int>)
+data class ExerciseListReorderRequest(val uuids: List<String>)
 
-/** `POST /api/exercise-lists/:id/items`: appends one exercise, unprescribed. */
+/** `POST /api/exercise-lists/uuid/:uuid/items`: appends one exercise, unprescribed, as a new item [uuid]. */
 @Serializable
-data class AppendListItemRequest(val exerciseId: Int)
+data class AppendListItemRequest(val uuid: String, val exerciseUuid: String)
 
-/** `PUT /api/exercise-lists/:id/items`: the list's items, replacing all of them, in order. */
+/** `PUT /api/exercise-lists/uuid/:uuid/items`: the list's items, replacing all of them, in order. */
 @Serializable
 data class ExerciseListItemsRequest(val items: List<ExerciseListItemInput>) {
     init {
@@ -30,7 +35,7 @@ data class ExerciseListItemsRequest(val items: List<ExerciseListItemInput>) {
     }
 
     companion object {
-        /** [items] in this order, numbered from 0: an item with an id keeps its row (and the logs that came from it). */
+        /** [items] in this order, numbered from 0: an item the list holds keeps its row (and the logs that came from it). */
         fun of(items: List<ListItemDraft>) = ExerciseListItemsRequest(
             items.mapIndexed { position, item -> ExerciseListItemInput.of(item, position) },
         )
@@ -40,9 +45,9 @@ data class ExerciseListItemsRequest(val items: List<ExerciseListItemInput>) {
 /** One item of [ExerciseListItemsRequest]. Every target is sent, null included (not prescribed). */
 @Serializable
 data class ExerciseListItemInput(
-    /** Null for a new item: left out of the body. */
-    val id: Int? = null,
-    val exerciseId: Int,
+    /** An item the list holds keeps its row; any other uuid is a new item. */
+    val uuid: String,
+    val exerciseUuid: String,
     val position: Int,
     val targetSets: Int?,
     val targetReps: Int?,
@@ -57,8 +62,8 @@ data class ExerciseListItemInput(
             val p = item.prescription
             require(ExerciseListRules.problems(p).isEmpty()) { "Invalid prescription: ${ExerciseListRules.problems(p)}" }
             return ExerciseListItemInput(
-                id = item.id,
-                exerciseId = item.exerciseId,
+                uuid = item.uuid,
+                exerciseUuid = item.exerciseUuid,
                 position = position,
                 targetSets = p.targetSets,
                 targetReps = p.targetReps,
@@ -72,18 +77,18 @@ data class ExerciseListItemInput(
     }
 }
 
-/** An item as the editor holds it: [id] null until the server has stored it. */
-data class ListItemDraft(val id: Int?, val exerciseId: Int, val prescription: Prescription)
+/** An item as the editor holds it. A new one gets its [uuid] when it is added, so it is never renamed. */
+data class ListItemDraft(val uuid: String, val exerciseUuid: String, val prescription: Prescription)
 
-/** `PUT` and `POST /api/exercise-lists/:id/items`: the list's items after the write. */
+/** `PUT` and `POST /api/exercise-lists/uuid/:uuid/items`: the list's items after the write. */
 @Serializable
-data class ExerciseListItemsResponse(val listId: Int, val items: List<ExerciseListItem>)
+data class ExerciseListItemsResponse(val listUuid: String, val items: List<ExerciseListItem>)
 
 /** The item's targets; every field null when nothing is prescribed. */
 val ExerciseListItem.prescription: Prescription
     get() = Prescription(targetSets, targetReps, targetWeight, targetDuration, targetDistance, restSeconds, notes)
 
-val ExerciseListItem.draft: ListItemDraft get() = ListItemDraft(id, exerciseId, prescription)
+val ExerciseListItem.draft: ListItemDraft get() = ListItemDraft(uuid, exerciseUuid, prescription)
 
 /** The list editor's rules, the same the server enforces (`exercise-lists.ts`). */
 object ExerciseListRules {

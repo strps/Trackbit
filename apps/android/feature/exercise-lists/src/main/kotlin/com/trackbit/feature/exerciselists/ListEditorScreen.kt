@@ -114,16 +114,16 @@ fun ListEditorScreen(onDone: () -> Unit, viewModel: ListEditorViewModel = hiltVi
     if (state.adding) {
         AddExerciseSheet(state, onDismiss = viewModel::stopAdding, onAdd = viewModel::add)
     }
-    state.editingItem?.let { itemId ->
-        val item = state.items.find { it.id == itemId }
+    state.editingItem?.let { itemUuid ->
+        val item = state.items.find { it.uuid == itemUuid }
         if (item != null) {
             TargetsSheet(
-                exerciseName = state.exercise(item.exerciseId)?.name ?: stringResource(R.string.tracker_activity_unknown_exercise),
-                category = ExerciseCategory.of(state.exercise(item.exerciseId)?.category),
+                exerciseName = state.exercise(item.exerciseUuid)?.name ?: stringResource(R.string.tracker_activity_unknown_exercise),
+                category = ExerciseCategory.of(state.exercise(item.exerciseUuid)?.category),
                 initial = item.prescription,
                 units = state.units,
                 onDismiss = viewModel::stopEditingTargets,
-                onSave = { viewModel.saveTargets(itemId, it) },
+                onSave = { viewModel.saveTargets(itemUuid, it) },
             )
         }
     }
@@ -153,9 +153,9 @@ private fun ListEditorContent(
     onRename: () -> Unit,
     onDelete: () -> Unit,
     onAdd: () -> Unit,
-    onEditTargets: (Int) -> Unit,
-    onRemove: (Int) -> Unit,
-    onMove: (from: Int, to: Int) -> Unit,
+    onEditTargets: (String) -> Unit,
+    onRemove: (String) -> Unit,
+    onMove: (from: String, to: String) -> Unit,
     onDrop: () -> Unit,
 ) {
     Scaffold(
@@ -216,13 +216,13 @@ private fun ListEditorContent(
 @Composable
 private fun Items(
     state: ListEditorUiState,
-    onEditTargets: (Int) -> Unit,
-    onRemove: (Int) -> Unit,
-    onMove: (from: Int, to: Int) -> Unit,
+    onEditTargets: (String) -> Unit,
+    onRemove: (String) -> Unit,
+    onMove: (from: String, to: String) -> Unit,
     onDrop: () -> Unit,
 ) {
     val listState = rememberLazyListState()
-    val reorderState = rememberReorderableLazyListState(listState) { from, to -> onMove(from.key as Int, to.key as Int) }
+    val reorderState = rememberReorderableLazyListState(listState) { from, to -> onMove(from.key as String, to.key as String) }
 
     LazyColumn(
         state = listState,
@@ -263,12 +263,12 @@ private fun Items(
                 }
             }
         }
-        items(state.items, key = { it.id }) { item ->
-            ReorderableItem(reorderState, key = item.id, enabled = state.editable) { isDragging ->
+        items(state.items, key = { it.uuid }) { item ->
+            ReorderableItem(reorderState, key = item.uuid, enabled = state.editable) { isDragging ->
                 ItemRow(
                     item = item,
                     number = state.items.indexOf(item) + 1,
-                    exercise = state.exercise(item.exerciseId),
+                    exercise = state.exercise(item.exerciseUuid),
                     units = state.units,
                     editable = state.editable,
                     isDragging = isDragging,
@@ -289,13 +289,13 @@ private fun ReorderableCollectionItemScope.ItemRow(
     units: UnitSystem,
     editable: Boolean,
     isDragging: Boolean,
-    onEditTargets: (Int) -> Unit,
-    onRemove: (Int) -> Unit,
+    onEditTargets: (String) -> Unit,
+    onRemove: (String) -> Unit,
     onDrop: () -> Unit,
 ) {
     val name = exercise?.name ?: stringResource(R.string.tracker_activity_unknown_exercise)
     Card(
-        onClick = { onEditTargets(item.id) },
+        onClick = { onEditTargets(item.uuid) },
         enabled = editable,
         modifier = Modifier.fillMaxWidth().then(if (isDragging) Modifier.shadow(8.dp, CardDefaults.shape) else Modifier),
     ) {
@@ -344,7 +344,7 @@ private fun ReorderableCollectionItemScope.ItemRow(
                 }
             }
             if (editable) {
-                IconButton(onClick = { onRemove(item.id) }) {
+                IconButton(onClick = { onRemove(item.uuid) }) {
                     Icon(painterResource(UiIcons.X), stringResource(R.string.lists_editor_remove), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -372,9 +372,9 @@ private fun targetsSummary(item: ExerciseListItem, units: UnitSystem): String? {
 /** Picks an exercise to append, like the web editor's popover. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AddExerciseSheet(state: ListEditorUiState, onDismiss: () -> Unit, onAdd: (Int) -> Unit) {
+private fun AddExerciseSheet(state: ListEditorUiState, onDismiss: () -> Unit, onAdd: (String) -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
-    val inList = state.items.mapTo(HashSet()) { it.exerciseId }
+    val inList = state.items.mapTo(HashSet()) { it.exerciseUuid }
     val visible = state.exercises.filter { query.isBlank() || it.name.contains(query.trim(), ignoreCase = true) }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Text(
@@ -401,8 +401,8 @@ private fun AddExerciseSheet(state: ListEditorUiState, onDismiss: () -> Unit, on
                     )
                 }
             }
-            items(visible, key = { it.id }) { exercise ->
-                val added = exercise.id in inList
+            items(visible, key = { it.uuid }) { exercise ->
+                val added = exercise.uuid in inList
                 ListItem(
                     headlineContent = { Text(exercise.name) },
                     supportingContent = { Text(exercise.category.uppercase(), style = MaterialTheme.typography.labelSmall) },
@@ -415,7 +415,7 @@ private fun AddExerciseSheet(state: ListEditorUiState, onDismiss: () -> Unit, on
                             modifier = Modifier.size(18.dp),
                         )
                     },
-                    modifier = Modifier.clickable { onAdd(exercise.id) },
+                    modifier = Modifier.clickable { onAdd(exercise.uuid) },
                 )
             }
         }

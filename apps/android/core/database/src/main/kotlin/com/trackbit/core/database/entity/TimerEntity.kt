@@ -20,13 +20,13 @@ import java.time.LocalDate
 @Entity(
     tableName = TimerEntity.TABLE,
     foreignKeys = [
-        ForeignKey(entity = HabitEntity::class, parentColumns = ["id"], childColumns = ["habitId"], onDelete = ForeignKey.CASCADE),
+        ForeignKey(entity = HabitEntity::class, parentColumns = ["uuid"], childColumns = ["habitUuid"], onDelete = ForeignKey.CASCADE),
     ],
-    indices = [Index("habitId", unique = true)],
+    indices = [Index("habitUuid", unique = true)],
 )
 data class TimerEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val habitId: Int?,
+    val habitUuid: String?,
     /** The day the elapsed time is logged to: the day shown when the timer started. */
     val localDay: LocalDate?,
     val startedAt: Instant,

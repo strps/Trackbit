@@ -22,12 +22,12 @@ interface HabitsService {
     suspend fun create(@Body body: HabitRequest): Habit
 
     /** A change of group moves the habit to the end of the other one. */
-    @PUT("api/habits/{id}")
-    suspend fun update(@Path("id") id: Int, @Body body: HabitRequest): Habit
+    @PUT("api/habits/uuid/{uuid}")
+    suspend fun update(@Path("uuid") uuid: String, @Body body: HabitRequest): Habit
 
     /** Deletes the habit with all its logs and sessions. */
-    @DELETE("api/habits/{id}")
-    suspend fun delete(@Path("id") id: Int)
+    @DELETE("api/habits/uuid/{uuid}")
+    suspend fun delete(@Path("uuid") uuid: String)
 
     /** Sets every listed habit's group and order at once. */
     @PATCH("api/habits/reorder")

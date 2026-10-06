@@ -67,11 +67,11 @@ class AnalyticsViewModelTest {
         tracker.habits.value = listOf(habit(1), habit(2))
         val savedState = SavedStateHandle()
         val viewModel = subscribed(savedState)
-        assertEquals(1, viewModel.state.value.habit!!.id)
+        assertEquals("1", viewModel.state.value.habit!!.uuid)
 
-        viewModel.selectHabit(2)
-        assertEquals(2, viewModel.state.value.habit!!.id)
-        assertEquals(2, subscribed(savedState).state.value.habit!!.id)
+        viewModel.selectHabit("2")
+        assertEquals("2", viewModel.state.value.habit!!.uuid)
+        assertEquals("2", subscribed(savedState).state.value.habit!!.uuid)
     }
 
     @Test fun `a habit reads its days back to its first log, or a year`() = runTest {
@@ -79,7 +79,7 @@ class AnalyticsViewModelTest {
         val viewModel = subscribed()
         assertEquals(1000, tracker.observedHabits.last())
 
-        viewModel.selectHabit(2)
+        viewModel.selectHabit("2")
         assertEquals(AnalyticsViewModel.HEATMAP_DAYS, tracker.observedHabits.last())
     }
 
@@ -95,16 +95,16 @@ class AnalyticsViewModelTest {
     @Test fun `a workout habit's sets are pulled when it is picked, and again on refresh`() = runTest {
         tracker.habits.value = listOf(habit(1), habit(2, type = HabitType.Complex))
         val viewModel = subscribed()
-        assertEquals(emptyList<Int>(), analytics.refreshed)
+        assertEquals(emptyList<String>(), analytics.refreshed)
         assertNull(viewModel.state.value.sets)
 
-        viewModel.selectHabit(2)
-        assertEquals(listOf(2), analytics.refreshed)
+        viewModel.selectHabit("2")
+        assertEquals(listOf("2"), analytics.refreshed)
         assertEquals(emptyList<HabitSet>(), viewModel.state.value.sets)
 
         analytics.result = SyncResult.Retry
         viewModel.refresh()
-        assertEquals(listOf(2, 2), analytics.refreshed)
+        assertEquals(listOf("2", "2"), analytics.refreshed)
         assertEquals(1, tracker.refreshes)
         assertEquals(AnalyticsMessage.Offline, viewModel.state.value.message)
     }
@@ -116,7 +116,8 @@ private fun habit(
     firstLogDay: LocalDate? = DAY,
     logsKnownFrom: LocalDate = DAY.minusDays(400),
 ) = TrackedHabit(
-    id = id,
+    // The uuid is the fixture's number.
+    uuid = id.toString(),
     name = "Habit $id",
     description = null,
     type = type,
@@ -152,9 +153,9 @@ private class FakeTrackerRepository : TrackerRepository by unused() {
 
     override fun observeDay(day: LocalDate, days: Int): Flow<List<TrackedHabit>> = habits
 
-    override fun observeHabit(habitId: Int, day: LocalDate, days: Int): Flow<TrackedHabit?> {
+    override fun observeHabit(habitUuid: String, day: LocalDate, days: Int): Flow<TrackedHabit?> {
         observedHabits += days
-        return habits.map { list -> list.find { it.id == habitId } }
+        return habits.map { list -> list.find { it.uuid == habitUuid } }
     }
 
     override suspend fun requestHistory(owner: HistoryOwner, start: LocalDate) {
@@ -174,13 +175,13 @@ private class FakeTrackerRepository : TrackerRepository by unused() {
 }
 
 private class FakeAnalyticsRepository : AnalyticsRepository {
-    val refreshed = mutableListOf<Int>()
+    val refreshed = mutableListOf<String>()
     var result = SyncResult.Done
 
-    override fun observeSets(habitId: Int): Flow<List<HabitSet>?> = MutableStateFlow(emptyList())
+    override fun observeSets(habitUuid: String): Flow<List<HabitSet>?> = MutableStateFlow(emptyList())
 
-    override suspend fun refresh(habitId: Int): SyncResult {
-        refreshed += habitId
+    override suspend fun refresh(habitUuid: String): SyncResult {
+        refreshed += habitUuid
         return result
     }
 }

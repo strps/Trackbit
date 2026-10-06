@@ -26,8 +26,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import org.robolectric.Shadows.shadowOf
 import java.time.LocalDate
+import java.util.UUID
 
 val DAY: LocalDate = LocalDate.of(2026, 9, 28)
+
+/** Fixture [n]'s uuid: a real one, since the Today widget folds it into its list's item ids. */
+fun habitUuid(n: Int): String = UUID(0, n.toLong()).toString()
 
 fun habit(
     id: Int,
@@ -40,7 +44,7 @@ fun habit(
     streak: Int? = 0,
     timer: HabitTimer? = null,
 ) = TrackedHabit(
-    id = id,
+    uuid = habitUuid(id),
     name = "Habit $id",
     description = null,
     type = type,
@@ -93,27 +97,27 @@ class FakeTrackerRepository : TrackerRepository {
 
     override fun observeDay(day: LocalDate, days: Int): Flow<List<TrackedHabit>> = this.days.map { it[day].orEmpty() }
 
-    override fun observeHabit(habitId: Int, day: LocalDate, days: Int): Flow<TrackedHabit?> {
-        observed += Triple(habitId, day, days)
-        return this.days.map { byDay -> byDay[day]?.find { it.id == habitId } }
+    override fun observeHabit(habitUuid: String, day: LocalDate, days: Int): Flow<TrackedHabit?> {
+        observed += Triple(habitUuid, day, days)
+        return this.days.map { byDay -> byDay[day]?.find { it.uuid == habitUuid } }
     }
 
     /** Every [observeHabit] call: habit, day and how many days. */
-    val observed = mutableListOf<Triple<Int, LocalDate, Int>>()
+    val observed = mutableListOf<Triple<String, LocalDate, Int>>()
     val historyRequests = mutableListOf<Pair<HistoryOwner, LocalDate>>()
     val historyReleases = mutableListOf<HistoryOwner>()
 
     override suspend fun requestHistory(owner: HistoryOwner, start: LocalDate) { historyRequests += owner to start }
     override suspend fun releaseHistory(owner: HistoryOwner) { historyReleases += owner }
 
-    override suspend fun setRating(habitId: Int, day: LocalDate, rating: Int) = unused()
-    override suspend fun increment(habitId: Int, day: LocalDate, delta: Int) = unused()
-    override suspend fun toggle(habitId: Int, day: LocalDate) = unused()
-    override suspend fun ensureDayLog(habitId: Int, day: LocalDate) = unused()
+    override suspend fun setRating(habitUuid: String, day: LocalDate, rating: Int) = unused()
+    override suspend fun increment(habitUuid: String, day: LocalDate, delta: Int) = unused()
+    override suspend fun toggle(habitUuid: String, day: LocalDate) = unused()
+    override suspend fun ensureDayLog(habitUuid: String, day: LocalDate) = unused()
     override fun observeRunningTimers(): Flow<List<TrackedHabit>> = throw UnsupportedOperationException()
-    override suspend fun startTimer(habitId: Int, day: LocalDate) = unused()
-    override suspend fun stopTimer(habitId: Int) = unused()
-    override suspend fun addToTimer(habitId: Int, ms: Long) = unused()
+    override suspend fun startTimer(habitUuid: String, day: LocalDate) = unused()
+    override suspend fun stopTimer(habitUuid: String) = unused()
+    override suspend fun addToTimer(habitUuid: String, ms: Long) = unused()
     override suspend fun refresh(): SyncResult = throw UnsupportedOperationException()
 
     private fun unused(): WriteResult = throw UnsupportedOperationException()

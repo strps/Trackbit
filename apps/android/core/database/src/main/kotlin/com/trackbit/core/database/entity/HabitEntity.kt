@@ -10,10 +10,10 @@ import com.trackbit.core.model.TodayHabit
 import com.trackbit.core.model.TrackableHabit
 import java.time.LocalDate
 
-/** A habit as of the last `GET /api/tracker/today`. */
+/** A habit as of the last `GET /api/tracker/today`, named by its uuid like everything on the app. */
 @Entity(tableName = HabitEntity.TABLE)
 data class HabitEntity(
-    @PrimaryKey val id: Int,
+    @PrimaryKey val uuid: String,
     val name: String,
     val description: String?,
     override val type: HabitType,
@@ -39,7 +39,7 @@ data class HabitEntity(
 }
 
 fun TodayHabit.toEntity(summaryDay: LocalDate) = HabitEntity(
-    id = id,
+    uuid = uuid,
     name = name,
     description = description,
     type = type,

@@ -11,6 +11,7 @@ import com.trackbit.core.model.HabitProgress
 import com.trackbit.core.model.HabitType
 import com.trackbit.core.model.RecentDay
 import java.time.LocalDate
+import java.util.UUID
 import kotlin.random.Random
 
 /**
@@ -95,7 +96,7 @@ internal object PreviewHabits {
         ratings: List<Int?>,
         streak: Int,
     ) = TrackedHabit(
-        id = id,
+        uuid = UUID(0, id.toLong()).toString(),
         name = name,
         description = null,
         type = type,

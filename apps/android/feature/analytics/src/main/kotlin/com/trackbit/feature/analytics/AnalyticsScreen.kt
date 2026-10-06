@@ -85,7 +85,7 @@ fun AnalyticsScreen(viewModel: AnalyticsViewModel = hiltViewModel()) {
 private fun AnalyticsContent(
     state: AnalyticsUiState,
     snackbar: SnackbarHostState,
-    onSelectHabit: (Int) -> Unit,
+    onSelectHabit: (String) -> Unit,
     onRefresh: () -> Unit,
 ) {
     Scaffold(
@@ -117,13 +117,13 @@ private fun AnalyticsContent(
                                 item(key = "charts-loading") { CenteredText(R.string.analytics_loading) }
                             } else {
                                 // Keyed by habit, so a chart's controls reset when the habit changes.
-                                item(key = "exercise-${habit.id}") {
+                                item(key = "exercise-${habit.uuid}") {
                                     ExerciseChartCard(sets, state.exercises, state.unitSystem, state.today)
                                 }
-                                item(key = "volume-${habit.id}") {
+                                item(key = "volume-${habit.uuid}") {
                                     VolumeChartCard(sets, state.exercises, state.unitSystem, state.today)
                                 }
-                                item(key = "muscle-${habit.id}") {
+                                item(key = "muscle-${habit.uuid}") {
                                     MuscleBalanceCard(sets, state.exercises, state.unitSystem, state.today)
                                 }
                             }
@@ -136,7 +136,7 @@ private fun AnalyticsContent(
 }
 
 @Composable
-private fun HabitPicker(habits: List<TrackedHabit>, habit: TrackedHabit, onSelect: (Int) -> Unit) {
+private fun HabitPicker(habits: List<TrackedHabit>, habit: TrackedHabit, onSelect: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
@@ -161,7 +161,7 @@ private fun HabitPicker(habits: List<TrackedHabit>, habit: TrackedHabit, onSelec
                         text = { Text(option.name) },
                         onClick = {
                             open = false
-                            onSelect(option.id)
+                            onSelect(option.uuid)
                         },
                     )
                 }
@@ -220,7 +220,7 @@ private fun StatCard(title: String, value: String, @DrawableRes icon: Int, tint:
 /** A year of the habit, colored like the widgets' heatmap; a tapped day shows its value. */
 @Composable
 private fun HeatmapCard(habit: TrackedHabit, today: LocalDate) {
-    var selected by rememberSaveable(habit.id) { mutableStateOf(today.toString()) }
+    var selected by rememberSaveable(habit.uuid) { mutableStateOf(today.toString()) }
     val selectedDay = LocalDate.parse(selected)
     val byDay = remember(habit.recent) { habit.recent.associateBy { it.day } }
     val locale = LocalLocale.current.platformLocale

@@ -66,17 +66,17 @@ class InterceptorsTest {
 
     @Test fun `turns the key tag into the Idempotency-Key header`() = runTest {
         server.enqueue(200, DAY_LOG_JSON)
-        tracker.increment(IncrementRequest(habitId = 3, delta = 1), IdempotencyKey("k-1"))
+        tracker.increment(IncrementRequest(habitUuid = "h3", delta = 1), IdempotencyKey("k-1"))
         assertEquals("k-1", server.takeRequest().headers["Idempotency-Key"])
     }
 
     @Test fun `leaves day out of the body when null, sends it when set`() = runTest {
         server.enqueue(200, DAY_LOG_JSON)
         server.enqueue(200, DAY_LOG_JSON)
-        tracker.check(CheckRequest(habitId = 3, rating = 1), IdempotencyKey.random())
-        tracker.check(CheckRequest(habitId = 3, rating = 1, day = LocalDate.of(2026, 9, 25)), IdempotencyKey.random())
-        assertEquals("""{"habitId":3,"rating":1}""", server.takeRequest().body!!.utf8())
-        assertEquals("""{"habitId":3,"rating":1,"day":"2026-09-25"}""", server.takeRequest().body!!.utf8())
+        tracker.check(CheckRequest(habitUuid = "h3", rating = 1), IdempotencyKey.random())
+        tracker.check(CheckRequest(habitUuid = "h3", rating = 1, day = LocalDate.of(2026, 9, 25)), IdempotencyKey.random())
+        assertEquals("""{"habitUuid":"h3","rating":1}""", server.takeRequest().body!!.utf8())
+        assertEquals("""{"habitUuid":"h3","rating":1,"day":"2026-09-25"}""", server.takeRequest().body!!.utf8())
     }
 
     @Test fun `passes day as a query parameter`() = runTest {

@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 
 /** Identifies a day log: one habit on one day. */
-data class HabitDayKey(val habitId: Int, val localDay: LocalDate)
+data class HabitDayKey(val habitUuid: String, val localDay: LocalDate)
 
 @Dao
 interface OutboxDao {
@@ -26,10 +26,10 @@ interface OutboxDao {
     @Query("UPDATE outbox SET attempts = attempts + 1 WHERE id = :id")
     suspend fun recordFailure(id: Long)
 
-    @Query("SELECT EXISTS(SELECT 1 FROM outbox WHERE habitId = :habitId AND localDay = :day)")
-    suspend fun hasPending(habitId: Int, day: LocalDate): Boolean
+    @Query("SELECT EXISTS(SELECT 1 FROM outbox WHERE habitUuid = :habitUuid AND localDay = :day)")
+    suspend fun hasPending(habitUuid: String, day: LocalDate): Boolean
 
-    @Query("SELECT DISTINCT habitId, localDay FROM outbox")
+    @Query("SELECT DISTINCT habitUuid, localDay FROM outbox")
     suspend fun pendingDays(): List<HabitDayKey>
 
     /** For a "not synced yet" indicator. */

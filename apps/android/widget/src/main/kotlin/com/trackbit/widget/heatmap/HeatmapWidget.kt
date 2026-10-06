@@ -21,10 +21,10 @@ import com.trackbit.core.data.TrackedHabit
 import com.trackbit.core.data.TrackerRepository
 import com.trackbit.widget.R
 import com.trackbit.widget.goAsync
-import com.trackbit.widget.habit.HabitIdKey
+import com.trackbit.widget.habit.HabitUuidKey
 import com.trackbit.widget.habit.HabitWidgetState
 import com.trackbit.widget.habit.HabitPickerActivity
-import com.trackbit.widget.habit.chosenHabitId
+import com.trackbit.widget.habit.chosenHabitUuid
 import com.trackbit.widget.habit.habitWidgetState
 import com.trackbit.widget.preview.PreviewHabits
 import com.trackbit.widget.ui.WidgetTheme
@@ -42,7 +42,7 @@ import java.util.Locale
 
 /**
  * W3: one habit's last months on its heatmap gradient. Read-only; a tap opens the app. A habit
- * widget (see [HabitIdKey]), which also keeps [HeatmapWindow]'s history in Room while placed.
+ * widget (see [HabitUuidKey]), which also keeps [HeatmapWindow]'s history in Room while placed.
  */
 class HeatmapWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
     // The grid is sized to the exact space: cells as large as the height allows, as many weeks
@@ -56,15 +56,15 @@ class HeatmapWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
         val auth = entryPoint.auth().state
         val tracker = entryPoint.tracker()
         val firstDayOfWeek = WeekFields.of(Locale.getDefault()).firstDayOfWeek
-        val observe = { habitId: Int, day: LocalDate -> observeWithHistory(tracker, habitId, HeatmapWindow(day, firstDayOfWeek)) }
+        val observe = { habitUuid: String, day: LocalDate -> observeWithHistory(tracker, habitUuid, HeatmapWindow(day, firstDayOfWeek)) }
         // Loaded before provideContent, so the first frame isn't a loading state (as in W1).
-        val initial = habitWidgetState(auth, widgetDay.today, flowOf(chosenHabitId(context, id)), observe).first()
+        val initial = habitWidgetState(auth, widgetDay.today, flowOf(chosenHabitUuid(context, id)), observe).first()
         val chooseHabit = actionStartActivity(
             HabitPickerActivity.intent(context, GlanceAppWidgetManager(context).getAppWidgetId(id)),
         )
         provideContent {
-            val habitId by rememberUpdatedState(currentState(HabitIdKey))
-            val state by remember { habitWidgetState(auth, widgetDay.today, snapshotFlow { habitId }, observe) }
+            val habitUuid by rememberUpdatedState(currentState(HabitUuidKey))
+            val state by remember { habitWidgetState(auth, widgetDay.today, snapshotFlow { habitUuid }, observe) }
                 .collectAsState(initial)
             WidgetTheme { HeatmapWidgetContent(state, firstDayOfWeek, chooseHabit) }
         }
@@ -96,9 +96,9 @@ class HeatmapWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
 }
 
 /** The habit over [window], asking first for the history that fills it (a new day may move it). */
-internal fun observeWithHistory(tracker: TrackerRepository, habitId: Int, window: HeatmapWindow): Flow<TrackedHabit?> = flow {
+internal fun observeWithHistory(tracker: TrackerRepository, habitUuid: String, window: HeatmapWindow): Flow<TrackedHabit?> = flow {
     tracker.requestHistory(HistoryOwner.Heatmap, window.start)
-    emitAll(tracker.observeHabit(habitId, window.today, window.days))
+    emitAll(tracker.observeHabit(habitUuid, window.today, window.days))
 }
 
 class HeatmapWidgetReceiver : GlanceAppWidgetReceiver() {

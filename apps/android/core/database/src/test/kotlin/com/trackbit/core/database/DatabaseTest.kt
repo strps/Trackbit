@@ -38,15 +38,20 @@ abstract class DatabaseTest {
     companion object {
         val DAY: LocalDate = LocalDate.of(2026, 9, 26)
 
+        const val H1 = "habit-1"
+        const val H2 = "habit-2"
+        const val H3 = "habit-3"
+        const val H7 = "habit-7"
+
         fun habit(
-            id: Int,
+            uuid: String,
             order: Int = 0,
             type: HabitType = HabitType.Count,
             isAntiHabit: Boolean = false,
             firstLogDay: LocalDate? = null,
         ) = HabitEntity(
-            id = id,
-            name = "Habit $id",
+            uuid = uuid,
+            name = "Habit $uuid",
             description = null,
             type = type,
             isAntiHabit = isAntiHabit,
@@ -63,7 +68,7 @@ abstract class DatabaseTest {
         )
 
         fun HabitEntity.toTodayHabit(recent: List<RecentDay> = emptyList()) = TodayHabit(
-            id = id,
+            uuid = uuid,
             name = name,
             description = description,
             type = type,

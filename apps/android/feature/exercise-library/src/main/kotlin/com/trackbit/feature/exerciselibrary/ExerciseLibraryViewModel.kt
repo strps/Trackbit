@@ -43,8 +43,8 @@ data class ExerciseLibraryUiState(
     val listsFailed: Boolean = false,
     val message: ExerciseLibraryMessage? = null,
 ) {
-    /** The lists [exerciseId] can be added to: the unfrozen ones. */
-    fun listTargets(exerciseId: Int): ListTargets = ListTargets.of(lists, listsFailed, exerciseId)
+    /** The lists [exerciseUuid] can be added to: the unfrozen ones. */
+    fun listTargets(exerciseUuid: String): ListTargets = ListTargets.of(lists, listsFailed, exerciseUuid)
 
     /** The top-level groups the filter offers, in the taxonomy's order. */
     val filterGroups: List<MuscleGroup> get() = muscleGroups.filter { it.parentId == null }.sortedWith(GROUP_ORDER)
@@ -151,13 +151,13 @@ class ExerciseLibraryViewModel @Inject constructor(
         }
     }
 
-    /** Appends [exerciseId] to [listId], like the web's add-to-list menu. */
-    fun addToList(listId: Int, exerciseId: Int) {
+    /** Appends [exerciseUuid] to [listUuid], like the web's add-to-list menu. */
+    fun addToList(listUuid: String, exerciseUuid: String) {
         viewModelScope.launch {
-            when (val result = lists.append(listId, exerciseId)) {
+            when (val result = lists.append(listUuid, exerciseUuid)) {
                 is ConfigResult.Success -> _state.update { state ->
-                    val updated = state.lists?.map { if (it.id == listId) it.copy(items = result.value.items) else it }
-                    val name = updated?.find { it.id == listId }?.name.orEmpty()
+                    val updated = state.lists?.map { if (it.uuid == listUuid) it.copy(items = result.value.items) else it }
+                    val name = updated?.find { it.uuid == listUuid }?.name.orEmpty()
                     state.copy(lists = updated, message = ExerciseLibraryMessage.AddedToList(name))
                 }
                 is ConfigResult.Failure -> _state.update { it.copy(message = result.error.toMessage()) }

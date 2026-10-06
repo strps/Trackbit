@@ -66,7 +66,7 @@ internal fun ExercisePickerBar(
     onSelectSource: (key: String?) -> Unit,
     onOpenLists: () -> Unit,
     onOpenList: () -> Unit,
-    onAdd: (exerciseId: Int, listItemId: Int?) -> Unit,
+    onAdd: (exerciseUuid: String, listItemUuid: String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val selected = picker.selected
@@ -91,7 +91,7 @@ internal fun ExercisePickerBar(
             FilledIconButton(
                 onClick = {
                     val next = picker.nextEntry
-                    if (next != null) onAdd(next.exerciseId, next.listItemId) else if (selected != null) onAdd(selected.id, null)
+                    if (next != null) onAdd(next.exerciseUuid, next.listItemUuid) else if (selected != null) onAdd(selected.uuid, null)
                 },
                 // A frozen custom exercise can't be logged; the server would refuse it.
                 enabled = selected != null && !selected.frozen,
@@ -189,11 +189,11 @@ private fun CheckMark(checked: Boolean) {
 @Composable
 internal fun ExercisePickerSheet(
     picker: ExercisePickerState,
-    listTargets: (exerciseId: Int) -> ListTargets,
+    listTargets: (exerciseUuid: String) -> ListTargets,
     onListsMenu: () -> Unit,
-    onAddToList: (listId: Int, exerciseId: Int) -> Unit,
+    onAddToList: (listUuid: String, exerciseUuid: String) -> Unit,
     onDismiss: () -> Unit,
-    onPick: (exerciseId: Int, listItemId: Int?) -> Unit,
+    onPick: (exerciseUuid: String, listItemUuid: String?) -> Unit,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     val searching = query.isNotBlank()
@@ -229,13 +229,13 @@ internal fun ExercisePickerSheet(
                 }
                 // A routine may hold an exercise twice, so rows are keyed by their place in it.
                 itemsIndexed(rows, key = { i, _ -> "entry-$i" }) { _, row ->
-                    PickerRowItem(row, listTargets(row.exercise.id), onListsMenu, onAddToList, onPick)
+                    PickerRowItem(row, listTargets(row.exercise.uuid), onListsMenu, onAddToList, onPick)
                 }
             } else {
                 val rows = picker.search(query)
                 if (rows.isEmpty()) item { SheetText(R.string.tracker_activity_no_exercises_found) }
-                items(rows, key = { it.exercise.id }) { row ->
-                    PickerRowItem(row, listTargets(row.exercise.id), onListsMenu, onAddToList, onPick)
+                items(rows, key = { it.exercise.uuid }) { row ->
+                    PickerRowItem(row, listTargets(row.exercise.uuid), onListsMenu, onAddToList, onPick)
                 }
             }
         }
@@ -247,8 +247,8 @@ private fun PickerRowItem(
     row: PickerRow,
     listTargets: ListTargets,
     onListsMenu: () -> Unit,
-    onAddToList: (listId: Int, exerciseId: Int) -> Unit,
-    onPick: (exerciseId: Int, listItemId: Int?) -> Unit,
+    onAddToList: (listUuid: String, exerciseUuid: String) -> Unit,
+    onPick: (exerciseUuid: String, listItemUuid: String?) -> Unit,
 ) {
     val exercise = row.exercise
     ListItem(
@@ -256,7 +256,7 @@ private fun PickerRowItem(
         supportingContent = { Text(exercise.category.uppercase(), style = MaterialTheme.typography.labelSmall) },
         trailingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                AddToListButton(listTargets, onListsMenu, onPick = { onAddToList(it.id, exercise.id) })
+                AddToListButton(listTargets, onListsMenu, onPick = { onAddToList(it.uuid, exercise.uuid) })
                 RowMark(exercise, row.done)
             }
         },
@@ -268,7 +268,7 @@ private fun PickerRowItem(
         },
         modifier = Modifier
             .alpha(if (row.done) 0.5f else 1f)
-            .clickable(enabled = !exercise.frozen) { onPick(exercise.id, row.entry?.listItemId) },
+            .clickable(enabled = !exercise.frozen) { onPick(exercise.uuid, row.entry?.listItemUuid) },
     )
 }
 

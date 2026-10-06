@@ -7,7 +7,8 @@ import java.time.Instant
 /** A row of `GET /api/exercise-info/exercises`: system exercises plus the user's own. */
 @Serializable
 data class Exercise(
-    val id: Int,
+    /** The app names an exercise by it; the server's int `id` is the web's. */
+    val uuid: String,
     /** Null for a system exercise. */
     val userId: String?,
     /** Already localized for the request's locale. */
@@ -54,7 +55,8 @@ data class LastPerformance(
 
 // Sessions, logs and sets are identified by [ExerciseSession.uuid] and friends: the app picks it
 // when it creates the row (offline, before the server has an `id`), and the server keeps it.
-// `id` is the server's key, which only the web uses.
+// `id` is the server's key, which only the web uses. They name their exercise and list item by
+// uuid too.
 
 @Serializable
 data class ExerciseSession(
@@ -78,9 +80,9 @@ data class ExerciseSessionDetail(
 data class ExerciseLogDetail(
     val id: Int,
     val uuid: String,
-    val exerciseId: Int,
+    val exerciseUuid: String,
     /** The list item this was logged from, or null for an ad-hoc log. */
-    val listItemId: Int?,
+    val listItemUuid: String?,
     @Serializable(with = InstantSerializer::class) val createdAt: Instant?,
     val distance: Double?,
     /** Seconds. */
@@ -94,10 +96,10 @@ data class ExerciseLogDetail(
 data class ExerciseLog(
     val id: Int,
     val uuid: String,
-    val exerciseId: Int,
+    val exerciseUuid: String,
     val exerciseSessionId: Int,
     /** The list item this was logged from, or null for an ad-hoc log. */
-    val listItemId: Int?,
+    val listItemUuid: String?,
     @Serializable(with = InstantSerializer::class) val createdAt: Instant?,
     val distance: Double?,
     /** Seconds. */

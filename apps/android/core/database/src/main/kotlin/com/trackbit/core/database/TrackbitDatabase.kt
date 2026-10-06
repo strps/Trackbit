@@ -1,6 +1,5 @@
 package com.trackbit.core.database
 
-import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
@@ -31,7 +30,8 @@ import com.trackbit.core.database.entity.SourceQueueEntity
 import com.trackbit.core.database.entity.TimerEntity
 
 /**
- * The local cache the UI and widgets read, plus the outbox of unsent tracker writes.
+ * The local cache the UI and widgets read, plus the outbox of unsent tracker writes. Habits,
+ * exercises, lists and their items are named by uuid ([Migrations] has why version 9 starts empty).
  * Schema changes need a migration: dropping the database would lose the outbox.
  */
 @Database(
@@ -41,23 +41,8 @@ import com.trackbit.core.database.entity.TimerEntity
         ExerciseSourceEntity::class, SourceQueueEntity::class, QueueEntryEntity::class,
         HabitSetEntity::class, HabitSetPullEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = true,
-    autoMigrations = [
-        // 2: timers.
-        AutoMigration(from = 1, to = 2),
-        // 3: history.
-        AutoMigration(from = 2, to = 3),
-        // 4: history per owner, in Migrations.
-        // 5: exercise sessions, logs, sets and the exercise catalog.
-        AutoMigration(from = 4, to = 5),
-        // 6: exercise sources and their queues.
-        AutoMigration(from = 5, to = 6),
-        // 7: timers.endsAt (the rest timer).
-        AutoMigration(from = 6, to = 7),
-        // 8: exercises.muscleGroups and the analytics sets.
-        AutoMigration(from = 7, to = 8),
-    ],
 )
 @TypeConverters(Converters::class)
 abstract class TrackbitDatabase : RoomDatabase() {

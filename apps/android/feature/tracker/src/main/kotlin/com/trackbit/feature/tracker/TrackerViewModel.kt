@@ -142,20 +142,20 @@ class TrackerViewModel @Inject constructor(
     /** Adds [delta] (+1 or -1); never takes the count below 0. */
     fun increment(habit: TrackedHabit, delta: Int = 1) {
         if (delta < 0 && habit.progress.value + delta < 0) return
-        write { tracker.increment(habit.id, habit.day, delta) }
+        write { tracker.increment(habit.uuid, habit.day, delta) }
     }
 
-    fun toggle(habit: TrackedHabit) = write { tracker.toggle(habit.id, habit.day) }
+    fun toggle(habit: TrackedHabit) = write { tracker.toggle(habit.uuid, habit.day) }
 
     /** Timed habits: starts a timer for the shown day, or stops the running one. */
     fun toggleTimer(habit: TrackedHabit) = write {
-        if (habit.timer != null) tracker.stopTimer(habit.id) else tracker.startTimer(habit.id, habit.day)
+        if (habit.timer != null) tracker.stopTimer(habit.uuid) else tracker.startTimer(habit.uuid, habit.day)
     }
 
     /** Timed habits: sets the day's total to [ms]. */
     fun setTime(habit: TrackedHabit, ms: Long) {
         require(ms in 0..Int.MAX_VALUE) { "ms out of range" }
-        write { tracker.setRating(habit.id, habit.day, ms.toInt()) }
+        write { tracker.setRating(habit.uuid, habit.day, ms.toInt()) }
     }
 
     /** Clears [shown] unless a newer message has replaced it. */

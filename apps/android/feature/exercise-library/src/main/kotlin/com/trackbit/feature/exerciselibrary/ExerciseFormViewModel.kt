@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.trackbit.core.data.ConfigError
 import com.trackbit.core.data.ConfigResult
 import com.trackbit.core.data.ExerciseLibraryRepository
+import com.trackbit.core.data.newUuid
 import com.trackbit.core.model.Exercise
 import com.trackbit.core.model.ExerciseCategory
 import com.trackbit.core.model.ExerciseRequest
@@ -45,7 +46,7 @@ data class ExerciseForm(
 
 data class ExerciseFormUiState(
     /** Null for a new exercise. */
-    val exerciseId: Int? = null,
+    val exerciseUuid: String? = null,
     val loading: Boolean = true,
     /** Offline, or (editing) the exercise is gone or isn't the user's. */
     val loadFailed: Boolean = false,
@@ -65,7 +66,7 @@ data class ExerciseFormUiState(
     /** Saved or deleted: the screen closes. */
     val done: Boolean = false,
 ) {
-    val isNew: Boolean get() = exerciseId == null
+    val isNew: Boolean get() = exerciseUuid == null
     val canSave: Boolean get() = !loading && !loadFailed && !frozen && !busy
 }
 
@@ -79,16 +80,19 @@ sealed interface ExerciseFormMessage {
 
 /**
  * Creates a custom exercise or edits one of the user's own, like the web's exercise dialog.
- * The route's `exerciseId` is null for a new one. System exercises aren't editable.
+ * The route's `exerciseUuid` is null for a new one. System exercises aren't editable.
  */
 @HiltViewModel
 class ExerciseFormViewModel @Inject constructor(
     private val repository: ExerciseLibraryRepository,
     savedState: SavedStateHandle,
 ) : ViewModel() {
-    private val exerciseId: Int? = savedState[EXERCISE_ID]
+    private val exerciseUuid: String? = savedState[EXERCISE_UUID]
 
-    private val _state = MutableStateFlow(ExerciseFormUiState(exerciseId = exerciseId))
+    /** A new exercise's uuid, kept across process death so a retried save can't create it twice. */
+    private val newExerciseUuid: String by lazy { savedState[NEW_UUID] ?: newUuid().also { savedState[NEW_UUID] = it } }
+
+    private val _state = MutableStateFlow(ExerciseFormUiState(exerciseUuid = exerciseUuid))
     val state: StateFlow<ExerciseFormUiState> = _state.asStateFlow()
 
     init {
@@ -99,9 +103,9 @@ class ExerciseFormViewModel @Inject constructor(
         _state.update { it.copy(loading = true, loadFailed = false) }
         viewModelScope.launch {
             val groups = async { repository.muscleGroups() }
-            val exercise: Exercise? = if (exerciseId == null) null else {
+            val exercise: Exercise? = if (exerciseUuid == null) null else {
                 when (val exercises = repository.exercises()) {
-                    is ConfigResult.Success -> exercises.value.find { it.id == exerciseId && it.userId != null }
+                    is ConfigResult.Success -> exercises.value.find { it.uuid == exerciseUuid && it.userId != null }
                         ?: return@launch fail(ExerciseFormMessage.NotFound)
                     is ConfigResult.Failure -> return@launch fail(exercises.error.toMessage())
                 }
@@ -142,16 +146,20 @@ class ExerciseFormViewModel @Inject constructor(
         }
         _state.update { it.copy(busy = true, showProblems = true) }
         viewModelScope.launch {
-            val result = if (exerciseId == null) repository.create(request) else repository.update(exerciseId, request)
+            val result = if (exerciseUuid == null) {
+                repository.create(request.copy(uuid = newExerciseUuid))
+            } else {
+                repository.update(exerciseUuid, request)
+            }
             finish(result)
         }
     }
 
     fun delete() {
-        val id = exerciseId ?: return
+        val uuid = exerciseUuid ?: return
         if (_state.value.busy) return
         _state.update { it.copy(busy = true) }
-        viewModelScope.launch { finish(repository.delete(id)) }
+        viewModelScope.launch { finish(repository.delete(uuid)) }
     }
 
     fun onMessageShown(message: ExerciseFormMessage) {
@@ -177,8 +185,10 @@ class ExerciseFormViewModel @Inject constructor(
     }
 
     companion object {
-        /** The route's argument (`ExerciseFormRoute.exerciseId`). */
-        const val EXERCISE_ID = "exerciseId"
+        /** The route's argument (`ExerciseFormRoute.exerciseUuid`). */
+        const val EXERCISE_UUID = "exerciseUuid"
+
+        private const val NEW_UUID = "newExerciseUuid"
 
         private fun ConfigError.toMessage(): ExerciseFormMessage = when (this) {
             ConfigError.Offline -> ExerciseFormMessage.Offline

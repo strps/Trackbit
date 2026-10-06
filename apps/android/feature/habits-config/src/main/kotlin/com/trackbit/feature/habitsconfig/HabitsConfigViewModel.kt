@@ -26,7 +26,7 @@ sealed interface HabitsConfigRow {
     val key: Any
 
     data class Item(val habit: Habit) : HabitsConfigRow {
-        override val key: Any get() = habit.id
+        override val key: Any get() = habit.uuid
     }
 
     data object AntiHeader : HabitsConfigRow {
@@ -115,17 +115,17 @@ class HabitsConfigViewModel @Inject constructor(
         val rows = _state.value.rows ?: return
         val order = orderOf(rows)
         if (order == orderOf(saved)) return
-        val byId = rows.mapNotNull { (it as? HabitsConfigRow.Item)?.habit }.associateBy { it.id }
-        if (order.any { it.isAntiHabit && !HabitRules.canBeAntiHabit(byId.getValue(it.id).type) }) {
+        val byUuid = rows.mapNotNull { (it as? HabitsConfigRow.Item)?.habit }.associateBy { it.uuid }
+        if (order.any { it.isAntiHabit && !HabitRules.canBeAntiHabit(byUuid.getValue(it.uuid).type) }) {
             _state.update { it.copy(rows = saved, message = HabitsConfigMessage.StructuredAntiHabit) }
             return
         }
         // A frozen habit may shift inside its group but not leave it (the server refuses).
-        if (order.any { byId.getValue(it.id).frozen && it.isAntiHabit != byId.getValue(it.id).isAntiHabit }) {
+        if (order.any { byUuid.getValue(it.uuid).frozen && it.isAntiHabit != byUuid.getValue(it.uuid).isAntiHabit }) {
             _state.update { it.copy(rows = saved, message = HabitsConfigMessage.HabitFrozen) }
             return
         }
-        val reordered = rowsOf(order.map { byId.getValue(it.id).copy(order = it.order, isAntiHabit = it.isAntiHabit) })
+        val reordered = rowsOf(order.map { byUuid.getValue(it.uuid).copy(order = it.order, isAntiHabit = it.isAntiHabit) })
         _state.update { it.copy(rows = reordered) }
         viewModelScope.launch {
             when (val result = repository.reorder(order)) {
@@ -158,8 +158,8 @@ class HabitsConfigViewModel @Inject constructor(
             val header = rows.indexOf(HabitsConfigRow.AntiHeader)
             val regular = rows.subList(0, header).filterIsInstance<HabitsConfigRow.Item>()
             val anti = rows.subList(header + 1, rows.size).filterIsInstance<HabitsConfigRow.Item>()
-            return regular.mapIndexed { i, row -> HabitOrder(row.habit.id, i, isAntiHabit = false) } +
-                anti.mapIndexed { i, row -> HabitOrder(row.habit.id, i, isAntiHabit = true) }
+            return regular.mapIndexed { i, row -> HabitOrder(row.habit.uuid, i, isAntiHabit = false) } +
+                anti.mapIndexed { i, row -> HabitOrder(row.habit.uuid, i, isAntiHabit = true) }
         }
 
         fun ConfigError.toMessage(): HabitsConfigMessage = when (this) {

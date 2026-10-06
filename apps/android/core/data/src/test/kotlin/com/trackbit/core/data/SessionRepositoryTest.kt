@@ -52,13 +52,13 @@ class SessionRepositoryTest {
 
     @After fun close() = db.close()
 
-    private suspend fun sessions() = repository.observeSessions(1, DAY).first()
-    private suspend fun sessionCount() = db.dayLogDao().get(1, DAY)?.sessionCount ?: 0
+    private suspend fun sessions() = repository.observeSessions(h(1), DAY).first()
+    private suspend fun sessionCount() = db.dayLogDao().get(h(1), DAY)?.sessionCount ?: 0
 
     /** Starts a session, adds exercise 10 and one set: what a first workout queues. */
     private suspend fun workout(): TrackedSet {
-        repository.startSession(1, DAY)
-        repository.addExercise(sessions().single().id, 10)
+        repository.startSession(h(1), DAY)
+        repository.addExercise(sessions().single().id, ex(10))
         repository.addSet(sessions().single().logs.single().id)
         return sessions().single().logs.single().sets.single()
     }
@@ -69,15 +69,15 @@ class SessionRepositoryTest {
         val session = sessions().single()
         val log = session.logs.single()
         assertEquals(1, sessionCount())
-        assertEquals(10, log.exerciseId)
+        assertEquals(ex(10), log.exerciseUuid)
         assertEquals(TrackedSet(set.id, 1, LAST_TIME), set)
         assertEquals(3, scheduler.flushes)
 
         assertEquals(SyncResult.Done, sync.flush())
         assertEquals(
             listOf(
-                CreateSessionRequest(session.id, 1, DAY),
-                CreateExerciseLogRequest(log.id, session.id, 10, listItemId = null),
+                CreateSessionRequest(session.id, h(1), DAY),
+                CreateExerciseLogRequest(log.id, session.id, ex(10), listItemUuid = null),
                 CreatePerformanceRequest(set.id, log.id, 1, LAST_TIME),
             ),
             service.sent.map { it.body },
@@ -120,8 +120,8 @@ class SessionRepositoryTest {
         repository.addSet(logId)
         assertEquals(SetValues(reps = 12, weight = 30.0, duration = null, distance = null, rpe = null), sessions().single().logs.single().sets[2].values)
 
-        repository.startSession(1, DAY)
-        repository.addExercise(sessions()[1].id, 12)
+        repository.startSession(h(1), DAY)
+        repository.addExercise(sessions()[1].id, ex(12))
         repository.addSet(sessions()[1].logs.single().id)
         assertEquals("never done: empty", SetValues.EMPTY, sessions()[1].logs.single().sets.single().values)
     }
@@ -165,17 +165,17 @@ class SessionRepositoryTest {
         assertEquals(emptyList<TrackedSession>(), sessions())
         assertEquals(0, sessionCount())
         assertEquals(0, db.outboxDao().observeCount().first())
-        assertEquals(listOf(1 to DAY), service.sessionsRequests)
+        assertEquals(listOf(h(1) to DAY), service.sessionsRequests)
     }
 
     @Test fun `frozen habits and frozen exercises refuse writes, and only complex habits start sessions`() = runTest {
-        assertEquals(WriteResult.HabitFrozen, repository.startSession(3, DAY))
-        assertEquals(WriteResult.NoChange, repository.startSession(2, DAY))
-        assertEquals(WriteResult.HabitNotFound, repository.startSession(99, DAY))
+        assertEquals(WriteResult.HabitFrozen, repository.startSession(h(3), DAY))
+        assertEquals(WriteResult.NoChange, repository.startSession(h(2), DAY))
+        assertEquals(WriteResult.HabitNotFound, repository.startSession(h(99), DAY))
 
-        repository.startSession(1, DAY)
-        assertEquals(WriteResult.ExerciseFrozen, repository.addExercise(sessions().single().id, 11))
-        assertEquals("not in the catalog yet: the server decides", WriteResult.Queued, repository.addExercise(sessions().single().id, 12))
+        repository.startSession(h(1), DAY)
+        assertEquals(WriteResult.ExerciseFrozen, repository.addExercise(sessions().single().id, ex(11)))
+        assertEquals("not in the catalog yet: the server decides", WriteResult.Queued, repository.addExercise(sessions().single().id, ex(12)))
         assertEquals(1, sessions().single().logs.size)
     }
 
@@ -184,7 +184,7 @@ class SessionRepositoryTest {
             id = 7, uuid = "s-1", dayLogId = 3, createdAt = Instant.EPOCH,
             exerciseLogs = listOf(
                 ExerciseLogDetail(
-                    id = 8, uuid = "l-1", exerciseId = 10, listItemId = 4, createdAt = Instant.EPOCH,
+                    id = 8, uuid = "l-1", exerciseUuid = ex(10), listItemUuid = item(4), createdAt = Instant.EPOCH,
                     distance = null, duration = null, distanceUnit = "km", weightUnit = "kg",
                     exercisePerformances = listOf(
                         ExercisePerformance(9, "p-2", 2, 8, reps = 6, weight = 20.0, duration = null, distance = null, rpe = null, createdAt = Instant.EPOCH.plusSeconds(1)),
@@ -196,23 +196,23 @@ class SessionRepositoryTest {
         service.sessionsAnswer = { _, _ -> listOf(server) }
         exercises.answer = { listOf(exercise(10)) }
 
-        assertEquals(SyncResult.Done, repository.refresh(1, DAY))
+        assertEquals(SyncResult.Done, repository.refresh(h(1), DAY))
 
         val session = sessions().single()
         assertEquals("s-1", session.id)
-        assertEquals(4, session.logs.single().listItemId)
+        assertEquals(item(4), session.logs.single().listItemUuid)
         assertEquals(listOf("p-1", "p-2"), session.logs.single().sets.map { it.id })
         assertEquals(1, sessionCount())
-        assertEquals(listOf(10), repository.observeExercises().first().map { it.id })
+        assertEquals(listOf(ex(10)), repository.observeExercises().first().map { it.uuid })
     }
 
     @Test fun `a pull leaves a day with pending ops alone`() = runTest {
         service.sessionRespond = { throw IOException("offline") }
         workout()
 
-        assertEquals(SyncResult.Retry, repository.refresh(1, DAY))
+        assertEquals(SyncResult.Retry, repository.refresh(h(1), DAY))
 
-        assertEquals("pulled, but the empty answer is ignored", listOf(1 to DAY), service.sessionsRequests)
+        assertEquals("pulled, but the empty answer is ignored", listOf(h(1) to DAY), service.sessionsRequests)
         assertEquals(1, sessions().single().logs.single().sets.size)
         assertEquals(1, sessionCount())
     }
@@ -223,35 +223,35 @@ class SessionRepositoryTest {
             listOf(ExerciseSessionDetail(1, "s-1", 1, Instant.EPOCH, emptyList()))
         }
 
-        assertEquals(SyncResult.SignedOut, repository.refresh(1, DAY))
+        assertEquals(SyncResult.SignedOut, repository.refresh(h(1), DAY))
         assertEquals(emptyList<TrackedSession>(), sessions())
     }
 
     @Test fun `a new set of a prescribed list item starts from its targets, the rest from last time`() = runTest {
         // Item 4 prescribes 8 reps and 90 s, item 5 nothing; RPE is never prescribed.
         val rx = Prescription(targetSets = 3, targetReps = 8, targetWeight = null, targetDuration = 90, targetDistance = null, restSeconds = 60, notes = null)
-        exercises.queueAnswer = { key -> queue(key, QueueEntry(10, 0, 4, rx), QueueEntry(10, 1, 5, null)) }
+        exercises.queueAnswer = { key -> queue(key, QueueEntry(ex(10), 0, item(4), rx), QueueEntry(ex(10), 1, item(5), null)) }
         assertEquals(SyncResult.Done, repository.refreshQueue("list:1"))
 
-        repository.startSession(1, DAY)
+        repository.startSession(h(1), DAY)
         val sessionId = sessions().single().id
-        repository.addExercise(sessionId, 10, listItemId = 4)
+        repository.addExercise(sessionId, ex(10), listItemUuid = item(4))
         repository.addSet(sessions().single().logs.single().id)
         assertEquals(LAST_TIME.copy(reps = 8, duration = 90_000), sessions().single().logs.single().sets.single().values)
 
-        repository.addExercise(sessionId, 10, listItemId = 5)
-        val unprescribed = sessions().single().logs.single { it.listItemId == 5 }
+        repository.addExercise(sessionId, ex(10), listItemUuid = item(5))
+        val unprescribed = sessions().single().logs.single { it.listItemUuid == item(5) }
         repository.addSet(unprescribed.id)
-        assertEquals(LAST_TIME.copy(reps = 8, duration = 90_000), sessions().single().logs.single { it.listItemId == 5 }.sets.single().values)
+        assertEquals(LAST_TIME.copy(reps = 8, duration = 90_000), sessions().single().logs.single { it.listItemUuid == item(5) }.sets.single().values)
     }
 
     @Test fun `adding a set starts the rest timer, with the prescribed rest or else the user's default`() = runTest {
         val rx = Prescription(targetSets = null, targetReps = null, targetWeight = null, targetDuration = null, targetDistance = null, restSeconds = 60, notes = null)
-        exercises.queueAnswer = { key -> queue(key, QueueEntry(10, 0, 4, rx), QueueEntry(10, 1, 5, null)) }
+        exercises.queueAnswer = { key -> queue(key, QueueEntry(ex(10), 0, item(4), rx), QueueEntry(ex(10), 1, item(5), null)) }
         repository.refreshQueue("list:1")
-        repository.startSession(1, DAY)
+        repository.startSession(h(1), DAY)
         val sessionId = sessions().single().id
-        repository.addExercise(sessionId, 10, listItemId = 4)
+        repository.addExercise(sessionId, ex(10), listItemUuid = item(4))
         assertEquals(null, rest.observe().first())
 
         repository.addSet(sessions().single().logs.single().id)
@@ -259,8 +259,8 @@ class SessionRepositoryTest {
 
         // A newer set replaces the running rest.
         clock.advanceMs(20_000)
-        repository.addExercise(sessionId, 10, listItemId = 5)
-        repository.addSet(sessions().single().logs.single { it.listItemId == 5 }.id)
+        repository.addExercise(sessionId, ex(10), listItemUuid = item(5))
+        repository.addSet(sessions().single().logs.single { it.listItemUuid == item(5) }.id)
         assertEquals(RestTimer(clock.now, clock.now.plusSeconds(90)), rest.observe().first())
 
         // Editing a set isn't adding one.
@@ -271,8 +271,8 @@ class SessionRepositoryTest {
     }
 
     @Test fun `a rest of 0 starts no rest timer and ends the running one`() = runTest {
-        repository.startSession(1, DAY)
-        repository.addExercise(sessions().single().id, 10)
+        repository.startSession(h(1), DAY)
+        repository.addExercise(sessions().single().id, ex(10))
         val logId = sessions().single().logs.single().id
         repository.addSet(logId)
         assertEquals(RestTimer(clock.now, clock.now.plusSeconds(90)), rest.observe().first())
@@ -285,8 +285,8 @@ class SessionRepositoryTest {
     }
 
     @Test fun `a refused set starts no rest timer`() = runTest {
-        repository.startSession(1, DAY)
-        repository.addExercise(sessions().single().id, 10)
+        repository.startSession(h(1), DAY)
+        repository.addExercise(sessions().single().id, ex(10))
         db.syncDao().applyToday(todayResponse(DAY, todayHabit(1, type = HabitType.Complex, frozen = true)))
 
         assertEquals(WriteResult.HabitFrozen, repository.addSet(sessions().single().logs.single().id))
@@ -295,23 +295,23 @@ class SessionRepositoryTest {
 
     @Test fun `refresh pulls the sources, and a queue is pulled on its own`() = runTest {
         exercises.sourcesAnswer = { listOf(source("list:2", "Legs"), source("list:1", "Pull")) }
-        exercises.queueAnswer = { key -> queue(key, QueueEntry(10, 0, 4, null)) }
+        exercises.queueAnswer = { key -> queue(key, QueueEntry(ex(10), 0, item(4), null)) }
 
-        assertEquals(SyncResult.Done, repository.refresh(1, DAY))
+        assertEquals(SyncResult.Done, repository.refresh(h(1), DAY))
         assertEquals(listOf("Legs", "Pull"), repository.observeSources().first().map { it.name })
         assertEquals(null, repository.observeQueue("list:1").first())
 
         assertEquals(SyncResult.Done, repository.refreshQueue("list:1"))
-        assertEquals(SourceQueue.Resolved(listOf(QueueEntry(10, 0, 4, null)), null), repository.observeQueue("list:1").first())
+        assertEquals(SourceQueue.Resolved(listOf(QueueEntry(ex(10), 0, item(4), null)), null), repository.observeQueue("list:1").first())
     }
 
     @Test fun `a queue that answers 404 is gone, and offline keeps the last copy`() = runTest {
-        exercises.queueAnswer = { key -> queue(key, QueueEntry(10, 0, 4, null)) }
+        exercises.queueAnswer = { key -> queue(key, QueueEntry(ex(10), 0, item(4), null)) }
         repository.refreshQueue("list:1")
 
         exercises.queueAnswer = { throw IOException("offline") }
         assertEquals(SyncResult.Retry, repository.refreshQueue("list:1"))
-        assertEquals(SourceQueue.Resolved(listOf(QueueEntry(10, 0, 4, null)), null), repository.observeQueue("list:1").first())
+        assertEquals(SourceQueue.Resolved(listOf(QueueEntry(ex(10), 0, item(4), null)), null), repository.observeQueue("list:1").first())
 
         exercises.queueAnswer = { throw httpError(404) }
         assertEquals(SyncResult.Done, repository.refreshQueue("list:1"))
@@ -321,7 +321,7 @@ class SessionRepositoryTest {
     @Test fun `a queue pulled after sign-out writes nothing`() = runTest {
         exercises.queueAnswer = { key ->
             tokens.token = null
-            queue(key, QueueEntry(10, 0, 4, null))
+            queue(key, QueueEntry(ex(10), 0, item(4), null))
         }
         assertEquals(SyncResult.SignedOut, repository.refreshQueue("list:1"))
         tokens.token = "t1"

@@ -71,17 +71,17 @@ internal data class ExerciseSeries(val points: List<ExercisePoint>) {
 private fun epley(weight: Double, reps: Int): Double = weight * (1 + reps / 30.0)
 
 /**
- * [exerciseId]'s value per day in [range], to one decimal. A point is a PR when it beats every
+ * [exerciseUuid]'s value per day in [range], to one decimal. A point is a PR when it beats every
  * earlier one in range. Days without the metric's data (no weights, no RPE) are skipped.
  */
 internal fun exerciseSeries(
     sets: List<HabitSet>,
-    exerciseId: Int,
+    exerciseUuid: String,
     metric: ExerciseMetric,
     range: TimeRange,
     today: LocalDate,
 ): ExerciseSeries {
-    val byDay = sets.filter { it.exerciseId == exerciseId && range.includes(it.day, today) }.groupBy { it.day }
+    val byDay = sets.filter { it.exerciseUuid == exerciseUuid && range.includes(it.day, today) }.groupBy { it.day }
     var runningMax = Double.NEGATIVE_INFINITY
     val points = byDay.keys.sorted().mapNotNull { day ->
         val daySets = byDay.getValue(day)
@@ -102,10 +102,10 @@ internal fun exerciseSeries(
     return ExerciseSeries(points)
 }
 
-/** The exercises [sets] use, in the catalog's order; ids missing from the catalog are left out. */
+/** The exercises [sets] use, in the catalog's order; ones missing from the catalog are left out. */
 internal fun usedExercises(sets: List<HabitSet>, catalog: List<Exercise>): List<Exercise> {
-    val used = sets.mapTo(HashSet()) { it.exerciseId }
-    return catalog.filter { it.id in used }
+    val used = sets.mapTo(HashSet()) { it.exerciseUuid }
+    return catalog.filter { it.uuid in used }
 }
 
 // --- Weekly volume ---
@@ -114,13 +114,16 @@ internal fun usedExercises(sets: List<HabitSet>, catalog: List<Exercise>): List<
 internal data class WeekVolume(
     val weekStart: LocalDate,
     val total: Double,
-    val byExercise: Map<Int, Double>,
+    val byExercise: Map<String, Double>,
     /** The week's average RPE over the sets that have one, to one decimal. */
     val avgRpe: Double?,
 )
 
-/** [exerciseIds] are those with volume in range, ascending: the stacked bars' order. */
-internal data class VolumeData(val weeks: List<WeekVolume>, val exerciseIds: List<Int>) {
+/**
+ * [exercises] are those with volume in range, the first logged first: the stacked bars' order and
+ * colors. (The web orders them by its int ids, which the app doesn't have.)
+ */
+internal data class VolumeData(val weeks: List<WeekVolume>, val exercises: List<String>) {
     val totalVolume: Double get() = weeks.sumOf { it.total }
 
     /** The mean of the weekly averages, to one decimal. */
@@ -140,12 +143,12 @@ internal fun weeklyVolume(sets: List<HabitSet>, range: TimeRange, today: LocalDa
             WeekVolume(
                 weekStart = weekStart,
                 total = weekSets.sumOf { it.weight!! * it.reps!! }.roundToInt().toDouble(),
-                byExercise = weekSets.groupBy { it.exerciseId }
+                byExercise = weekSets.groupBy { it.exerciseUuid }
                     .mapValues { (_, s) -> s.sumOf { it.weight!! * it.reps!! }.roundToInt().toDouble() },
                 avgRpe = rpes.takeIf { it.isNotEmpty() }?.let { round(it.average(), 1) },
             )
         }
-    return VolumeData(weeks, counted.map { it.exerciseId }.distinct().sorted())
+    return VolumeData(weeks, counted.map { it.exerciseUuid }.distinct())
 }
 
 // --- Muscle balance ---
@@ -171,15 +174,15 @@ internal fun muscleBalance(
     range: TimeRange,
     today: LocalDate,
 ): MuscleBalance {
-    val groupsOf = catalog.associate { it.id to it.muscleGroups }
+    val groupsOf = catalog.associate { it.uuid to it.muscleGroups }
     val volume = HashMap<MuscleGroupRef, Double>()
     val frequency = HashMap<MuscleGroupRef, Int>()
-    val seen = HashSet<Triple<LocalDate, Int, Int>>()
+    val seen = HashSet<Triple<LocalDate, String, Int>>()
     for (set in sets) {
         if (!range.includes(set.day, today)) continue
-        for (group in groupsOf[set.exerciseId].orEmpty()) {
+        for (group in groupsOf[set.exerciseUuid].orEmpty()) {
             if (set.weight != null && set.reps != null) volume.merge(group, set.weight!! * set.reps!!, Double::plus)
-            if (seen.add(Triple(set.day, set.exerciseId, group.id))) frequency.merge(group, 1, Int::plus)
+            if (seen.add(Triple(set.day, set.exerciseUuid, group.id))) frequency.merge(group, 1, Int::plus)
         }
     }
     val values = when (metric) {

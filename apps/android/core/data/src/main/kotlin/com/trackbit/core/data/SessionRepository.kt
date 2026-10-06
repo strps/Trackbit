@@ -36,7 +36,6 @@ import kotlinx.coroutines.flow.map
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
-import java.util.UUID
 import javax.inject.Inject
 
 /**
@@ -48,8 +47,8 @@ import javax.inject.Inject
  * A day's sessions are in Room once [refresh] has pulled them, or as far as this device wrote them.
  */
 interface SessionRepository {
-    /** [habitId]'s sessions on [day], oldest first, each with its logs and sets in order. */
-    fun observeSessions(habitId: Int, day: LocalDate): Flow<List<TrackedSession>>
+    /** [habitUuid]'s sessions on [day], oldest first, each with its logs and sets in order. */
+    fun observeSessions(habitUuid: String, day: LocalDate): Flow<List<TrackedSession>>
 
     /** The exercise catalog as of the last [refresh]: system exercises and the user's own, by name. */
     fun observeExercises(): Flow<List<Exercise>>
@@ -61,26 +60,26 @@ interface SessionRepository {
     fun observeQueue(key: String): Flow<SourceQueue?>
 
     /**
-     * Sends pending writes, then reloads [habitId]'s sessions on [day] (unless writes to that day
+     * Sends pending writes, then reloads [habitUuid]'s sessions on [day] (unless writes to that day
      * are still pending), the exercise catalog and the sources. For opening a session screen and
      * pull-to-refresh.
      */
-    suspend fun refresh(habitId: Int, day: LocalDate): SyncResult
+    suspend fun refresh(habitUuid: String, day: LocalDate): SyncResult
 
     /** Reloads [key]'s queue. */
     suspend fun refreshQueue(key: String): SyncResult
 
     /** Starts a session on [day], whose session count goes up at once. Complex habits only. */
-    suspend fun startSession(habitId: Int, day: LocalDate): WriteResult
+    suspend fun startSession(habitUuid: String, day: LocalDate): WriteResult
 
     /** Deletes a session with its logs and sets. [WriteResult.NoChange]: it is already gone. */
     suspend fun deleteSession(sessionId: String): WriteResult
 
     /**
-     * Adds [exerciseId] to a session. [listItemId] is the exercise-list item it was picked from,
+     * Adds [exerciseUuid] to a session. [listItemUuid] is the exercise-list item it was picked from,
      * if any (provenance for adherence).
      */
-    suspend fun addExercise(sessionId: String, exerciseId: Int, listItemId: Int? = null): WriteResult
+    suspend fun addExercise(sessionId: String, exerciseUuid: String, listItemUuid: String? = null): WriteResult
 
     /** Removes an exercise from its session, with its sets. */
     suspend fun removeExercise(logId: String): WriteResult
@@ -115,7 +114,7 @@ sealed interface SourceQueue {
 /** One exercise session, as the session screen shows it. */
 data class TrackedSession(
     val id: String,
-    val habitId: Int,
+    val habitUuid: String,
     val day: LocalDate,
     val createdAt: Instant,
     val logs: List<TrackedExerciseLog>,
@@ -123,9 +122,9 @@ data class TrackedSession(
 
 data class TrackedExerciseLog(
     val id: String,
-    val exerciseId: Int,
+    val exerciseUuid: String,
     /** The exercise-list item it was picked from, or null for an ad-hoc pick. */
-    val listItemId: Int?,
+    val listItemUuid: String?,
     val distance: Double?,
     /** Seconds. */
     val duration: Int?,
@@ -156,8 +155,8 @@ internal class DefaultSessionRepository @Inject constructor(
     private val timerDao = db.timerDao()
     private val writer = OutboxWriter(db, scheduler)
 
-    override fun observeSessions(habitId: Int, day: LocalDate): Flow<List<TrackedSession>> =
-        sessionDao.observeDay(habitId, day).map { sessions ->
+    override fun observeSessions(habitUuid: String, day: LocalDate): Flow<List<TrackedSession>> =
+        sessionDao.observeDay(habitUuid, day).map { sessions ->
             sessions.sortedWith(compareBy({ it.session.createdAt }, { it.session.uuid })).map { it.toTracked() }
         }
 
@@ -175,34 +174,34 @@ internal class DefaultSessionRepository @Inject constructor(
         }
     }
 
-    override suspend fun refresh(habitId: Int, day: LocalDate): SyncResult = sync.syncSessions(habitId, day)
+    override suspend fun refresh(habitUuid: String, day: LocalDate): SyncResult = sync.syncSessions(habitUuid, day)
 
     override suspend fun refreshQueue(key: String): SyncResult = sync.syncQueue(key)
 
-    override suspend fun startSession(habitId: Int, day: LocalDate): WriteResult = writer.write(habitId) {
-        if (habitDao.get(habitId)?.type != HabitType.Complex) return@write null
+    override suspend fun startSession(habitUuid: String, day: LocalDate): WriteResult = writer.write(habitUuid) {
+        if (habitDao.get(habitUuid)?.type != HabitType.Complex) return@write null
         val uuid = newUuid()
-        sessionDao.insert(SessionEntity(uuid, habitId, day, clock.instant()))
+        sessionDao.insert(SessionEntity(uuid, habitUuid, day, clock.instant()))
         // The server makes the day's log with the first session.
-        dayLogDao.addSessions(habitId, day, 1)
-        createSessionOp(CreateSessionRequest(uuid, habitId, day))
+        dayLogDao.addSessions(habitUuid, day, 1)
+        createSessionOp(CreateSessionRequest(uuid, habitUuid, day))
     }
 
     override suspend fun deleteSession(sessionId: String): WriteResult = writeTo({ sessionDao.sessionDay(sessionId) }) { day ->
         sessionDao.deleteSession(sessionId)
-        dayLogDao.addSessions(day.habitId, day.localDay, -1)
+        dayLogDao.addSessions(day.habitUuid, day.localDay, -1)
         deleteOp(OutboxOpType.DeleteSession, day, sessionId)
     }
 
-    override suspend fun addExercise(sessionId: String, exerciseId: Int, listItemId: Int?): WriteResult =
-        writeTo({ sessionDao.sessionDay(sessionId) }, exerciseId = { exerciseId }) { day ->
+    override suspend fun addExercise(sessionId: String, exerciseUuid: String, listItemUuid: String?): WriteResult =
+        writeTo({ sessionDao.sessionDay(sessionId) }, exerciseUuid = { exerciseUuid }) { day ->
             val uuid = newUuid()
             sessionDao.insert(
                 ExerciseLogEntity(
                     uuid = uuid,
                     sessionUuid = sessionId,
-                    exerciseId = exerciseId,
-                    listItemId = listItemId,
+                    exerciseUuid = exerciseUuid,
+                    listItemUuid = listItemUuid,
                     createdAt = clock.instant(),
                     distance = null,
                     duration = null,
@@ -210,7 +209,7 @@ internal class DefaultSessionRepository @Inject constructor(
                     weightUnit = null,
                 ),
             )
-            createExerciseLogOp(day, CreateExerciseLogRequest(uuid, sessionId, exerciseId, listItemId))
+            createExerciseLogOp(day, CreateExerciseLogRequest(uuid, sessionId, exerciseUuid, listItemUuid))
         }
 
     override suspend fun removeExercise(logId: String): WriteResult = writeTo({ sessionDao.logDay(logId) }) { day ->
@@ -219,7 +218,7 @@ internal class DefaultSessionRepository @Inject constructor(
     }
 
     override suspend fun addSet(logId: String): WriteResult =
-        writeTo({ sessionDao.logDay(logId) }, exerciseId = { sessionDao.exerciseOfLog(logId) }) { day ->
+        writeTo({ sessionDao.logDay(logId) }, exerciseUuid = { sessionDao.exerciseOfLog(logId) }) { day ->
             val uuid = newUuid()
             val prescription = sessionDao.listItemOfLog(logId)?.let { sourceDao.prescription(it) }
             val values = newSetValues(prescription, checkNotNull(sessionDao.exerciseOfLog(logId)))
@@ -243,7 +242,7 @@ internal class DefaultSessionRepository @Inject constructor(
         }
 
     override suspend fun updateSet(setId: String, values: SetValues): WriteResult =
-        writeTo({ sessionDao.setDay(setId) }, exerciseId = { sessionDao.exerciseOfSet(setId) }) { day ->
+        writeTo({ sessionDao.setDay(setId) }, exerciseUuid = { sessionDao.exerciseOfSet(setId) }) { day ->
             sessionDao.updateSet(setId, values.reps, values.weight, values.duration, values.distance, values.rpe)
             updatePerformanceOp(day, SetUpdate(setId, values))
         }
@@ -256,26 +255,26 @@ internal class DefaultSessionRepository @Inject constructor(
     /**
      * A write under an existing row, in one transaction: [day] finds the row's day ([WriteResult.NoChange]
      * if the row is gone), and the write is refused if its habit is frozen, or if the exercise
-     * [exerciseId] names is a frozen custom one (the server refuses those as the web does).
+     * [exerciseUuid] names is a frozen custom one (the server refuses those as the web does).
      */
     private suspend fun writeTo(
         day: suspend () -> HabitDayKey?,
-        exerciseId: suspend () -> Int? = { null },
+        exerciseUuid: suspend () -> String? = { null },
         change: suspend (HabitDayKey) -> OutboxEntity,
     ): WriteResult = writer.flushIfQueued(
         db.withTransaction {
             val key = day() ?: return@withTransaction WriteResult.NoChange
-            val exercise = exerciseId()?.let { exerciseDao.get(it) }
-            val habitFrozen = habitDao.get(key.habitId)?.frozen == true
+            val exercise = exerciseUuid()?.let { exerciseDao.get(it) }
+            val habitFrozen = habitDao.get(key.habitUuid)?.frozen == true
             // The habit's state wins, as on the server.
             if (exercise?.frozen == true && !habitFrozen) return@withTransaction WriteResult.ExerciseFrozen
-            writer.queue(key.habitId) { change(key) }
+            writer.queue(key.habitUuid) { change(key) }
         },
     )
 
     /** See [SessionRepository.addSet]. Prescribed durations are seconds; sets store ms. */
-    private suspend fun newSetValues(prescription: Prescription?, exerciseId: Int): SetValues {
-        val last = lastPerformance(exerciseId)
+    private suspend fun newSetValues(prescription: Prescription?, exerciseUuid: String): SetValues {
+        val last = lastPerformance(exerciseUuid)
         if (prescription == null) return last
         return SetValues(
             reps = prescription.targetReps ?: last.reps,
@@ -287,13 +286,13 @@ internal class DefaultSessionRepository @Inject constructor(
     }
 
     /**
-     * The newer of [exerciseId]'s latest set in Room (which may not have reached the server yet)
+     * The newer of [exerciseUuid]'s latest set in Room (which may not have reached the server yet)
      * and the catalog's last performance (which may be from a day Room doesn't hold). RPE comes
      * along: it is an outcome, and the last one is the best guess.
      */
-    private suspend fun lastPerformance(exerciseId: Int): SetValues {
-        val local = sessionDao.latestSet(exerciseId)
-        val remote = exerciseDao.get(exerciseId)?.lastPerformance
+    private suspend fun lastPerformance(exerciseUuid: String): SetValues {
+        val local = sessionDao.latestSet(exerciseUuid)
+        val remote = exerciseDao.get(exerciseUuid)?.lastPerformance
         val remoteAt = remote?.createdAt
         return when {
             local != null && (remote == null || remoteAt == null || !remoteAt.isAfter(local.createdAt)) ->
@@ -315,13 +314,11 @@ internal class DefaultSessionRepository @Inject constructor(
     // A write needs a signed-in user, so the fallback is never used.
     private fun defaultRestSeconds(): Int =
         (auth.state.value as? AuthState.SignedIn)?.user?.defaultRestSeconds ?: SessionUser.DEFAULT_REST_SECONDS
-
-    private fun newUuid() = UUID.randomUUID().toString()
 }
 
 private fun SessionWithLogs.toTracked() = TrackedSession(
     id = session.uuid,
-    habitId = session.habitId,
+    habitUuid = session.habitUuid,
     day = session.localDay,
     createdAt = session.createdAt,
     logs = logs.sortedWith(compareBy({ it.log.createdAt }, { it.log.uuid })).map { it.toTracked() },
@@ -329,8 +326,8 @@ private fun SessionWithLogs.toTracked() = TrackedSession(
 
 private fun LogWithSets.toTracked() = TrackedExerciseLog(
     id = log.uuid,
-    exerciseId = log.exerciseId,
-    listItemId = log.listItemId,
+    exerciseUuid = log.exerciseUuid,
+    listItemUuid = log.listItemUuid,
     distance = log.distance,
     duration = log.duration,
     distanceUnit = log.distanceUnit,

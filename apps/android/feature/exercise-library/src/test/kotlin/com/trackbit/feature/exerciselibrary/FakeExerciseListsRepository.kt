@@ -10,15 +10,20 @@ import com.trackbit.core.model.ExerciseListRequest
 import com.trackbit.core.model.ListItemDraft
 import kotlinx.coroutines.yield
 
+// Fixtures are numbered for readability; these are the uuids the app names them by.
+fun listUuid(n: Int) = "list-$n"
+fun itemUuid(n: Int) = "item-$n"
+fun exerciseUuid(n: Int) = "exercise-$n"
+
 /**
- * A server holding [lists]: writes change them as the API would (new items get the next id). A
+ * A server holding [lists]: writes change them as the API would (an append makes a new item). A
  * non-null [failWith] fails the next calls. Suspends, like the network.
  */
 class FakeExerciseListsRepository : ExerciseListsRepository {
     var lists = listOf<ExerciseList>()
     var failWith: ConfigError? = null
     val calls = mutableListOf<String>()
-    private var nextItemId = 1000
+    private var nextItem = 1000
 
     private suspend fun <T> answer(call: String, value: () -> T): ConfigResult<T> {
         yield()
@@ -26,47 +31,49 @@ class FakeExerciseListsRepository : ExerciseListsRepository {
         return failWith?.let { ConfigResult.Failure(it) } ?: ConfigResult.Success(value())
     }
 
-    private fun replace(id: Int, change: (ExerciseList) -> ExerciseList): ExerciseList {
-        val list = change(lists.single { it.id == id })
-        lists = lists.map { if (it.id == id) list else it }
+    private fun replace(uuid: String, change: (ExerciseList) -> ExerciseList): ExerciseList {
+        val list = change(lists.single { it.uuid == uuid })
+        lists = lists.map { if (it.uuid == uuid) list else it }
         return list
     }
 
     override suspend fun lists() = answer("lists") { lists }
 
     override suspend fun create(request: ExerciseListRequest) = answer("create") {
-        exerciseList((lists.maxOfOrNull { it.id } ?: 0) + 1, request.name, request.description).also { lists = lists + it }
+        exerciseList(lists.size + 1, request.name, request.description).copy(uuid = request.uuid!!).also { lists = lists + it }
     }
 
-    override suspend fun update(id: Int, request: ExerciseListRequest) = answer("update $id") {
-        replace(id) { it.copy(name = request.name, description = request.description) }
+    override suspend fun update(uuid: String, request: ExerciseListRequest) = answer("update $uuid") {
+        replace(uuid) { it.copy(name = request.name, description = request.description) }
     }
 
-    override suspend fun reorder(ids: List<Int>) = answer("reorder $ids") {
-        lists = ids.mapIndexed { i, id -> lists.single { it.id == id }.copy(position = i) }
+    override suspend fun reorder(uuids: List<String>) = answer("reorder $uuids") {
+        lists = uuids.mapIndexed { i, uuid -> lists.single { it.uuid == uuid }.copy(position = i) }
         lists
     }
 
-    override suspend fun delete(id: Int) = answer("delete $id") { lists = lists.filterNot { it.id == id } }
+    override suspend fun delete(uuid: String) = answer("delete $uuid") { lists = lists.filterNot { it.uuid == uuid } }
 
-    override suspend fun saveItems(id: Int, items: List<ListItemDraft>) = answer("save $id ${items.map { it.exerciseId }}") {
-        val list = replace(id) { list ->
-            list.copy(items = items.mapIndexed { i, d -> item(d.id ?: nextItemId++, id, d.exerciseId, i).withTargets(d) })
+    override suspend fun saveItems(uuid: String, items: List<ListItemDraft>) = answer("save $uuid ${items.map { it.exerciseUuid }}") {
+        val list = replace(uuid) { list ->
+            list.copy(items = items.mapIndexed { i, d -> ExerciseListItem(d.uuid, d.exerciseUuid, i, null, null, null, null, null, null, null).withTargets(d) })
         }
-        ExerciseListItemsResponse(id, list.items)
+        ExerciseListItemsResponse(uuid, list.items)
     }
 
-    override suspend fun append(id: Int, exerciseId: Int) = answer("append $id $exerciseId") {
-        val list = replace(id) { it.copy(items = it.items + item(nextItemId++, id, exerciseId, it.items.size)) }
-        ExerciseListItemsResponse(id, list.items)
+    override suspend fun append(uuid: String, exerciseUuid: String) = answer("append $uuid $exerciseUuid") {
+        val list = replace(uuid) {
+            it.copy(items = it.items + ExerciseListItem(itemUuid(nextItem++), exerciseUuid, it.items.size, null, null, null, null, null, null, null))
+        }
+        ExerciseListItemsResponse(uuid, list.items)
     }
 }
 
-fun exerciseList(id: Int, name: String = "List $id", description: String? = null, items: List<ExerciseListItem> = emptyList(), frozen: Boolean = false) =
-    ExerciseList(id, "user", "user", name, description, position = id, createdAt = null, updatedAt = null, items = items, frozen = frozen)
+fun exerciseList(n: Int, name: String = "List $n", description: String? = null, items: List<ExerciseListItem> = emptyList(), frozen: Boolean = false) =
+    ExerciseList(listUuid(n), "user", "user", name, description, position = n, createdAt = null, updatedAt = null, items = items, frozen = frozen)
 
-fun item(id: Int, listId: Int, exerciseId: Int, position: Int) =
-    ExerciseListItem(id, listId, exerciseId, position, null, null, null, null, null, null, null)
+fun item(n: Int, exercise: Int, position: Int) =
+    ExerciseListItem(itemUuid(n), exerciseUuid(exercise), position, null, null, null, null, null, null, null)
 
 private fun ExerciseListItem.withTargets(d: ListItemDraft): ExerciseListItem {
     val p = d.prescription

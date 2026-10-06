@@ -17,7 +17,7 @@ enum class OutboxOpType {
     /** `POST /api/tracker/day-logs/ensure`, payload `EnsureDayLogRequest`. */
     EnsureDayLog,
 
-    // Session ops. They name rows by uuid, and their habitId/localDay is the session's day.
+    // Session ops. They name rows by uuid, and their habitUuid/localDay is the session's day.
 
     /** `POST /api/tracker/exercise-sessions`, payload `CreateSessionRequest`. */
     CreateSession,
@@ -47,17 +47,17 @@ enum class OutboxOpType {
 
 /**
  * A tracker write waiting to reach the server. Ops are sent in [id] order, and while any op for
- * ([habitId], [localDay]) is here, sync leaves that day log and that day's sessions alone.
+ * ([habitUuid], [localDay]) is here, sync leaves that day log and that day's sessions alone.
  */
 @Entity(
     tableName = "outbox",
-    indices = [Index("idempotencyKey", unique = true), Index("habitId", "localDay")],
+    indices = [Index("idempotencyKey", unique = true), Index("habitUuid", "localDay")],
 )
 data class OutboxEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val type: OutboxOpType,
     /** The day log this op changed optimistically. The payload may still omit `day`. */
-    val habitId: Int,
+    val habitUuid: String,
     val localDay: LocalDate,
     /** The request body as JSON, per [type]. */
     val payload: String,

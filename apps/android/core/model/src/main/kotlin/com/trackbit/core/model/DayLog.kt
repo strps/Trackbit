@@ -7,13 +7,13 @@ import java.time.Instant
 import java.time.LocalDate
 
 /**
- * A `day_logs` row, returned by every tracker write. Identify it by ([habitId], [localDay]);
- * [id] is the server's key and only matters for attaching exercise sessions.
+ * A `day_logs` row, returned by every tracker write. Identify it by ([habitUuid], [localDay]);
+ * [id] is the server's key, which the app doesn't use.
  */
 @Serializable
 data class DayLog(
     val id: Int,
-    val habitId: Int,
+    val habitUuid: String,
     /** A count, 1/0 for check habits, or milliseconds for timed habits. */
     val rating: Int?,
     val notes: String?,

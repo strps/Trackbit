@@ -36,7 +36,9 @@ class HabitsConfigViewModelTest {
         return viewModel
     }
 
-    private val HabitsConfigViewModel.keys get() = state.value.rows?.map { it.key }
+    /** Row keys, habits by fixture number: habitUuid(3) is 3. */
+    private val HabitsConfigViewModel.keys
+        get() = state.value.rows?.map { row -> (row.key as? String)?.removePrefix("habit-")?.toIntOrNull() ?: row.key }
 
     @Test fun `habits come in order, then the anti-habits header, then anti-habits`() = runTest(dispatcher) {
         repository.habits = listOf(
@@ -76,13 +78,13 @@ class HabitsConfigViewModelTest {
         repository.habits = listOf(habit(1), habit(2, order = 1), habit(3, isAntiHabit = true))
         val viewModel = loaded()
 
-        viewModel.move(from = 2, to = ANTI_HEADER_KEY)
+        viewModel.move(from = habitUuid(2), to = ANTI_HEADER_KEY)
         viewModel.drop()
         advanceUntilIdle()
 
         assertEquals(listOf(1, ANTI_HEADER_KEY, 2, 3), viewModel.keys)
         assertEquals(
-            listOf(HabitOrder(1, 0, false), HabitOrder(2, 0, true), HabitOrder(3, 1, true)),
+            listOf(HabitOrder(habitUuid(1), 0, false), HabitOrder(habitUuid(2), 0, true), HabitOrder(habitUuid(3), 1, true)),
             repository.reorders.single(),
         )
     }
@@ -91,8 +93,8 @@ class HabitsConfigViewModelTest {
         repository.habits = listOf(habit(1), habit(2, order = 1))
         val viewModel = loaded()
 
-        viewModel.move(from = 1, to = 2)
-        viewModel.move(from = 1, to = 2)
+        viewModel.move(from = habitUuid(1), to = habitUuid(2))
+        viewModel.move(from = habitUuid(1), to = habitUuid(2))
         viewModel.drop()
         advanceUntilIdle()
 
@@ -103,7 +105,7 @@ class HabitsConfigViewModelTest {
         repository.habits = listOf(habit(1, type = HabitType.Complex), habit(2, isAntiHabit = true))
         val viewModel = loaded()
 
-        viewModel.move(from = 1, to = ANTI_HEADER_KEY)
+        viewModel.move(from = habitUuid(1), to = ANTI_HEADER_KEY)
         viewModel.drop()
         advanceUntilIdle()
 
@@ -116,13 +118,13 @@ class HabitsConfigViewModelTest {
         repository.habits = listOf(habit(1, frozen = true), habit(2, order = 1))
         val viewModel = loaded()
 
-        viewModel.move(from = 2, to = 1)
+        viewModel.move(from = habitUuid(2), to = habitUuid(1))
         viewModel.drop()
         advanceUntilIdle()
-        assertEquals(listOf(HabitOrder(2, 0, false), HabitOrder(1, 1, false)), repository.reorders.single())
+        assertEquals(listOf(HabitOrder(habitUuid(2), 0, false), HabitOrder(habitUuid(1), 1, false)), repository.reorders.single())
 
         // The frozen one ends up below the header when the header passes above it.
-        viewModel.move(from = ANTI_HEADER_KEY, to = 1)
+        viewModel.move(from = ANTI_HEADER_KEY, to = habitUuid(1))
         viewModel.drop()
         advanceUntilIdle()
         assertEquals(listOf(2, 1, ANTI_HEADER_KEY), viewModel.keys)
@@ -135,7 +137,7 @@ class HabitsConfigViewModelTest {
         val viewModel = loaded()
 
         repository.failWith = ConfigError.Offline
-        viewModel.move(from = 2, to = 1)
+        viewModel.move(from = habitUuid(2), to = habitUuid(1))
         viewModel.drop()
         assertEquals(listOf(2, 1, ANTI_HEADER_KEY), viewModel.keys)
         advanceUntilIdle()

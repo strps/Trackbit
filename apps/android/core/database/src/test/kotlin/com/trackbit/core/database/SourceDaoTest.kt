@@ -36,27 +36,27 @@ class SourceDaoTest : DatabaseTest() {
     }
 
     @Test fun `a queue round-trips in order, with its prescriptions`() = runTest {
-        sync.applyQueue("list:1", queue("list:1", QueueEntry(7, 0, 10, rx), QueueEntry(8, 1, 11, null)), at)
+        sync.applyQueue("list:1", queue("list:1", QueueEntry("e7", 0, "i10", rx), QueueEntry("e8", 1, "i11", null)), at)
 
         val cached = checkNotNull(sources.observeQueue("list:1").first())
         assertEquals(false, cached.queue.gone)
         assertEquals(
-            listOf(QueueEntry(7, 0, 10, rx), QueueEntry(8, 1, 11, null)),
+            listOf(QueueEntry("e7", 0, "i10", rx), QueueEntry("e8", 1, "i11", null)),
             cached.entries.sortedBy { it.ordinal }.map { it.toEntry() },
         )
-        assertEquals(rx, sources.prescription(10))
-        assertNull(sources.prescription(11))
-        assertNull(sources.prescription(99))
+        assertEquals(rx, sources.prescription("i10"))
+        assertNull(sources.prescription("i11"))
+        assertNull(sources.prescription("i99"))
     }
 
     @Test fun `a queue that no longer resolves is gone and loses its entries`() = runTest {
-        sync.applyQueue("list:1", queue("list:1", QueueEntry(7, 0, 10, rx)), at)
+        sync.applyQueue("list:1", queue("list:1", QueueEntry("e7", 0, "i10", rx)), at)
         sync.applyQueue("list:1", null, at)
 
         val cached = checkNotNull(sources.observeQueue("list:1").first())
         assertTrue(cached.queue.gone)
         assertEquals(emptyList<Any>(), cached.entries)
-        assertNull(sources.prescription(10))
+        assertNull(sources.prescription("i10"))
     }
 
     @Test fun `an empty queue keeps its reason`() = runTest {
@@ -66,12 +66,12 @@ class SourceDaoTest : DatabaseTest() {
 
     @Test fun `a source no longer listed takes its queue with it`() = runTest {
         sync.applySources(listOf(source("list:1", "A"), source("list:2", "B")))
-        sync.applyQueue("list:1", queue("list:1", QueueEntry(7, 0, 10, rx)), at)
-        sync.applyQueue("list:2", queue("list:2", QueueEntry(8, 0, 20, rx)), at)
+        sync.applyQueue("list:1", queue("list:1", QueueEntry("e7", 0, "i10", rx)), at)
+        sync.applyQueue("list:2", queue("list:2", QueueEntry("e8", 0, "i20", rx)), at)
 
         sync.applySources(listOf(source("list:2", "B")))
         assertNull(sources.observeQueue("list:1").first())
-        assertNull(sources.prescription(10))
-        assertEquals(rx, sources.prescription(20))
+        assertNull(sources.prescription("i10"))
+        assertEquals(rx, sources.prescription("i20"))
     }
 }

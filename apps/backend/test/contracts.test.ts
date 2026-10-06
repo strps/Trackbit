@@ -142,6 +142,8 @@ describe('Android contracts', () => {
         for (let i = 0; i < 6; i++) await post(u.token, '/api/habits', { name: `Habit ${i}` })
         await record(NETWORK, 'habit-limit-reached.json', 'POST /api/habits',
             await post(u.token, '/api/habits', { uuid: clientUuid(), name: 'One more' }))
+        await record(NETWORK, 'habit-not-found-update.json', 'PUT /api/habits/uuid/:uuid',
+            await send(u.token, 'PUT', `/api/habits/uuid/${clientUuid()}`, { name: 'Gone' }))
     })
 
     it('tracker', async () => {
@@ -169,6 +171,8 @@ describe('Android contracts', () => {
             await post(u.token, '/api/tracker/check', { habitUuid: clientUuid(), rating: 1 }))
         await record(NETWORK, 'validation.json', 'POST /api/tracker/check/increment',
             await post(u.token, '/api/tracker/check/increment', { habitUuid: readUuid, delta: 1.5, day: '10/01/2026' }))
+        await record(MODEL, 'day-log-ensured.json', 'POST /api/tracker/day-logs/ensure',
+            await post(u.token, '/api/tracker/day-logs/ensure', { habitUuid: gym.uuid, day: '2026-01-10' }), u.secrets)
     })
 
     it('idempotency errors', async () => {
@@ -231,9 +235,8 @@ describe('Android contracts', () => {
         })
         const logId = (await log.clone().json()).id
         await record(MODEL, 'exercise-log-created.json', 'POST /api/tracker/exercise-logs', log, u.secrets)
-        await record(MODEL, 'exercise-log.json', 'PATCH /api/tracker/exercise-logs/:id',
-            await send(u.token, 'PATCH', `/api/tracker/exercise-logs/${logId}`, { distance: 5.25, duration: 1500, distanceUnit: 'km', weightUnit: 'kg' }),
-            u.secrets)
+        // Web only (the app doesn't edit a log), so not recorded: it gives the sessions below their values.
+        await send(u.token, 'PATCH', `/api/tracker/exercise-logs/${logId}`, { distance: 5.25, duration: 1500, distanceUnit: 'km', weightUnit: 'kg' })
         await post(u.token, '/api/tracker/exercise-performances', { uuid: ids.sets[0], exerciseLogUuid: ids.log, number: 1, reps: 8, weight: 60.5 })
         await record(MODEL, 'exercise-performance.json', 'POST /api/tracker/exercise-performances',
             await post(u.token, '/api/tracker/exercise-performances', {

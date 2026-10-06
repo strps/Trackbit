@@ -4,27 +4,28 @@ import com.trackbit.core.model.serialization.TrackbitJson
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class EncodeTest {
     @Test fun `a null day is left out of the body`() {
-        assertEquals("""{"habitId":7,"delta":1}""", TrackbitJson.encodeToString(IncrementRequest(7, 1)))
-        assertEquals("""{"habitId":7}""", TrackbitJson.encodeToString(EnsureDayLogRequest(7)))
+        assertEquals("""{"habitUuid":"h","delta":1}""", TrackbitJson.encodeToString(IncrementRequest("h", 1)))
+        assertEquals("""{"habitUuid":"h"}""", TrackbitJson.encodeToString(EnsureDayLogRequest("h")))
     }
 
     @Test fun `a day is sent as YYYY-MM-DD`() {
         assertEquals(
-            """{"habitId":7,"rating":1,"day":"2026-09-26"}""",
-            TrackbitJson.encodeToString(CheckRequest(7, 1, day("2026-09-26"))),
+            """{"habitUuid":"h","rating":1,"day":"2026-09-26"}""",
+            TrackbitJson.encodeToString(CheckRequest("h", 1, day("2026-09-26"))),
         )
     }
 
     @Test(expected = IllegalArgumentException::class)
     fun `an increment of 0 is rejected`() {
-        IncrementRequest(7, 0)
+        IncrementRequest("h", 0)
     }
 
-    @Test fun `a habit request encodes the form's fields with wire names`() {
+    @Test fun `a habit update encodes the form's fields with wire names, and no uuid`() {
         val request = HabitRequest(
             name = "Stretch",
             type = HabitType.Timed,
@@ -39,6 +40,15 @@ class EncodeTest {
             """{"name":"Stretch","type":"timed","isAntiHabit":false,"weeklyGoal":5,"dailyGoal":90,""" +
                 """"colorTheme":"custom","colorStops":[{"position":0.0,"color":[255.0,0.0,0.0,0.5]}],"icon":"trees"}""",
             TrackbitJson.encodeToString(HabitRequest.serializer(), request),
+        )
+        val create = TrackbitJson.encodeToString(HabitRequest.serializer(), request.copy(uuid = "h"))
+        assertTrue(create, create.endsWith(""""icon":"trees","uuid":"h"}"""))
+    }
+
+    @Test fun `a log names its exercise and list item by uuid, an ad-hoc one with a null item`() {
+        assertEquals(
+            """{"uuid":"l","exerciseSessionUuid":"s","exerciseUuid":"e","listItemUuid":null}""",
+            TrackbitJson.encodeToString(CreateExerciseLogRequest("l", "s", "e", listItemUuid = null)),
         )
     }
 
@@ -59,6 +69,6 @@ class EncodeTest {
 
     @Test fun `browse mode is sent as an explicit null source`() {
         assertEquals("""{"preferredExerciseSource":null}""", TrackbitJson.encodeToString(PreferredExerciseSourceRequest(null)))
-        assertEquals("""{"preferredExerciseSource":"list:3"}""", TrackbitJson.encodeToString(PreferredExerciseSourceRequest("list:3")))
+        assertEquals("""{"preferredExerciseSource":"list:0f0e"}""", TrackbitJson.encodeToString(PreferredExerciseSourceRequest("list:0f0e")))
     }
 }

@@ -17,6 +17,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -30,8 +31,10 @@ class HabitFormViewModelTest {
 
     @After fun tearDown() = Dispatchers.resetMain()
 
-    private fun TestScope.form(habitId: Int? = null): HabitFormViewModel {
-        val viewModel = HabitFormViewModel(repository, SavedStateHandle(mapOf(HabitFormViewModel.HABIT_ID to habitId)))
+    private fun TestScope.form(habit: Int? = null): HabitFormViewModel {
+        val savedState = SavedStateHandle()
+        if (habit != null) savedState[HabitFormViewModel.HABIT_UUID] = habitUuid(habit)
+        val viewModel = HabitFormViewModel(repository, savedState)
         advanceUntilIdle()
         return viewModel
     }
@@ -57,6 +60,7 @@ class HabitFormViewModelTest {
         val request = repository.created.single()
         assertEquals("Drink water", request.name)
         assertEquals(ColorTheme.Rose, request.colorTheme)
+        assertNotNull("a create names its habit", request.uuid)
         assertTrue(viewModel.state.value.done)
     }
 
@@ -80,31 +84,31 @@ class HabitFormViewModelTest {
 
     @Test fun `editing loads the habit and saves it by id`() = runTest(dispatcher) {
         repository.habits = listOf(habit(7, name = "Read", type = HabitType.Timed, dailyGoal = 45))
-        val viewModel = form(habitId = 7)
+        val viewModel = form(habit = 7)
         assertEquals("Read", viewModel.state.value.form.name)
         assertEquals(45, viewModel.state.value.form.dailyGoal)
 
         viewModel.edit { it.copy(name = "Read more") }
         viewModel.save()
         advanceUntilIdle()
-        assertEquals(7 to "Read more", repository.updated.single().let { (id, request) -> id to request.name })
+        assertEquals(habitUuid(7) to "Read more", repository.updated.single().let { (uuid, request) -> uuid to request.name })
     }
 
     @Test fun `a frozen habit can't be saved but can be deleted`() = runTest(dispatcher) {
         repository.habits = listOf(habit(7, frozen = true))
-        val viewModel = form(habitId = 7)
+        val viewModel = form(habit = 7)
         assertFalse(viewModel.state.value.canSave)
 
         viewModel.save()
         viewModel.delete()
         advanceUntilIdle()
         assertTrue(repository.updated.isEmpty())
-        assertEquals(listOf(7), repository.deleted)
+        assertEquals(listOf(habitUuid(7)), repository.deleted)
         assertTrue(viewModel.state.value.done)
     }
 
     @Test fun `a habit deleted elsewhere can't be edited`() = runTest(dispatcher) {
-        val viewModel = form(habitId = 7)
+        val viewModel = form(habit = 7)
         assertTrue(viewModel.state.value.loadFailed)
         assertEquals(HabitFormMessage.NotFound, viewModel.state.value.message)
     }

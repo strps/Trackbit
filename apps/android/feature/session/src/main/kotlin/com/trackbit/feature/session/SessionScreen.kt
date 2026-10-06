@@ -71,13 +71,13 @@ import java.time.format.FormatStyle
  */
 @Composable
 fun SessionScreen(
-    habitId: Int,
+    habitUuid: String,
     day: LocalDate,
     onBack: () -> Unit,
     onOpenLists: () -> Unit,
     viewModel: SessionViewModel = hiltViewModel<SessionViewModel, SessionViewModel.Factory>(
-        key = "$habitId/$day",
-        creationCallback = { it.create(habitId, day) },
+        key = "$habitUuid/$day",
+        creationCallback = { it.create(habitUuid, day) },
     ),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -118,13 +118,13 @@ fun SessionScreen(
 private class SessionActions(
     val onStart: () -> Unit,
     val onDelete: (sessionId: String) -> Unit,
-    val onAddExercise: (sessionId: String, exerciseId: Int, listItemId: Int?) -> Unit,
+    val onAddExercise: (sessionId: String, exerciseUuid: String, listItemUuid: String?) -> Unit,
     val onSelectSource: (key: String?) -> Unit,
     /** The lists screen (no lists yet). */
     val onOpenLists: () -> Unit,
     /** An add-to-list menu opened: load the lists. */
     val onListsMenu: () -> Unit,
-    val onAddToList: (listId: Int, exerciseId: Int) -> Unit,
+    val onAddToList: (listUuid: String, exerciseUuid: String) -> Unit,
     val onAdjustRest: (ms: Long) -> Unit,
     val onSkipRest: () -> Unit,
     val onSetDefaultRest: (seconds: Int) -> Unit,
@@ -147,13 +147,13 @@ private fun SessionContent(
     // The session an exercise was just added to, by its log count then: the new log opens.
     var addedTo by rememberSaveable { mutableStateOf<Pair<String, Int>?>(null) }
     // Per session, the exercise last picked in browse mode: what its Play repeats.
-    var browsePicks by rememberSaveable { mutableStateOf(mapOf<String, Int>()) }
+    var browsePicks by rememberSaveable { mutableStateOf(mapOf<String, String>()) }
     val pickerOf = { session: TrackedSession -> exercisePicker(state, session, browsePicks[session.id]) }
-    val add = { session: TrackedSession, browsing: Boolean, exerciseId: Int, listItemId: Int? ->
+    val add = { session: TrackedSession, browsing: Boolean, exerciseUuid: String, listItemUuid: String? ->
         // In browse mode the trigger follows the pick; with a source it stays the cursor.
-        if (browsing) browsePicks = browsePicks + (session.id to exerciseId)
+        if (browsing) browsePicks = browsePicks + (session.id to exerciseUuid)
         addedTo = session.id to session.logs.size
-        actions.onAddExercise(session.id, exerciseId, listItemId)
+        actions.onAddExercise(session.id, exerciseUuid, listItemUuid)
     }
     LaunchedEffect(state.sessions, addedTo) {
         val (sessionId, before) = addedTo ?: return@LaunchedEffect
@@ -230,7 +230,7 @@ private fun SessionContent(
                                 onSelectSource = actions.onSelectSource,
                                 onOpenLists = actions.onOpenLists,
                                 onOpenList = { pickingFor = session.id },
-                                onAdd = { exerciseId, listItemId -> add(session, picker.browsing, exerciseId, listItemId) },
+                                onAdd = { exerciseUuid, listItemUuid -> add(session, picker.browsing, exerciseUuid, listItemUuid) },
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         }
@@ -249,9 +249,9 @@ private fun SessionContent(
             onListsMenu = actions.onListsMenu,
             onAddToList = actions.onAddToList,
             onDismiss = { pickingFor = null },
-            onPick = { exerciseId, listItemId ->
+            onPick = { exerciseUuid, listItemUuid ->
                 pickingFor = null
-                add(picking, picker.browsing, exerciseId, listItemId)
+                add(picking, picker.browsing, exerciseUuid, listItemUuid)
             },
         )
     }
@@ -293,7 +293,7 @@ private fun SessionPanel(
                 EmptyState(R.string.tracker_activity_empty_session_title, R.string.tracker_activity_empty_session_desc, onClick = null)
             }
             for (log in session.logs) {
-                val exercise = state.exercise(log.exerciseId)
+                val exercise = state.exercise(log.exerciseUuid)
                 // A frozen custom exercise is read-only too; the server refuses its sets.
                 val logEnabled = enabled && exercise?.frozen != true
                 if (state.cardStyle == ExerciseLogCardStyle.Compact) {

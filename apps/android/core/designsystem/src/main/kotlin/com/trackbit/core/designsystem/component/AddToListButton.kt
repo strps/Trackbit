@@ -25,7 +25,7 @@ import com.trackbit.core.i18n.R
 import com.trackbit.core.model.ExerciseList
 
 /** A list an exercise can be appended to (frozen lists aren't offered). */
-data class ListTarget(val id: Int, val name: String, val itemCount: Int, val contains: Boolean)
+data class ListTarget(val uuid: String, val name: String, val itemCount: Int, val contains: Boolean)
 
 /** What the menu shows: the lists once loaded, or why they aren't. */
 sealed interface ListTargets {
@@ -34,11 +34,11 @@ sealed interface ListTargets {
     data class Loaded(val lists: List<ListTarget>) : ListTargets
 
     companion object {
-        /** The unfrozen ones of [lists] (null until loaded; [failed] when that failed) for [exerciseId]. */
-        fun of(lists: List<ExerciseList>?, failed: Boolean, exerciseId: Int): ListTargets = when {
+        /** The unfrozen ones of [lists] (null until loaded; [failed] when that failed) for [exerciseUuid]. */
+        fun of(lists: List<ExerciseList>?, failed: Boolean, exerciseUuid: String): ListTargets = when {
             lists != null -> Loaded(
                 lists.filterNot { it.frozen }.map { list ->
-                    ListTarget(list.id, list.name, list.items.size, contains = list.items.any { it.exerciseId == exerciseId })
+                    ListTarget(list.uuid, list.name, list.items.size, contains = list.items.any { it.exerciseUuid == exerciseUuid })
                 },
             )
             failed -> Offline

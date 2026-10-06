@@ -27,7 +27,7 @@ class AnalyticsRepositoryTest {
     private val repository = DefaultAnalyticsRepository(db, sync)
     private val sessions = DefaultSessionRepository(db, sync, FakeScheduler(), FakeClock(), FakeAuth())
 
-    private fun set(day: Int, weight: Double) = HabitSet(DAY.minusDays(day.toLong()), 10, weight, reps = 5, rpe = null, duration = null, distance = null)
+    private fun set(day: Int, weight: Double) = HabitSet(DAY.minusDays(day.toLong()), ex(10), weight, reps = 5, rpe = null, duration = null, distance = null)
 
     @Before fun seed() = runTest {
         db.syncDao().applyToday(todayResponse(DAY, todayHabit(1, type = HabitType.Complex), todayHabit(2, type = HabitType.Complex)))
@@ -36,26 +36,26 @@ class AnalyticsRepositoryTest {
     @After fun close() = db.close()
 
     @Test fun `sets are unknown until pulled, then replaced by each pull`() = runTest {
-        assertNull(repository.observeSets(1).first())
+        assertNull(repository.observeSets(h(1)).first())
 
         service.setsAnswer = { HabitSetsResponse(it, listOf(set(2, 40.0), set(1, 42.5))) }
-        assertEquals(SyncResult.Done, repository.refresh(1))
-        assertEquals(listOf(set(2, 40.0), set(1, 42.5)), repository.observeSets(1).first())
-        assertNull("another habit's sets are still unknown", repository.observeSets(2).first())
+        assertEquals(SyncResult.Done, repository.refresh(h(1)))
+        assertEquals(listOf(set(2, 40.0), set(1, 42.5)), repository.observeSets(h(1)).first())
+        assertNull("another habit's sets are still unknown", repository.observeSets(h(2)).first())
         assertEquals(listOf(MuscleGroupRef(1, "Chest")), sessions.observeExercises().first().single().muscleGroups)
 
         service.setsAnswer = { HabitSetsResponse(it, emptyList()) }
-        repository.refresh(1)
-        assertEquals(emptyList<HabitSet>(), repository.observeSets(1).first())
+        repository.refresh(h(1))
+        assertEquals(emptyList<HabitSet>(), repository.observeSets(h(1)).first())
     }
 
     @Test fun `offline keeps the last pull`() = runTest {
         service.setsAnswer = { HabitSetsResponse(it, listOf(set(1, 40.0))) }
-        repository.refresh(1)
+        repository.refresh(h(1))
 
         service.setsAnswer = { throw IOException("offline") }
-        assertEquals(SyncResult.Retry, repository.refresh(1))
-        assertEquals(listOf(set(1, 40.0)), repository.observeSets(1).first())
+        assertEquals(SyncResult.Retry, repository.refresh(h(1)))
+        assertEquals(listOf(set(1, 40.0)), repository.observeSets(h(1)).first())
     }
 
     @Test fun `a pull that outlives the session writes nothing`() = runTest {
@@ -64,7 +64,7 @@ class AnalyticsRepositoryTest {
             HabitSetsResponse(it, listOf(set(1, 40.0)))
         }
 
-        assertEquals(SyncResult.SignedOut, repository.refresh(1))
-        assertNull(repository.observeSets(1).first())
+        assertEquals(SyncResult.SignedOut, repository.refresh(h(1)))
+        assertNull(repository.observeSets(h(1)).first())
     }
 }

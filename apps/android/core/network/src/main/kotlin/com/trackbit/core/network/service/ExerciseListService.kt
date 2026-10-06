@@ -23,22 +23,22 @@ interface ExerciseListService {
     @POST("api/exercise-lists")
     suspend fun create(@Body body: ExerciseListRequest): ExerciseList
 
-    @PATCH("api/exercise-lists/{id}")
-    suspend fun update(@Path("id") id: Int, @Body body: ExerciseListRequest): ExerciseList
+    @PATCH("api/exercise-lists/uuid/{uuid}")
+    suspend fun update(@Path("uuid") uuid: String, @Body body: ExerciseListRequest): ExerciseList
 
     /** Every list in its new order; frozen lists must stay at the end. */
     @PATCH("api/exercise-lists/reorder")
     suspend fun reorder(@Body body: ExerciseListReorderRequest): List<ExerciseList>
 
     /** Deletes the list and its items; logs made from them keep their exercise. */
-    @DELETE("api/exercise-lists/{id}")
-    suspend fun delete(@Path("id") id: Int)
+    @DELETE("api/exercise-lists/uuid/{uuid}")
+    suspend fun delete(@Path("uuid") uuid: String)
 
-    /** Replaces the list's items (an item with an id keeps its row). */
-    @PUT("api/exercise-lists/{id}/items")
-    suspend fun putItems(@Path("id") id: Int, @Body body: ExerciseListItemsRequest): ExerciseListItemsResponse
+    /** Replaces the list's items (an item the list holds keeps its row). */
+    @PUT("api/exercise-lists/uuid/{uuid}/items")
+    suspend fun putItems(@Path("uuid") uuid: String, @Body body: ExerciseListItemsRequest): ExerciseListItemsResponse
 
-    /** Appends one exercise at the end, unprescribed. */
-    @POST("api/exercise-lists/{id}/items")
-    suspend fun append(@Path("id") id: Int, @Body body: AppendListItemRequest): ExerciseListItemsResponse
+    /** Appends one exercise at the end, unprescribed; a retry with the same item uuid appends nothing. */
+    @POST("api/exercise-lists/uuid/{uuid}/items")
+    suspend fun append(@Path("uuid") uuid: String, @Body body: AppendListItemRequest): ExerciseListItemsResponse
 }

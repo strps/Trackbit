@@ -42,8 +42,8 @@ fun user(units: UnitSystem) = SessionUser(
     exerciseLogCardStyle = ExerciseLogCardStyle.Classic, preferredExerciseSource = null,
 )
 
-fun exercise(id: Int, name: String = "Exercise $id", category: String = "strength") = Exercise(
-    id = id, userId = null, name = name, description = null, category = category,
+fun exercise(n: Int, name: String = "Exercise $n", category: String = "strength") = Exercise(
+    uuid = exerciseUuid(n), userId = null, name = name, description = null, category = category,
     defaultWeightUnit = "kg", defaultDistanceUnit = "km", lastPerformance = null, muscleGroups = emptyList(), frozen = false,
 )
 

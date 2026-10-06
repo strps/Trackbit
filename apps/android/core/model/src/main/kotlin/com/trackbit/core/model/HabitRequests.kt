@@ -3,8 +3,8 @@ package com.trackbit.core.model
 import kotlinx.serialization.Serializable
 
 /**
- * `POST /api/habits` and `PUT /api/habits/:id`: every field the habit form edits. The server
- * keeps the order (a create goes last in its group, and so does a change of group) and the
+ * `POST /api/habits` and `PUT /api/habits/uuid/:uuid`: every field the habit form edits. The
+ * server keeps the order (a create goes last in its group, and so does a change of group) and the
  * description, which the form doesn't show.
  */
 @Serializable
@@ -19,6 +19,8 @@ data class HabitRequest(
     /** Only shown for [ColorTheme.Custom], but always sent: it's what the custom theme returns to. */
     val colorStops: List<ColorStop>,
     val icon: HabitIcon,
+    /** A create's new uuid, which makes a retry return the first habit; null (left out) for an update. */
+    val uuid: String? = null,
 ) {
     init {
         val problems = HabitRules.problems(name, type, isAntiHabit, weeklyGoal, dailyGoal, colorStops)
@@ -32,7 +34,7 @@ data class HabitReorderRequest(val items: List<HabitOrder>)
 
 /** A habit's place: [order] counts from 0 within its group (habits or anti-habits). */
 @Serializable
-data class HabitOrder(val id: Int, val order: Int, val isAntiHabit: Boolean)
+data class HabitOrder(val uuid: String, val order: Int, val isAntiHabit: Boolean)
 
 /** The habit form's rules, the same the server enforces on create and update. */
 object HabitRules {

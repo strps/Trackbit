@@ -45,24 +45,24 @@ abstract class SyncDao {
     @Transaction
     open suspend fun applyToday(today: TodayResponse) {
         val pending = pendingDays().toSet()
-        val pendingHabits = pending.mapTo(HashSet()) { it.habitId }
-        val local = habits().associateBy { it.id }
+        val pendingHabits = pending.mapTo(HashSet()) { it.habitUuid }
+        val local = habits().associateBy { it.uuid }
 
-        deleteHabitsNotIn(today.habits.map { it.id })
+        deleteHabitsNotIn(today.habits.map { it.uuid })
         upsertHabits(
             today.habits.map { habit ->
                 val entity = habit.toEntity(today.day)
-                val localFirst = local[habit.id]?.firstLogDay
-                if (habit.id in pendingHabits) entity.copy(firstLogDay = earliest(entity.firstLogDay, localFirst)) else entity
+                val localFirst = local[habit.uuid]?.firstLogDay
+                if (habit.uuid in pendingHabits) entity.copy(firstLogDay = earliest(entity.firstLogDay, localFirst)) else entity
             },
         )
         for (habit in today.habits) {
             for (day in habit.recent) {
-                if (HabitDayKey(habit.id, day.day) in pending) continue
+                if (HabitDayKey(habit.uuid, day.day) in pending) continue
                 if (day.rating == null && day.sessionCount == 0) {
-                    deleteLog(habit.id, day.day)
+                    deleteLog(habit.uuid, day.day)
                 } else {
-                    upsertLog(DayLogEntity(habit.id, day.day, day.rating, day.sessionCount))
+                    upsertLog(DayLogEntity(habit.uuid, day.day, day.rating, day.sessionCount))
                 }
             }
         }
@@ -76,11 +76,11 @@ abstract class SyncDao {
     @Transaction
     open suspend fun applyConfirmed(opId: Long, log: DayLog) {
         deleteOp(opId)
-        if (hasPending(log.habitId, log.localDay) || !habitExists(log.habitId)) return
+        if (hasPending(log.habitUuid, log.localDay) || !habitExists(log.habitUuid)) return
         // The row carries no session count; attaching sessions doesn't go through the outbox.
-        val sessionCount = log(log.habitId, log.localDay)?.sessionCount ?: 0
-        upsertLog(DayLogEntity(log.habitId, log.localDay, log.rating, sessionCount))
-        extendFirstLogDay(log.habitId, log.localDay)
+        val sessionCount = log(log.habitUuid, log.localDay)?.sessionCount ?: 0
+        upsertLog(DayLogEntity(log.habitUuid, log.localDay, log.rating, sessionCount))
+        extendFirstLogDay(log.habitUuid, log.localDay)
     }
 
     /**
@@ -95,42 +95,42 @@ abstract class SyncDao {
     @Transaction
     open suspend fun applyDays(days: DaysResponse, syncedAt: Instant) {
         val pending = pendingDays().toSet()
-        val habitIds = habits().mapTo(HashSet()) { it.id }
-        val server = days.days.associateBy { HabitDayKey(it.habitId, it.day) }
+        val habitUuids = habits().mapTo(HashSet()) { it.uuid }
+        val server = days.days.associateBy { HabitDayKey(it.habitUuid, it.day) }
         for (local in logDaysBetween(days.start, days.end)) {
-            if (local !in server && local !in pending) deleteLog(local.habitId, local.localDay)
+            if (local !in server && local !in pending) deleteLog(local.habitUuid, local.localDay)
         }
         for ((key, day) in server) {
-            if (key in pending || day.habitId !in habitIds) continue
+            if (key in pending || day.habitUuid !in habitUuids) continue
             if (day.rating == null && day.sessionCount == 0) {
-                deleteLog(day.habitId, day.day)
+                deleteLog(day.habitUuid, day.day)
             } else {
-                upsertLog(DayLogEntity(day.habitId, day.day, day.rating, day.sessionCount))
+                upsertLog(DayLogEntity(day.habitUuid, day.day, day.rating, day.sessionCount))
             }
         }
         recordHistorySync(days.start, syncedAt)
     }
 
     /**
-     * Makes Room's sessions of [habitId] on [day] (with their logs and sets) match a
+     * Makes Room's sessions of [habitUuid] on [day] (with their logs and sets) match a
      * `GET /api/tracker/exercise-sessions` response, and the day log's session count with them.
      * Skipped while ops for that day are pending: their optimistic rows are newer, and session ops
      * share the day log's key.
      */
     @Transaction
-    open suspend fun applySessions(habitId: Int, day: LocalDate, sessions: List<ExerciseSessionDetail>) {
-        if (hasPending(habitId, day) || !habitExists(habitId)) return
+    open suspend fun applySessions(habitUuid: String, day: LocalDate, sessions: List<ExerciseSessionDetail>) {
+        if (hasPending(habitUuid, day) || !habitExists(habitUuid)) return
         // Children cascade. Rows keep their uuids, so a row on screen stays the same row.
-        deleteSessions(habitId, day)
+        deleteSessions(habitUuid, day)
         for (session in sessions) {
-            insertSession(SessionEntity(session.uuid, habitId, day, session.createdAt ?: Instant.EPOCH))
+            insertSession(SessionEntity(session.uuid, habitUuid, day, session.createdAt ?: Instant.EPOCH))
             for (log in session.exerciseLogs) {
                 insertLog(
                     ExerciseLogEntity(
                         uuid = log.uuid,
                         sessionUuid = session.uuid,
-                        exerciseId = log.exerciseId,
-                        listItemId = log.listItemId,
+                        exerciseUuid = log.exerciseUuid,
+                        listItemUuid = log.listItemUuid,
                         createdAt = log.createdAt ?: Instant.EPOCH,
                         distance = log.distance,
                         duration = log.duration,
@@ -155,34 +155,34 @@ abstract class SyncDao {
                 }
             }
         }
-        val log = log(habitId, day)
+        val log = log(habitUuid, day)
         if (log != null) {
             upsertLog(log.copy(sessionCount = sessions.size))
         } else if (sessions.isNotEmpty()) {
             // The server made the day's log when the first session started.
-            upsertLog(DayLogEntity(habitId, day, rating = null, sessionCount = sessions.size))
-            extendFirstLogDay(habitId, day)
+            upsertLog(DayLogEntity(habitUuid, day, rating = null, sessionCount = sessions.size))
+            extendFirstLogDay(habitUuid, day)
         }
     }
 
     /** Replaces the exercise catalog. Nothing local is pending against it. */
     @Transaction
     open suspend fun applyExercises(exercises: List<Exercise>) {
-        deleteExercisesNotIn(exercises.map { it.id })
+        deleteExercisesNotIn(exercises.map { it.uuid })
         upsertExercises(exercises.map { it.toEntity() })
     }
 
     /**
-     * The user deleted their exercise [id] on the server, which took every log of it (and their
+     * The user deleted their exercise [uuid] on the server, which took every log of it (and their
      * sets) and its list items along: drops Room's copies so cached sessions, analytics and queues
      * stop showing it before their next pull.
      */
     @Transaction
-    open suspend fun removeExercise(id: Int) {
-        deleteLogsOf(id)
-        deleteHabitSetsOf(id)
-        deleteQueueEntriesOf(id)
-        deleteExercise(id)
+    open suspend fun removeExercise(uuid: String) {
+        deleteLogsOf(uuid)
+        deleteHabitSetsOf(uuid)
+        deleteQueueEntriesOf(uuid)
+        deleteExercise(uuid)
     }
 
     /** Replaces the exercise sources. A source no longer listed takes its cached queue with it. */
@@ -201,26 +201,26 @@ abstract class SyncDao {
         insertQueue(SourceQueueEntity(key, gone = queue == null, emptyReason = queue?.emptyReason, pulledAt = pulledAt))
         if (queue != null) {
             insertEntries(
-                queue.entries.mapIndexed { i, e -> QueueEntryEntity(key, i, e.exerciseId, e.position, e.listItemId, e.prescription) },
+                queue.entries.mapIndexed { i, e -> QueueEntryEntity(key, i, e.exerciseUuid, e.position, e.listItemUuid, e.prescription) },
             )
         }
     }
 
-    /** Replaces Room's sets of [HabitSetsResponse.habitId] with [sets], pulled at [pulledAt]. */
+    /** Replaces Room's sets of [HabitSetsResponse.habitUuid] with [sets], pulled at [pulledAt]. */
     @Transaction
     open suspend fun applySets(sets: HabitSetsResponse, pulledAt: Instant) {
-        if (!habitExists(sets.habitId)) return
-        deleteSets(sets.habitId)
+        if (!habitExists(sets.habitUuid)) return
+        deleteSets(sets.habitUuid)
         insertSets(
             sets.sets.mapIndexed { i, s ->
-                HabitSetEntity(sets.habitId, i, s.day, s.exerciseId, s.weight, s.reps, s.rpe, s.duration, s.distance)
+                HabitSetEntity(sets.habitUuid, i, s.day, s.exerciseUuid, s.weight, s.reps, s.rpe, s.duration, s.distance)
             },
         )
-        upsertSetPull(HabitSetPullEntity(sets.habitId, pulledAt))
+        upsertSetPull(HabitSetPullEntity(sets.habitUuid, pulledAt))
     }
 
-    @Query("DELETE FROM habit_sets WHERE habitId = :habitId")
-    protected abstract suspend fun deleteSets(habitId: Int)
+    @Query("DELETE FROM habit_sets WHERE habitUuid = :habitUuid")
+    protected abstract suspend fun deleteSets(habitUuid: String)
 
     @Insert protected abstract suspend fun insertSets(sets: List<HabitSetEntity>)
     @Upsert protected abstract suspend fun upsertSetPull(pull: HabitSetPullEntity)
@@ -243,35 +243,35 @@ abstract class SyncDao {
     @Insert protected abstract suspend fun insertQueue(queue: SourceQueueEntity)
     @Insert protected abstract suspend fun insertEntries(entries: List<QueueEntryEntity>)
 
-    @Query("DELETE FROM exercise_sessions WHERE habitId = :habitId AND localDay = :day")
-    protected abstract suspend fun deleteSessions(habitId: Int, day: LocalDate)
+    @Query("DELETE FROM exercise_sessions WHERE habitUuid = :habitUuid AND localDay = :day")
+    protected abstract suspend fun deleteSessions(habitUuid: String, day: LocalDate)
 
     @Insert protected abstract suspend fun insertSession(session: SessionEntity)
     @Insert protected abstract suspend fun insertLog(log: ExerciseLogEntity)
     @Insert protected abstract suspend fun insertSet(set: PerformanceEntity)
 
-    @Query("DELETE FROM exercise_logs WHERE exerciseId = :id")
-    protected abstract suspend fun deleteLogsOf(id: Int)
+    @Query("DELETE FROM exercise_logs WHERE exerciseUuid = :uuid")
+    protected abstract suspend fun deleteLogsOf(uuid: String)
 
-    @Query("DELETE FROM habit_sets WHERE exerciseId = :id")
-    protected abstract suspend fun deleteHabitSetsOf(id: Int)
+    @Query("DELETE FROM habit_sets WHERE exerciseUuid = :uuid")
+    protected abstract suspend fun deleteHabitSetsOf(uuid: String)
 
-    @Query("DELETE FROM queue_entries WHERE exerciseId = :id")
-    protected abstract suspend fun deleteQueueEntriesOf(id: Int)
+    @Query("DELETE FROM queue_entries WHERE exerciseUuid = :uuid")
+    protected abstract suspend fun deleteQueueEntriesOf(uuid: String)
 
-    @Query("DELETE FROM exercises WHERE id = :id")
-    protected abstract suspend fun deleteExercise(id: Int)
+    @Query("DELETE FROM exercises WHERE uuid = :uuid")
+    protected abstract suspend fun deleteExercise(uuid: String)
 
-    @Query("DELETE FROM exercises WHERE id NOT IN (:ids)")
-    protected abstract suspend fun deleteExercisesNotIn(ids: List<Int>)
+    @Query("DELETE FROM exercises WHERE uuid NOT IN (:uuids)")
+    protected abstract suspend fun deleteExercisesNotIn(uuids: List<String>)
 
     @Upsert
     protected abstract suspend fun upsertExercises(exercises: List<ExerciseEntity>)
 
-    @Query("SELECT DISTINCT habitId, localDay FROM outbox")
+    @Query("SELECT DISTINCT habitUuid, localDay FROM outbox")
     protected abstract suspend fun pendingDays(): List<HabitDayKey>
 
-    @Query("SELECT habitId, localDay FROM day_logs WHERE localDay BETWEEN :start AND :end")
+    @Query("SELECT habitUuid, localDay FROM day_logs WHERE localDay BETWEEN :start AND :end")
     protected abstract suspend fun logDaysBetween(start: LocalDate, end: LocalDate): List<HabitDayKey>
 
     @Query("UPDATE history SET syncedStart = :start, syncedAt = :at WHERE start >= :start")
@@ -280,23 +280,23 @@ abstract class SyncDao {
     @Query("DELETE FROM outbox WHERE id = :id")
     protected abstract suspend fun deleteOp(id: Long)
 
-    @Query("SELECT EXISTS(SELECT 1 FROM outbox WHERE habitId = :habitId AND localDay = :day)")
-    protected abstract suspend fun hasPending(habitId: Int, day: LocalDate): Boolean
+    @Query("SELECT EXISTS(SELECT 1 FROM outbox WHERE habitUuid = :habitUuid AND localDay = :day)")
+    protected abstract suspend fun hasPending(habitUuid: String, day: LocalDate): Boolean
 
-    @Query("SELECT EXISTS(SELECT 1 FROM habits WHERE id = :id)")
-    protected abstract suspend fun habitExists(id: Int): Boolean
+    @Query("SELECT EXISTS(SELECT 1 FROM habits WHERE uuid = :uuid)")
+    protected abstract suspend fun habitExists(uuid: String): Boolean
 
-    @Query("SELECT * FROM day_logs WHERE habitId = :habitId AND localDay = :day")
-    protected abstract suspend fun log(habitId: Int, day: LocalDate): DayLogEntity?
+    @Query("SELECT * FROM day_logs WHERE habitUuid = :habitUuid AND localDay = :day")
+    protected abstract suspend fun log(habitUuid: String, day: LocalDate): DayLogEntity?
 
-    @Query("UPDATE habits SET firstLogDay = :day WHERE id = :id AND (firstLogDay IS NULL OR firstLogDay > :day)")
-    protected abstract suspend fun extendFirstLogDay(id: Int, day: LocalDate)
+    @Query("UPDATE habits SET firstLogDay = :day WHERE uuid = :uuid AND (firstLogDay IS NULL OR firstLogDay > :day)")
+    protected abstract suspend fun extendFirstLogDay(uuid: String, day: LocalDate)
 
     @Query("SELECT * FROM habits")
     protected abstract suspend fun habits(): List<HabitEntity>
 
-    @Query("DELETE FROM habits WHERE id NOT IN (:ids)")
-    protected abstract suspend fun deleteHabitsNotIn(ids: List<Int>)
+    @Query("DELETE FROM habits WHERE uuid NOT IN (:uuids)")
+    protected abstract suspend fun deleteHabitsNotIn(uuids: List<String>)
 
     @Upsert
     protected abstract suspend fun upsertHabits(habits: List<HabitEntity>)
@@ -304,8 +304,8 @@ abstract class SyncDao {
     @Upsert
     protected abstract suspend fun upsertLog(log: DayLogEntity)
 
-    @Query("DELETE FROM day_logs WHERE habitId = :habitId AND localDay = :day")
-    protected abstract suspend fun deleteLog(habitId: Int, day: LocalDate)
+    @Query("DELETE FROM day_logs WHERE habitUuid = :habitUuid AND localDay = :day")
+    protected abstract suspend fun deleteLog(habitUuid: String, day: LocalDate)
 
     private fun earliest(a: LocalDate?, b: LocalDate?): LocalDate? = listOfNotNull(a, b).minOrNull()
 }

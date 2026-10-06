@@ -1,28 +1,16 @@
 package com.trackbit.core.database
 
-import androidx.room.migration.Migration
-import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.room.RoomDatabase
 
-/** The migrations Room can't generate. [TrackbitDatabase] lists the automatic ones. */
+/** How a database from an older version opens. From version 9 on, every schema change needs a migration. */
 object Migrations {
     /**
-     * 4: history requests are keyed by owner. The one request a version 3 database can hold
-     * belongs to the heatmap widgets, the only owner then.
+     * Versions before 9 named habits, exercises and lists by the server's int id, which the app can't
+     * turn into uuids offline. They open empty (the outbox and running timers included) and refill
+     * from the next sync. Fine only because no released build has them (F2, user's choice).
      */
-    val FROM_3_TO_4 = object : Migration(3, 4) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL(
-                "CREATE TABLE IF NOT EXISTS `history_new` (`owner` TEXT NOT NULL, `start` TEXT NOT NULL, " +
-                    "`syncedStart` TEXT, `syncedAt` INTEGER, PRIMARY KEY(`owner`))",
-            )
-            db.execSQL(
-                "INSERT INTO `history_new` (`owner`, `start`, `syncedStart`, `syncedAt`) " +
-                    "SELECT 'Heatmap', `start`, `syncedStart`, `syncedAt` FROM `history`",
-            )
-            db.execSQL("DROP TABLE `history`")
-            db.execSQL("ALTER TABLE `history_new` RENAME TO `history`")
-        }
-    }
+    private val RESET_FROM = (1..8).toList().toIntArray()
 
-    val ALL = arrayOf(FROM_3_TO_4)
+    fun RoomDatabase.Builder<TrackbitDatabase>.withMigrations(): RoomDatabase.Builder<TrackbitDatabase> =
+        fallbackToDestructiveMigrationFrom(dropAllTables = true, *RESET_FROM)
 }

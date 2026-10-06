@@ -33,12 +33,12 @@ class HistorySyncTest {
     @Before fun seed() = runTest {
         db.syncDao().applyToday(todayResponse(today, todayHabit(1)))
         service.todayAnswer = { todayResponse(today, todayHabit(1)) }
-        service.daysAnswer = { s, e -> DaysResponse(s, e, listOf(HabitDayValue(1, old, rating = 2, sessionCount = 0))) }
+        service.daysAnswer = { s, e -> DaysResponse(s, e, listOf(HabitDayValue(h(1), old, rating = 2, sessionCount = 0))) }
     }
 
     @After fun close() = db.close()
 
-    private suspend fun rating(day: LocalDate) = db.dayLogDao().get(1, day)?.rating
+    private suspend fun rating(day: LocalDate) = db.dayLogDao().get(h(1), day)?.rating
 
     @Test fun `a request schedules a pull, which fills the range`() = runTest {
         repository.requestHistory(HistoryOwner.Heatmap, start)
@@ -89,7 +89,7 @@ class HistorySyncTest {
 
         service.daysAnswer = { s, e ->
             tokens.token = null
-            DaysResponse(s, e, listOf(HabitDayValue(1, old, rating = 2, sessionCount = 0)))
+            DaysResponse(s, e, listOf(HabitDayValue(h(1), old, rating = 2, sessionCount = 0)))
         }
         assertEquals(SyncResult.SignedOut, sync.syncHistory())
         assertNull(rating(old))
@@ -111,7 +111,7 @@ class HistorySyncTest {
         repository.requestHistory(HistoryOwner.Heatmap, start)
         sync.syncHistory()
 
-        val habit = repository.observeHabit(1, today, days = 61).first()!!
+        val habit = repository.observeHabit(h(1), today, days = 61).first()!!
 
         assertEquals(61, habit.recent.size)
         assertEquals(2, habit.recent.single { it.day == old }.rating)
@@ -170,7 +170,7 @@ class HistorySyncTest {
         val day = today.minusDays(30)
         db.syncDao().applyToday(todayResponse(today, todayHabit(1, firstLogDay = day.minusDays(4))))
         service.daysAnswer = { s, e ->
-            DaysResponse(s, e, (0L..4L).map { HabitDayValue(1, day.minusDays(it), rating = 1, sessionCount = 0) })
+            DaysResponse(s, e, (0L..4L).map { HabitDayValue(h(1), day.minusDays(it), rating = 1, sessionCount = 0) })
         }
 
         val before = repository.observeDay(day, STREAK_DAYS).first().single()

@@ -35,6 +35,6 @@ class TestServer(
 }
 
 val DAY_LOG_JSON = """
-    {"id":7,"habitId":3,"rating":2,"notes":null,"localDay":"2026-09-26",
+    {"id":7,"habitId":3,"habitUuid":"h3","rating":2,"notes":null,"localDay":"2026-09-26",
      "timeStamp":"2026-09-26T09:00:00.000Z","createdAt":"2026-09-26T09:00:00.000Z"}
 """.trimIndent()

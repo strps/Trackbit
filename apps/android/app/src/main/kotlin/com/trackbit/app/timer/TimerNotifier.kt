@@ -108,10 +108,10 @@ class TimerNotifier @Inject internal constructor(
 
     private fun show(timers: Running) {
         running = timers
-        val ids = timers.habits.map { it.id }.toSet()
+        val tags = timers.habits.mapTo(HashSet()) { habitTag(it.uuid) }
         context.getSystemService(NotificationManager::class.java).activeNotifications
-            .filter { it.tag == TAG && it.id !in ids }
-            .forEach { manager.cancel(TAG, it.id) }
+            .filter { it.tag.orEmpty().startsWith(TAG_PREFIX) && it.tag !in tags }
+            .forEach { manager.cancel(it.tag, it.id) }
         // A rest that is over (its alarm not yet run) shows nothing; a new one replaces the last alert.
         val rest = timers.rest?.takeUnless { it.isOver(clock.instant()) }
         if (rest == null) manager.cancel(REST_TAG, REST_ID) else manager.cancel(REST_ALERT_TAG, REST_ID)
@@ -121,7 +121,7 @@ class TimerNotifier @Inject internal constructor(
         ) {
             return
         }
-        timers.habits.forEach { manager.notify(TAG, it.id, notification(it)) }
+        timers.habits.forEach { manager.notify(habitTag(it.uuid), HABIT_ID, notification(it)) }
         rest?.let { manager.notify(REST_TAG, REST_ID, restNotification(it)) }
     }
 
@@ -158,8 +158,8 @@ class TimerNotifier @Inject internal constructor(
         .setCategory(NotificationCompat.CATEGORY_STOPWATCH)
         .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
         .setContentIntent(openApp())
-        .addAction(0, context.getString(I18nR.string.android_timer_stop), TimerActionReceiver.stop(context, habit.id))
-        .addAction(0, context.getString(I18nR.string.android_timer_add_30s), TimerActionReceiver.add30s(context, habit.id))
+        .addAction(0, context.getString(I18nR.string.android_timer_stop), TimerActionReceiver.stop(context, habit.uuid))
+        .addAction(0, context.getString(I18nR.string.android_timer_add_30s), TimerActionReceiver.add30s(context, habit.uuid))
         .build()
 
     private fun openApp(): PendingIntent = PendingIntent.getActivity(
@@ -175,13 +175,16 @@ class TimerNotifier @Inject internal constructor(
         const val CHANNEL = "timers"
         const val REST_ALERT_CHANNEL = "rest_alerts"
 
-        /** Notification ids are habit ids, under this tag so they can't clash with others. */
-        const val TAG = "habit-timer"
+        /** A habit timer's notification is tagged with its habit's uuid, under this prefix, and has [HABIT_ID]. */
+        const val TAG_PREFIX = "habit-timer:"
+        const val HABIT_ID = 1
         const val REST_TAG = "rest-timer"
         const val REST_ALERT_TAG = "rest-alert"
         const val REST_ID = 1
 
         /** The alert is for the moment the rest ends; later it is only clutter. */
         const val REST_ALERT_TIMEOUT_MS = 5 * 60_000L
+
+        fun habitTag(habitUuid: String) = TAG_PREFIX + habitUuid
     }
 }

@@ -7,20 +7,20 @@ import com.trackbit.core.model.RecentDay
 import java.time.LocalDate
 
 /**
- * One habit's tracking on one day, keyed by ([habitId], [localDay]) like the server's
+ * One habit's tracking on one day, keyed by ([habitUuid], [localDay]) like the server's
  * `UNIQUE(habit_id, local_day)`. It holds the server's value, or an optimistic one while
  * outbox ops for the same key are pending.
  */
 @Entity(
     tableName = DayLogEntity.TABLE,
-    primaryKeys = ["habitId", "localDay"],
+    primaryKeys = ["habitUuid", "localDay"],
     foreignKeys = [
-        ForeignKey(entity = HabitEntity::class, parentColumns = ["id"], childColumns = ["habitId"], onDelete = ForeignKey.CASCADE),
+        ForeignKey(entity = HabitEntity::class, parentColumns = ["uuid"], childColumns = ["habitUuid"], onDelete = ForeignKey.CASCADE),
     ],
     indices = [Index("localDay")],
 )
 data class DayLogEntity(
-    val habitId: Int,
+    val habitUuid: String,
     val localDay: LocalDate,
     /** A count, 1/0 for check habits, or milliseconds for timed habits. */
     val rating: Int?,

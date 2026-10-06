@@ -17,10 +17,10 @@ import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.provideContent
 import androidx.glance.currentState
 import com.trackbit.widget.R
-import com.trackbit.widget.habit.HabitIdKey
+import com.trackbit.widget.habit.HabitUuidKey
 import com.trackbit.widget.habit.HabitWidgetState
 import com.trackbit.widget.habit.HabitPickerActivity
-import com.trackbit.widget.habit.chosenHabitId
+import com.trackbit.widget.habit.chosenHabitUuid
 import com.trackbit.widget.habit.habitWidgetState
 import com.trackbit.widget.preview.PreviewHabits
 import com.trackbit.widget.ui.WidgetTheme
@@ -30,7 +30,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import java.time.LocalDate
 
-/** W1: one habit, logged with a tap. A habit widget: see [HabitIdKey]. */
+/** W1: one habit, logged with a tap. A habit widget: see [HabitUuidKey]. */
 class QuickLogWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
     override val sizeMode: SizeMode = SizeMode.Responsive(setOf(SMALL, WIDE, SQUARE))
 
@@ -40,17 +40,17 @@ class QuickLogWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
         widgetDay.refresh()
         val auth = entryPoint.auth().state
         val tracker = entryPoint.tracker()
-        val observe = { habitId: Int, day: LocalDate -> tracker.observeHabit(habitId, day) }
+        val observe = { habitUuid: String, day: LocalDate -> tracker.observeHabit(habitUuid, day) }
         // Loaded before provideContent, so the first frame isn't a loading state (as in W2).
-        val initial = habitWidgetState(auth, widgetDay.today, flowOf(chosenHabitId(context, id)), observe).first()
+        val initial = habitWidgetState(auth, widgetDay.today, flowOf(chosenHabitUuid(context, id)), observe).first()
         val chooseHabit = actionStartActivity(
             HabitPickerActivity.intent(context, GlanceAppWidgetManager(context).getAppWidgetId(id)),
         )
         provideContent {
             // Reconfiguring updates the Glance state of a running session, so the choice is
             // followed as a flow rather than read once.
-            val habitId by rememberUpdatedState(currentState(HabitIdKey))
-            val state by remember { habitWidgetState(auth, widgetDay.today, snapshotFlow { habitId }, observe) }
+            val habitUuid by rememberUpdatedState(currentState(HabitUuidKey))
+            val state by remember { habitWidgetState(auth, widgetDay.today, snapshotFlow { habitUuid }, observe) }
                 .collectAsState(initial)
             WidgetTheme { QuickLogWidgetContent(state, chooseHabit) }
         }

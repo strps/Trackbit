@@ -27,12 +27,13 @@ interface HabitsRepository {
     /** The role's caps and the user's counts. */
     suspend fun limits(): ConfigResult<LimitsResponse>
 
+    /** [request] names the new habit by its uuid, picked once per form so a retry can't create it twice. */
     suspend fun create(request: HabitRequest): ConfigResult<Habit>
 
-    suspend fun update(id: Int, request: HabitRequest): ConfigResult<Habit>
+    suspend fun update(uuid: String, request: HabitRequest): ConfigResult<Habit>
 
     /** Deletes the habit with all its logs and sessions. */
-    suspend fun delete(id: Int): ConfigResult<Unit>
+    suspend fun delete(uuid: String): ConfigResult<Unit>
 
     /** Every habit's group and order, as the list now shows them. */
     suspend fun reorder(order: List<HabitOrder>): ConfigResult<Unit>
@@ -48,11 +49,15 @@ internal class DefaultHabitsRepository @Inject constructor(
 
     override suspend fun limits() = safeCall { meService.limits() }.toConfigResult()
 
-    override suspend fun create(request: HabitRequest) = write(request) { habitsService.create(request) }
+    override suspend fun create(request: HabitRequest): ConfigResult<Habit> {
+        requireNotNull(request.uuid) { "A create names its habit" }
+        return write(request) { habitsService.create(request) }
+    }
 
-    override suspend fun update(id: Int, request: HabitRequest) = write(request) { habitsService.update(id, request) }
+    override suspend fun update(uuid: String, request: HabitRequest) =
+        write(request) { habitsService.update(uuid, request.copy(uuid = null)) }
 
-    override suspend fun delete(id: Int) = write { habitsService.delete(id) }
+    override suspend fun delete(uuid: String) = write { habitsService.delete(uuid) }
 
     override suspend fun reorder(order: List<HabitOrder>) = write { habitsService.reorder(HabitReorderRequest(order)) }
 
