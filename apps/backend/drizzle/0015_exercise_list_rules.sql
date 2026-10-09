@@ -12,7 +12,8 @@ UPDATE "exercise_list_items" SET
 	"target_weight" = NULLIF("target_weight", 0),
 	"target_duration" = NULLIF("target_duration", 0),
 	"target_distance" = NULLIF("target_distance", 0),
-	"rest_seconds" = LEAST("rest_seconds", 3600);--> statement-breakpoint
+	-- Not LEAST(): it skips NULLs, so an unset rest would become 3600.
+	"rest_seconds" = CASE WHEN "rest_seconds" > 3600 THEN 3600 ELSE "rest_seconds" END;--> statement-breakpoint
 -- Prescriptions were in the exercise's default units; they are kg and km now, like sets.
 UPDATE "exercise_list_items" SET "target_weight" = round(("target_weight" / 2.20462)::numeric, 2)
 	FROM "exercises" WHERE "exercises"."id" = "exercise_list_items"."exercise_id"
