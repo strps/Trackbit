@@ -20,7 +20,24 @@ android {
         buildConfig = true
     }
 
+    // The release key lives outside the repo: TRACKBIT_RELEASE_* go in ~/.gradle/gradle.properties.
+    // Without them, release builds are left unsigned.
+    val releaseStoreFile = providers.gradleProperty("TRACKBIT_RELEASE_STORE_FILE").orNull
+    if (releaseStoreFile != null) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(releaseStoreFile)
+                storePassword = providers.gradleProperty("TRACKBIT_RELEASE_STORE_PASSWORD").get()
+                keyAlias = providers.gradleProperty("TRACKBIT_RELEASE_KEY_ALIAS").get()
+                keyPassword = providers.gradleProperty("TRACKBIT_RELEASE_KEY_PASSWORD").get()
+            }
+        }
+    }
+
     buildTypes {
+        release {
+            signingConfig = signingConfigs.findByName("release")
+        }
         debug {
             // The emulator's alias for the host machine, where `pnpm dev:backend` listens.
             buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:3000/\"")
