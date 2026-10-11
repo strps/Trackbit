@@ -20,12 +20,14 @@ import com.trackbit.widget.action.StopTimerAction
 import com.trackbit.widget.action.habitParameters
 import com.trackbit.widget.habit
 import com.trackbit.widget.registerLauncherActivity
+import com.trackbit.widget.sessionIntent
 import com.trackbit.widget.ui.WidgetTheme
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.time.Instant
+import java.util.UUID
 
 @RunWith(RobolectricTestRunner::class)
 class TodayWidgetContentTest {
@@ -88,10 +90,24 @@ class TodayWidgetContentTest {
         }
     }
 
-    @Test fun `a habit the widget can't log opens the app`() {
+    @Test fun `a workout opens its session on the row's day`() {
         val workout = habit(1, type = HabitType.Complex)
         render(TodayWidgetState.Tracking(DAY, listOf(workout))) {
+            onNode(hasStartActivityClickAction(sessionIntent(context, workout)) and hasAnyDescendant(hasTextEqualTo("Habit 1"))).assertExists()
+        }
+    }
+
+    @Test fun `another habit the widget can't log opens the app`() {
+        render(TodayWidgetState.Tracking(DAY, listOf(habit(1, type = HabitType.Unknown)))) {
             onNode(hasStartActivityClickAction(launchIntent) and hasAnyDescendant(hasTextEqualTo("Habit 1"))).assertExists()
+        }
+    }
+
+    @Test fun `a habit whose uuid folds below Glance's reserved item ids still renders`() {
+        // msb xor lsb is Long.MIN_VALUE + 1, below the -2^62 Glance reserves.
+        val habit = habit(1).copy(uuid = UUID(Long.MIN_VALUE, 1).toString())
+        render(TodayWidgetState.Tracking(DAY, listOf(habit))) {
+            onNode(hasTextEqualTo("Habit 1")).assertExists()
         }
     }
 

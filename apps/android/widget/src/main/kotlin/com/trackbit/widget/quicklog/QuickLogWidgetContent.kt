@@ -52,6 +52,7 @@ import com.trackbit.widget.ui.WidgetSurface
 import com.trackbit.widget.ui.dayColor
 import com.trackbit.widget.ui.detailsText
 import com.trackbit.widget.ui.openAppAction
+import com.trackbit.widget.ui.openHabitAction
 import java.time.Instant
 
 /** The three layouts, one per [QuickLogWidget] size: ring; ring + text; ring + text + week. */
@@ -88,15 +89,15 @@ internal fun QuickLogWidgetContent(state: HabitWidgetState, chooseHabit: Action)
 }
 
 /**
- * The whole widget is one tap target: it logs the habit (or starts/stops its timer), opens the
- * app for types the widget can't log, and does nothing while the habit is frozen (the lock says
+ * The whole widget is one tap target: it logs the habit (or starts/stops its timer), opens a
+ * workout's session (other types it can't log, the app), and does nothing while the habit is frozen (the lock says
  * why).
  */
 @Composable
 private fun HabitContent(habit: TrackedHabit, layout: Layout) {
     val context = LocalContext.current
     val log = logAction(habit)
-    val tap = if (habit.frozen) null else log ?: openAppAction(context)
+    val tap = if (habit.frozen) null else log ?: openHabitAction(context, habit)
     val modifier = GlanceModifier.fillMaxSize()
         .semantics { contentDescription = tapDescription(context, habit, logs = log != null) }
         .let { if (tap != null) it.clickable(tap) else it }

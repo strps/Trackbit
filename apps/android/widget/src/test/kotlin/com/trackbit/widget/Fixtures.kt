@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.net.Uri
 import com.trackbit.core.data.HabitTimer
 import com.trackbit.core.data.SyncResult
 import com.trackbit.core.data.TrackedHabit
@@ -88,6 +89,14 @@ fun registerLauncherActivity(context: Context): Intent {
     }
     return context.packageManager.getLaunchIntentForPackage(context.packageName)!!
 }
+
+/**
+ * What a tap on workout [habit] starts: its session link, spelled out (the app's nav graph
+ * matches `trackbit://session/{habitUuid}/{day}`), in the app's launcher activity.
+ */
+fun sessionIntent(context: Context, habit: TrackedHabit): Intent =
+    Intent(Intent.ACTION_VIEW, Uri.parse("trackbit://session/${habit.uuid}/${habit.day}"))
+        .setComponent(registerLauncherActivity(context).component)
 
 /** Habits per day; only what the widgets read. */
 class FakeTrackerRepository : TrackerRepository {

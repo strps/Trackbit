@@ -1,11 +1,13 @@
 package com.trackbit.widget.ui
 
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.action.Action
@@ -25,8 +27,11 @@ import androidx.glance.material3.ColorProviders
 import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
+import com.trackbit.core.data.TrackedHabit
 import com.trackbit.core.designsystem.theme.TrackbitDarkColors
 import com.trackbit.core.designsystem.theme.TrackbitLightColors
+import com.trackbit.core.model.AppLinks
+import com.trackbit.core.model.HabitType
 
 private val TrackbitColors: ColorProviders = ColorProviders(light = TrackbitLightColors, dark = TrackbitDarkColors)
 
@@ -80,8 +85,26 @@ internal fun WidgetMessage(text: String, onClick: Action) {
  * Opens the app on its start screen. By launch intent rather than by class, because widgets
  * don't depend on `app`.
  */
-internal fun openAppAction(context: Context): Action = actionStartActivity(
+internal fun openAppAction(context: Context): Action = actionStartActivity(launchIntent(context))
+
+/**
+ * For a habit the widget can't log: a workout opens its session on the day the widget shows,
+ * anything else the app.
+ */
+internal fun openHabitAction(context: Context, habit: TrackedHabit): Action =
+    if (habit.type == HabitType.Complex) openSessionAction(context, habit) else openAppAction(context)
+
+/**
+ * [AppLinks.session] in the app's activity. A cleared task, so the link always builds the same
+ * back stack (the tracker under the session) instead of landing on whatever was open.
+ */
+private fun openSessionAction(context: Context, habit: TrackedHabit): Action = actionStartActivity(
+    Intent(Intent.ACTION_VIEW, AppLinks.session(habit.uuid, habit.day).toUri())
+        .setComponent(launchIntent(context).component)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
+)
+
+private fun launchIntent(context: Context): Intent =
     requireNotNull(context.packageManager.getLaunchIntentForPackage(context.packageName)) {
         "The app has no launcher activity"
-    },
-)
+    }

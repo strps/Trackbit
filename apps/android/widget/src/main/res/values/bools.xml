@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Below Android 12, Glance draws every view from a fixed pool of 500 ids, which W3's grid
+     outgrows ("There are too many views"), so the heatmap isn't offered there. -->
+<resources>
+    <bool name="heatmap_widget_enabled">false</bool>
+</resources>

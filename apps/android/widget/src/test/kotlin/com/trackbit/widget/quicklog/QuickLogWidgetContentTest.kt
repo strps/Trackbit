@@ -25,6 +25,7 @@ import com.trackbit.widget.action.habitParameters
 import com.trackbit.widget.habit
 import com.trackbit.widget.habit.HabitWidgetState
 import com.trackbit.widget.registerLauncherActivity
+import com.trackbit.widget.sessionIntent
 import com.trackbit.widget.ui.WidgetTheme
 import org.junit.Before
 import org.junit.Test
@@ -106,8 +107,15 @@ class QuickLogWidgetContentTest {
         }
     }
 
-    @Test fun `a habit the widget can't log opens the app`() {
-        render(HabitWidgetState.Tracking(habit(1, type = HabitType.Complex)), QuickLogWidget.WIDE) {
+    @Test fun `a workout opens its session on the widget's day`() {
+        val workout = habit(1, type = HabitType.Complex)
+        render(HabitWidgetState.Tracking(workout), QuickLogWidget.WIDE) {
+            onNode(hasStartActivityClickAction(sessionIntent(context, workout)) and hasAnyDescendant(hasTextEqualTo("Habit 1"))).assertExists()
+        }
+    }
+
+    @Test fun `another habit the widget can't log opens the app`() {
+        render(HabitWidgetState.Tracking(habit(1, type = HabitType.Unknown)), QuickLogWidget.WIDE) {
             onNode(hasStartActivityClickAction(launchIntent) and hasAnyDescendant(hasTextEqualTo("Habit 1"))).assertExists()
         }
     }

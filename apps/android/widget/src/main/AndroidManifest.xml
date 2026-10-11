@@ -26,8 +26,10 @@
                 android:resource="@xml/quick_log_widget_info" />
         </receiver>
 
+        <!-- Android 12+ only: see @bool/heatmap_widget_enabled. -->
         <receiver
             android:name=".heatmap.HeatmapWidgetReceiver"
+            android:enabled="@bool/heatmap_widget_enabled"
             android:exported="false"
             android:label="@string/android_widget_heatmap_label">
             <intent-filter>

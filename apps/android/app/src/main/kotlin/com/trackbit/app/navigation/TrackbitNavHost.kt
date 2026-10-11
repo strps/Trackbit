@@ -26,11 +26,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navDeepLink
 import androidx.navigation.toRoute
 import com.trackbit.app.timer.RequestNotificationPermission
 import com.trackbit.core.auth.AuthState
 import com.trackbit.core.designsystem.icon.UiIcons
 import com.trackbit.core.i18n.R
+import com.trackbit.core.model.AppLinks
 import com.trackbit.feature.account.AccountScreen
 import com.trackbit.feature.account.IssueReportScreen
 import com.trackbit.feature.account.SettingsScreen
@@ -111,7 +113,7 @@ private enum class TopLevel(val route: Any, @StringRes val label: Int, @Drawable
     Settings(SettingsRoute, R.string.nav_settings, UiIcons.Settings),
 }
 
-/** A workout habit's session on [day] (ISO date). */
+/** A workout habit's session on [day] (ISO date). Also opened by [AppLinks.session]. */
 @Serializable
 data class SessionRoute(val habitUuid: String, val day: String)
 
@@ -207,7 +209,9 @@ private fun AuthNavHost(graph: Any, onSignOut: () -> Unit) {
                     )
                 }
                 composable<ListEditorRoute> { ListEditorScreen(onDone = { navController.popBackStack() }) }
-                composable<SessionRoute> { entry ->
+                // Widgets open a workout habit's session by link: the back stack is then
+                // the tracker under the session.
+                composable<SessionRoute>(deepLinks = listOf(navDeepLink<SessionRoute>(basePath = AppLinks.SESSION))) { entry ->
                     val route = entry.toRoute<SessionRoute>()
                     SessionScreen(
                         route.habitUuid,

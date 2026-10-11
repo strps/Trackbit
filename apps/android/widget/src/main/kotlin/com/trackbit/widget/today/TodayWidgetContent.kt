@@ -43,6 +43,7 @@ import com.trackbit.widget.ui.HabitDetails
 import com.trackbit.widget.ui.WidgetMessage
 import com.trackbit.widget.ui.WidgetSurface
 import com.trackbit.widget.ui.openAppAction
+import com.trackbit.widget.ui.openHabitAction
 import java.time.Instant
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -60,7 +61,7 @@ internal fun TodayWidgetContent(state: TodayWidgetState, showDate: Boolean = tru
                 WidgetMessage(context.getString(I18nR.string.android_widget_sign_in), openApp)
             state is TodayWidgetState.Tracking && state.habits.isEmpty() ->
                 WidgetMessage(context.getString(I18nR.string.tracker_empty), openApp)
-            state is TodayWidgetState.Tracking -> HabitList(state.habits, openApp)
+            state is TodayWidgetState.Tracking -> HabitList(state.habits)
         }
     }
 }
@@ -93,11 +94,11 @@ private fun shortDateFormatter(context: Context): DateTimeFormatter {
 }
 
 @Composable
-private fun HabitList(habits: List<TrackedHabit>, openApp: Action) {
+private fun HabitList(habits: List<TrackedHabit>) {
     val context = LocalContext.current
     val (anti, regular) = habits.partition { it.isAntiHabit }
     LazyColumn {
-        items(regular, itemId = { it.itemId }) { HabitRow(it, openApp) }
+        items(regular, itemId = { it.itemId }) { HabitRow(it) }
         if (anti.isNotEmpty()) {
             item {
                 Text(
@@ -106,19 +107,19 @@ private fun HabitList(habits: List<TrackedHabit>, openApp: Action) {
                     modifier = GlanceModifier.padding(top = 8.dp, bottom = 2.dp),
                 )
             }
-            items(anti, itemId = { it.itemId }) { HabitRow(it, openApp) }
+            items(anti, itemId = { it.itemId }) { HabitRow(it) }
         }
     }
 }
 
 @Composable
-private fun HabitRow(habit: TrackedHabit, openApp: Action) {
+private fun HabitRow(habit: TrackedHabit) {
     val context = LocalContext.current
     val muted = GlanceTheme.colors.onSurfaceVariant
     val habitColor = if (habit.frozen) muted else ColorProvider(habit.colorStops.colorAt(1f))
-    // Workout sessions live in the app. Frozen rows do nothing at all: the lock says why.
+    // A workout opens its session in the app. Frozen rows do nothing at all: the lock says why.
     val rowModifier = GlanceModifier.fillMaxWidth().padding(vertical = 5.dp).let {
-        if (habit.frozen || logAction(habit) != null) it else it.clickable(openApp)
+        if (habit.frozen || logAction(habit) != null) it else it.clickable(openHabitAction(context, habit))
     }
     Row(modifier = rowModifier, verticalAlignment = Alignment.CenterVertically) {
         Image(
@@ -193,6 +194,9 @@ private fun RowButton(@DrawableRes icon: Int, description: String, onClick: Acti
     )
 }
 
-/** Glance's lazy list wants a stable Long per row: the habit's uuid folded to 64 bits. */
+/**
+ * Glance's lazy list wants a stable Long per row: the habit's uuid folded to 64 bits, then to 62,
+ * since Glance reserves the ids below -2^62 (and throws on them).
+ */
 private val TrackedHabit.itemId: Long
-    get() = UUID.fromString(uuid).let { it.mostSignificantBits xor it.leastSignificantBits }
+    get() = UUID.fromString(uuid).let { (it.mostSignificantBits xor it.leastSignificantBits) ushr 2 }
