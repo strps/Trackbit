@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft } from 'lucide-react';
-import type { ExerciseRecentLog } from '@trackbit/types';
+import type { ExerciseMedia, ExerciseRecentLog } from '@trackbit/types';
 import { useExercises, type ExerciseWithLastPerformance } from '@/hooks/use-exercises';
 import { useIsDesktop } from '@/hooks/use-media-query';
 import { useUnitSystem } from '@/providers/unit-system-provider';
@@ -11,6 +11,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/shared/components/ui/drawer';
 import { formatDuration } from '@/features/activity-tracker/utils';
+import { cn } from '@/shared/utils/utils';
 import { getExerciseFamily } from './exercise-family';
 import { ExerciseFormDialog } from './ExerciseForm';
 import { useCategoryConfig } from './category-config';
@@ -120,6 +121,7 @@ function ExerciseInfo({ exercise, catalog, openedFromLogUuid, onOpenVariant }: E
         <div className="flex flex-col gap-6 text-sm">
             {/* Main */}
             <div className="flex flex-col gap-3">
+                {exercise.media.length > 0 && <MediaStrip media={exercise.media} name={exercise.name} />}
                 <div className="flex flex-wrap gap-2">
                     {category && <Badge variant="secondary" className={category.color}>{category.label}</Badge>}
                     {exercise.difficulty && <Badge variant="outline">{t(`difficulty.${exercise.difficulty}`)}</Badge>}
@@ -188,6 +190,20 @@ function ExerciseInfo({ exercise, catalog, openedFromLogUuid, onOpenVariant }: E
         </div>
     );
 }
+
+/**
+ * The exercise's images, cover first, side by side to swipe through. Animated ones loop on their
+ * own (they're animated WebP). Width and height are set so nothing shifts as they load.
+ */
+const MediaStrip = ({ media, name }: { media: ExerciseMedia[]; name: string }) => (
+    <div className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1">
+        {media.map((image) => (
+            <img key={image.uuid} src={image.url} alt={image.alt ?? name} width={image.width} height={image.height}
+                loading="lazy" decoding="async"
+                className={cn('h-56 w-auto max-w-full shrink-0 snap-center rounded-md bg-muted object-contain', media.length === 1 && 'mx-auto')} />
+        ))}
+    </div>
+);
 
 const Section = ({ title, children }: { title: string; children: ReactNode }) => (
     <section className="flex flex-col gap-2">

@@ -1,8 +1,20 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Check, Loader2 } from "lucide-react";
-import { Button, Input, Textarea, Label } from "@trackbit/ui";
+import { EXERCISE_DIFFICULTIES, EXERCISE_EQUIPMENT, STEP_LIST_ENTRY_MAX_LENGTH, STEP_LIST_MAX_ENTRIES } from "@trackbit/types";
+import {
+    Button,
+    Input,
+    Textarea,
+    Label,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@trackbit/ui";
 
 import { CATEGORY_CONFIG } from "../category-config";
 import {
@@ -10,7 +22,40 @@ import {
     AdminExercise,
     ExercisePayload,
     MuscleGroup,
+    I18nList,
 } from "../use-admin-exercises";
+import { StepListEditor } from "./StepListEditor";
+
+const EQUIPMENT_LABELS: Record<(typeof EXERCISE_EQUIPMENT)[number], string> = {
+    barbell: "Barbell",
+    dumbbell: "Dumbbell",
+    kettlebell: "Kettlebell",
+    machine: "Machine",
+    cable: "Cable",
+    bodyweight: "Bodyweight",
+    band: "Band",
+    bench: "Bench",
+    pull_up_bar: "Pull-up bar",
+    other: "Other",
+};
+
+const DIFFICULTY_LABELS: Record<(typeof EXERCISE_DIFFICULTIES)[number], string> = {
+    beginner: "Beginner",
+    intermediate: "Intermediate",
+    advanced: "Advanced",
+};
+
+/** Radix Select has no empty value, so "none" stands for null. */
+const NONE = "none";
+
+const stepList = z.array(z.string().max(STEP_LIST_ENTRY_MAX_LENGTH)).max(STEP_LIST_MAX_ENTRIES);
+
+/** The translated lists, each locale's blank entries left for the API to drop. */
+const LISTS = [
+    { name: "instructions", label: "Instructions", numbered: true, placeholder: "Step" },
+    { name: "tips", label: "Tips", numbered: false, placeholder: "Tip" },
+    { name: "commonMistakes", label: "Common mistakes", numbered: false, placeholder: "Mistake" },
+] as const;
 
 const exerciseFormSchema = z.object({
     nameEn: z.string().min(1, "English name is required").trim(),
@@ -19,6 +64,15 @@ const exerciseFormSchema = z.object({
     descriptionEn: z.string().max(500).optional(),
     descriptionEs: z.string().max(500).optional(),
     muscleGroups: z.array(z.number()),
+    instructionsEn: stepList,
+    instructionsEs: stepList,
+    tipsEn: stepList,
+    tipsEs: stepList,
+    commonMistakesEn: stepList,
+    commonMistakesEs: stepList,
+    equipment: z.array(z.enum(EXERCISE_EQUIPMENT)),
+    difficulty: z.enum([NONE, ...EXERCISE_DIFFICULTIES]),
+    variantOfId: z.number().nullable(),
 });
 type ExerciseFormValues = z.infer<typeof exerciseFormSchema>;
 
@@ -29,9 +83,10 @@ interface ExerciseFormProps {
 }
 
 export function ExerciseForm({ exercise, onSuccess, muscleGroups }: ExerciseFormProps) {
-    const { createExercise, isCreating, updateExercise, isUpdating } = useAdminExercises();
+    const { createExercise, isCreating, updateExercise, isUpdating, systemExercises } = useAdminExercises();
     const isEditMode = !!exercise;
     const isSaving = isCreating || isUpdating;
+    const [submitError, setSubmitError] = useState<string | null>(null);
 
     const form = useForm<ExerciseFormValues>({
         resolver: zodResolver(exerciseFormSchema),
@@ -42,8 +97,23 @@ export function ExerciseForm({ exercise, onSuccess, muscleGroups }: ExerciseForm
             descriptionEn: exercise?.descriptionI18n?.en ?? "",
             descriptionEs: exercise?.descriptionI18n?.es ?? "",
             muscleGroups: exercise?.muscleGroups?.map((mg) => mg.id) ?? [],
+            instructionsEn: exercise?.instructionsI18n?.en ?? [],
+            instructionsEs: exercise?.instructionsI18n?.es ?? [],
+            tipsEn: exercise?.tipsI18n?.en ?? [],
+            tipsEs: exercise?.tipsI18n?.es ?? [],
+            commonMistakesEn: exercise?.commonMistakesI18n?.en ?? [],
+            commonMistakesEs: exercise?.commonMistakesI18n?.es ?? [],
+            equipment: exercise?.equipment ?? [],
+            difficulty: exercise?.difficulty ?? NONE,
+            variantOfId: exercise?.variantOfId ?? null,
         },
     });
+
+    // A variant's base is a system exercise that isn't a variant itself, and one with variants of
+    // its own can't become one (the API refuses both; see the variant rules).
+    const hasVariants = !!exercise && systemExercises.some((e) => e.variantOfId === exercise.id);
+    const bases = systemExercises.filter((e) => e.variantOfId === null && e.id !== exercise?.id);
+    const selectedEquipment = form.watch("equipment");
 
     const selectedCategory = form.watch("category");
     const selectedMuscleGroups = form.watch("muscleGroups");
@@ -58,6 +128,13 @@ export function ExerciseForm({ exercise, onSuccess, muscleGroups }: ExerciseForm
         );
     };
 
+    const toggleEquipment = (item: (typeof EXERCISE_EQUIPMENT)[number]) => {
+        const current = form.getValues("equipment");
+        form.setValue("equipment", current.includes(item) ? current.filter((x) => x !== item) : [...current, item]);
+    };
+
+    const translatedList = (en: string[], es: string[]): I18nList => ({ en, es });
+
     const handleSubmit = async (data: ExerciseFormValues) => {
         const payload: ExercisePayload = {
             name: { en: data.nameEn, es: data.nameEs || undefined },
@@ -66,11 +143,23 @@ export function ExerciseForm({ exercise, onSuccess, muscleGroups }: ExerciseForm
                 ? { en: data.descriptionEn || undefined, es: data.descriptionEs || undefined }
                 : null,
             muscleGroups: data.muscleGroups,
+            instructions: translatedList(data.instructionsEn, data.instructionsEs),
+            tips: translatedList(data.tipsEn, data.tipsEs),
+            commonMistakes: translatedList(data.commonMistakesEn, data.commonMistakesEs),
+            equipment: data.equipment,
+            difficulty: data.difficulty === NONE ? null : data.difficulty,
+            variantOfId: data.variantOfId,
         };
-        if (isEditMode) {
-            await updateExercise({ id: exercise.id, ...payload });
-        } else {
-            await createExercise(payload);
+        setSubmitError(null);
+        try {
+            if (isEditMode) {
+                await updateExercise({ id: exercise.id, ...payload });
+            } else {
+                await createExercise(payload);
+            }
+        } catch (err) {
+            setSubmitError(err instanceof Error ? err.message : "Could not save the exercise.");
+            return;
         }
         form.reset();
         onSuccess();
@@ -198,6 +287,87 @@ export function ExerciseForm({ exercise, onSuccess, muscleGroups }: ExerciseForm
                     })}
                 </div>
             </div>
+
+            <div className="space-y-4">
+                <p className="text-xs text-muted-foreground">
+                    Each list is optional per language; the apps fall back to English. Blank entries are dropped.
+                </p>
+                {LISTS.map(({ name, label, numbered, placeholder }) => (
+                    <div key={name} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {(["En", "Es"] as const).map((locale) => {
+                            const field = `${name}${locale}` as const;
+                            return (
+                                <StepListEditor
+                                    key={field}
+                                    id={`ex-${field}`}
+                                    label={`${label} (${locale === "En" ? "English" : "Spanish"})`}
+                                    numbered={numbered}
+                                    placeholder={placeholder}
+                                    value={form.watch(field)}
+                                    onChange={(value) => form.setValue(field, value)}
+                                />
+                            );
+                        })}
+                    </div>
+                ))}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                    <Label>Equipment</Label>
+                    <div className="flex flex-wrap gap-2">
+                        {EXERCISE_EQUIPMENT.map((item) => {
+                            const selected = selectedEquipment.includes(item);
+                            return (
+                                <button
+                                    key={item}
+                                    type="button"
+                                    aria-pressed={selected}
+                                    onClick={() => toggleEquipment(item)}
+                                    className={`px-3 py-1.5 rounded-md border text-sm font-medium transition-all ${selected
+                                        ? "bg-primary text-primary-foreground border-primary"
+                                        : "bg-background hover:bg-accent border-input"
+                                        }`}
+                                >
+                                    {EQUIPMENT_LABELS[item]}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+                <div className="space-y-4">
+                    <div className="space-y-1.5">
+                        <Label htmlFor="ex-difficulty">Difficulty</Label>
+                        <Select value={form.watch("difficulty")}
+                            onValueChange={(value) => form.setValue("difficulty", value as ExerciseFormValues["difficulty"])}>
+                            <SelectTrigger id="ex-difficulty" className="w-full"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value={NONE}>Unrated</SelectItem>
+                                {EXERCISE_DIFFICULTIES.map((d) => <SelectItem key={d} value={d}>{DIFFICULTY_LABELS[d]}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                        <Label htmlFor="ex-variant-of">Variant of</Label>
+                        {hasVariants ? (
+                            <p className="text-xs text-muted-foreground">
+                                This exercise has variants of its own, so it can't be a variant.
+                            </p>
+                        ) : (
+                            <Select value={String(form.watch("variantOfId") ?? NONE)}
+                                onValueChange={(value) => form.setValue("variantOfId", value === NONE ? null : Number(value))}>
+                                <SelectTrigger id="ex-variant-of" className="w-full"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value={NONE}>None (a base exercise)</SelectItem>
+                                    {bases.map((e) => <SelectItem key={e.id} value={String(e.id)}>{e.nameI18n?.en ?? e.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {submitError && <p className="text-sm text-destructive">{submitError}</p>}
 
             <Button type="submit" className="w-full" disabled={isSaving}>
                 {isSaving ? (

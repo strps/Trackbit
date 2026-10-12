@@ -186,10 +186,12 @@ Notes: the muscle groups in `GET /exercises` now carry their `role` (primary fir
 
 ### Phase 3 — Admin: instructions, variants, media
 
-- [ ] `ExerciseForm.tsx`: per-locale step lists (en and es, both optional; the client falls back to en), "Variant of" select (system bases only).
-- [ ] Media manager: upload (`@vercel/blob/client` `upload()` with the token route); read width, height and animated status in the browser before recording; drag to reorder; delete; alt text en/es.
-- [ ] Backend media routes + `MediaStore` (Blob impl; a fake in tests) + tests (admin only, limit of 6, type/size re-check, order rewrite, blob deleted on row delete and on exercise delete).
-- [ ] `loadExercises` adds `media`; the web sheet's carousel renders it (`<img loading="lazy">`, `width`/`height` set to avoid layout shift).
+- [x] `ExerciseForm.tsx`: per-locale step lists (en and es, both optional; the client falls back to en), "Variant of" select (system bases only).
+- [x] Media manager: upload (`@vercel/blob/client` `put()` with a client token from the API); read width, height and animated status in the browser before recording; drag to reorder; delete; alt text en/es.
+- [x] Backend media routes + `MediaStore` (Blob impl; a fake in tests) + tests (admin only, limit of 6, type/size re-check, order rewrite, blob deleted on row delete and on exercise delete).
+- [x] `loadExercises` adds `media`; the web sheet's carousel renders it (`<img loading="lazy">`, `width`/`height` set to avoid layout shift).
+
+Notes: uploads use a plain client token instead of `handleUpload`. `POST …/media/upload-token { contentType }` returns `{ key, token }` for one fixed key `exercises/{exerciseUuid}/{uuid}.{ext}`, the browser `put()`s the file there, then `POST …/media { key, width, height, animated, alt? }` records it with the size, type and URL that the store's `head()` reports. `handleUpload` needs a completion webhook (unreachable from localhost) and can't send the admin's cookies cross-origin. Media is only on system exercises, and only the admin routes write it. They lock the exercise row, so positions stay `0..n-1` and the limit of 6 holds. Also `PATCH …/media/:uuid { alt }`. The admin form also edits equipment and difficulty. The media limits live in `@trackbit/types` (`EXERCISE_MEDIA_*`). Migration `0019_exercise_media`. A failed file delete is logged and left to the orphan sweep (BACKLOG). The Android contracts carry two media rows.
 
 ### Phase 4 — Android: data
 

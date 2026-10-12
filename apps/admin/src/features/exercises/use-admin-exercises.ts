@@ -1,4 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { put } from '@vercel/blob/client'
+import type { ExerciseDifficulty, ExerciseEquipment, ExerciseMediaType } from '@trackbit/types'
 
 const API_URL = `${import.meta.env.VITE_API_URL}/admin/exercises`
 const MG_URL = `${import.meta.env.VITE_API_URL}/admin/exercises/muscle-groups`
@@ -13,17 +15,42 @@ export interface I18nOptional {
     es?: string | null
 }
 
+/** Per-locale lists (instructions, tips, common mistakes); a locale without entries is absent. */
+export interface I18nList {
+    en?: string[]
+    es?: string[]
+}
+
+export interface AdminExerciseMedia {
+    uuid: string
+    url: string
+    mimeType: ExerciseMediaType
+    animated: boolean
+    width: number
+    height: number
+    bytes: number
+    position: number
+    altI18n: I18nOptional | null
+}
+
 export interface AdminExercise {
     id: number
     name: string
     nameI18n: I18nString | null
     category: 'strength' | 'cardio' | 'flexibility'
     descriptionI18n: I18nOptional | null
+    instructionsI18n: I18nList | null
+    tipsI18n: I18nList | null
+    commonMistakesI18n: I18nList | null
+    equipment: ExerciseEquipment[]
+    difficulty: ExerciseDifficulty | null
+    variantOfId: number | null
     defaultWeightUnit: string | null
     defaultDistanceUnit: string | null
     userId: string | null
     createdAt: string | null
     muscleGroups: { id: number; name: string }[]
+    media: AdminExerciseMedia[]
 }
 
 export interface MuscleGroup {
@@ -46,6 +73,12 @@ export interface ExercisePayload {
     defaultWeightUnit?: string | null
     defaultDistanceUnit?: string | null
     muscleGroups?: number[]
+    instructions?: I18nList | null
+    tips?: I18nList | null
+    commonMistakes?: I18nList | null
+    equipment?: ExerciseEquipment[]
+    difficulty?: ExerciseDifficulty | null
+    variantOfId?: number | null
 }
 
 export interface MuscleGroupPayload {
@@ -53,6 +86,69 @@ export interface MuscleGroupPayload {
     description?: I18nOptional | null
     parentId?: number | null
     displayOrder?: number
+}
+
+/** The API's own message for a failed [res], else [fallback]. */
+async function errorMessage(res: Response, fallback: string): Promise<string> {
+    const body = await res.json().catch(() => null)
+    return body?.message ?? body?.error ?? fallback
+}
+
+async function sendJson<T>(method: string, url: string, body?: unknown): Promise<T> {
+    const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        ...(body !== undefined && { body: JSON.stringify(body) }),
+    })
+    if (!res.ok) throw new Error(await errorMessage(res, `Request failed (${res.status})`))
+    return res.json()
+}
+
+// ─── Media ───────────────────────────────────────────────────────────────────
+
+export interface MediaUpload {
+    exerciseId: number
+    file: File
+    contentType: ExerciseMediaType
+    width: number
+    height: number
+    animated: boolean
+}
+
+/** Uploads [file] straight to the media store with a token from the API, then records it. */
+async function uploadMediaFn({ exerciseId, file, contentType, ...image }: MediaUpload): Promise<AdminExerciseMedia> {
+    const base = `${API_URL}/${exerciseId}/media`
+    const { key, token } = await sendJson<{ key: string; token: string }>('POST', `${base}/upload-token`, { contentType })
+    await put(key, file, { access: 'public', token, contentType })
+    return sendJson('POST', base, { key, ...image })
+}
+
+const reorderMediaFn = ({ exerciseId, uuids }: { exerciseId: number; uuids: string[] }) =>
+    sendJson<AdminExerciseMedia[]>('PATCH', `${API_URL}/${exerciseId}/media/order`, { uuids })
+
+const updateMediaAltFn = ({ exerciseId, uuid, alt }: { exerciseId: number; uuid: string; alt: I18nOptional | null }) =>
+    sendJson<AdminExerciseMedia>('PATCH', `${API_URL}/${exerciseId}/media/${uuid}`, { alt })
+
+const deleteMediaFn = ({ exerciseId, uuid }: { exerciseId: number; uuid: string }) =>
+    sendJson<{ success: true }>('DELETE', `${API_URL}/${exerciseId}/media/${uuid}`)
+
+/** An exercise's media writes; each refreshes the exercise list when it settles. */
+export function useExerciseMedia() {
+    const queryClient = useQueryClient()
+    const onSettled = () => queryClient.invalidateQueries({ queryKey: ['admin', 'exercises'] })
+    const upload = useMutation({ mutationFn: uploadMediaFn, onSettled })
+    const reorder = useMutation({ mutationFn: reorderMediaFn, onSettled })
+    const updateAlt = useMutation({ mutationFn: updateMediaAltFn, onSettled })
+    const remove = useMutation({ mutationFn: deleteMediaFn, onSettled })
+    return {
+        upload: upload.mutateAsync,
+        isUploading: upload.isPending,
+        reorder: reorder.mutateAsync,
+        updateAlt: updateAlt.mutateAsync,
+        remove: remove.mutateAsync,
+        isBusy: upload.isPending || reorder.isPending || remove.isPending,
+    }
 }
 
 async function fetchExercises(): Promise<AdminExercise[]> {
@@ -74,7 +170,7 @@ async function createExerciseFn(payload: ExercisePayload): Promise<AdminExercise
         credentials: 'include',
         body: JSON.stringify(payload),
     })
-    if (!res.ok) throw new Error('Failed to create exercise')
+    if (!res.ok) throw new Error(await errorMessage(res, 'Failed to create exercise'))
     return res.json()
 }
 
@@ -85,7 +181,7 @@ async function updateExerciseFn({ id, ...payload }: { id: number } & Partial<Exe
         credentials: 'include',
         body: JSON.stringify(payload),
     })
-    if (!res.ok) throw new Error('Failed to update exercise')
+    if (!res.ok) throw new Error(await errorMessage(res, 'Failed to update exercise'))
     return res.json()
 }
 

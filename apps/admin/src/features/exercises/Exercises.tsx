@@ -15,6 +15,7 @@ import {
 
 import { useAdminExercises, AdminExercise, MuscleGroup } from "./use-admin-exercises";
 import { ExerciseForm } from "./components/ExerciseForm";
+import { ExerciseMediaManager } from "./components/ExerciseMediaManager";
 import { MuscleGroupForm } from "./components/MuscleGroupForm";
 import { ExerciseTable } from "./components/ExerciseTable";
 import { MuscleGroupTable } from "./components/MuscleGroupTable";
@@ -163,11 +164,15 @@ export default function ExercisesPage() {
                         <DialogTitle>Edit Exercise</DialogTitle>
                     </DialogHeader>
                     {editingExercise && (
-                        <ExerciseForm
-                            exercise={editingExercise}
-                            muscleGroups={muscleGroups}
-                            onSuccess={() => setEditingExercise(null)}
-                        />
+                        <>
+                            {/* Only system exercises have media for now. */}
+                            {editingExercise.userId === null && <ExerciseMediaManager exerciseId={editingExercise.id} />}
+                            <ExerciseForm
+                                exercise={editingExercise}
+                                muscleGroups={muscleGroups}
+                                onSuccess={() => setEditingExercise(null)}
+                            />
+                        </>
                     )}
                 </DialogContent>
             </Dialog>
