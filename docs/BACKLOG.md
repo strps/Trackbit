@@ -14,6 +14,7 @@ This file contains ideas, enhancements, and non-urgent tasks. Items are categori
 - [ ] Add API rate limiting enhancements.
 - [ ] Implement user invitation system expansions (e.g., role-based invites).
 - [ ] Database migration scripts for future schema changes.
+- [ ] Sweep orphan exercise media files: delete files under `exercises/` in the media store that no `exercise_media.storage_key` names (an upload never recorded, or a delete whose file removal failed).
 
 ## Hacienda Integration (Post-Task 2)
 - [ ] Support additional document types (e.g., Nota de Crédito Electrónica, Factura Electrónica de Exportación).

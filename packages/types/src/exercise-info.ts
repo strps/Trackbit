@@ -12,3 +12,10 @@ export type ExerciseDifficulty = (typeof EXERCISE_DIFFICULTIES)[number];
 /** Instructions, tips and common mistakes are each an ordered list of short entries. */
 export const STEP_LIST_MAX_ENTRIES = 20;
 export const STEP_LIST_ENTRY_MAX_LENGTH = 300;
+
+/** Exercise media: images only, static or animated (WebP), so every client renders them as images. */
+export const EXERCISE_MEDIA_TYPES = ['image/webp', 'image/jpeg', 'image/png'] as const;
+export type ExerciseMediaType = (typeof EXERCISE_MEDIA_TYPES)[number];
+export const EXERCISE_MEDIA_MAX_BYTES = 2 * 1024 * 1024;
+export const EXERCISE_MEDIA_MAX_PER_EXERCISE = 6;
+export const EXERCISE_MEDIA_ALT_MAX_LENGTH = 200;

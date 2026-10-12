@@ -28,6 +28,7 @@
     "@trackbit/types": "workspace:*",
     "@types/node": "^24.10.4",
     "@types/react": "^19.2.7",
+    "@vercel/blob": "^2.8.1",
     "@vercel/postgres": "^0.10.0",
     "better-auth": "^1.4.3",
     "drizzle-orm": "^0.45.1",

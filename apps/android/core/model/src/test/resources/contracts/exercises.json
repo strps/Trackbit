@@ -50,6 +50,7 @@
           ]
         }
       ],
+      "media": [],
       "frozen": false
     },
     {
@@ -88,6 +89,24 @@
         }
       ],
       "recentLogs": [],
+      "media": [
+        {
+          "uuid": "00000000-0000-4000-8000-000000000090",
+          "url": "https://blob.test/exercises/bench/cover.webp",
+          "animated": true,
+          "width": 480,
+          "height": 360,
+          "alt": "Bench press, side view"
+        },
+        {
+          "uuid": "00000000-0000-4000-8000-000000000091",
+          "url": "https://blob.test/exercises/bench/grip.jpg",
+          "animated": false,
+          "width": 800,
+          "height": 600,
+          "alt": null
+        }
+      ],
       "frozen": false
     }
   ]

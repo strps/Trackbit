@@ -3,9 +3,10 @@ import { validator } from '../../lib/validator.js'
 import { z } from 'zod'
 import { requireAdminAuth } from '../../middleware/require-admin-auth.js'
 import db from '../../db/db.js'
-import { exercises, exerciseMuscleGroups, muscleGroups } from '../../db/schema/index.js'
-import { eq, inArray, sql } from 'drizzle-orm'
+import { exerciseMedia, exercises, exerciseMuscleGroups, muscleGroups } from '../../db/schema/index.js'
+import { asc, eq, inArray, sql } from 'drizzle-orm'
 import { isCheckViolation, isForeignKeyViolation } from '../../lib/db-errors.js'
+import media, { deleteStoredFiles } from './exercise-media.js'
 import { difficultySchema, equipmentSchema, invalidVariantOfResponse, stepListI18nSchema, VARIANT_OF_RULES } from '../../lib/exercise-info.js'
 
 type AuthEnv = {
@@ -17,6 +18,7 @@ type AuthEnv = {
 
 const app = new Hono<AuthEnv>()
 app.use('*', requireAdminAuth)
+app.route('/:id/media', media)
 
 const i18nStringSchema = z.object({
     en: z.string().min(1, 'English name is required'),
@@ -109,10 +111,33 @@ app.get('/', async (c) => {
         return acc
     }, {})
 
+    const images = exerciseIds.length === 0 ? [] : await db
+        .select({
+            exerciseId: exerciseMedia.exerciseId,
+            uuid: exerciseMedia.uuid,
+            url: exerciseMedia.url,
+            mimeType: exerciseMedia.mimeType,
+            animated: exerciseMedia.animated,
+            width: exerciseMedia.width,
+            height: exerciseMedia.height,
+            bytes: exerciseMedia.bytes,
+            position: exerciseMedia.position,
+            altI18n: exerciseMedia.altI18n,
+        })
+        .from(exerciseMedia)
+        .where(inArray(exerciseMedia.exerciseId, exerciseIds))
+        .orderBy(asc(exerciseMedia.position))
+    const mediaByExercise = new Map<number, Omit<(typeof images)[number], 'exerciseId'>[]>()
+    for (const { exerciseId, ...image } of images) {
+        if (!mediaByExercise.has(exerciseId)) mediaByExercise.set(exerciseId, [])
+        mediaByExercise.get(exerciseId)!.push(image)
+    }
+
     return c.json(
         allExercises.map((e) => ({
             ...e,
             muscleGroups: mgByExercise[e.id] ?? [],
+            media: mediaByExercise.get(e.id) ?? [],
         }))
     )
 })
@@ -191,8 +216,17 @@ app.delete('/:id', async (c) => {
     const id = parseInt(c.req.param('id'), 10)
     if (isNaN(id)) return c.json({ error: 'Invalid id' }, 400)
 
-    const [deleted] = await db.delete(exercises).where(eq(exercises.id, id)).returning()
-    if (!deleted) return c.json({ error: 'Exercise not found' }, 404)
+    // Its media rows go with it (cascade); their files are deleted once the rows are gone.
+    // The row is locked first, so no image is recorded between listing them and the delete.
+    const files = await db.transaction(async (tx) => {
+        const [locked] = await tx.select({ id: exercises.id }).from(exercises).where(eq(exercises.id, id)).for('update')
+        if (!locked) return undefined
+        const keys = await tx.select({ key: exerciseMedia.storageKey }).from(exerciseMedia).where(eq(exerciseMedia.exerciseId, id))
+        await tx.delete(exercises).where(eq(exercises.id, id))
+        return keys.map((k) => k.key)
+    })
+    if (!files) return c.json({ error: 'Exercise not found' }, 404)
+    await deleteStoredFiles(files)
 
     return c.json({ success: true })
 })

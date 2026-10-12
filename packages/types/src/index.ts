@@ -57,6 +57,20 @@ export interface Exercise {
      * sheet opened from today's log can still show the time before.
      */
     recentLogs: ExerciseRecentLog[];
+    /** Images (static or animated), cover first; empty when it has none. */
+    media: ExerciseMedia[];
+}
+
+export interface ExerciseMedia {
+    uuid: string;
+    /** Public URL of the image. */
+    url: string;
+    /** An animated WebP, which loops. */
+    animated: boolean;
+    width: number;
+    height: number;
+    /** Localized like `name`; null when it has none. */
+    alt: string | null;
 }
 
 export interface ExerciseRecentLog {

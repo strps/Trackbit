@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { auth } from '../src/lib/auth.js'
 import db from '../src/db/db.js'
-import { exerciseListItems, exerciseLists, exerciseMuscleGroups, exercises, idempotencyKeys, invites, muscleGroups, user } from '../src/db/schema/index.js'
+import { exerciseListItems, exerciseLists, exerciseMedia, exerciseMuscleGroups, exercises, idempotencyKeys, invites, muscleGroups, user } from '../src/db/schema/index.js'
 import { app, bearer, createHabit, post, signInBearer, signedInUser } from './helpers.js'
 
 // Records the real responses the Android app decodes, as
@@ -204,6 +204,16 @@ describe('Android contracts', () => {
         }).returning()
         const [chest] = await db.insert(muscleGroups).values({ name: 'Chest', nameI18n: { en: 'Chest', es: 'Pecho' }, slug: 'chest' }).returning()
         await db.insert(exerciseMuscleGroups).values({ exerciseId: bench.id, muscleGroupId: chest.id, role: 'primary' })
+        await db.insert(exerciseMedia).values([
+            {
+                uuid: fixedUuid(90), exerciseId: bench.id, url: 'https://blob.test/exercises/bench/cover.webp', storageKey: 'exercises/bench/cover.webp',
+                mimeType: 'image/webp', animated: true, width: 480, height: 360, bytes: 50_000, position: 0, altI18n: { en: 'Bench press, side view' },
+            },
+            {
+                uuid: fixedUuid(91), exerciseId: bench.id, url: 'https://blob.test/exercises/bench/grip.jpg', storageKey: 'exercises/bench/grip.jpg',
+                mimeType: 'image/jpeg', width: 800, height: 600, bytes: 90_000, position: 1,
+            },
+        ])
         const row = await (await post(u.token, '/api/exercise-info/exercises', {
             uuid: clientUuid(), name: 'My row', category: 'strength', defaultWeightUnit: 'lbs', defaultDistanceUnit: 'miles', muscleGroups: [],
         })).json()

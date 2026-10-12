@@ -1,6 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import { boolean, check, foreignKey, index, integer, jsonb, numeric, pgEnum, pgTable, primaryKey, real, serial, text, timestamp, uniqueIndex, uuid, type AnyPgColumn } from "drizzle-orm/pg-core";
-import { EXERCISE_DIFFICULTIES, EXERCISE_EQUIPMENT } from "@trackbit/types";
+import { EXERCISE_DIFFICULTIES, EXERCISE_EQUIPMENT, EXERCISE_MEDIA_TYPES } from "@trackbit/types";
 import { exerciseListItems } from "./exercise-lists";
 import { dayLogs } from "./habits";
 import { user } from "./user";
@@ -70,6 +70,38 @@ export const exercises = pgTable('exercises', {
 
 export const exercisesRelations = relations(exercises, ({ many }) => ({
     exercisePerformances: many(exercisePerformances),
+    media: many(exerciseMedia),
+}));
+
+// An exercise's images, kept in the media store (lib/media-store.ts) under `storage_key`. Only
+// system exercises have media for now; the admin media routes are its only writer, and they keep
+// the positions 0..n-1 (0 is the cover) with the exercise row locked.
+export const exerciseMedia = pgTable('exercise_media', {
+    id: serial('id').primaryKey(),
+    uuid: uuid('uuid').defaultRandom().notNull().unique(),
+    exerciseId: integer('exercise_id').references(() => exercises.id, { onDelete: 'cascade' }).notNull(),
+    url: text('url').notNull(),
+    storageKey: text('storage_key').notNull().unique(),
+    mimeType: text('mime_type').notNull(),
+    animated: boolean('animated').notNull().default(false),
+    width: integer('width').notNull(),
+    height: integer('height').notNull(),
+    bytes: integer('bytes').notNull(),
+    position: integer('position').notNull(),
+    altI18n: jsonb('alt_i18n').$type<Record<string, string>>(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+    uniqueIndex('exercise_media_position').on(table.exerciseId, table.position),
+    check('exercise_media_mime', sql`${table.mimeType} IN (${sql.raw(EXERCISE_MEDIA_TYPES.map((type) => `'${type}'`).join(', '))})`),
+    check('exercise_media_position_not_negative', sql`${table.position} >= 0`),
+    check('exercise_media_dimensions', sql`${table.width} > 0 AND ${table.height} > 0 AND ${table.bytes} > 0`),
+]);
+
+export const exerciseMediaRelations = relations(exerciseMedia, ({ one }) => ({
+    exercise: one(exercises, {
+        fields: [exerciseMedia.exerciseId],
+        references: [exercises.id],
+    }),
 }));
 //========================================================
 //------- Exercise information tables ------- 

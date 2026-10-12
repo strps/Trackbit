@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { and, asc, count, eq, exists, inArray, isNull, lte, or, sql } from 'drizzle-orm';
 import { alias, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import db from '../../../db/db.js';
-import { dayLogs, exerciseLogs, exerciseMuscleGroups, exercisePerformances, exercises, exerciseSessions, habits, muscleGroups } from '../../../db/schema/index.js';
+import { dayLogs, exerciseLogs, exerciseMedia, exerciseMuscleGroups, exercisePerformances, exercises, exerciseSessions, habits, muscleGroups } from '../../../db/schema/index.js';
 import { validator } from '../../../lib/validator.js';
 import { isCheckViolation, isUniqueViolation } from '../../../lib/db-errors.js';
 import { difficultySchema, equipmentSchema, invalidVariantOfResponse, stepListSchema, VARIANT_OF_RULES } from '../../../lib/exercise-info.js';
@@ -149,12 +149,14 @@ async function loadExercises(user: { id: string; role?: string | null }, locale:
     }
 
     const recentLogs = await loadRecentLogs(user.id, result.map((row) => row.id))
+    const media = await loadMedia(result.map((row) => row.id), locale)
 
     const frozen = await computeFrozenExercisesForUser(user.id, user.role)
     return result.map((row) => ({
         ...row,
         muscleGroups: groupsByExercise.get(row.id) ?? [],
         recentLogs: recentLogs.get(row.id) ?? [],
+        media: media.get(row.id) ?? [],
         frozen: row.userId === user.id ? frozen.has(row.id) : false,
     }))
 }
@@ -218,6 +220,30 @@ async function loadRecentLogs(userId: string, exerciseIds: number[]) {
             localDay: log.localDay,
             sets: setsByLog.get(log.id)!.map(({ exerciseLogId: _, ...values }) => values),
         })
+    }
+    return byExercise
+}
+
+/** Each of [exerciseIds]' images, cover first, their alt text in [locale] (falling back to English). */
+async function loadMedia(exerciseIds: number[], locale: string) {
+    const byExercise = new Map<number, { uuid: string; url: string; animated: boolean; width: number; height: number; alt: string | null }[]>()
+    if (exerciseIds.length === 0) return byExercise
+    const rows = await db
+        .select({
+            exerciseId: exerciseMedia.exerciseId,
+            uuid: exerciseMedia.uuid,
+            url: exerciseMedia.url,
+            animated: exerciseMedia.animated,
+            width: exerciseMedia.width,
+            height: exerciseMedia.height,
+            alt: sql<string | null>`COALESCE(${exerciseMedia.altI18n}->>${locale}, ${exerciseMedia.altI18n}->>'en')`,
+        })
+        .from(exerciseMedia)
+        .where(inArray(exerciseMedia.exerciseId, exerciseIds))
+        .orderBy(asc(exerciseMedia.position))
+    for (const { exerciseId, ...image } of rows) {
+        if (!byExercise.has(exerciseId)) byExercise.set(exerciseId, [])
+        byExercise.get(exerciseId)!.push(image)
     }
     return byExercise
 }

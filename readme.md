@@ -75,6 +75,8 @@ Create `.env` in `apps/backend/`:
 DATABASE_URL="postgresql://user:password@localhost:5432/trackbit_db"
 BETTER_AUTH_SECRET="your_generated_secret_here"
 PORT=3000
+# Exercise media uploads (admin); from the Vercel project's Blob store
+BLOB_READ_WRITE_TOKEN="vercel_blob_rw_..."
 ```
 
 ### Database Setup
