@@ -1,4 +1,5 @@
 import type { ColorTheme } from './habit-appearance.js';
+import type { ExerciseDifficulty, ExerciseEquipment } from './exercise-info.js';
 
 
 export interface ColorStop {
@@ -40,6 +41,29 @@ export interface Exercise {
     defaultDistanceUnit: string | null;
     createdAt: string | null;
     frozen?: boolean;
+    /** Ordered steps, localized like `name`; null when it has none (never empty). */
+    instructions: string[] | null;
+    /** Helpful cues; like `instructions`. */
+    tips: string[] | null;
+    /** What to avoid; like `instructions`. */
+    commonMistakes: string[] | null;
+    equipment: ExerciseEquipment[];
+    difficulty: ExerciseDifficulty | null;
+    /** The base exercise this is a variant of (one level deep); null for a base. */
+    variantOfId: number | null;
+    variantOfUuid: string | null;
+    /**
+     * The user's two most recent logs of it that have sets, newest first, with those sets. Two, so a
+     * sheet opened from today's log can still show the time before.
+     */
+    recentLogs: ExerciseRecentLog[];
+}
+
+export interface ExerciseRecentLog {
+    uuid: string;
+    /** The day it was logged on, `YYYY-MM-DD` in the user's day. */
+    localDay: string;
+    sets: Array<Pick<ExercisePerformance, 'reps' | 'weight' | 'duration' | 'distance' | 'rpe'>>;
 }
 
 export interface ExerciseSession {
@@ -197,3 +221,4 @@ export interface ResolvedQueue {
 }
 
 export * from './habit-appearance.js';
+export * from './exercise-info.js';

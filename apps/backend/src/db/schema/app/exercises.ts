@@ -1,8 +1,24 @@
 import { relations, sql } from "drizzle-orm";
-import { boolean, check, foreignKey, integer, jsonb, numeric, pgTable, primaryKey, real, serial, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, foreignKey, index, integer, jsonb, numeric, pgEnum, pgTable, primaryKey, real, serial, text, timestamp, uniqueIndex, uuid, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { EXERCISE_DIFFICULTIES, EXERCISE_EQUIPMENT } from "@trackbit/types";
 import { exerciseListItems } from "./exercise-lists";
 import { dayLogs } from "./habits";
 import { user } from "./user";
+
+export const exerciseEquipmentEnum = pgEnum('exercise_equipment', EXERCISE_EQUIPMENT)
+export const exerciseDifficultyEnum = pgEnum('exercise_difficulty', EXERCISE_DIFFICULTIES)
+
+/**
+ * [list] is null or a non-empty JSON array of non-blank strings, and [i18n] is null or a non-empty
+ * object of such arrays: the clients never hide an empty list or a blank entry.
+ */
+const stepListChecks = (name: string, list: AnyPgColumn, i18n: AnyPgColumn) => [
+    check(`exercises_${name}_not_empty`, sql`${list} IS NULL OR (jsonb_typeof(${list}) = 'array' AND jsonb_array_length(${list}) > 0
+        AND NOT jsonb_path_exists(${list}, '$[*] ? (@.type() != "string" || !(@ like_regex "[^[:space:]]"))'))`),
+    check(`exercises_${name}_i18n_not_empty`, sql`${i18n} IS NULL OR (jsonb_typeof(${i18n}) = 'object' AND ${i18n} <> '{}'::jsonb
+        AND NOT jsonb_path_exists(${i18n}, 'strict $.* ? (@.type() != "array" || @.size() == 0)')
+        AND NOT jsonb_path_exists(${i18n}, '$.*[*] ? (@.type() != "string" || !(@ like_regex "[^[:space:]]"))'))`),
+]
 
 //Exercises
 export const exercises = pgTable('exercises', {
@@ -19,6 +35,18 @@ export const exercises = pgTable('exercises', {
     descriptionI18n: jsonb('description_i18n').$type<Record<string, string>>(),
     defaultWeightUnit: text('default_weight_unit').default('kg'), // 'kg' or 'lbs'
     defaultDistanceUnit: text('default_distance_unit').default('km'), // 'km' or 'miles'
+    // Ordered entries. User exercises use the plain column; system ones the translations, like name.
+    instructions: jsonb('instructions').$type<string[]>(),
+    instructionsI18n: jsonb('instructions_i18n').$type<Record<string, string[]>>(),
+    tips: jsonb('tips').$type<string[]>(),
+    tipsI18n: jsonb('tips_i18n').$type<Record<string, string[]>>(),
+    commonMistakes: jsonb('common_mistakes').$type<string[]>(),
+    commonMistakesI18n: jsonb('common_mistakes_i18n').$type<Record<string, string[]>>(),
+    equipment: exerciseEquipmentEnum('equipment').array().notNull().default(sql`'{}'`),
+    difficulty: exerciseDifficultyEnum('difficulty'),
+    // The base exercise this is a variant of; null for a base. The rules a check can't hold (one
+    // level deep, who may point at whom) are db/sql/exercise-variant-rules.sql's trigger.
+    variantOfId: integer('variant_of_id').references((): AnyPgColumn => exercises.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at').defaultNow(),
 },
     (table) => [
@@ -32,6 +60,11 @@ export const exercises = pgTable('exercises', {
             .where(sql`user_id IS NULL`),
         // No description is NULL, never a blank string the clients would have to hide.
         check('exercises_description_not_blank', sql`${table.description} IS NULL OR btrim(${table.description}) <> ''`),
+        ...stepListChecks('instructions', table.instructions, table.instructionsI18n),
+        ...stepListChecks('tips', table.tips, table.tipsI18n),
+        ...stepListChecks('common_mistakes', table.commonMistakes, table.commonMistakesI18n),
+        check('exercises_variant_of_not_self', sql`${table.variantOfId} IS DISTINCT FROM ${table.id}`),
+        index('exercises_variant_of_idx').on(table.variantOfId),
     ]
 );
 

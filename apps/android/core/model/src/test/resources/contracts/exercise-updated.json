@@ -10,8 +10,23 @@
     "category": "cardio",
     "defaultWeightUnit": "kg",
     "defaultDistanceUnit": "km",
+    "instructions": [
+      "Grip the bars",
+      "Lower until your shoulders pass your elbows"
+    ],
+    "tips": null,
+    "commonMistakes": [
+      "Shrugging"
+    ],
+    "equipment": [
+      "bodyweight"
+    ],
+    "difficulty": "advanced",
+    "variantOfId": null,
+    "variantOfUuid": null,
     "lastPerformance": null,
     "muscleGroups": [],
+    "recentLogs": [],
     "frozen": false
   }
 }

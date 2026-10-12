@@ -10,6 +10,20 @@
     "category": "strength",
     "defaultWeightUnit": "kg",
     "defaultDistanceUnit": "km",
+    "instructions": [
+      "Grip the bars",
+      "Lower until your shoulders pass your elbows"
+    ],
+    "tips": [
+      "Keep your elbows in"
+    ],
+    "commonMistakes": null,
+    "equipment": [
+      "bodyweight"
+    ],
+    "difficulty": "advanced",
+    "variantOfId": 1,
+    "variantOfUuid": "ffffffff-0000-4000-8000-000000000001",
     "lastPerformance": null,
     "muscleGroups": [
       {
@@ -17,6 +31,7 @@
         "name": "Chest"
       }
     ],
+    "recentLogs": [],
     "frozen": false
   }
 }

@@ -106,6 +106,17 @@ class ErrorContractTest {
                 createExercise(),
             )
         },
+        // The form only offers bases the variant rules accept; one changed meanwhile is a plain 400.
+        "invalid-variant-of.json" to {
+            assertEquals(
+                ApiError.Validation(
+                    "An exercise can only be a variant of a base exercise you can see, and a base with variants cannot become a variant",
+                    emptyList(),
+                    "invalid_variant_of",
+                ),
+                createExercise(),
+            )
+        },
         "exercise-list-name-taken.json" to { assertEquals(ApiError.ExerciseListNameTaken, createList()) },
         "exercise-list-limit-reached.json" to { assertEquals(ApiError.ExerciseListLimitReached(3), createList()) },
         "exercise-list-frozen.json" to { assertEquals(ApiError.ExerciseListFrozen, appendTo()) },

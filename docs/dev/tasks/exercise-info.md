@@ -108,14 +108,15 @@ tips: string[] | null                  // localized the same way
 commonMistakes: string[] | null        // localized the same way
 equipment: string[]                    // vocabulary keys; clients translate
 difficulty: 'beginner' | 'intermediate' | 'advanced' | null
-lastLog: { uuid, localDay, sets: { reps, weight, duration, distance, rpe }[] } | null
-                                       // the user's most recent log of it with that log's sets
+recentLogs: { uuid, localDay, sets: { reps, weight, duration, distance, rpe }[] }[]
+                                       // the user's 2 most recent logs of it that have sets, newest first;
+                                       // the sheet shows the first that isn't the log it was opened from
 variantOfId: number | null
 variantOfUuid: string | null           // Android names exercises by uuid
 media: { uuid, url, animated, width, height, alt: string | null }[]  // ordered by position, alt localized
 ```
 
-`lastLog` is the user's latest log of each exercise (scoped to their habits, like `lastPerformance`) and its sets in order, loaded in a second query. Media is loaded in a further query keyed by exercise ids, like `muscleGroups` in `loadExercises`. The variant uuid comes from a self left-join.
+`recentLogs` are the user's latest logs with sets of each exercise (scoped to their habits, like `lastPerformance`) and their sets in order, loaded in a second query. Media is loaded in a further query keyed by exercise ids, like `muscleGroups` in `loadExercises`. The variant uuid comes from a self left-join.
 
 Shared type: extend `Exercise` in [packages/types](../../../packages/types/src/index.ts) with `instructions`, `variantOfId`, `variantOfUuid`, `media: ExerciseMedia[]`.
 
@@ -141,7 +142,7 @@ The same layout and order on web and Android:
 1. **Header / main**: media carousel (cover first; animated ones loop; nothing when there's no media), name, category and difficulty chips, **primary** muscle groups (secondary ones as muted chips), equipment.
 2. **Instructions**: a numbered list of steps. When there are none, show "No instructions yet", plus an "Add instructions" link for an owned custom exercise.
 3. **Other information**:
-   - **Last time**: the date it was last performed and that log's sets (from `lastLog`); "Never performed" otherwise.
+   - **Last time**: the date it was last performed and that log's sets (from `recentLogs`, skipping the log the sheet was opened from); "Never performed" otherwise.
    - **Tips** and **Common mistakes** (bulleted, each only if present).
    - Description (if any).
    - **Variants**: the family as tappable chips, i.e. the base plus its siblings, minus the current exercise. Tapping one shows that exercise's info in the same sheet, with a back affordance.
@@ -163,12 +164,15 @@ Each phase is shippable and gets its own commit(s) on this branch.
 
 ### Phase 1 — Backend: info fields + variants
 
-- [ ] Schema columns, checks and index; trigger; migration `0018`.
-- [ ] Zod: shared `stepListSchema` (trim, drop blanks, `[]`→`null`, limits), equipment/difficulty enums; user create/update; admin create/update.
-- [ ] `loadExercises`: the info fields, `variantOfId`, `variantOfUuid`, `lastLog`.
-- [ ] Admin GET returns the `*I18n` info columns, `equipment`, `difficulty`, `variantOfId`.
-- [ ] Tests (Vitest): blank steps dropped; `[]` → null; >20 steps → 400; unknown equipment / difficulty → 400; `lastLog` is the user's own latest log with its sets in order; self / chain / base-becomes-variant / system→user / user→other user's all rejected (both route and raw insert hit the trigger); `ON DELETE SET NULL` on the base; locale fallback for instructions.
-- [ ] `packages/types` updated; AGENTS.md API table untouched (same routes).
+- [x] Schema columns, checks and index; trigger; migration `0018`.
+- [x] Zod: shared `stepListSchema` (trim, drop blanks, `[]`→`null`, limits), equipment/difficulty enums; user create/update; admin create/update.
+- [x] `loadExercises`: the info fields, `variantOfId`, `variantOfUuid`, `recentLogs`.
+- [x] Admin GET returns the `*I18n` info columns, `equipment`, `difficulty`, `variantOfId`.
+- [x] Tests (Vitest): blank steps dropped; `[]` → null; >20 steps → 400; unknown equipment / difficulty → 400; `recentLogs` are the user's own 2 latest logs with sets, sets in order, empty logs skipped; self / chain / base-becomes-variant / system→user / user→other user's all rejected (both route and raw insert hit the trigger); `ON DELETE SET NULL` on the base; locale fallback for instructions.
+- [x] `packages/types` updated; AGENTS.md API table untouched (same routes).
+- [x] Android contracts re-recorded with real info values, plus `invalid-variant-of.json` (mapped to a plain `ApiError.Validation` until Phase 4 decides otherwise).
+
+Notes: the variant trigger lives in [exercise-variant-rules.sql](../../../apps/backend/src/db/sql/exercise-variant-rules.sql). Migration 0018 carries it verbatim and the test setup applies it after `pushSchema`; a test fails if the two drift apart. Step-list, equipment and difficulty rules are Drizzle `check()`s and `pgEnum`s, so the push creates them.
 
 ### Phase 2 — Web: info sheet
 
@@ -189,8 +193,8 @@ Each phase is shippable and gets its own commit(s) on this branch.
 
 Coordinate with the Kotlin plan ([kotlin-app-F.md](../handoffs/kotlin-app-F.md)). F5 moves exercise writes to the outbox with per-field LWW, so `instructions` and `variantOfUuid` must be fields in that model. Land this phase after F5, or add the fields to F5's scope. Don't build a second write path.
 
-- [ ] `core/model` `Exercise`: `instructions`, `tips`, `commonMistakes` (`List<String>? = null`), `equipment: List<String> = emptyList()`, `difficulty: String? = null`, `variantOfUuid: String? = null`, `lastLog: LastLog? = null`, `media: List<ExerciseMediaRef> = emptyList()`.
-- [ ] `ExerciseEntity` + converters + Room **v10 → v11** migration (new columns, JSON defaults) + `MigrationTest`. The sheet's "Last time" prefers a newer local log from Room (logged offline) over the server's `lastLog`.
+- [ ] `core/model` `Exercise`: `instructions`, `tips`, `commonMistakes` (`List<String>? = null`), `equipment: List<String> = emptyList()`, `difficulty: String? = null`, `variantOfUuid: String? = null`, `recentLogs: List<RecentLog> = emptyList()`, `media: List<ExerciseMediaRef> = emptyList()`.
+- [ ] `ExerciseEntity` + converters + Room **v10 → v11** migration (new columns, JSON defaults) + `MigrationTest`. The sheet's "Last time" prefers a newer local log from Room (logged offline) over the server's `recentLogs`.
 - [ ] `ExerciseRules`: instruction limits mirrored from the server; `ExerciseRequest` carries the new fields.
 - [ ] Repository / sync tests updated.
 

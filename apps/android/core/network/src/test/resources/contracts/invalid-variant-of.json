@@ -1,0 +1,8 @@
+{
+  "request": "POST /api/exercise-info/exercises",
+  "status": 400,
+  "body": {
+    "error": "invalid_variant_of",
+    "message": "An exercise can only be a variant of a base exercise you can see, and a base with variants cannot become a variant"
+  }
+}

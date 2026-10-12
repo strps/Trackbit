@@ -195,7 +195,13 @@ describe('Android contracts', () => {
     it('exercises and sessions', async () => {
         const clientUuid = uuidsFrom(300)
         const u = await contractUser('exercises@test.local')
-        const [bench] = await db.insert(exercises).values({ name: 'Bench Press', nameI18n: { en: 'Bench Press', es: 'Press de banca' }, category: 'strength' }).returning()
+        const [bench] = await db.insert(exercises).values({
+            name: 'Bench Press', nameI18n: { en: 'Bench Press', es: 'Press de banca' }, category: 'strength',
+            instructionsI18n: { en: ['Plant your feet', 'Lower the bar to your chest', 'Press up'] },
+            tipsI18n: { en: ['Squeeze your shoulder blades'] },
+            commonMistakesI18n: { en: ['Bouncing the bar'] },
+            equipment: ['barbell', 'bench'], difficulty: 'intermediate',
+        }).returning()
         const [chest] = await db.insert(muscleGroups).values({ name: 'Chest', nameI18n: { en: 'Chest', es: 'Pecho' }, slug: 'chest' }).returning()
         await db.insert(exerciseMuscleGroups).values({ exerciseId: bench.id, muscleGroupId: chest.id, role: 'primary' })
         const row = await (await post(u.token, '/api/exercise-info/exercises', {
@@ -255,13 +261,21 @@ describe('Android contracts', () => {
         const dipsUuid = clientUuid()
         const created = await post(u.token, '/api/exercise-info/exercises', {
             uuid: dipsUuid, name: 'Dips', description: 'Lean forward', category: 'strength', muscleGroups: [chest.id],
+            instructions: ['Grip the bars', 'Lower until your shoulders pass your elbows'], tips: ['Keep your elbows in'],
+            equipment: ['bodyweight'], difficulty: 'advanced', variantOfUuid: bench.uuid,
         })
         await record(MODEL, 'exercise-created.json', 'POST /api/exercise-info/exercises', created, u.secrets)
         await record(MODEL, 'exercise-updated.json', 'PATCH /api/exercise-info/exercises/uuid/:uuid',
-            await send(u.token, 'PATCH', `/api/exercise-info/exercises/uuid/${dipsUuid}`, { name: 'Ring dips', category: 'cardio', description: null, muscleGroups: [] }),
+            await send(u.token, 'PATCH', `/api/exercise-info/exercises/uuid/${dipsUuid}`, {
+                name: 'Ring dips', category: 'cardio', description: null, muscleGroups: [], tips: null, commonMistakes: ['Shrugging'], variantOfUuid: null,
+            }),
             u.secrets)
         await record(NETWORK, 'exercise-name-taken.json', 'POST /api/exercise-info/exercises',
             await post(u.token, '/api/exercise-info/exercises', { uuid: clientUuid(), name: 'Ring dips', category: 'strength' }), u.secrets)
+        // A variant of a variant: families are one level deep.
+        await send(u.token, 'PATCH', `/api/exercise-info/exercises/uuid/${dipsUuid}`, { variantOfUuid: bench.uuid })
+        await record(NETWORK, 'invalid-variant-of.json', 'POST /api/exercise-info/exercises',
+            await post(u.token, '/api/exercise-info/exercises', { uuid: clientUuid(), name: 'Bar dips', category: 'strength', variantOfUuid: dipsUuid }), u.secrets)
         await record(NETWORK, 'muscle-group-not-found.json', 'POST /api/exercise-info/exercises',
             await post(u.token, '/api/exercise-info/exercises', { uuid: clientUuid(), name: 'Ghost', category: 'strength', muscleGroups: [999999] }), u.secrets)
     })

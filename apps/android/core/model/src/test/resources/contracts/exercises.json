@@ -3,24 +3,6 @@
   "status": 200,
   "body": [
     {
-      "id": 1,
-      "uuid": "ffffffff-0000-4000-8000-000000000001",
-      "userId": null,
-      "name": "Bench Press",
-      "description": null,
-      "category": "strength",
-      "defaultWeightUnit": "kg",
-      "defaultDistanceUnit": "km",
-      "lastPerformance": null,
-      "muscleGroups": [
-        {
-          "id": 1,
-          "name": "Chest"
-        }
-      ],
-      "frozen": false
-    },
-    {
       "id": 2,
       "uuid": "00000000-0000-4000-8000-000000000301",
       "userId": "user-id",
@@ -29,6 +11,13 @@
       "category": "strength",
       "defaultWeightUnit": "lbs",
       "defaultDistanceUnit": "miles",
+      "instructions": null,
+      "tips": null,
+      "commonMistakes": null,
+      "equipment": [],
+      "difficulty": null,
+      "variantOfId": null,
+      "variantOfUuid": null,
       "lastPerformance": {
         "id": 2,
         "weight": 62.5,
@@ -39,6 +28,65 @@
         "rpe": 8
       },
       "muscleGroups": [],
+      "recentLogs": [
+        {
+          "uuid": "00000000-0000-4000-8000-000000000002",
+          "localDay": "2026-01-10",
+          "sets": [
+            {
+              "reps": 8,
+              "weight": 60.5,
+              "duration": null,
+              "distance": null,
+              "rpe": null
+            },
+            {
+              "reps": 6,
+              "weight": 62.5,
+              "duration": 45000,
+              "distance": 1.25,
+              "rpe": 8
+            }
+          ]
+        }
+      ],
+      "frozen": false
+    },
+    {
+      "id": 1,
+      "uuid": "ffffffff-0000-4000-8000-000000000001",
+      "userId": null,
+      "name": "Bench Press",
+      "description": null,
+      "category": "strength",
+      "defaultWeightUnit": "kg",
+      "defaultDistanceUnit": "km",
+      "instructions": [
+        "Plant your feet",
+        "Lower the bar to your chest",
+        "Press up"
+      ],
+      "tips": [
+        "Squeeze your shoulder blades"
+      ],
+      "commonMistakes": [
+        "Bouncing the bar"
+      ],
+      "equipment": [
+        "barbell",
+        "bench"
+      ],
+      "difficulty": "intermediate",
+      "variantOfId": null,
+      "variantOfUuid": null,
+      "lastPerformance": null,
+      "muscleGroups": [
+        {
+          "id": 1,
+          "name": "Chest"
+        }
+      ],
+      "recentLogs": [],
       "frozen": false
     }
   ]

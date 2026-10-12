@@ -5,6 +5,8 @@ import { requireAdminAuth } from '../../middleware/require-admin-auth.js'
 import db from '../../db/db.js'
 import { exercises, exerciseMuscleGroups, muscleGroups } from '../../db/schema/index.js'
 import { eq, inArray, sql } from 'drizzle-orm'
+import { isCheckViolation, isForeignKeyViolation } from '../../lib/db-errors.js'
+import { difficultySchema, equipmentSchema, invalidVariantOfResponse, stepListI18nSchema, VARIANT_OF_RULES } from '../../lib/exercise-info.js'
 
 type AuthEnv = {
     Variables: {
@@ -37,7 +39,31 @@ const exerciseBodySchema = z.object({
     defaultWeightUnit: z.enum(['kg', 'lbs']).optional().nullable(),
     defaultDistanceUnit: z.enum(['km', 'miles']).optional().nullable(),
     muscleGroups: z.array(z.number().int().positive()).optional(),
+    instructions: stepListI18nSchema.optional(),
+    tips: stepListI18nSchema.optional(),
+    commonMistakes: stepListI18nSchema.optional(),
+    equipment: equipmentSchema.optional(),
+    difficulty: difficultySchema.optional(),
+    // A system base exercise; the variant rules (db/sql/exercise-variant-rules.sql) refuse others.
+    variantOfId: z.number().int().positive().nullable().optional(),
 })
+
+/** The translated info lists of a request, under their column names; omitted ones stay omitted. */
+const i18nLists = ({ instructions, tips, commonMistakes }: Pick<z.infer<typeof exerciseBodySchema>, 'instructions' | 'tips' | 'commonMistakes'>) => ({
+    ...(instructions !== undefined && { instructionsI18n: instructions }),
+    ...(tips !== undefined && { tipsI18n: tips }),
+    ...(commonMistakes !== undefined && { commonMistakesI18n: commonMistakes }),
+})
+
+/** Runs [write], answering 400 when the variant rules refuse it or its base doesn't exist. */
+async function withVariantRules(write: () => Promise<Response>): Promise<Response> {
+    try {
+        return await write()
+    } catch (err) {
+        if (isCheckViolation(err, VARIANT_OF_RULES) || isForeignKeyViolation(err, 'exercises_variant_of_id_exercises_id_fk')) return Response.json(invalidVariantOfResponse('en'), { status: 400 })
+        throw err
+    }
+}
 
 // List all exercises with their muscle groups
 app.get('/', async (c) => {
@@ -48,6 +74,12 @@ app.get('/', async (c) => {
             nameI18n: exercises.nameI18n,
             category: exercises.category,
             descriptionI18n: exercises.descriptionI18n,
+            instructionsI18n: exercises.instructionsI18n,
+            tipsI18n: exercises.tipsI18n,
+            commonMistakesI18n: exercises.commonMistakesI18n,
+            equipment: exercises.equipment,
+            difficulty: exercises.difficulty,
+            variantOfId: exercises.variantOfId,
             defaultWeightUnit: exercises.defaultWeightUnit,
             defaultDistanceUnit: exercises.defaultDistanceUnit,
             userId: exercises.userId,
@@ -86,13 +118,14 @@ app.get('/', async (c) => {
 })
 
 // Create a system exercise (userId = null)
-app.post('/', validator('json', exerciseBodySchema), async (c) => {
-    const { muscleGroups: mgIds, name, description, ...rest } = c.req.valid('json')
+app.post('/', validator('json', exerciseBodySchema), (c) => withVariantRules(async () => {
+    const { muscleGroups: mgIds, name, description, instructions, tips, commonMistakes, ...rest } = c.req.valid('json')
 
     const [created] = await db
         .insert(exercises)
         .values({
             ...rest,
+            ...i18nLists({ instructions, tips, commonMistakes }),
             userId: null,
             name: name.en,
             nameI18n: name,
@@ -111,16 +144,16 @@ app.post('/', validator('json', exerciseBodySchema), async (c) => {
     }
 
     return c.json(created, 201)
-})
+}))
 
 // Update any exercise
-app.patch('/:id', validator('json', exerciseBodySchema.partial()), async (c) => {
+app.patch('/:id', validator('json', exerciseBodySchema.partial()), (c) => withVariantRules(async () => {
     const id = parseInt(c.req.param('id'), 10)
     if (isNaN(id)) return c.json({ error: 'Invalid id' }, 400)
 
-    const { muscleGroups: mgIds, name, description, ...rest } = c.req.valid('json')
+    const { muscleGroups: mgIds, name, description, instructions, tips, commonMistakes, ...rest } = c.req.valid('json')
 
-    const updates: Record<string, unknown> = { ...rest }
+    const updates: Record<string, unknown> = { ...rest, ...i18nLists({ instructions, tips, commonMistakes }) }
     if (name !== undefined) {
         updates.name = name.en
         updates.nameI18n = name
@@ -151,7 +184,7 @@ app.patch('/:id', validator('json', exerciseBodySchema.partial()), async (c) => 
     }
 
     return c.json(updated)
-})
+}))
 
 // Delete any exercise
 app.delete('/:id', async (c) => {

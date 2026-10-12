@@ -1,14 +1,17 @@
 import { Hono, type Context } from 'hono';
+import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
-import { and, asc, count, eq, inArray, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, count, eq, exists, inArray, isNull, lte, or, sql } from 'drizzle-orm';
+import { alias, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import db from '../../../db/db.js';
 import { dayLogs, exerciseLogs, exerciseMuscleGroups, exercisePerformances, exercises, exerciseSessions, habits, muscleGroups } from '../../../db/schema/index.js';
 import { validator } from '../../../lib/validator.js';
-import { isUniqueViolation } from '../../../lib/db-errors.js';
+import { isCheckViolation, isUniqueViolation } from '../../../lib/db-errors.js';
+import { difficultySchema, equipmentSchema, invalidVariantOfResponse, stepListSchema, VARIANT_OF_RULES } from '../../../lib/exercise-info.js';
 import { computeFrozenExercisesForUser, getEffectiveLimits } from '../../../lib/user-limits.js';
 import { frozenExerciseException } from '../../../lib/frozen-errors.js';
 import { t } from '../../../i18n/index.js';
-import { createdBefore, ownExerciseIdByUuid, uuidParamSchema } from '../../../lib/uuid-refs.js';
+import { atMostOne, createdBefore, ownExerciseIdByUuid, uuidParamSchema, visibleExerciseIdByUuid } from '../../../lib/uuid-refs.js';
 
 type AuthEnv = {
     Variables: {
@@ -30,17 +33,30 @@ const exerciseBodySchema = z.object({
     defaultWeightUnit: z.enum(['kg', 'lbs']).optional(),
     defaultDistanceUnit: z.enum(['km', 'miles']).optional(),
     muscleGroups: z.array(z.number().int().positive()).max(50).transform((ids) => [...new Set(ids)]),
+    instructions: stepListSchema.optional(),
+    tips: stepListSchema.optional(),
+    commonMistakes: stepListSchema.optional(),
+    equipment: equipmentSchema,
+    difficulty: difficultySchema.optional(),
+    // The base exercise this is a variant of, by id (web) or uuid (Android); null for none.
+    variantOfId: z.number().int().positive().nullable().optional(),
+    variantOfUuid: z.uuid().nullable().optional(),
 }).strict()
+
+const oneVariantOf = { message: 'Give variantOfId or variantOfUuid, not both', path: ['variantOfUuid'] }
 
 const createSchema = exerciseBodySchema.extend({
     // Chosen by a client creating the exercise offline; a retry with it returns the same exercise.
     uuid: z.uuid().optional(),
     muscleGroups: exerciseBodySchema.shape.muscleGroups.default([]),
-})
-const updateSchema = exerciseBodySchema.partial().refine(
-    (data) => Object.values(data).some((value) => value !== undefined),
-    { message: 'At least one field must be provided for update' },
-)
+    equipment: equipmentSchema.default([]),
+}).refine(atMostOne('variantOfId', 'variantOfUuid'), oneVariantOf)
+const updateSchema = exerciseBodySchema.partial()
+    .refine(
+        (data) => Object.values(data).some((value) => value !== undefined),
+        { message: 'At least one field must be provided for update' },
+    )
+    .refine(atMostOne('variantOfId', 'variantOfUuid'), oneVariantOf)
 const idParamSchema = z.object({ id: z.coerce.number().int().positive() })
 
 /**
@@ -71,6 +87,10 @@ async function loadExercises(user: { id: string; role?: string | null }, locale:
     );
 
     const visible = or(isNull(exercises.userId), eq(exercises.userId, user.id))
+    const base = alias(exercises, 'variant_base')
+    /** [i18n] in the request's locale, falling back to English and then to the user's own [plain]. */
+    const localizedList = (i18n: AnyPgColumn, plain: AnyPgColumn) =>
+        sql<string[] | null>`COALESCE(${i18n}->${locale}, ${i18n}->'en', ${plain})`
     const result = await db
         .with(latestSetSubquery)
         .select({
@@ -82,6 +102,13 @@ async function loadExercises(user: { id: string; role?: string | null }, locale:
             category: exercises.category,
             defaultWeightUnit: exercises.defaultWeightUnit,
             defaultDistanceUnit: exercises.defaultDistanceUnit,
+            instructions: localizedList(exercises.instructionsI18n, exercises.instructions).as('instructions'),
+            tips: localizedList(exercises.tipsI18n, exercises.tips).as('tips'),
+            commonMistakes: localizedList(exercises.commonMistakesI18n, exercises.commonMistakes).as('common_mistakes'),
+            equipment: exercises.equipment,
+            difficulty: exercises.difficulty,
+            variantOfId: exercises.variantOfId,
+            variantOfUuid: base.uuid,
             lastPerformance: {
                 id: latestSetSubquery.setId,
                 weight: latestSetSubquery.weight,
@@ -93,6 +120,7 @@ async function loadExercises(user: { id: string; role?: string | null }, locale:
             },
         })
         .from(exercises)
+        .leftJoin(base, eq(base.id, exercises.variantOfId))
         .leftJoin(
             latestSetSubquery,
             and(
@@ -119,12 +147,78 @@ async function loadExercises(user: { id: string; role?: string | null }, locale:
         groupsByExercise.get(exerciseId)!.push({ id, name })
     }
 
+    const recentLogs = await loadRecentLogs(user.id, result.map((row) => row.id))
+
     const frozen = await computeFrozenExercisesForUser(user.id, user.role)
     return result.map((row) => ({
         ...row,
         muscleGroups: groupsByExercise.get(row.id) ?? [],
+        recentLogs: recentLogs.get(row.id) ?? [],
         frozen: row.userId === user.id ? frozen.has(row.id) : false,
     }))
+}
+
+/** How many of an exercise's latest logs [loadRecentLogs] returns. */
+const RECENT_LOGS = 2
+
+/**
+ * Of [exerciseIds], each one's [RECENT_LOGS] most recent logs by [userId] that have sets, newest
+ * first (by day, then by when the log was made), with their sets in order.
+ */
+async function loadRecentLogs(userId: string, exerciseIds: number[]) {
+    const byExercise = new Map<number, { uuid: string; localDay: string; sets: { reps: number | null; weight: number | null; duration: number | null; distance: number | null; rpe: number | null }[] }[]>()
+    if (exerciseIds.length === 0) return byExercise
+
+    const ranked = db.$with('ranked_logs').as(
+        db.select({
+            id: exerciseLogs.id,
+            uuid: exerciseLogs.uuid,
+            exerciseId: exerciseLogs.exerciseId,
+            localDay: dayLogs.localDay,
+            rank: sql<number>`row_number() over (partition by ${exerciseLogs.exerciseId} order by ${dayLogs.localDay} desc, ${exerciseLogs.createdAt} desc, ${exerciseLogs.id} desc)`.as('rank'),
+        })
+            .from(exerciseLogs)
+            .innerJoin(exerciseSessions, eq(exerciseSessions.id, exerciseLogs.exerciseSessionId))
+            .innerJoin(dayLogs, eq(dayLogs.id, exerciseSessions.dayLogId))
+            .innerJoin(habits, eq(habits.id, dayLogs.habitId))
+            .where(and(
+                eq(habits.userId, userId),
+                inArray(exerciseLogs.exerciseId, exerciseIds),
+                exists(db.select({ one: sql`1` }).from(exercisePerformances).where(eq(exercisePerformances.exerciseLogId, exerciseLogs.id))),
+            ))
+    )
+    const logs = await db.with(ranked).select().from(ranked)
+        .where(lte(ranked.rank, RECENT_LOGS))
+        .orderBy(asc(ranked.exerciseId), asc(ranked.rank))
+    if (logs.length === 0) return byExercise
+
+    const sets = await db
+        .select({
+            exerciseLogId: exercisePerformances.exerciseLogId,
+            reps: exercisePerformances.reps,
+            weight: exercisePerformances.weight,
+            duration: exercisePerformances.duration,
+            distance: exercisePerformances.distance,
+            rpe: exercisePerformances.rpe,
+        })
+        .from(exercisePerformances)
+        .where(inArray(exercisePerformances.exerciseLogId, logs.map((log) => log.id)))
+        .orderBy(asc(exercisePerformances.number), asc(exercisePerformances.id))
+    const setsByLog = new Map<number, typeof sets>()
+    for (const set of sets) {
+        if (!setsByLog.has(set.exerciseLogId)) setsByLog.set(set.exerciseLogId, [])
+        setsByLog.get(set.exerciseLogId)!.push(set)
+    }
+
+    for (const log of logs) {
+        if (!byExercise.has(log.exerciseId)) byExercise.set(log.exerciseId, [])
+        byExercise.get(log.exerciseId)!.push({
+            uuid: log.uuid,
+            localDay: log.localDay,
+            sets: setsByLog.get(log.id)!.map(({ exerciseLogId: _, ...values }) => values),
+        })
+    }
+    return byExercise
 }
 
 /** The user's own exercise [id], or undefined (missing, a system one, or another user's). */
@@ -147,6 +241,31 @@ async function setMuscleGroups(tx: Tx, exerciseId: number, ids: number[]): Promi
         await tx.insert(exerciseMuscleGroups).values(ids.map((muscleGroupId) => ({ exerciseId, muscleGroupId, role: 'primary' })))
     }
     return true
+}
+
+/** A system exercise or the user's own [id]. */
+async function visibleExerciseId(userId: string, id: number): Promise<number | undefined> {
+    const [row] = await db.select({ id: exercises.id }).from(exercises)
+        .where(and(eq(exercises.id, id), or(isNull(exercises.userId), eq(exercises.userId, userId))))
+    return row?.id
+}
+
+/**
+ * The base exercise a request names by id or uuid: undefined to leave the link as it is, null to
+ * clear it. One the user can't see is a 400, like one the variant rules refuse.
+ */
+async function requestedVariantOf(c: Context<AuthEnv>, body: { variantOfId?: number | null; variantOfUuid?: string | null }) {
+    const { variantOfId, variantOfUuid } = body
+    if (variantOfId === undefined && variantOfUuid === undefined) return undefined
+    if (variantOfId === null || variantOfUuid === null) return null
+    const userId = c.get('user').id
+    const id = variantOfUuid !== undefined
+        ? await visibleExerciseIdByUuid(userId, variantOfUuid)
+        : await visibleExerciseId(userId, variantOfId!)
+    if (id === undefined) {
+        throw new HTTPException(400, { res: Response.json(invalidVariantOfResponse(c.get('locale') ?? 'en'), { status: 400 }) })
+    }
+    return id
 }
 
 /** Thrown inside a transaction to roll it back and answer 400. */
@@ -173,11 +292,13 @@ const exerciseCreatedBefore = (uuid: string | undefined, userId: string) =>
 exerciseRouter.post('/', validator('json', createSchema), async (c) => {
     const user = c.get('user')
     const locale = c.get('locale') ?? 'en'
-    const { muscleGroups: groupIds, ...values } = c.req.valid('json')
+    const { muscleGroups: groupIds, variantOfId: _, variantOfUuid: __, ...values } = c.req.valid('json')
 
     // A retried create answers with what it made, before the limits (see habits).
     const existing = await exerciseCreatedBefore(values.uuid, user.id)
     if (existing) return c.json((await loadExercises(user, locale, existing.id))[0], 201)
+
+    const variantOfId = await requestedVariantOf(c, c.req.valid('json'))
 
     const limits = await getEffectiveLimits(user.role)
     if (limits && limits.maxCustomExercises != null) {
@@ -197,7 +318,7 @@ exerciseRouter.post('/', validator('json', createSchema), async (c) => {
 
     try {
         const id = await db.transaction(async (tx) => {
-            const [created] = await tx.insert(exercises).values({ ...values, userId: user.id }).returning({ id: exercises.id })
+            const [created] = await tx.insert(exercises).values({ ...values, variantOfId, userId: user.id }).returning({ id: exercises.id })
             if (!(await setMuscleGroups(tx, created.id, groupIds))) throw new UnknownMuscleGroup()
             return created.id
         })
@@ -211,6 +332,7 @@ exerciseRouter.post('/', validator('json', createSchema), async (c) => {
             if (won) return c.json((await loadExercises(user, locale, won.id))[0], 201)
         }
         if (isUniqueViolation(err, EXERCISE_NAME_UNIQUE_INDEX)) return c.json(nameTakenResponse(locale), 409)
+        if (isCheckViolation(err, VARIANT_OF_RULES)) return c.json(invalidVariantOfResponse(locale), 400)
         throw err
     }
 })
@@ -224,11 +346,13 @@ const notFound = (c: Context<AuthEnv>) => c.json({ error: t('errors', 'not_found
 async function updateExercise(c: Context<AuthEnv>, id: number | undefined, body: z.infer<typeof updateSchema>) {
     const user = c.get('user')
     const locale = c.get('locale') ?? 'en'
-    const { muscleGroups: groupIds, ...values } = body
+    const { muscleGroups: groupIds, variantOfId: _, variantOfUuid: __, ...fields } = body
 
     if (id === undefined || !(await ownedExercise(user.id, id))) return notFound(c)
     const frozen = await computeFrozenExercisesForUser(user.id, user.role)
     if (frozen.has(id)) throw frozenExerciseException(id)
+    const variantOfId = await requestedVariantOf(c, body)
+    const values = variantOfId === undefined ? fields : { ...fields, variantOfId }
 
     try {
         await db.transaction(async (tx) => {
@@ -240,6 +364,7 @@ async function updateExercise(c: Context<AuthEnv>, id: number | undefined, body:
     } catch (err) {
         if (err instanceof UnknownMuscleGroup) return c.json(unknownMuscleGroupResponse, 400)
         if (isUniqueViolation(err, EXERCISE_NAME_UNIQUE_INDEX)) return c.json(nameTakenResponse(locale), 409)
+        if (isCheckViolation(err, VARIANT_OF_RULES)) return c.json(invalidVariantOfResponse(locale), 400)
         throw err
     }
 }

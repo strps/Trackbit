@@ -127,6 +127,13 @@
       "when": 1791306239759,
       "tag": "0017_config_uuids",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791821188711,
+      "tag": "0018_exercise_info",
+      "breakpoints": true
     }
   ]
 }

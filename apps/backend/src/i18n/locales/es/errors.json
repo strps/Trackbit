@@ -14,6 +14,7 @@
   "exercise_list_name_taken": "Ya tienes una lista con ese nombre",
   "exercise_name_taken": "Ya tienes un ejercicio con ese nombre",
   "exercise_not_available": "Uno o más ejercicios no están disponibles para ti",
+  "invalid_variant_of": "Un ejercicio solo puede ser variante de un ejercicio base que puedas ver, y una base con variantes no puede volverse variante",
   "exercise_name_required": "El nombre del ejercicio es obligatorio",
   "muscle_group_name_required": "El nombre del grupo muscular es obligatorio",
   "at_least_one_preference": "Se debe proporcionar al menos un campo de preferencia",
