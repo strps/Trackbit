@@ -45,7 +45,20 @@ class EncodeTest {
         assertTrue(create, create.endsWith(""""icon":"trees","uuid":"h"}"""))
     }
 
-    @Test fun `a log names its exercise and list item by uuid, an ad-hoc one with a null item`() {
+    @Test fun `an exercise request sends every info field, null included, so it can clear one`() {
+        val request = ExerciseRequest(
+            "Dips", null, ExerciseCategory.Strength, emptyList(),
+            instructions = listOf("Grip the bars"), tips = null, commonMistakes = null,
+            equipment = listOf(ExerciseEquipment.PullUpBar), difficulty = null, variantOfUuid = null,
+        )
+        assertEquals(
+            """{"name":"Dips","description":null,"category":"strength","muscleGroups":[],"instructions":["Grip the bars"],""" +
+                """"tips":null,"commonMistakes":null,"equipment":["pull_up_bar"],"difficulty":null,"variantOfUuid":null}""",
+            TrackbitJson.encodeToString(ExerciseRequest.serializer(), request),
+        )
+    }
+
+        @Test fun `a log names its exercise and list item by uuid, an ad-hoc one with a null item`() {
         assertEquals(
             """{"uuid":"l","exerciseSessionUuid":"s","exerciseUuid":"e","listItemUuid":null}""",
             TrackbitJson.encodeToString(CreateExerciseLogRequest("l", "s", "e", listItemUuid = null)),

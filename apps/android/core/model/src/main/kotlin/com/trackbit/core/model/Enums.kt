@@ -73,3 +73,55 @@ enum class ExerciseLogCardStyle(override val wire: String?) : WireEnum {
 
     object Serializer : FallbackEnumSerializer<ExerciseLogCardStyle>("ExerciseLogCardStyle", entries, Unknown)
 }
+
+/** `EXERCISE_EQUIPMENT` in `@trackbit/types`; the app names each in the user's language. */
+@Serializable(with = ExerciseEquipment.Serializer::class)
+enum class ExerciseEquipment(override val wire: String?) : WireEnum {
+    Barbell("barbell"),
+    Dumbbell("dumbbell"),
+    Kettlebell("kettlebell"),
+    Machine("machine"),
+    Cable("cable"),
+    Bodyweight("bodyweight"),
+    Band("band"),
+    Bench("bench"),
+    PullUpBar("pull_up_bar"),
+    Other("other"),
+    Unknown(null);
+
+    object Serializer : FallbackEnumSerializer<ExerciseEquipment>("ExerciseEquipment", entries, Unknown)
+
+    companion object {
+        /** What the form offers, in this order. */
+        val FORM = entries - Unknown
+
+        fun of(wire: String?): ExerciseEquipment = Serializer.fromWire(wire)
+    }
+}
+
+/** `EXERCISE_DIFFICULTIES` in `@trackbit/types`. */
+@Serializable(with = ExerciseDifficulty.Serializer::class)
+enum class ExerciseDifficulty(override val wire: String?) : WireEnum {
+    Beginner("beginner"),
+    Intermediate("intermediate"),
+    Advanced("advanced"),
+    Unknown(null);
+
+    object Serializer : FallbackEnumSerializer<ExerciseDifficulty>("ExerciseDifficulty", entries, Unknown)
+
+    companion object {
+        val FORM = entries - Unknown
+
+        fun of(wire: String?): ExerciseDifficulty = Serializer.fromWire(wire)
+    }
+}
+
+/** `exercise_muscle_groups.role`: a primary group is what the exercise trains, a secondary one what it also works. */
+@Serializable(with = MuscleGroupRole.Serializer::class)
+enum class MuscleGroupRole(override val wire: String?) : WireEnum {
+    Primary("primary"),
+    Secondary("secondary"),
+    Unknown(null);
+
+    object Serializer : FallbackEnumSerializer<MuscleGroupRole>("MuscleGroupRole", entries, Unknown)
+}

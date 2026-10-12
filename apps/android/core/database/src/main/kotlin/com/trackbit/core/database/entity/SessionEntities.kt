@@ -97,3 +97,11 @@ data class LogWithSets(
     @Relation(parentColumn = "uuid", entityColumn = "logUuid")
     val sets: List<PerformanceEntity>,
 )
+
+/** A log with its sets and the day of its session. Sets are unordered. */
+data class DatedLog(
+    @Embedded val log: ExerciseLogEntity,
+    val localDay: LocalDate,
+    @Relation(parentColumn = "uuid", entityColumn = "logUuid")
+    val sets: List<PerformanceEntity>,
+)

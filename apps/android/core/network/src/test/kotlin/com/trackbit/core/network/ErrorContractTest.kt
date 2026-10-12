@@ -63,7 +63,10 @@ class ErrorContractTest {
         return (safeCall { habits.create(request) } as ApiResult.Failure).error
     }
 
-    private val exerciseRequest = ExerciseRequest("Dips", null, ExerciseCategory.Strength, listOf(1))
+    private val exerciseRequest = ExerciseRequest(
+        "Dips", null, ExerciseCategory.Strength, listOf(1),
+        instructions = null, tips = null, commonMistakes = null, equipment = emptyList(), difficulty = null, variantOfUuid = null,
+    )
 
     private suspend fun createExercise(): ApiError =
         (safeCall { exercises.createExercise(exerciseRequest) } as ApiResult.Failure).error

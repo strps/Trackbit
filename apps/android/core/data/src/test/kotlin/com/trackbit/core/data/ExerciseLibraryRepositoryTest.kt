@@ -1,6 +1,7 @@
 package com.trackbit.core.data
 
 import com.trackbit.core.model.ExerciseCategory
+import com.trackbit.core.model.ExerciseMediaRef
 import com.trackbit.core.model.ExerciseListItem
 import com.trackbit.core.model.ExerciseLogDetail
 import com.trackbit.core.model.ExercisePerformance
@@ -11,6 +12,8 @@ import com.trackbit.core.model.HabitSetsResponse
 import com.trackbit.core.model.HabitType
 import com.trackbit.core.model.MuscleGroup
 import com.trackbit.core.model.QueueEntry
+import com.trackbit.core.model.RecentLog
+import com.trackbit.core.model.SetValues
 import com.trackbit.core.network.service.ExerciseService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +31,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.io.IOException
 import java.time.Instant
+import java.time.LocalDate
 
 /**
  * The library reads Room's catalog. Its writes go to the server first and store the answer;
@@ -44,7 +48,11 @@ class ExerciseLibraryRepositoryTest {
     private val repository = DefaultExerciseLibraryRepository(db, exercises, sync, scope)
     private val sessions = DefaultSessionRepository(db, sync, FakeScheduler(), clock, FakeAuth())
 
-    private val request = ExerciseRequest("Dips", null, ExerciseCategory.Strength, listOf(1), uuid = ex(100))
+    private val request = ExerciseRequest(
+        "Dips", null, ExerciseCategory.Strength, listOf(1),
+        instructions = null, tips = null, commonMistakes = null, equipment = emptyList(), difficulty = null, variantOfUuid = null,
+        uuid = ex(100),
+    )
 
     @Before fun seed() = runTest {
         db.syncDao().applyToday(todayResponse(DAY, todayHabit(1, type = HabitType.Complex)))
@@ -153,5 +161,76 @@ class ExerciseLibraryRepositoryTest {
         synced()
 
         assertEquals("no catalog pull after a failure", 0, exercises.calls)
+    }
+
+    @Test fun `the info fields survive Room`() = runTest {
+        val info = exercise(10).copy(
+            instructions = listOf("Hinge", "Stand up"),
+            tips = null,
+            commonMistakes = listOf("Rounding the back"),
+            equipment = listOf("barbell"),
+            difficulty = "advanced",
+            variantOfUuid = ex(11),
+            recentLogs = listOf(serverLog("l-old", DAY.minusDays(7))),
+            media = listOf(ExerciseMediaRef("m-1", "https://blob.test/a.webp", animated = true, width = 4, height = 3, alt = null)),
+        )
+        db.syncDao().applyExercises(listOf(info, exercise(11)), clock.instant())
+
+        assertEquals(info, repository.exercises().first()?.first { it.uuid == ex(10) })
+        assertEquals(exercise(11), repository.exercises().first()?.first { it.uuid == ex(11) })
+    }
+
+    private fun serverLog(uuid: String, day: LocalDate, reps: Int = 5) =
+        RecentLog(uuid, day, listOf(SetValues(reps, 20.0, null, null, null)))
+
+    /** A session on [day] with one log of exercise 10 holding sets of [reps], given out of order. */
+    private suspend fun localLog(uuid: String, day: LocalDate, vararg reps: Int) {
+        val sets = reps.mapIndexed { i, r -> ExercisePerformance(0, "p-$uuid-$i", i + 1, 0, r, 20.0, null, null, null, Instant.EPOCH) }
+        val log = ExerciseLogDetail(
+            id = 0, uuid = uuid, exerciseUuid = ex(10), listItemUuid = null, createdAt = Instant.EPOCH,
+            distance = null, duration = null, distanceUnit = null, weightUnit = null, exercisePerformances = sets.reversed(),
+        )
+        db.syncDao().applySessions(h(1), day, listOf(ExerciseSessionDetail(0, "s-$uuid", 0, Instant.EPOCH, listOf(log))))
+    }
+
+    private suspend fun serverLogs(vararg logs: RecentLog) =
+        db.syncDao().applyExercises(listOf(exercise(10).copy(recentLogs = logs.toList()), exercise(11)), clock.instant())
+
+    @Test fun `last time is the server's latest log, skipping the one the sheet was opened from`() = runTest {
+        assertNull(repository.lastTime(ex(10), null).first())
+        serverLogs(serverLog("l-2", DAY.minusDays(2)), serverLog("l-1", DAY.minusDays(5)))
+
+        assertEquals("l-2", repository.lastTime(ex(10), null).first()?.uuid)
+        assertEquals("l-1", repository.lastTime(ex(10), exceptLogUuid = "l-2").first()?.uuid)
+    }
+
+    @Test fun `a newer log in Room wins, with its sets in order`() = runTest {
+        serverLogs(serverLog("l-server", DAY.minusDays(5)))
+        localLog("l-offline", DAY.minusDays(1), 8, 6, 4)
+
+        val last = repository.lastTime(ex(10), null).first()
+        assertEquals("l-offline", last?.uuid)
+        assertEquals(DAY.minusDays(1), last?.localDay)
+        assertEquals(listOf(8, 6, 4), last?.sets?.map { it.reps })
+    }
+
+    @Test fun `Room's copy of the same day wins, an older one loses`() = runTest {
+        serverLogs(serverLog("l-1", DAY.minusDays(1), reps = 5))
+        localLog("l-1", DAY.minusDays(1), 9)
+        assertEquals(listOf(9), repository.lastTime(ex(10), null).first()?.sets?.map { it.reps })
+
+        localLog("l-old", DAY.minusDays(9), 3)
+        serverLogs(serverLog("l-new", DAY.minusDays(1)))
+        db.syncDao().applySessions(h(1), DAY.minusDays(1), emptyList())
+        assertEquals("l-new", repository.lastTime(ex(10), null).first()?.uuid)
+    }
+
+    @Test fun `the open log and logs without sets are skipped in Room too`() = runTest {
+        localLog("l-today", DAY, 5)
+        localLog("l-empty", DAY.minusDays(1))
+        localLog("l-before", DAY.minusDays(2), 7)
+
+        assertEquals("l-today", repository.lastTime(ex(10), null).first()?.uuid)
+        assertEquals("l-before", repository.lastTime(ex(10), exceptLogUuid = "l-today").first()?.uuid)
     }
 }

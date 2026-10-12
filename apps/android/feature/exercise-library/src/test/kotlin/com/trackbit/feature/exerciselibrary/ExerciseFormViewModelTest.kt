@@ -3,6 +3,8 @@ package com.trackbit.feature.exerciselibrary
 import androidx.lifecycle.SavedStateHandle
 import com.trackbit.core.data.ConfigError
 import com.trackbit.core.model.ExerciseCategory
+import com.trackbit.core.model.ExerciseDifficulty
+import com.trackbit.core.model.ExerciseEquipment
 import com.trackbit.core.model.ExerciseRequest
 import com.trackbit.core.model.ExerciseRules
 import com.trackbit.core.model.MuscleGroupRef
@@ -18,6 +20,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -34,8 +37,22 @@ class ExerciseFormViewModelTest {
             exercise(5, "Bench", category = "strength"),
             exercise(7, "Dips", mine = true, category = "cardio", description = "Lean forward", muscles = listOf(MuscleGroupRef(1, "Chest")), logged = true),
             exercise(8, "Old", mine = true, frozen = true),
+            exercise(9, "Smith bench", mine = true).copy(
+                instructions = listOf("Set the safeties", "Press"),
+                tips = listOf("Elbows at 45°"),
+                equipment = listOf("machine", "bench", "hoverboard"),
+                difficulty = "beginner",
+                variantOfUuid = exerciseUuid(5),
+            ),
         )
     }
+
+    /** A request with no info fields, as a form that never touched them sends. */
+    private fun request(name: String, description: String?, category: ExerciseCategory, muscleGroups: List<Int>) =
+        ExerciseRequest(
+            name, description, category, muscleGroups,
+            instructions = null, tips = null, commonMistakes = null, equipment = emptyList(), difficulty = null, variantOfUuid = null,
+        )
 
     @After fun tearDown() = Dispatchers.resetMain()
 
@@ -57,7 +74,7 @@ class ExerciseFormViewModelTest {
         advanceUntilIdle()
 
         val created = repository.created.single()
-        assertEquals(ExerciseRequest("Dips", null, ExerciseCategory.Flexibility, listOf(1, 2)), created.copy(uuid = null))
+        assertEquals(request("Dips", null, ExerciseCategory.Flexibility, listOf(1, 2)), created.copy(uuid = null))
         assertNotNull(created.uuid)
         assertTrue(viewModel.state.value.done)
     }
@@ -102,7 +119,7 @@ class ExerciseFormViewModelTest {
         viewModel.toggleMuscleGroup(1)
         viewModel.save()
         advanceUntilIdle()
-        assertEquals(exerciseUuid(7) to ExerciseRequest("Dips", "Lean forward", ExerciseCategory.Cardio, emptyList()), repository.updated.single())
+        assertEquals(exerciseUuid(7) to request("Dips", "Lean forward", ExerciseCategory.Cardio, emptyList()), repository.updated.single())
     }
 
     @Test fun `a system exercise or a missing one doesn't open`() = runTest(dispatcher) {
@@ -146,5 +163,40 @@ class ExerciseFormViewModelTest {
         advanceUntilIdle()
         assertTrue(viewModel.state.value.frozen)
         assertEquals(ExerciseFormMessage.Frozen, viewModel.state.value.message)
+    }
+
+    @Test fun `an edit sends the exercise's info back, minus equipment this build doesn't know`() = runTest(dispatcher) {
+        val viewModel = form(9)
+        viewModel.edit { it.copy(name = "Smith press") }
+        viewModel.save()
+        advanceUntilIdle()
+
+        val sent = repository.updated.single().second
+        assertEquals(listOf("Set the safeties", "Press"), sent.instructions)
+        assertEquals(listOf("Elbows at 45°"), sent.tips)
+        assertNull(sent.commonMistakes)
+        assertEquals(listOf(ExerciseEquipment.Machine, ExerciseEquipment.Bench), sent.equipment)
+        assertEquals(ExerciseDifficulty.Beginner, sent.difficulty)
+        assertEquals(exerciseUuid(5), sent.variantOfUuid)
+    }
+
+    @Test fun `blank steps are dropped, and a list left blank is cleared`() = runTest(dispatcher) {
+        val viewModel = form(9)
+        viewModel.edit { it.copy(instructions = listOf(" Set the safeties ", "  ", "Press"), tips = listOf(" ")) }
+        viewModel.save()
+        advanceUntilIdle()
+
+        val sent = repository.updated.single().second
+        assertEquals(listOf("Set the safeties", "Press"), sent.instructions)
+        assertNull(sent.tips)
+    }
+
+    @Test fun `too many steps is a problem`() = runTest(dispatcher) {
+        val viewModel = form()
+        viewModel.edit { it.copy(name = "Dips", commonMistakes = List(ExerciseRules.STEPS_MAX + 1) { "Shrugging $it" }) }
+        viewModel.save()
+        advanceUntilIdle()
+        assertEquals(setOf(ExerciseRules.Problem.CommonMistakes), viewModel.state.value.form.problems)
+        assertTrue(repository.created.isEmpty())
     }
 }

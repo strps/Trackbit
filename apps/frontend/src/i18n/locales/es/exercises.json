@@ -66,7 +66,7 @@
   "info.about": "Descripción",
   "info.variants": "Variantes",
   "info.set_number": "Serie {n}",
-  "info.set_reps": "{count, plural, one {# rep.} other {# reps.}}",
+  "info.set_reps": "{count, plural, one {# rep.} many {# de reps.} other {# reps.}}",
   "info.set_distance_km": "{distance} km",
   "info.set_rpe": "RPE {rpe}",
   "equipment.barbell": "Barra",

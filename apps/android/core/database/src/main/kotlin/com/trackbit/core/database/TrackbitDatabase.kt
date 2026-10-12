@@ -50,11 +50,13 @@ import com.trackbit.core.database.entity.TimerEntity
         HabitSetEntity::class, HabitSetPullEntity::class, ExerciseListEntity::class, ExerciseListItemEntity::class,
         MuscleGroupEntity::class, LimitsEntity::class, ConfigPullEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = true,
     autoMigrations = [
         // The config tables; habits.summaryDay became nullable and habits/exercises gained columns.
         AutoMigration(from = 9, to = 10),
+        // Exercises' info sheet fields (instructions, tips, equipment, variant, recent logs, media).
+        AutoMigration(from = 10, to = 11, spec = Migrations.From10To11::class),
     ],
 )
 @TypeConverters(Converters::class)

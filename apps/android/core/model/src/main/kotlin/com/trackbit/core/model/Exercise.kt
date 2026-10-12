@@ -1,8 +1,10 @@
 package com.trackbit.core.model
 
 import com.trackbit.core.model.serialization.InstantSerializer
+import com.trackbit.core.model.serialization.LocalDateSerializer
 import kotlinx.serialization.Serializable
 import java.time.Instant
+import java.time.LocalDate
 
 /** A row of `GET /api/exercise-info/exercises`: system exercises plus the user's own. */
 @Serializable
@@ -21,13 +23,59 @@ data class Exercise(
     val defaultDistanceUnit: String?,
     /** The user's most recent set of this exercise, or null if they never logged one. */
     val lastPerformance: LastPerformance?,
-    /** Named in the user's locale, like [name]. */
+    /** Named in the user's locale, like [name]; primary ones first. */
     val muscleGroups: List<MuscleGroupRef> = emptyList(),
     val frozen: Boolean = false,
+    /** Ordered steps, localized like [name]; null when it has none (never empty). */
+    val instructions: List<String>? = null,
+    /** Helpful cues; like [instructions]. */
+    val tips: List<String>? = null,
+    /** What to avoid; like [instructions]. */
+    val commonMistakes: List<String>? = null,
+    /** [ExerciseEquipment] wire names, which the app translates. */
+    val equipment: List<String> = emptyList(),
+    /** An [ExerciseDifficulty] wire name; null when unrated. */
+    val difficulty: String? = null,
+    /** The base exercise this is a variant of (one level deep); null for a base. */
+    val variantOfUuid: String? = null,
+    /**
+     * The user's two most recent logs of it that have sets, newest first. Two, so a sheet opened
+     * from today's log can still show the time before.
+     */
+    val recentLogs: List<RecentLog> = emptyList(),
+    /** Images (static or animated), cover first; empty when it has none. */
+    val media: List<ExerciseMediaRef> = emptyList(),
 )
 
 @Serializable
-data class MuscleGroupRef(val id: Int, val name: String)
+data class MuscleGroupRef(
+    val id: Int,
+    val name: String,
+    /** Primary unless the server says otherwise; rows cached before roles existed have none. */
+    val role: MuscleGroupRole = MuscleGroupRole.Primary,
+)
+
+/** One of [Exercise.recentLogs]: a log of the exercise and its sets, in order. */
+@Serializable
+data class RecentLog(
+    val uuid: String,
+    /** The user's day it was logged on. */
+    @Serializable(with = LocalDateSerializer::class) val localDay: LocalDate,
+    val sets: List<SetValues>,
+)
+
+/** One of [Exercise.media]: an image, static or an animated WebP (which loops). */
+@Serializable
+data class ExerciseMediaRef(
+    val uuid: String,
+    /** Public; no auth needed to load it. */
+    val url: String,
+    val animated: Boolean,
+    val width: Int,
+    val height: Int,
+    /** Localized like [Exercise.name]; null when it has none. */
+    val alt: String?,
+)
 
 /** A row of `GET /api/exercise-info/muscle-groups`: the shared taxonomy, named in the request's locale. */
 @Serializable

@@ -4,13 +4,16 @@ import androidx.room.TypeConverter
 import com.trackbit.core.model.ColorStop
 import com.trackbit.core.model.ColorStopSerializer
 import com.trackbit.core.model.ColorTheme
+import com.trackbit.core.model.ExerciseMediaRef
 import com.trackbit.core.model.HabitIcon
 import com.trackbit.core.model.HabitType
 import com.trackbit.core.model.MuscleGroupRef
 import com.trackbit.core.model.QueueEmptyReason
+import com.trackbit.core.model.RecentLog
 import com.trackbit.core.model.serialization.TrackbitJson
 import com.trackbit.core.model.serialization.WireEnum
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 import java.time.Instant
 import java.time.LocalDate
 
@@ -34,6 +37,16 @@ internal class Converters {
     @TypeConverter fun muscleGroupsToJson(value: List<MuscleGroupRef>): String = TrackbitJson.encodeToString(muscleGroups, value)
     @TypeConverter fun jsonToMuscleGroups(value: String): List<MuscleGroupRef> = TrackbitJson.decodeFromString(muscleGroups, value)
 
+    /** Step lists and equipment. Null stays SQL NULL, so a missing list never reads back as an empty one. */
+    @TypeConverter fun stringsToJson(value: List<String>?): String? = value?.let { TrackbitJson.encodeToString(strings, it) }
+    @TypeConverter fun jsonToStrings(value: String?): List<String>? = value?.let { TrackbitJson.decodeFromString(strings, it) }
+
+    @TypeConverter fun recentLogsToJson(value: List<RecentLog>): String = TrackbitJson.encodeToString(recentLogs, value)
+    @TypeConverter fun jsonToRecentLogs(value: String): List<RecentLog> = TrackbitJson.decodeFromString(recentLogs, value)
+
+    @TypeConverter fun mediaToJson(value: List<ExerciseMediaRef>): String = TrackbitJson.encodeToString(media, value)
+    @TypeConverter fun jsonToMedia(value: String): List<ExerciseMediaRef> = TrackbitJson.decodeFromString(media, value)
+
     @TypeConverter fun habitTypeToWire(value: HabitType): String = value.stored()
     @TypeConverter fun wireToHabitType(value: String): HabitType = HabitType.Serializer.fromWire(value)
 
@@ -56,5 +69,8 @@ internal class Converters {
     private companion object {
         val colorStops = ListSerializer(ColorStopSerializer)
         val muscleGroups = ListSerializer(MuscleGroupRef.serializer())
+        val strings = ListSerializer(String.serializer())
+        val recentLogs = ListSerializer(RecentLog.serializer())
+        val media = ListSerializer(ExerciseMediaRef.serializer())
     }
 }

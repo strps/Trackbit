@@ -149,12 +149,56 @@ class DecodeTest {
         assertEquals(Instant.parse("2026-01-01T00:00:00Z"), last.createdAt)
     }
 
+    @Test fun `exercise info, recent logs and media`() {
+        val exercises = contract<List<Exercise>>("exercises.json").associateBy { it.name }
+        val bench = exercises.getValue("Bench Press")
+        assertEquals(listOf("Plant your feet", "Lower the bar to your chest", "Press up"), bench.instructions)
+        assertEquals(listOf("Squeeze your shoulder blades"), bench.tips)
+        assertEquals(listOf("Bouncing the bar"), bench.commonMistakes)
+        assertEquals(listOf(ExerciseEquipment.Barbell, ExerciseEquipment.Bench), bench.equipment.map(ExerciseEquipment::of))
+        assertEquals(ExerciseDifficulty.Intermediate, ExerciseDifficulty.of(bench.difficulty))
+        assertEquals(MuscleGroupRole.Primary, bench.muscleGroups.single().role)
+        assertEquals(
+            listOf(
+                ExerciseMediaRef("00000000-0000-4000-8000-000000000090", "https://blob.test/exercises/bench/cover.webp", true, 480, 360, "Bench press, side view"),
+                ExerciseMediaRef("00000000-0000-4000-8000-000000000091", "https://blob.test/exercises/bench/grip.jpg", false, 800, 600, null),
+            ),
+            bench.media,
+        )
+        assertEquals(emptyList<RecentLog>(), bench.recentLogs)
+
+        val row = exercises.getValue("My row")
+        assertNull(row.instructions)
+        assertEquals(emptyList<String>(), row.equipment)
+        assertNull(row.difficulty)
+        assertNull(row.variantOfUuid)
+        assertEquals(
+            listOf(
+                RecentLog(
+                    "00000000-0000-4000-8000-000000000002",
+                    day("2026-01-10"),
+                    listOf(
+                        SetValues(reps = 8, weight = 60.5, duration = null, distance = null, rpe = null),
+                        SetValues(reps = 6, weight = 62.5, duration = 45_000, distance = 1.25, rpe = 8),
+                    ),
+                ),
+            ),
+            row.recentLogs,
+        )
+    }
+
     @Test fun `custom exercise writes answer a library row`() {
         val created = contract<Exercise>("exercise-created.json")
         assertEquals("Lean forward", created.description)
         assertEquals(listOf(MuscleGroupRef(1, "Chest")), created.muscleGroups)
         assertFalse(created.frozen)
+        assertEquals("ffffffff-0000-4000-8000-000000000001", created.variantOfUuid)
+        assertEquals(listOf("Grip the bars", "Lower until your shoulders pass your elbows"), created.instructions)
+        assertEquals(ExerciseDifficulty.Advanced, ExerciseDifficulty.of(created.difficulty))
         val updated = contract<Exercise>("exercise-updated.json")
+        assertNull(updated.variantOfUuid)
+        assertNull(updated.tips)
+        assertEquals(listOf("Shrugging"), updated.commonMistakes)
         assertNull(updated.description)
         assertEquals(ExerciseCategory.Cardio, ExerciseCategory.of(updated.category))
         assertEquals(emptyList<MuscleGroupRef>(), updated.muscleGroups)

@@ -10,6 +10,8 @@ import com.trackbit.core.data.SyncResult
 import com.trackbit.core.data.newUuid
 import com.trackbit.core.model.Exercise
 import com.trackbit.core.model.ExerciseCategory
+import com.trackbit.core.model.ExerciseDifficulty
+import com.trackbit.core.model.ExerciseEquipment
 import com.trackbit.core.model.ExerciseRequest
 import com.trackbit.core.model.ExerciseRules
 import com.trackbit.core.model.MuscleGroup
@@ -28,19 +30,52 @@ data class ExerciseForm(
     val description: String = "",
     val category: ExerciseCategory = ExerciseCategory.Strength,
     val muscleGroups: Set<Int> = emptySet(),
+    /** Entries as typed, blank ones included; the request drops those. */
+    val instructions: List<String> = emptyList(),
+    val tips: List<String> = emptyList(),
+    val commonMistakes: List<String> = emptyList(),
+    val equipment: Set<ExerciseEquipment> = emptySet(),
+    val difficulty: ExerciseDifficulty? = null,
+    val variantOfUuid: String? = null,
 ) {
-    val problems: Set<ExerciseRules.Problem> get() = ExerciseRules.problems(name, description, category)
+    val problems: Set<ExerciseRules.Problem>
+        get() = ExerciseRules.problems(
+            name, description, category,
+            ExerciseRules.steps(instructions), ExerciseRules.steps(tips), ExerciseRules.steps(commonMistakes),
+            equipment.toList(), difficulty,
+        )
 
-    /** Null while [problems] isn't empty. A blank description clears it. */
+    /** Null while [problems] isn't empty. A blank description or step list clears it. */
     fun request(): ExerciseRequest? = if (problems.isNotEmpty()) null else
-        ExerciseRequest(name.trim(), description.trim().ifEmpty { null }, category, muscleGroups.sorted())
+        ExerciseRequest(
+            name = name.trim(),
+            description = description.trim().ifEmpty { null },
+            category = category,
+            muscleGroups = muscleGroups.sorted(),
+            instructions = ExerciseRules.steps(instructions),
+            tips = ExerciseRules.steps(tips),
+            commonMistakes = ExerciseRules.steps(commonMistakes),
+            equipment = ExerciseEquipment.FORM.filter { it in equipment },
+            difficulty = difficulty,
+            variantOfUuid = variantOfUuid,
+        )
 
     companion object {
+        /**
+         * Equipment or a difficulty this build doesn't know is left out, so saving drops it; the
+         * vocabularies are checked against `@trackbit/types` at build time.
+         */
         fun of(exercise: Exercise) = ExerciseForm(
             name = exercise.name,
             description = exercise.description.orEmpty(),
             category = ExerciseCategory.of(exercise.category).takeIf { it in ExerciseCategory.FORM } ?: ExerciseCategory.Strength,
             muscleGroups = exercise.muscleGroups.map { it.id }.toSet(),
+            instructions = exercise.instructions.orEmpty(),
+            tips = exercise.tips.orEmpty(),
+            commonMistakes = exercise.commonMistakes.orEmpty(),
+            equipment = exercise.equipment.map(ExerciseEquipment::of).filter { it in ExerciseEquipment.FORM }.toSet(),
+            difficulty = ExerciseDifficulty.of(exercise.difficulty).takeIf { it in ExerciseDifficulty.FORM },
+            variantOfUuid = exercise.variantOfUuid,
         )
     }
 }

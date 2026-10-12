@@ -8,6 +8,8 @@ import com.trackbit.core.model.EffectiveLimits
 import com.trackbit.core.model.Exercise
 import com.trackbit.core.model.ExerciseRequest
 import com.trackbit.core.model.MuscleGroup
+import com.trackbit.core.model.RecentLog
+import com.trackbit.core.model.SetValues
 import com.trackbit.core.network.ApiResult
 import com.trackbit.core.network.service.ExerciseService
 import kotlinx.coroutines.CoroutineScope
@@ -31,6 +33,13 @@ interface ExerciseLibraryRepository {
 
     /** The role's caps; null when nothing is capped, or until they're pulled. */
     fun limits(): Flow<EffectiveLimits?>
+
+    /**
+     * The latest log of [exerciseUuid] with sets, other than [exceptLogUuid] (the log the info
+     * sheet was opened from): the server's, or a newer one in Room (logged offline, or since the
+     * last pull). Null when it was never performed.
+     */
+    fun lastTime(exerciseUuid: String, exceptLogUuid: String?): Flow<RecentLog?>
 
     /** Pulls the catalog, the muscle groups and the limits into Room. */
     suspend fun refresh(): SyncResult
@@ -68,6 +77,20 @@ internal class DefaultExerciseLibraryRepository @Inject constructor(
 
     override fun limits(): Flow<EffectiveLimits?> = config.observeLimits().map { it?.effective }
 
+    override fun lastTime(exerciseUuid: String, exceptLogUuid: String?): Flow<RecentLog?> =
+        combine(
+            db.exerciseDao().observe(exerciseUuid),
+            db.sessionDao().observeLatestLog(exerciseUuid, exceptLogUuid),
+        ) { exercise, local ->
+            latestLog(
+                server = exercise?.recentLogs.orEmpty().firstOrNull { it.uuid != exceptLogUuid },
+                local = local?.let { dated ->
+                    val sets = dated.sets.sortedBy { it.number }.map { SetValues(it.reps, it.weight, it.duration, it.distance, it.rpe) }
+                    RecentLog(dated.log.uuid, dated.localDay, sets)
+                },
+            )
+        }
+
     override suspend fun refresh() = sync.syncConfig(ConfigPart.Exercises, ConfigPart.MuscleGroups, ConfigPart.Limits)
 
     override suspend fun create(request: ExerciseRequest): ConfigResult<Exercise> {
@@ -89,4 +112,15 @@ internal class DefaultExerciseLibraryRepository @Inject constructor(
         }
         return result.toConfigResult()
     }
+}
+
+/**
+ * The newer of the two. Room's copy wins a tie: it is the same log with any offline edits, or
+ * one logged that day which the server hasn't answered for yet.
+ */
+internal fun latestLog(server: RecentLog?, local: RecentLog?): RecentLog? = when {
+    server == null -> local
+    local == null -> server
+    local.localDay >= server.localDay -> local
+    else -> server
 }

@@ -23,7 +23,7 @@ Android 411 tests (414 − 7 removed 1→8 migration tests + 4 new), 0 lint issu
 | **F2** | Android identity: DTOs, Room v9, outbox, widgets, repositories, features and nav by uuid. No behaviour change | ✅ 2026-10-06 (422c3c1) |
 | **F3** | Room holds the whole config; config screens read Room | ✅ 2026-10-06 (f66728c) |
 | **F4** | Config outbox (field-level ops, per-row dependencies, failed state) + habits through it | next |
-| **F5** | Exercise library through the outbox | |
+| **F5** | Exercise library through the outbox, **with the info fields** (`instructions`, `tips`, `commonMistakes`, `equipment`, `difficulty`, `variantOfUuid`: exercise-info Phase 4) as LWW fields | |
 | **F6** | Lists through the outbox; offline-created lists as sources | |
 | **F7** | Preferences through the outbox | |
 | **F8** | Failed-create UX, offline exit check | |
@@ -115,7 +115,7 @@ Read plan §4 F4. Room and the screens are ready: the screens follow Room, and a
 
 - **No int id of a habit, exercise, list or list item on Android** (F-D1). DTOs don't declare `id` for them; a new DTO that references one declares the uuid field only. Muscle groups, sessions' `dayLogId`/`exerciseSessionId` and `LastPerformance.id` are not such rows.
 - **A create's uuid is picked once per user intent** (form: `SavedStateHandle`; dialog: `ListForm.newUuid`; append, session, log, set: at the write) and reused by every retry of it.
-- **Room changes need a migration from v9 on**; the destructive fallback covers only 1–8.
+- **Room changes need a migration from v9 on**; the destructive fallback covers only 1–8. Room is at **v11** on `feat/exercise-info` (exercise info columns, [exercise-info.md](../tasks/exercise-info.md) Phase 4); F4 starts from there.
 - **Rows a client may create offline carry a client-chosen `uuid`** (habits, exercises, lists, list items; sessions, logs, sets since D2). A create given one is idempotent and answers 201 with the first row, checked **before** limits; another user's uuid is 409 `uuid_conflict`. New such tables follow [uuid-refs.ts](../../../apps/backend/src/lib/uuid-refs.ts).
 - **Every route the app calls takes the uuid form**, exactly one of id/uuid (`oneOf`), resolved among the rows the user may see; an unknown or foreign uuid answers like an unknown id (404, or the route's own "not found"/"not available" error). Keep the int forms for the web.
 - **Responses carry the uuid beside each int reference the app reads** (`habitUuid`, `exerciseUuid`, `listItemUuid`, `listUuid`). Adding a reference the app reads means adding its uuid too.

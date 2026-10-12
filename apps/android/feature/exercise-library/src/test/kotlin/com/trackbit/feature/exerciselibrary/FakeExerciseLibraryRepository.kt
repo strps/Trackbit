@@ -10,8 +10,10 @@ import com.trackbit.core.model.ExerciseRequest
 import com.trackbit.core.model.LastPerformance
 import com.trackbit.core.model.MuscleGroup
 import com.trackbit.core.model.MuscleGroupRef
+import com.trackbit.core.model.RecentLog
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.yield
 
 /**
@@ -39,6 +41,11 @@ class FakeExerciseLibraryRepository : ExerciseLibraryRepository {
     override fun muscleGroups(): Flow<List<MuscleGroup>?> = roomGroups
 
     override fun limits(): Flow<EffectiveLimits?> = roomLimits
+
+    /** The server's latest log only: the fake has no local logs. */
+    override fun lastTime(exerciseUuid: String, exceptLogUuid: String?): Flow<RecentLog?> = room.map { rows ->
+        rows?.find { it.uuid == exerciseUuid }?.recentLogs?.firstOrNull { it.uuid != exceptLogUuid }
+    }
 
     override suspend fun refresh(): SyncResult {
         yield()

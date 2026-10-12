@@ -5,8 +5,10 @@ import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.trackbit.core.model.Exercise
+import com.trackbit.core.model.ExerciseMediaRef
 import com.trackbit.core.model.LastPerformance
 import com.trackbit.core.model.MuscleGroupRef
+import com.trackbit.core.model.RecentLog
 import java.time.Instant
 
 /**
@@ -30,6 +32,17 @@ data class ExerciseEntity(
     @ColumnInfo(defaultValue = "[]") val muscleGroups: List<MuscleGroupRef>,
     /** The user's most recent set of it on the server; null if they never logged one. */
     @Embedded(prefix = "last_") val lastPerformance: LastPerformanceColumns?,
+    // The info sheet's fields, as [Exercise] has them. Step lists are JSON, null when it has none.
+    val instructions: List<String>?,
+    val tips: List<String>?,
+    val commonMistakes: List<String>?,
+    @ColumnInfo(defaultValue = "[]") val equipment: List<String>,
+    val difficulty: String?,
+    /** Not a foreign key, like [ExerciseLogEntity.exerciseUuid]: the catalog is replaced wholesale. */
+    val variantOfUuid: String?,
+    /** The server's two latest logs of it with sets; Room's own logs may be newer (offline). */
+    @ColumnInfo(defaultValue = "[]") val recentLogs: List<RecentLog>,
+    @ColumnInfo(defaultValue = "[]") val media: List<ExerciseMediaRef>,
 ) {
     fun toExercise() = Exercise(
         uuid = uuid,
@@ -44,6 +57,14 @@ data class ExerciseEntity(
         },
         muscleGroups = muscleGroups,
         frozen = frozen,
+        instructions = instructions,
+        tips = tips,
+        commonMistakes = commonMistakes,
+        equipment = equipment,
+        difficulty = difficulty,
+        variantOfUuid = variantOfUuid,
+        recentLogs = recentLogs,
+        media = media,
     )
 
     companion object {
@@ -74,4 +95,12 @@ fun Exercise.toEntity() = ExerciseEntity(
     lastPerformance = lastPerformance?.let {
         LastPerformanceColumns(it.id, it.weight, it.reps, it.distance, it.duration, it.createdAt, it.rpe)
     },
+    instructions = instructions,
+    tips = tips,
+    commonMistakes = commonMistakes,
+    equipment = equipment,
+    difficulty = difficulty,
+    variantOfUuid = variantOfUuid,
+    recentLogs = recentLogs,
+    media = media,
 )

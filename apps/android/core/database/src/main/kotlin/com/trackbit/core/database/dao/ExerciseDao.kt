@@ -12,5 +12,8 @@ interface ExerciseDao {
     fun observeAll(): Flow<List<ExerciseEntity>>
 
     @Query("SELECT * FROM exercises WHERE uuid = :uuid")
+    fun observe(uuid: String): Flow<ExerciseEntity?>
+
+    @Query("SELECT * FROM exercises WHERE uuid = :uuid")
     suspend fun get(uuid: String): ExerciseEntity?
 }

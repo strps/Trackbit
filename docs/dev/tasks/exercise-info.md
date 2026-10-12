@@ -197,10 +197,12 @@ Notes: uploads use a plain client token instead of `handleUpload`. `POST …/med
 
 Coordinate with the Kotlin plan ([kotlin-app-F.md](../handoffs/kotlin-app-F.md)). F5 moves exercise writes to the outbox with per-field LWW, so `instructions` and `variantOfUuid` must be fields in that model. Land this phase after F5, or add the fields to F5's scope. Don't build a second write path.
 
-- [ ] `core/model` `Exercise`: `instructions`, `tips`, `commonMistakes` (`List<String>? = null`), `equipment: List<String> = emptyList()`, `difficulty: String? = null`, `variantOfUuid: String? = null`, `recentLogs: List<RecentLog> = emptyList()`, `media: List<ExerciseMediaRef> = emptyList()`.
-- [ ] `ExerciseEntity` + converters + Room **v10 → v11** migration (new columns, JSON defaults) + `MigrationTest`. The sheet's "Last time" prefers a newer local log from Room (logged offline) over the server's `recentLogs`.
-- [ ] `ExerciseRules`: instruction limits mirrored from the server; `ExerciseRequest` carries the new fields.
-- [ ] Repository / sync tests updated.
+- [x] `core/model` `Exercise`: `instructions`, `tips`, `commonMistakes` (`List<String>? = null`), `equipment: List<String> = emptyList()`, `difficulty: String? = null`, `variantOfUuid: String? = null`, `recentLogs: List<RecentLog> = emptyList()`, `media: List<ExerciseMediaRef> = emptyList()`.
+- [x] `ExerciseEntity` + converters + Room **v10 → v11** migration (new columns, JSON defaults) + `MigrationTest`. The sheet's "Last time" prefers a newer local log from Room (logged offline) over the server's `recentLogs`.
+- [x] `ExerciseRules`: instruction limits mirrored from the server; `ExerciseRequest` carries the new fields.
+- [x] Repository / sync tests updated.
+
+Notes: F4/F5 hadn't started, so the fields went into the one write path that exists (online, storing the answer), and F5's scope now lists them ([kotlin-app-F.md](../handoffs/kotlin-app-F.md)); no second path. `ExerciseRequest` sends every info field each time with no defaults, null included, so a clear is never dropped, and the form carries an exercise's info through `ExerciseForm.of`, so an Android edit never wipes what the web set. The DTO keeps wire strings like `category`; the form and request use `ExerciseEquipment` / `ExerciseDifficulty` (fallback `Unknown`, refused by `ExerciseRules`; a value this build doesn't know is dropped on save). `generate.mjs --check` fails when those enums or `ExerciseRules.STEPS_MAX` / `STEP_LENGTH_MAX` drift from `@trackbit/types`. `MuscleGroupRef` gained `role` (`MuscleGroupRole`, default `Primary` for rows cached before it). Room v11 is an AutoMigration whose spec marks the exercises pull as due, so the next sync fills the new columns. "Last time" is `ExerciseLibraryRepository.lastTime(exerciseUuid, exceptLogUuid)`: the server's first `recentLogs` entry that isn't the open log, or Room's newest log of it with sets (`SessionDao.observeLatestLog`) when that is on the same day or later (Room wins a tie). `invalid_variant_of` stays a plain `ApiError.Validation`, like `muscle_group_not_found`: the form only offers valid bases, and Phase 5 shows the server's message. The web's Spanish `info.set_reps` gained its `many` branch (Android lint asks for it, as in the other plurals).
 
 ### Phase 5 — Android: info sheet
 

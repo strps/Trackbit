@@ -7,7 +7,8 @@
 //   icons     HABIT_ICON_IDS + the web's lucide registry      → core/designsystem drawable/ic_habit_*.xml
 //             UI_ICONS (the lucide icons the web's screens use) → core/designsystem drawable/ic_ui_*.xml
 //
-// It also fails when the handwritten HabitIcon / ColorTheme enums no longer match @trackbit/types.
+// It also fails when the handwritten HabitIcon / ColorTheme / ExerciseEquipment / ExerciseDifficulty
+// enums or ExerciseRules' step limits no longer match @trackbit/types.
 //
 // Usage (from the repo root, after `pnpm install` and `pnpm --filter @trackbit/types build`):
 //   node apps/android/scripts/generate.mjs           write the outputs
@@ -323,13 +324,25 @@ function enumWires(name) {
 }
 
 function checkEnums(types) {
-    for (const [name, expected] of [['HabitIcon', types.HABIT_ICON_IDS], ['ColorTheme', types.COLOR_THEMES]]) {
+    const enums = [
+        ['HabitIcon', types.HABIT_ICON_IDS],
+        ['ColorTheme', types.COLOR_THEMES],
+        ['ExerciseEquipment', types.EXERCISE_EQUIPMENT],
+        ['ExerciseDifficulty', types.EXERCISE_DIFFICULTIES],
+    ];
+    for (const [name, expected] of enums) {
         const actual = enumWires(name);
         const missing = expected.filter((v) => !actual.includes(v));
         const extra = actual.filter((v) => !expected.includes(v));
         if (missing.length || extra.length) {
             fail(`core:model ${name} doesn't match @trackbit/types: missing [${missing}], extra [${extra}]`);
         }
+    }
+
+    const rules = readFileSync(join(MODEL_SRC, 'ExerciseRequests.kt'), 'utf8');
+    for (const [name, expected] of [['STEPS_MAX', types.STEP_LIST_MAX_ENTRIES], ['STEP_LENGTH_MAX', types.STEP_LIST_ENTRY_MAX_LENGTH]]) {
+        const actual = Number(new RegExp(`const val ${name} = (\\d+)`).exec(rules)?.[1]);
+        if (actual !== expected) fail(`core:model ExerciseRules.${name} is ${actual}, @trackbit/types says ${expected}`);
     }
 }
 
