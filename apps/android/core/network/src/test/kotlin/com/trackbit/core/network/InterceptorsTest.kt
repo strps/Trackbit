@@ -7,6 +7,8 @@ import com.trackbit.core.network.service.HabitsService
 import com.trackbit.core.network.service.TrackerService
 import com.trackbit.core.network.service.session
 import kotlinx.coroutines.test.runTest
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -54,6 +56,18 @@ class InterceptorsTest {
         server.service<AuthService>().session(token = "candidate")
         assertEquals("Bearer candidate", server.takeRequest().headers["Authorization"])
         assertTrue(tokens.rejected.isEmpty())
+    }
+
+    @Test fun `the client it is built on sends no token`() = runTest {
+        tokens.token = "abc.sig"
+        val public = OkHttpClient()
+        val api = public.withTrackbitHeaders(tokens, RequestLanguage.Device)
+        server.enqueue(200)
+        server.enqueue(200)
+        api.newCall(Request(server.server.url("/api"))).execute().close()
+        public.newCall(Request(server.server.url("/media.webp"))).execute().close()
+        assertEquals("Bearer abc.sig", server.takeRequest().headers["Authorization"])
+        assertNull(server.takeRequest().headers["Authorization"])
     }
 
     @Test fun `sends the request language as Accept-Language`() = runTest {

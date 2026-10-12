@@ -5,6 +5,10 @@ import com.trackbit.core.designsystem.component.ListTarget
 import com.trackbit.core.designsystem.component.ListTargets
 import com.trackbit.core.model.EffectiveLimits
 import com.trackbit.core.model.MuscleGroupRef
+import com.trackbit.core.model.RecentLog
+import com.trackbit.core.model.UnitSystem
+import java.time.LocalDate
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -25,6 +29,7 @@ import org.junit.Test
 class ExerciseLibraryViewModelTest {
     private val repository = FakeExerciseLibraryRepository()
     private val lists = FakeExerciseListsRepository()
+    private val auth = FakeAuthRepository()
     private val dispatcher = StandardTestDispatcher()
 
     private val chest = MuscleGroupRef(1, "Chest")
@@ -45,7 +50,7 @@ class ExerciseLibraryViewModelTest {
     @After fun tearDown() = Dispatchers.resetMain()
 
     private fun TestScope.library(): ExerciseLibraryViewModel {
-        val viewModel = ExerciseLibraryViewModel(repository, lists)
+        val viewModel = ExerciseLibraryViewModel(repository, lists, auth)
         viewModel.refresh()
         advanceUntilIdle()
         return viewModel
@@ -136,5 +141,18 @@ class ExerciseLibraryViewModelTest {
         viewModel.onListsMenu()
         advanceUntilIdle()
         assertEquals(ListTargets.Loaded(emptyList()), viewModel.state.value.listTargets(exerciseUuid(2)))
+    }
+
+    @Test fun `the info sheet gets the user's units and the latest log`() = runTest(dispatcher) {
+        val log = RecentLog("l1", LocalDate.of(2026, 10, 1), emptyList())
+        repository.exercises = repository.exercises.map { if (it.uuid == exerciseUuid(1)) it.copy(recentLogs = listOf(log)) else it }
+        val viewModel = library()
+        assertEquals(UnitSystem.Metric, viewModel.state.value.unitSystem)
+
+        auth.signIn(UnitSystem.Imperial)
+        advanceUntilIdle()
+        assertEquals(UnitSystem.Imperial, viewModel.state.value.unitSystem)
+        assertEquals(log, viewModel.lastTime(exerciseUuid(1)).first())
+        assertNull(viewModel.lastTime(exerciseUuid(2)).first())
     }
 }

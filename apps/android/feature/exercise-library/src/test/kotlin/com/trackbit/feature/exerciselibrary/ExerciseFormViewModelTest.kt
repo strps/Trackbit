@@ -199,4 +199,32 @@ class ExerciseFormViewModelTest {
         assertEquals(setOf(ExerciseRules.Problem.CommonMistakes), viewModel.state.value.form.problems)
         assertTrue(repository.created.isEmpty())
     }
+
+    @Test fun `variant of offers bases other than itself, by name`() = runTest(dispatcher) {
+        assertEquals(listOf("Bench", "Dips", "Old"), form().state.value.variantCandidates.map { it.name })
+
+        val editing = form(9).state.value
+        assertEquals(listOf("Bench", "Dips", "Old"), editing.variantCandidates.map { it.name })
+        assertEquals("Bench", editing.variantOf?.name)
+    }
+
+    @Test fun `a base with variants is offered no base`() = runTest(dispatcher) {
+        repository.exercises += exercise(10, "Ring dips", mine = true).copy(variantOfUuid = exerciseUuid(7))
+        assertEquals(emptyList<String>(), form(7).state.value.variantCandidates.map { it.name })
+    }
+
+    @Test fun `a refused variant of shows under its field until it changes`() = runTest(dispatcher) {
+        val viewModel = form(7)
+        viewModel.edit { it.copy(variantOfUuid = exerciseUuid(5)) }
+        repository.failWith = ConfigError.InvalidVariantOf
+        viewModel.save()
+        advanceUntilIdle()
+        assertTrue(viewModel.state.value.invalidVariantOf)
+        assertNull(viewModel.state.value.message)
+
+        viewModel.edit { it.copy(name = "Dips!") }
+        assertTrue(viewModel.state.value.invalidVariantOf)
+        viewModel.edit { it.copy(variantOfUuid = null) }
+        assertFalse(viewModel.state.value.invalidVariantOf)
+    }
 }

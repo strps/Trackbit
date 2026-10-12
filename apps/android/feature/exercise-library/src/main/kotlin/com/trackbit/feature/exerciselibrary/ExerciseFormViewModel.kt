@@ -15,7 +15,9 @@ import com.trackbit.core.model.ExerciseEquipment
 import com.trackbit.core.model.ExerciseRequest
 import com.trackbit.core.model.ExerciseRules
 import com.trackbit.core.model.MuscleGroup
+import com.trackbit.core.model.variantOfCandidates
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.text.Collator
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -89,6 +91,8 @@ data class ExerciseFormUiState(
     val form: ExerciseForm = ExerciseForm(),
     /** The taxonomy the muscle chips offer, in its order. */
     val muscleGroups: List<MuscleGroup> = emptyList(),
+    /** System exercises and the user's own, by name: what "variant of" picks from and names. */
+    val catalog: List<Exercise> = emptyList(),
     /** Read-only: over the role's limits. It can still be deleted. */
     val frozen: Boolean = false,
     /** Editing: the user logged it, so deleting it also takes those sets (the dialog says so). */
@@ -97,6 +101,8 @@ data class ExerciseFormUiState(
     val showProblems: Boolean = false,
     /** The server refused the name as a duplicate; cleared when the name changes. */
     val nameTaken: Boolean = false,
+    /** The server refused "variant of" (the base changed meanwhile); cleared when it changes. */
+    val invalidVariantOf: Boolean = false,
     val busy: Boolean = false,
     val message: ExerciseFormMessage? = null,
     /** Saved or deleted: the screen closes. */
@@ -104,6 +110,12 @@ data class ExerciseFormUiState(
 ) {
     val isNew: Boolean get() = exerciseUuid == null
     val canSave: Boolean get() = !loading && !loadFailed && !frozen && !busy
+
+    /** The bases it may become a variant of; none when it has variants of its own. */
+    val variantCandidates: List<Exercise> get() = variantOfCandidates(catalog.find { it.uuid == exerciseUuid }, catalog)
+
+    /** The base it's a variant of, by name (it may no longer be a candidate); null for none. */
+    val variantOf: Exercise? get() = form.variantOfUuid?.let { uuid -> catalog.find { it.uuid == uuid } }
 }
 
 sealed interface ExerciseFormMessage {
@@ -139,10 +151,11 @@ class ExerciseFormViewModel @Inject constructor(
     fun load() {
         _state.update { it.copy(loading = true, loadFailed = false) }
         viewModelScope.launch {
-            // Room holds both once pulled; only a first open pulls them here.
+            // Room holds both once pulled; only a first open pulls them here. A new exercise can
+            // do without the catalog, which only offers "variant of".
             var groups = repository.muscleGroups().first()
             var exercises = repository.exercises().first()
-            if (groups == null || (exerciseUuid != null && exercises == null)) {
+            if (groups == null || exercises == null) {
                 val result = repository.refresh()
                 groups = repository.muscleGroups().first()
                 exercises = repository.exercises().first()
@@ -151,10 +164,12 @@ class ExerciseFormViewModel @Inject constructor(
             val exercise: Exercise? = if (exerciseUuid == null) null else {
                 exercises?.find { it.uuid == exerciseUuid && it.userId != null } ?: return@launch fail(ExerciseFormMessage.NotFound)
             }
+            val collator = Collator.getInstance()
             _state.update { state ->
                 state.copy(
                     loading = false,
                     muscleGroups = groups.sortedWith(GROUP_ORDER),
+                    catalog = exercises.orEmpty().sortedWith(compareBy(collator) { it.name }),
                     form = exercise?.let(ExerciseForm::of) ?: state.form,
                     frozen = exercise?.frozen ?: false,
                     logged = exercise?.lastPerformance != null,
@@ -166,7 +181,11 @@ class ExerciseFormViewModel @Inject constructor(
     fun edit(change: (ExerciseForm) -> ExerciseForm) {
         _state.update { state ->
             val form = change(state.form)
-            state.copy(form = form, nameTaken = state.nameTaken && form.name == state.form.name)
+            state.copy(
+                form = form,
+                nameTaken = state.nameTaken && form.name == state.form.name,
+                invalidVariantOf = state.invalidVariantOf && form.variantOfUuid == state.form.variantOfUuid,
+            )
         }
     }
 
@@ -210,8 +229,9 @@ class ExerciseFormViewModel @Inject constructor(
         when (result) {
             is ConfigResult.Success -> it.copy(busy = false, done = true)
             is ConfigResult.Failure -> when (result.error) {
-                // Shown under the name field, as the web does.
+                // Shown under their fields, as the web does.
                 ConfigError.ExerciseNameTaken -> it.copy(busy = false, nameTaken = true)
+                ConfigError.InvalidVariantOf -> it.copy(busy = false, invalidVariantOf = true)
                 else -> it.copy(
                     busy = false,
                     // Frozen meanwhile (the role changed): the form turns read-only.

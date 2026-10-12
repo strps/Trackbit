@@ -62,6 +62,8 @@ import com.trackbit.core.model.UnitSystem
 
 /** What a log card can do to its log and sets. */
 internal class LogCardActions(
+    /** Opens the exercise's info sheet, from this log. */
+    val onInfo: (TrackedExerciseLog) -> Unit,
     val onAddSet: (logId: String) -> Unit,
     val onUpdateSet: (setId: String, SetValues) -> Unit,
     val onDeleteSet: (setId: String) -> Unit,
@@ -89,6 +91,7 @@ internal fun ExerciseLogCard(
     LogCardFrame(selected) {
         LogHeader(
             name = exercise?.name,
+            onInfo = { actions.onInfo(log) },
             menu = { close ->
                 RemoveExerciseItem(log, actions, close)
                 if (selected && kind != ExerciseKind.Flexibility) {
@@ -161,7 +164,7 @@ internal fun ExerciseLogCardCompact(
     }
 
     LogCardFrame(selected = openSetId != null) {
-        LogHeader(exercise?.name, menu = { close -> RemoveExerciseItem(log, actions, close) }, enabled = enabled)
+        LogHeader(exercise?.name, onInfo = { actions.onInfo(log) }, menu = { close -> RemoveExerciseItem(log, actions, close) }, enabled = enabled)
         Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             if (kind == ExerciseKind.Flexibility) {
                 HoldEditor(log, units, enabled, actions)
@@ -224,10 +227,14 @@ private fun LogCardFrame(selected: Boolean, content: @Composable () -> Unit) {
     }
 }
 
-/** The exercise's name, then [trailing] controls and the overflow [menu]. */
+/**
+ * The exercise's name, then [trailing] controls, the info button and the overflow [menu]. Info
+ * stays when the card is disabled: reading is always allowed.
+ */
 @Composable
 private fun LogHeader(
     name: String?,
+    onInfo: () -> Unit,
     menu: @Composable (close: () -> Unit) -> Unit,
     enabled: Boolean,
     trailing: @Composable () -> Unit = {},
@@ -243,6 +250,9 @@ private fun LogHeader(
             modifier = Modifier.weight(1f),
         )
         if (enabled) trailing()
+        IconButton(onClick = onInfo) {
+            Icon(painterResource(UiIcons.Info), stringResource(R.string.exercises_info_open))
+        }
         Column {
             IconButton(onClick = { menuOpen = true }, enabled = enabled) {
                 Icon(painterResource(UiIcons.MoreVertical), stringResource(R.string.android_tracker_more_options))

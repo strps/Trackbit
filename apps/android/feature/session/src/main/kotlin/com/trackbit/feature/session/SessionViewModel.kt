@@ -7,6 +7,7 @@ import com.trackbit.core.auth.AuthState
 import com.trackbit.core.auth.PreferencesRepository
 import com.trackbit.core.data.ConfigError
 import com.trackbit.core.data.ConfigResult
+import com.trackbit.core.data.ExerciseLibraryRepository
 import com.trackbit.core.data.ExerciseListsRepository
 import com.trackbit.core.data.RestTimer
 import com.trackbit.core.data.RestTimerRepository
@@ -22,6 +23,7 @@ import com.trackbit.core.model.Exercise
 import com.trackbit.core.model.ExerciseList
 import com.trackbit.core.model.ExerciseLogCardStyle
 import com.trackbit.core.model.ExerciseSourceDescriptor
+import com.trackbit.core.model.RecentLog
 import com.trackbit.core.model.SessionUser
 import com.trackbit.core.model.SetValues
 import com.trackbit.core.model.UnitSystem
@@ -30,6 +32,7 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -112,6 +115,7 @@ class SessionViewModel @AssistedInject constructor(
     private val preferences: PreferencesRepository,
     private val restTimers: RestTimerRepository,
     private val exerciseLists: ExerciseListsRepository,
+    private val exerciseLibrary: ExerciseLibraryRepository,
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
@@ -273,6 +277,13 @@ class SessionViewModel @AssistedInject constructor(
     }
 
     /** Appends [exerciseUuid] to [listUuid], like the web picker's add-to-list menu. */
+    /**
+     * The info sheet's "Last time" for [exerciseUuid]: its latest log with sets other than
+     * [openedFromLogId], the log the sheet was opened from (that's this time, not the last).
+     */
+    fun lastTime(exerciseUuid: String, openedFromLogId: String?): Flow<RecentLog?> =
+        exerciseLibrary.lastTime(exerciseUuid, openedFromLogId)
+
     fun addToList(listUuid: String, exerciseUuid: String) {
         viewModelScope.launch {
             when (val result = exerciseLists.append(listUuid, exerciseUuid)) {

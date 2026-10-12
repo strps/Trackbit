@@ -35,7 +35,10 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -50,6 +53,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.trackbit.core.designsystem.component.AddToListButton
+import com.trackbit.core.designsystem.exercise.CategoryBadge
+import com.trackbit.core.designsystem.exercise.ExerciseInfoSheet
 import com.trackbit.core.designsystem.icon.UiIcons
 import com.trackbit.core.i18n.R
 import com.trackbit.core.model.Exercise
@@ -57,7 +62,8 @@ import com.trackbit.core.model.ExerciseCategory
 
 /**
  * The exercise library (the web's `/config/exercises`). [onEdit] opens the form for one of the
- * user's own exercises, [onAdd] for a new one; system exercises are read-only.
+ * user's own exercises, [onAdd] for a new one; system exercises are read-only. Any exercise's
+ * info sheet opens from its row.
  */
 @Composable
 fun ExerciseLibraryScreen(
@@ -68,6 +74,7 @@ fun ExerciseLibraryScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
+    var infoUuid by rememberSaveable { mutableStateOf<String?>(null) }
 
     // Also brings back the form's saves, and changes made on the web meanwhile.
     LifecycleResumeEffect(viewModel) {
@@ -89,6 +96,7 @@ fun ExerciseLibraryScreen(
         onBack = onBack,
         onAdd = { if (state.atExerciseCap) viewModel.onAddAtCap() else onAdd() },
         onEdit = onEdit,
+        onInfo = { infoUuid = it },
         onRefresh = viewModel::refresh,
         onSearch = viewModel::search,
         onOwner = viewModel::filterOwner,
@@ -96,6 +104,20 @@ fun ExerciseLibraryScreen(
         onListsMenu = viewModel::onListsMenu,
         onAddToList = viewModel::addToList,
     )
+
+    infoUuid?.let { uuid ->
+        ExerciseInfoSheet(
+            exerciseUuid = uuid,
+            catalog = state.exercises.orEmpty(),
+            units = state.unitSystem,
+            lastTime = viewModel::lastTime,
+            onDismiss = { infoUuid = null },
+            onEdit = {
+                infoUuid = null
+                onEdit(it)
+            },
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -106,6 +128,7 @@ private fun ExerciseLibraryContent(
     onBack: () -> Unit,
     onAdd: () -> Unit,
     onEdit: (String) -> Unit,
+    onInfo: (String) -> Unit,
     onRefresh: () -> Unit,
     onSearch: (String) -> Unit,
     onOwner: (OwnerFilter) -> Unit,
@@ -143,7 +166,7 @@ private fun ExerciseLibraryContent(
             modifier = Modifier.padding(padding).fillMaxSize(),
         ) {
             when {
-                state.exercises != null -> ExerciseList(state, onEdit, onSearch, onOwner, onMuscleGroup, onListsMenu, onAddToList)
+                state.exercises != null -> ExerciseList(state, onEdit, onInfo, onSearch, onOwner, onMuscleGroup, onListsMenu, onAddToList)
                 state.loadFailed -> Column(
                     Modifier.fillMaxSize().padding(24.dp),
                     verticalArrangement = Arrangement.Center,
@@ -165,6 +188,7 @@ private fun ExerciseLibraryContent(
 private fun ExerciseList(
     state: ExerciseLibraryUiState,
     onEdit: (String) -> Unit,
+    onInfo: (String) -> Unit,
     onSearch: (String) -> Unit,
     onOwner: (OwnerFilter) -> Unit,
     onMuscleGroup: (Int?) -> Unit,
@@ -236,6 +260,7 @@ private fun ExerciseList(
             ExerciseRow(
                 exercise = exercise,
                 onEdit = onEdit,
+                onInfo = onInfo,
                 addToList = {
                     AddToListButton(
                         targets = state.listTargets(exercise.uuid),
@@ -251,7 +276,13 @@ private fun ExerciseList(
 }
 
 @Composable
-private fun ExerciseRow(exercise: Exercise, onEdit: (String) -> Unit, addToList: @Composable () -> Unit, modifier: Modifier) {
+private fun ExerciseRow(
+    exercise: Exercise,
+    onEdit: (String) -> Unit,
+    onInfo: (String) -> Unit,
+    addToList: @Composable () -> Unit,
+    modifier: Modifier,
+) {
     val category = ExerciseCategory.of(exercise.category)
     val mine = exercise.userId != null
     val content: @Composable () -> Unit = {
@@ -267,6 +298,13 @@ private fun ExerciseRow(exercise: Exercise, onEdit: (String) -> Unit, addToList:
                     Badge(UiIcons.User, stringResource(R.string.exercises_badge_mine))
                 } else {
                     Badge(null, stringResource(R.string.exercises_badge_system))
+                }
+                IconButton(onClick = { onInfo(exercise.uuid) }, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        painterResource(UiIcons.Info),
+                        stringResource(R.string.exercises_info_open),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
                 addToList()
             }
@@ -303,23 +341,9 @@ private fun ExerciseRow(exercise: Exercise, onEdit: (String) -> Unit, addToList:
             }
         }
     }
-    // Only the user's own open the form; a frozen one opens read-only (it can still be deleted).
-    if (mine) {
-        Card(onClick = { onEdit(exercise.uuid) }, modifier = modifier.fillMaxWidth()) { content() }
-    } else {
-        Card(modifier = modifier.fillMaxWidth()) { content() }
-    }
-}
-
-@Composable
-internal fun CategoryBadge(category: ExerciseCategory) {
-    val (background, foreground) = category.badgeColors()
-    Text(
-        stringResource(category.labelRes),
-        style = MaterialTheme.typography.labelSmall,
-        color = foreground,
-        modifier = Modifier.background(background, RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 2.dp),
-    )
+    // The user's own open the form (a frozen one read-only: it can still be deleted); system
+    // ones, which aren't editable, open their info.
+    Card(onClick = { if (mine) onEdit(exercise.uuid) else onInfo(exercise.uuid) }, modifier = modifier.fillMaxWidth()) { content() }
 }
 
 @Composable

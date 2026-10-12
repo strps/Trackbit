@@ -31,6 +31,9 @@ sealed interface ConfigError {
     /** The user already has a custom exercise with that name. */
     data object ExerciseNameTaken : ConfigError
 
+    /** The base picked for "variant of" no longer qualifies (it became a variant, or is gone). */
+    data object InvalidVariantOf : ConfigError
+
     /** A list over the role's cap: read-only until it or another one is deleted. */
     data object ExerciseListFrozen : ConfigError
 
@@ -61,6 +64,7 @@ internal fun <T> ApiResult<T>.toConfigResult(type: HabitType? = null): ConfigRes
             ApiError.CustomExerciseFrozen -> ConfigError.CustomExerciseFrozen
             is ApiError.CustomExerciseLimitReached -> ConfigError.CustomExerciseLimitReached(e.maxCustomExercises ?: 0)
             ApiError.ExerciseNameTaken -> ConfigError.ExerciseNameTaken
+            is ApiError.Validation if e.code == "invalid_variant_of" -> ConfigError.InvalidVariantOf
             ApiError.ExerciseListFrozen -> ConfigError.ExerciseListFrozen
             is ApiError.ExerciseListLimitReached -> ConfigError.ExerciseListLimitReached(e.maxExerciseLists ?: 0)
             ApiError.ExerciseListNameTaken -> ConfigError.ExerciseListNameTaken

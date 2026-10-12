@@ -96,4 +96,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.work.runtime)
+    implementation(libs.coil)
+    implementation(libs.coil.gif)
+    implementation(libs.coil.network.okhttp)
 }

@@ -9,9 +9,12 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -49,12 +52,17 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.trackbit.core.designsystem.exercise.labelRes
 import com.trackbit.core.designsystem.icon.UiIcons
 import com.trackbit.core.i18n.R
+import com.trackbit.core.model.Exercise
 import com.trackbit.core.model.ExerciseCategory
+import com.trackbit.core.model.ExerciseDifficulty
+import com.trackbit.core.model.ExerciseEquipment
 import com.trackbit.core.model.ExerciseRules
 import com.trackbit.core.model.MuscleGroup
 
@@ -196,17 +204,242 @@ private fun FormFields(
             }
         }
 
+        // The info sheet's fields.
+        Section(R.string.exercises_form_equipment_label) {
+            ChipPicker(ExerciseEquipment.FORM, { it.labelRes }, form.equipment::contains, enabled) { item ->
+                onEdit { it.copy(equipment = if (item in it.equipment) it.equipment - item else it.equipment + item) }
+            }
+        }
+
+        Section(R.string.exercises_form_difficulty_label, hint = R.string.exercises_form_difficulty_hint) {
+            // Tapping the picked one again leaves it unrated.
+            ChipPicker(ExerciseDifficulty.FORM, { it.labelRes }, { it == form.difficulty }, enabled) { item ->
+                onEdit { it.copy(difficulty = item.takeIf { d -> d != it.difficulty }) }
+            }
+        }
+
+        Section(R.string.exercises_form_variant_of_label, hint = R.string.exercises_form_variant_of_hint) {
+            VariantOfPicker(state, enabled) { uuid -> onEdit { it.copy(variantOfUuid = uuid) } }
+        }
+
+        StepListEditor(
+            title = R.string.exercises_form_instructions_label,
+            entries = form.instructions,
+            placeholder = { n -> stringResource(R.string.exercises_form_instructions_placeholder, "$n") },
+            numbered = true,
+            enabled = enabled,
+            onChange = { steps -> onEdit { it.copy(instructions = steps) } },
+        )
+        StepListEditor(
+            title = R.string.exercises_form_tips_label,
+            entries = form.tips,
+            placeholder = { stringResource(R.string.exercises_form_tips_placeholder) },
+            numbered = false,
+            enabled = enabled,
+            onChange = { tips -> onEdit { it.copy(tips = tips) } },
+        )
+        StepListEditor(
+            title = R.string.exercises_form_mistakes_label,
+            entries = form.commonMistakes,
+            placeholder = { stringResource(R.string.exercises_form_mistakes_placeholder) },
+            numbered = false,
+            enabled = enabled,
+            onChange = { mistakes -> onEdit { it.copy(commonMistakes = mistakes) } },
+        )
+
         if (!state.isNew) DeleteButton(form.name, state.logged, enabled = !state.busy, onDelete)
     }
 }
 
 @Composable
-private fun Section(title: Int, content: @Composable () -> Unit) {
+private fun Section(title: Int, hint: Int? = null, content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(stringResource(title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+        if (hint != null) {
+            Text(stringResource(hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         content()
     }
 }
+
+/** [items] as toggle chips, named by [label]. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun <T> ChipPicker(items: List<T>, label: (T) -> Int?, selected: (T) -> Boolean, enabled: Boolean, onToggle: (T) -> Unit) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        for (item in items) {
+            val name = label(item) ?: continue
+            FilterChip(selected = selected(item), onClick = { onToggle(item) }, label = { Text(stringResource(name)) }, enabled = enabled)
+        }
+    }
+}
+
+/**
+ * The base exercise this one is a variant of, like the web's combobox: a field that opens a
+ * searchable list of [ExerciseFormUiState.variantCandidates], and a button to clear it.
+ */
+@Composable
+private fun VariantOfPicker(state: ExerciseFormUiState, enabled: Boolean, onPick: (String?) -> Unit) {
+    val candidates = state.variantCandidates
+    // An exercise with variants of its own can't become one.
+    if (!state.isNew && candidates.isEmpty() && state.variantOf == null) {
+        Text(
+            stringResource(R.string.exercises_form_variant_of_has_variants),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        return
+    }
+    var picking by rememberSaveable { mutableStateOf(false) }
+    val selected = state.variantOf
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        OutlinedButton(onClick = { picking = true }, enabled = enabled, modifier = Modifier.weight(1f)) {
+            Text(
+                selected?.name ?: stringResource(R.string.exercises_form_variant_of_none),
+                color = if (selected == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(painterResource(UiIcons.ChevronDown), contentDescription = null, modifier = Modifier.size(18.dp))
+        }
+        if (selected != null) {
+            IconButton(onClick = { onPick(null) }, enabled = enabled) {
+                Icon(painterResource(UiIcons.X), stringResource(R.string.exercises_form_variant_of_clear))
+            }
+        }
+    }
+    if (state.invalidVariantOf) {
+        Text(
+            stringResource(R.string.exercises_error_invalid_variant_of),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+        )
+    }
+    if (picking) {
+        VariantOfDialog(
+            candidates = candidates,
+            selectedUuid = selected?.uuid,
+            onPick = {
+                picking = false
+                onPick(it)
+            },
+            onDismiss = { picking = false },
+        )
+    }
+}
+
+@Composable
+private fun VariantOfDialog(candidates: List<Exercise>, selectedUuid: String?, onPick: (String) -> Unit, onDismiss: () -> Unit) {
+    var search by rememberSaveable { mutableStateOf("") }
+    val needle = search.trim()
+    val matches = candidates.filter { needle.isEmpty() || it.name.contains(needle, ignoreCase = true) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.exercises_form_variant_of_label)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = search,
+                    onValueChange = { search = it },
+                    placeholder = { Text(stringResource(R.string.exercises_form_variant_of_search)) },
+                    leadingIcon = { Icon(painterResource(UiIcons.Search), contentDescription = null) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                LazyColumn(Modifier.heightIn(max = 360.dp)) {
+                    if (matches.isEmpty()) {
+                        item {
+                            Text(
+                                stringResource(R.string.exercises_form_variant_of_empty),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(vertical = 12.dp),
+                            )
+                        }
+                    }
+                    items(matches, key = { it.uuid }) { candidate ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .selectable(selected = candidate.uuid == selectedUuid, role = Role.RadioButton) { onPick(candidate.uuid) }
+                                .padding(vertical = 12.dp),
+                        ) {
+                            Icon(
+                                painterResource(if (candidate.userId != null) UiIcons.User else UiIcons.Globe),
+                                contentDescription = stringResource(
+                                    if (candidate.userId != null) R.string.exercises_badge_mine else R.string.exercises_badge_system,
+                                ),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Text(candidate.name, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                            if (candidate.uuid == selectedUuid) {
+                                Icon(painterResource(UiIcons.Check), contentDescription = null, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } },
+    )
+}
+
+/**
+ * An ordered list of short texts (instructions, tips or common mistakes), like the web's
+ * `StringListField`: add, remove and move entries. Blank entries are dropped on save.
+ */
+@Composable
+private fun StepListEditor(
+    title: Int,
+    entries: List<String>,
+    placeholder: @Composable (n: Int) -> String,
+    numbered: Boolean,
+    enabled: Boolean,
+    onChange: (List<String>) -> Unit,
+) {
+    Section(title) {
+        entries.forEachIndexed { i, entry ->
+            val tooLong = entry.trim().length > ExerciseRules.STEP_LENGTH_MAX
+            Row(verticalAlignment = Alignment.Top) {
+                OutlinedTextField(
+                    value = entry,
+                    onValueChange = { text -> onChange(entries.toMutableList().also { it[i] = text }) },
+                    placeholder = { Text(placeholder(i + 1)) },
+                    prefix = if (numbered) ({ Text("${i + 1}. ") }) else null,
+                    isError = tooLong,
+                    supportingText = if (tooLong) {
+                        { Text(stringResource(R.string.common_validation_too_long, ExerciseRules.STEP_LENGTH_MAX)) }
+                    } else null,
+                    enabled = enabled,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = { onChange(entries.move(i, i - 1)) }, enabled = enabled && i > 0) {
+                    Icon(painterResource(UiIcons.ArrowUp), stringResource(R.string.exercises_form_list_move_up), Modifier.size(18.dp))
+                }
+                IconButton(onClick = { onChange(entries.move(i, i + 1)) }, enabled = enabled && i < entries.lastIndex) {
+                    Icon(painterResource(UiIcons.ArrowDown), stringResource(R.string.exercises_form_list_move_down), Modifier.size(18.dp))
+                }
+                IconButton(onClick = { onChange(entries.filterIndexed { j, _ -> j != i }) }, enabled = enabled) {
+                    Icon(painterResource(UiIcons.X), stringResource(R.string.exercises_form_list_remove), Modifier.size(18.dp))
+                }
+            }
+        }
+        if (entries.size < ExerciseRules.STEPS_MAX) {
+            TextButton(onClick = { onChange(entries + "") }, enabled = enabled) {
+                Icon(painterResource(UiIcons.Plus), contentDescription = null, modifier = Modifier.size(18.dp))
+                Text(stringResource(R.string.exercises_form_list_add), Modifier.padding(start = 8.dp))
+            }
+        }
+    }
+}
+
+/** This list with the entry at [from] moved to [to]. */
+private fun List<String>.move(from: Int, to: Int): List<String> = toMutableList().apply { add(to, removeAt(from)) }
 
 @Composable
 private fun FrozenBanner() {

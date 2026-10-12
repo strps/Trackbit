@@ -2,6 +2,8 @@ package com.trackbit.feature.exerciselibrary
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.trackbit.core.auth.AuthRepository
+import com.trackbit.core.auth.AuthState
 import com.trackbit.core.data.ConfigError
 import com.trackbit.core.data.ConfigResult
 import com.trackbit.core.data.ExerciseLibraryRepository
@@ -12,9 +14,12 @@ import com.trackbit.core.model.EffectiveLimits
 import com.trackbit.core.model.Exercise
 import com.trackbit.core.model.ExerciseList
 import com.trackbit.core.model.MuscleGroup
+import com.trackbit.core.model.RecentLog
+import com.trackbit.core.model.UnitSystem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.text.Collator
 import javax.inject.Inject
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,6 +47,8 @@ data class ExerciseLibraryUiState(
     val lists: List<ExerciseList>? = null,
     val listsFailed: Boolean = false,
     val message: ExerciseLibraryMessage? = null,
+    /** For the info sheet's weights. */
+    val unitSystem: UnitSystem = UnitSystem.Metric,
 ) {
     /** The lists [exerciseUuid] can be added to: the unfrozen ones. */
     fun listTargets(exerciseUuid: String): ListTargets = ListTargets.of(lists, listsFailed, exerciseUuid)
@@ -102,6 +109,7 @@ internal val GROUP_ORDER: Comparator<MuscleGroup> =
 class ExerciseLibraryViewModel @Inject constructor(
     private val repository: ExerciseLibraryRepository,
     private val lists: ExerciseListsRepository,
+    auth: AuthRepository,
 ) : ViewModel() {
     private val _state = MutableStateFlow(ExerciseLibraryUiState())
     val state: StateFlow<ExerciseLibraryUiState> = _state.asStateFlow()
@@ -132,7 +140,17 @@ class ExerciseLibraryViewModel @Inject constructor(
         viewModelScope.launch {
             lists.lists().collect { lists -> if (lists != null) _state.update { it.copy(lists = lists, listsFailed = false) } }
         }
+        viewModelScope.launch {
+            auth.state.collect { auth ->
+                // An unknown value (a newer server) reads as the default, as on the web.
+                val units = (auth as? AuthState.SignedIn)?.user?.unitSystem?.takeIf { it != UnitSystem.Unknown } ?: UnitSystem.Metric
+                _state.update { it.copy(unitSystem = units) }
+            }
+        }
     }
+
+    /** The info sheet's "Last time": the latest log of [exerciseUuid] with sets. */
+    fun lastTime(exerciseUuid: String): Flow<RecentLog?> = repository.lastTime(exerciseUuid, exceptLogUuid = null)
 
     /** Pulls the catalog, the muscle groups, the limits and the lists again; Room's copy stays on screen meanwhile. */
     fun refresh() {

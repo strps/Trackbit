@@ -10,8 +10,8 @@ import com.trackbit.core.network.service.HabitsService
 import com.trackbit.core.network.service.IssueService
 import com.trackbit.core.network.service.MeService
 import com.trackbit.core.network.service.TrackerService
-import com.trackbit.core.network.trackbitOkHttpClient
 import com.trackbit.core.network.trackbitRetrofit
+import com.trackbit.core.network.withTrackbitHeaders
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -19,7 +19,16 @@ import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.create
+import javax.inject.Qualifier
 import javax.inject.Singleton
+
+/**
+ * A client without the API's headers (no session token), for public URLs that aren't the API, such
+ * as exercise media. It shares the API client's connections and threads.
+ */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class PublicHttpClient
 
 /** Needs a [NetworkConfig] (from `app`), a [SessionTokenSource] and a [RequestLanguage] (from `core:auth`). */
 @Module
@@ -27,8 +36,13 @@ import javax.inject.Singleton
 object NetworkModule {
     @Provides
     @Singleton
-    fun okHttpClient(tokens: SessionTokenSource, language: RequestLanguage): OkHttpClient =
-        trackbitOkHttpClient(tokens, language)
+    @PublicHttpClient
+    fun publicOkHttpClient(): OkHttpClient = OkHttpClient()
+
+    @Provides
+    @Singleton
+    fun okHttpClient(@PublicHttpClient public: OkHttpClient, tokens: SessionTokenSource, language: RequestLanguage): OkHttpClient =
+        public.withTrackbitHeaders(tokens, language)
 
     @Provides
     @Singleton

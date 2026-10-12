@@ -69,7 +69,7 @@ class SessionViewModelTest {
 
     /** Subscribes to [SessionViewModel.state] for the test, as the screen would. */
     private fun TestScope.subscribed(): SessionViewModel {
-        val viewModel = SessionViewModel(habitUuid = "1", day = DAY, sessions = sessions, tracker = tracker, auth = auth, preferences = preferences, restTimers = restTimers, exerciseLists = lists)
+        val viewModel = SessionViewModel(habitUuid = "1", day = DAY, sessions = sessions, tracker = tracker, auth = auth, preferences = preferences, restTimers = restTimers, exerciseLists = lists, exerciseLibrary = unused())
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
         return viewModel
     }

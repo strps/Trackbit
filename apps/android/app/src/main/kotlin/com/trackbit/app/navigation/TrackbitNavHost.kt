@@ -218,6 +218,7 @@ private fun AuthNavHost(graph: Any, onSignOut: () -> Unit) {
                         LocalDate.parse(route.day),
                         onBack = { navController.popBackStack() },
                         onOpenLists = { navController.navigate(ExerciseListsRoute) },
+                        onEditExercise = { navController.navigate(ExerciseFormRoute(it)) },
                     )
                 }
             }

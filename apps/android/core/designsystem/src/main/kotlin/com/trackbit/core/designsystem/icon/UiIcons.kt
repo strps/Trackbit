@@ -8,7 +8,9 @@ import com.trackbit.core.designsystem.R
  */
 object UiIcons {
     val Activity = R.drawable.ic_ui_activity
+    val ArrowDown = R.drawable.ic_ui_arrow_down
     val ArrowLeft = R.drawable.ic_ui_arrow_left
+    val ArrowUp = R.drawable.ic_ui_arrow_up
     val BarChart = R.drawable.ic_ui_bar_chart
     val BarChart2 = R.drawable.ic_ui_bar_chart_2
     val Bug = R.drawable.ic_ui_bug
@@ -22,8 +24,10 @@ object UiIcons {
     val Clock = R.drawable.ic_ui_clock
     val Dumbbell = R.drawable.ic_ui_dumbbell
     val Flame = R.drawable.ic_ui_flame
+    val Globe = R.drawable.ic_ui_globe
     val GripVertical = R.drawable.ic_ui_grip_vertical
     val Hash = R.drawable.ic_ui_hash
+    val Info = R.drawable.ic_ui_info
     val Layers = R.drawable.ic_ui_layers
     val List = R.drawable.ic_ui_list
     val ListPlus = R.drawable.ic_ui_list_plus

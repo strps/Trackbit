@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.trackbit.core.data.TrackedSession
+import com.trackbit.core.designsystem.exercise.ExerciseInfoSheet
 import com.trackbit.core.designsystem.icon.UiIcons
 import com.trackbit.core.i18n.R
 import com.trackbit.core.model.Exercise
@@ -75,6 +76,7 @@ fun SessionScreen(
     day: LocalDate,
     onBack: () -> Unit,
     onOpenLists: () -> Unit,
+    onEditExercise: (exerciseUuid: String) -> Unit,
     viewModel: SessionViewModel = hiltViewModel<SessionViewModel, SessionViewModel.Factory>(
         key = "$habitUuid/$day",
         creationCallback = { it.create(habitUuid, day) },
@@ -91,6 +93,9 @@ fun SessionScreen(
         }
     }
 
+    // The exercise whose info sheet is open, and the log it was opened from.
+    var info by rememberSaveable { mutableStateOf<Pair<String, String>?>(null) }
+
     val openLists by rememberUpdatedState(onOpenLists)
     val actions = remember(viewModel) {
         SessionActions(
@@ -105,6 +110,7 @@ fun SessionScreen(
             onSkipRest = viewModel::skipRest,
             onSetDefaultRest = viewModel::setDefaultRest,
             log = LogCardActions(
+                onInfo = { info = it.exerciseUuid to it.id },
                 onAddSet = viewModel::addSet,
                 onUpdateSet = viewModel::updateSet,
                 onDeleteSet = viewModel::deleteSet,
@@ -113,6 +119,20 @@ fun SessionScreen(
         )
     }
     SessionContent(state, snackbar, actions, onRefresh = viewModel::refresh, onBack = onBack)
+
+    info?.let { (exerciseUuid, logId) ->
+        ExerciseInfoSheet(
+            exerciseUuid = exerciseUuid,
+            catalog = state.exercises,
+            units = state.unitSystem,
+            lastTime = { viewModel.lastTime(it, openedFromLogId = logId) },
+            onDismiss = { info = null },
+            onEdit = {
+                info = null
+                onEditExercise(it)
+            },
+        )
+    }
 }
 
 private class SessionActions(

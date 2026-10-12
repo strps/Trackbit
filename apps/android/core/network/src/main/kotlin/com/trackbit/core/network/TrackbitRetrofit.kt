@@ -13,7 +13,14 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 fun trackbitOkHttpClient(
     tokens: SessionTokenSource,
     language: RequestLanguage = RequestLanguage.Device,
-): OkHttpClient = OkHttpClient.Builder()
+): OkHttpClient = OkHttpClient().withTrackbitHeaders(tokens, language)
+
+/**
+ * This client plus the API's headers, the session token among them. It shares this client's
+ * connections and threads, while this one keeps sending none of those headers, so it can load
+ * public URLs elsewhere (exercise media) without handing them the token.
+ */
+fun OkHttpClient.withTrackbitHeaders(tokens: SessionTokenSource, language: RequestLanguage): OkHttpClient = newBuilder()
     .addInterceptor(AcceptLanguageInterceptor(language))
     .addInterceptor(IdempotencyKeyInterceptor())
     .addInterceptor(AuthInterceptor(tokens))

@@ -154,6 +154,10 @@ class ExerciseLibraryRepositoryTest {
         assertEquals(ConfigResult.Failure(ConfigError.CustomExerciseLimitReached(5)), repository.create(request))
         answer(409, """{"error":"exercise_name_taken"}""")
         assertEquals(ConfigResult.Failure(ConfigError.ExerciseNameTaken), repository.create(request))
+        answer(400, """{"error":"invalid_variant_of","message":"Not a base"}""")
+        assertEquals(ConfigResult.Failure(ConfigError.InvalidVariantOf), repository.create(request))
+        answer(400, """{"message":"Invalid","errors":[]}""")
+        assertEquals(ConfigResult.Failure(ConfigError.Failed), repository.create(request))
         answer(403, """{"error":"custom_exercise_frozen","exerciseId":11}""")
         assertEquals(ConfigResult.Failure(ConfigError.CustomExerciseFrozen), repository.update(ex(11), request))
         exercises.writeAnswer = { _, _ -> throw IOException("offline") }
