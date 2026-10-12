@@ -46,7 +46,23 @@ describe('custom exercise create', () => {
         await db.update(user).set({ locale: 'es' }).where(eq(user.id, userId))
         const back = await muscleGroup('Back')
         const res = await post(token, EXERCISES, { name: 'Row', category: 'strength', muscleGroups: [back.id] })
-        expect((await res.json()).muscleGroups).toEqual([{ id: back.id, name: 'Back (es)' }])
+        expect((await res.json()).muscleGroups).toEqual([{ id: back.id, name: 'Back (es)', role: 'primary' }])
+    })
+
+    it("lists a system exercise's primary muscle groups before its secondary ones", async () => {
+        const { token } = await signedInUser()
+        const triceps = await muscleGroup('Triceps')
+        const chest = await muscleGroup('Chest')
+        const [bench] = await db.insert(exercises).values({ name: `Bench ${Math.random()}`, category: 'strength' }).returning()
+        await db.insert(exerciseMuscleGroups).values([
+            { exerciseId: bench.id, muscleGroupId: triceps.id, role: 'secondary' },
+            { exerciseId: bench.id, muscleGroupId: chest.id, role: 'primary' },
+        ])
+        const listed = (await (await get(token, EXERCISES)).json()).find((e: { id: number }) => e.id === bench.id)
+        expect(listed.muscleGroups).toEqual([
+            { id: chest.id, name: 'Chest', role: 'primary' },
+            { id: triceps.id, name: 'Triceps', role: 'secondary' },
+        ])
     })
 
     it('defaults to no muscle groups and stores a blank description as null', async () => {
@@ -100,10 +116,10 @@ describe('custom exercise update', () => {
         await send(token, 'PATCH', `${EXERCISES}/${id}`, { description: 'Flat bench' })
         const renamed = await send(token, 'PATCH', `${EXERCISES}/${id}`, { name: 'Bench' })
         expect(renamed.status).toBe(200)
-        expect(await renamed.json()).toMatchObject({ name: 'Bench', description: 'Flat bench', muscleGroups: [{ id: chest.id, name: 'Chest' }] })
+        expect(await renamed.json()).toMatchObject({ name: 'Bench', description: 'Flat bench', muscleGroups: [{ id: chest.id, name: 'Chest', role: 'primary' }] })
 
         const moved = await send(token, 'PATCH', `${EXERCISES}/${id}`, { muscleGroups: [legs.id] })
-        expect((await moved.json()).muscleGroups).toEqual([{ id: legs.id, name: 'Legs' }])
+        expect((await moved.json()).muscleGroups).toEqual([{ id: legs.id, name: 'Legs', role: 'primary' }])
         expect(await linkedGroups(id)).toEqual([legs.id])
 
         await send(token, 'PATCH', `${EXERCISES}/${id}`, { muscleGroups: [] })

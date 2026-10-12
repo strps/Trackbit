@@ -15,6 +15,7 @@ import { useActivityTracker } from '../api/useActivityTracker';
 import { Timer } from '@/shared/components/Timer';
 import { RpeSelector } from '@/shared/components/RpeSelector';
 import { useRpeLabel } from '@/hooks/use-rpe-label';
+import { ExerciseInfoSheet } from '@/features/exercise-library/ExerciseInfoSheet';
 
 export interface ExerciseLogCardProps {
     exerciseLog: OptimisticExerciseLog;
@@ -28,10 +29,12 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
     const { deletePerformance, newPerformance: newSet, updatePerformance: updateSet, removeExerciseLog } = useActivityTracker();
     const { unitSystem } = useUnitSystem();
     const { t } = useTranslation('tracker');
+    const { t: tExercises } = useTranslation('exercises');
     const rpeLabel = useRpeLabel();
     const unit = weightUnit(unitSystem);
     const exercise = exercises.find(e => e.id === exerciseLog.exerciseId);
     const [selectedPerformanceId, setSelectedPerformanceId] = useState<number | null>(null);
+    const [infoOpen, setInfoOpen] = useState(false);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const prevPerformanceCountRef = useRef(exerciseLog.exercisePerformances.length);
 
@@ -193,7 +196,17 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
                             <h4 className="font-bold text-sm">
                                 {exercise?.name || t('activity_unknown_exercise')}
                             </h4>
-                            <Button variant="ghost"><Info /></Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setInfoOpen(true);
+                                }}
+                                aria-label={tExercises('info.open')}
+                            >
+                                <Info />
+                            </Button>
                         </div>
                         <div className="flex items-center gap-2">
                             <Button
@@ -241,6 +254,12 @@ export const ExerciseLogCard = ({ exerciseLog, isSelected, index, setEditing: on
             <CollapsibleContent className="p-4 border-t border-border -order-1">
                 {cardContents[exercise?.category || 'strength'].content}
             </CollapsibleContent>
+            {/* Outside the trigger: React events bubble from the portal through the tree. */}
+            <ExerciseInfoSheet
+                exerciseId={infoOpen ? exerciseLog.exerciseId : null}
+                onClose={() => setInfoOpen(false)}
+                openedFromLogUuid={exerciseLog.uuid}
+            />
         </Collapsible>
     );
 };

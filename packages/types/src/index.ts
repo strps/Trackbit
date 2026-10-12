@@ -74,6 +74,7 @@ export interface ExerciseSession {
 
 export interface ExerciseLog {
     id: number;
+    uuid: string;
     exerciseId: number;
     exerciseSessionId: number;
     createdAt: string | null;

@@ -28,7 +28,8 @@
     "muscleGroups": [
       {
         "id": 1,
-        "name": "Chest"
+        "name": "Chest",
+        "role": "primary"
       }
     ],
     "recentLogs": [],

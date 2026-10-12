@@ -130,21 +130,22 @@ async function loadExercises(user: { id: string; role?: string | null }, locale:
         )
         .where(onlyId === undefined ? visible : and(visible, eq(exercises.id, onlyId)));
 
-    // Each exercise's muscle groups, named in the request's locale like the exercise.
+    // Each exercise's muscle groups, named in the request's locale like the exercise, primary first.
     const links = result.length === 0 ? [] : await db
         .select({
             exerciseId: exerciseMuscleGroups.exerciseId,
             id: muscleGroups.id,
             name: sql<string>`COALESCE(${muscleGroups.nameI18n}->>${locale}, ${muscleGroups.nameI18n}->>'en', ${muscleGroups.name})`,
+            role: sql<'primary' | 'secondary'>`${exerciseMuscleGroups.role}`,
         })
         .from(exerciseMuscleGroups)
         .innerJoin(muscleGroups, eq(muscleGroups.id, exerciseMuscleGroups.muscleGroupId))
         .where(inArray(exerciseMuscleGroups.exerciseId, result.map((row) => row.id)))
-        .orderBy(asc(muscleGroups.displayOrder), asc(muscleGroups.id))
-    const groupsByExercise = new Map<number, { id: number; name: string }[]>()
-    for (const { exerciseId, id, name } of links) {
+        .orderBy(sql`${exerciseMuscleGroups.role} = 'primary' desc`, asc(muscleGroups.displayOrder), asc(muscleGroups.id))
+    const groupsByExercise = new Map<number, { id: number; name: string; role: 'primary' | 'secondary' }[]>()
+    for (const { exerciseId, ...group } of links) {
         if (!groupsByExercise.has(exerciseId)) groupsByExercise.set(exerciseId, [])
-        groupsByExercise.get(exerciseId)!.push({ id, name })
+        groupsByExercise.get(exerciseId)!.push(group)
     }
 
     const recentLogs = await loadRecentLogs(user.id, result.map((row) => row.id))

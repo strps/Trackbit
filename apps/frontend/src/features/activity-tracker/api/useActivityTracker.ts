@@ -220,8 +220,9 @@ export function useActivityTracker() {
     // 3. Add Exercise Log
     // -------------------------------------------------------------------------
     const addExerciseLogMutation = useMutation({
-        // listItemId carries provenance when the log came from a source queue.
-        mutationFn: async (payload: { exerciseSessionId: number; exerciseId: number; listItemId?: number | null }) => {
+        // listItemId carries provenance when the log came from a source queue. The uuid is chosen
+        // here, so the optimistic log already has the identity the server will store.
+        mutationFn: async (payload: { uuid: string; exerciseSessionId: number; exerciseId: number; listItemId?: number | null }) => {
             const res = await fetch(`${API_URL}/tracker/exercise-logs`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -243,6 +244,7 @@ export function useActivityTracker() {
                         if (session) {
                             const tempLog: OptimisticExerciseLog = {
                                 id: -Date.now(),
+                                uuid: payload.uuid,
                                 exerciseId: payload.exerciseId,
                                 exerciseSessionId: payload.exerciseSessionId,
                                 createdAt: null,
@@ -548,7 +550,8 @@ export function useActivityTracker() {
         // Mutations
         createSession: createSessionMutation.mutate,
         deleteSession: deleteSessionMutation.mutate,
-        addExerciseLog: addExerciseLogMutation.mutate,
+        addExerciseLog: (payload: { exerciseSessionId: number; exerciseId: number; listItemId?: number | null }) =>
+            addExerciseLogMutation.mutate({ ...payload, uuid: crypto.randomUUID() }),
         removeExerciseLog: removeExerciseLogMutation.mutate,
         newPerformance: newPerformanceMutation.mutate,
         updatePerformance: updatePerformanceMutation.mutate,

@@ -10,6 +10,7 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/shared/components/ui/
 import { Info, MoreVertical, Trash2, Clock, Hash, Scale, MapPin, Plus } from 'lucide-react';
 import { OptimisticExercisePerformance } from '@/features/tracker/use-tracker';
 import { useRpeLabel } from '@/hooks/use-rpe-label';
+import { ExerciseInfoSheet } from '@/features/exercise-library/ExerciseInfoSheet';
 import { formatDuration, getAvgRpe, rpeColor } from '../utils';
 import { useActivityTracker } from '../api/useActivityTracker';
 import { SetEditor } from './SetEditor';
@@ -26,11 +27,13 @@ export const ExerciseLogCardCompact = ({ exerciseLog, isSelected, index, setEdit
     const { deletePerformance, newPerformance: newSet, updatePerformance: updateSet, removeExerciseLog } = useActivityTracker();
     const { unitSystem } = useUnitSystem();
     const { t } = useTranslation('tracker');
+    const { t: tExercises } = useTranslation('exercises');
     const rpeLabel = useRpeLabel();
     const unit = weightUnit(unitSystem);
     const exercise = exercises.find(e => e.id === exerciseLog.exerciseId);
     const category = (exercise?.category || 'strength') as 'strength' | 'cardio' | 'flexibility';
     const [openSetId, setOpenSetId] = useState<number | null>(null);
+    const [infoOpen, setInfoOpen] = useState(false);
     // Set when the user adds a set, so we auto-open its controls popover. We follow the
     // optimistic set as its temporary negative id is swapped for the server id, then clear.
     const pendingOpenRef = useRef(false);
@@ -156,7 +159,9 @@ export const ExerciseLogCardCompact = ({ exerciseLog, isSelected, index, setEdit
                     <h4 className="font-bold text-sm">
                         {exercise?.name || t('activity_unknown_exercise')}
                     </h4>
-                    <Button variant="ghost"><Info /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => setInfoOpen(true)} aria-label={tExercises('info.open')}>
+                        <Info />
+                    </Button>
                 </div>
                 <div className="flex items-center gap-2">
                     <DropdownMenu>
@@ -177,6 +182,11 @@ export const ExerciseLogCardCompact = ({ exerciseLog, isSelected, index, setEdit
             <div className="py-4 px-6">
                 {body}
             </div>
+            <ExerciseInfoSheet
+                exerciseId={infoOpen ? exerciseLog.exerciseId : null}
+                onClose={() => setInfoOpen(false)}
+                openedFromLogUuid={exerciseLog.uuid}
+            />
         </div>
     );
 };

@@ -176,11 +176,13 @@ Notes: the variant trigger lives in [exercise-variant-rules.sql](../../../apps/b
 
 ### Phase 2 — Web: info sheet
 
-- [ ] `ExerciseInfoSheet` in `features/exercise-library/` (Dialog on desktop, Drawer/Sheet on mobile), with `getExerciseFamily` util + test.
-- [ ] Wire the Info button in `ExerciseLogCard` and `ExerciseLogCardCompact`. Move it out of the `CollapsibleTrigger` hit area, or `stopPropagation` like the Start button. Give it an `aria-label`.
-- [ ] Library row opens the same sheet.
-- [ ] Custom exercise form: list editors for instructions, tips and common mistakes (add / remove / reorder), equipment multi-select, difficulty select, and a "Variant of" combobox (system + own base exercises, excluding itself and its own variants).
-- [ ] i18n keys in `en` and `es` (`exercises` namespace; keep the bundles symmetric).
+- [x] `ExerciseInfoSheet` in `features/exercise-library/` (Dialog on desktop, Drawer on mobile), with `getExerciseFamily` util + test.
+- [x] Wire the Info button in `ExerciseLogCard` and `ExerciseLogCardCompact`. Move it out of the `CollapsibleTrigger` hit area, or `stopPropagation` like the Start button. Give it an `aria-label`.
+- [x] Library row opens the same sheet.
+- [x] Custom exercise form: list editors for instructions, tips and common mistakes (add / remove / reorder), equipment multi-select, difficulty select, and a "Variant of" combobox (system + own base exercises, excluding itself and its own variants).
+- [x] i18n keys in `en` and `es` (`exercises` namespace; keep the bundles symmetric).
+
+Notes: the muscle groups in `GET /exercises` now carry their `role` (primary first), so the sheet can mute secondary ones; Android contracts re-recorded. "Last time" skips the log the sheet was opened from by uuid, so `ExerciseLog` gained `uuid` and the web now chooses a new log's uuid itself (sent on create, already on the optimistic log). The form moved to `ExerciseForm.tsx` (`ExerciseFormDialog`) so the sheet's "Add instructions" opens it too. The web app now has Vitest (`pnpm --filter frontend test`).
 
 ### Phase 3 — Admin: instructions, variants, media
 

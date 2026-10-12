@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
     Dumbbell, Search, Plus,
-    Activity, User, Globe, Check,
-    Timer, Hash, Ruler, Scale, MoreVertical, Trash2, Pencil, Lock
+    Activity, User, Globe, Info,
+    MoreVertical, Trash2, Pencil, Lock
 } from 'lucide-react';
 import { useExercises } from '../../hooks/use-exercises';
 import { useLimits } from '@/hooks/use-limits';
@@ -10,15 +10,6 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Badge } from '@/shared/components/ui/badge';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/shared/components/ui/tooltip';
-import { useForm } from 'react-hook-form';
-import * as z from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { ChoiceListField, SelectListOptionComponentProps, SelectOption } from '@/shared/components/Fields/ChoiceListField';
-import { TextField } from '@/shared/components/Fields/TextField';
-import { TextAreaField } from '@/shared/components/Fields/TextAreaField';
-import {
-    Dialog, DialogContent, DialogHeader, DialogTitle
-} from '@/shared/components/ui/dialog';
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from '@/shared/components/ui/dropdown-menu';
@@ -28,9 +19,11 @@ import {
 } from '@/shared/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
-import { ApiError } from '@/shared/lib/api-error';
 import { AddToListMenu } from '@/features/exercise-lists/AddToListMenu';
 import type { ExerciseWithLastPerformance } from '../../hooks/use-exercises';
+import { ExerciseFormDialog } from './ExerciseForm';
+import { useCategoryConfig } from './category-config';
+import { ExerciseInfoSheet } from './ExerciseInfoSheet';
 
 const ExerciseLibrary = () => {
     const { t } = useTranslation('exercises');
@@ -41,7 +34,9 @@ const ExerciseLibrary = () => {
     const [filterType, setFilterType] = useState<'all' | 'custom' | 'system'>('all');
 
     const [isFormOpen, setIsFormOpen] = useState(false);
-    const [editingExercise, setEditingExercise] = useState<ExerciseWithLastPerformance | null>(null);
+    // Kept after the dialog closes, so its title doesn't change while it fades out.
+    const [editingExercise, setEditingExercise] = useState<ExerciseWithLastPerformance | undefined>();
+    const [infoExerciseId, setInfoExerciseId] = useState<number | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<ExerciseWithLastPerformance | null>(null);
     const categories = useCategoryConfig();
 
@@ -85,7 +80,7 @@ const ExerciseLibrary = () => {
                         <TooltipTrigger asChild>
                             <span>
                                 <Button
-                                    onClick={() => { if (!atExerciseCap) setIsFormOpen(true); }}
+                                    onClick={() => { if (!atExerciseCap) { setEditingExercise(undefined); setIsFormOpen(true); } }}
                                     disabled={atExerciseCap}
                                     className="font-bold"
                                     size="lg"
@@ -102,30 +97,8 @@ const ExerciseLibrary = () => {
                     </Tooltip>
                 </div>
 
-                {/* Add Exercise Dialog */}
-                <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                        <DialogHeader>
-                            <DialogTitle>{t('form.create_title')}</DialogTitle>
-                        </DialogHeader>
-                        <CreateExerciseForm onSuccess={() => setIsFormOpen(false)} />
-                    </DialogContent>
-                </Dialog>
-
-                {/* Edit Exercise Dialog */}
-                <Dialog open={!!editingExercise} onOpenChange={(open) => { if (!open) setEditingExercise(null); }}>
-                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                        <DialogHeader>
-                            <DialogTitle>{t('form.edit_title')}</DialogTitle>
-                        </DialogHeader>
-                        {editingExercise && (
-                            <CreateExerciseForm
-                                exercise={editingExercise}
-                                onSuccess={() => setEditingExercise(null)}
-                            />
-                        )}
-                    </DialogContent>
-                </Dialog>
+                <ExerciseFormDialog open={isFormOpen} onOpenChange={setIsFormOpen} exercise={editingExercise} />
+                <ExerciseInfoSheet exerciseId={infoExerciseId} onClose={() => setInfoExerciseId(null)} />
 
                 {/* Filters & Search */}
                 <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-border">
@@ -188,7 +161,7 @@ const ExerciseLibrary = () => {
                                                     <DropdownMenuContent align="end">
                                                         {!isFrozen && (
                                                             <DropdownMenuItem
-                                                                onClick={() => setEditingExercise(exercise)}
+                                                                onClick={() => { setEditingExercise(exercise); setIsFormOpen(true); }}
                                                             >
                                                                 <Pencil className="w-4 h-4 mr-2" /> {t('menu.edit')}
                                                             </DropdownMenuItem>
@@ -207,11 +180,19 @@ const ExerciseLibrary = () => {
                                                 <Globe className="w-3 h-3" /> {t('badge.system')}
                                             </Badge>
                                         )}
+                                        <Button variant="ghost" size="icon" className="h-7 w-7"
+                                            onClick={() => setInfoExerciseId(exercise.id)} aria-label={t('info.open')}>
+                                            <Info className="w-4 h-4" />
+                                        </Button>
                                         <AddToListMenu exerciseId={exercise.id} />
                                     </div>
                                 </div>
 
-                                <h3 className="font-bold text-lg mb-1">{exercise.name}</h3>
+                                <h3 className="font-bold text-lg mb-1">
+                                    <button type="button" className="text-left hover:underline" onClick={() => setInfoExerciseId(exercise.id)}>
+                                        {exercise.name}
+                                    </button>
+                                </h3>
 
                                 <div className="text-sm text-muted-foreground flex items-center gap-2 mb-3">
                                     <Activity className="w-4 h-4" />
@@ -265,246 +246,5 @@ const ExerciseLibrary = () => {
         </div>
     );
 };
-
-
-
-
-
-
-
-// --- Configuration: Define Behavior per Category ---
-type ExerciseCategoryOption = {
-    value: string;
-    label: string;
-    icon: React.FC<any>;
-    description: string;
-    fields: { label: string; icon: React.FC<any> }[];
-    color: string;
-}
-
-function useCategoryConfig(): SelectOption<ExerciseCategoryOption>[] {
-    const { t } = useTranslation('exercises');
-    return [
-        {
-            value: "strength",
-            label: t('category.strength'),
-            icon: Dumbbell,
-            description: t('category.strength_desc'),
-            fields: [
-                { label: t('field.sets'), icon: Hash },
-                { label: t('field.reps'), icon: Activity },
-                { label: t('field.weight'), icon: Scale },
-            ],
-            color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
-        },
-        {
-            value: "cardio",
-            label: t('category.cardio'),
-            icon: Activity,
-            description: t('category.cardio_desc'),
-            fields: [
-                { label: t('field.laps'), icon: Hash },
-                { label: t('field.distance'), icon: Ruler },
-                { label: t('field.duration'), icon: Timer },
-            ],
-            color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-        },
-        {
-            value: "flexibility",
-            label: t('category.flexibility'),
-            icon: User,
-            description: t('category.flexibility_desc'),
-            fields: [
-                { label: t('field.duration'), icon: Timer },
-            ],
-            color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-        }
-    ];
-}
-
-// The server's rules (exercises.ts), checked here first.
-const createExerciseSchema = z.object({
-    name: z.string().trim().min(1).max(100),
-    description: z.string().trim().max(500),
-    category: z.enum(['strength', 'cardio', 'flexibility']),
-    muscleGroups: z.array(z.number()),
-
-});
-
-type ExerciseFormProps = {
-    onSuccess: () => void;
-    exercise?: ExerciseWithLastPerformance;
-};
-
-const CreateExerciseForm = ({ onSuccess, exercise }: ExerciseFormProps) => {
-    const { t } = useTranslation('exercises');
-    const { t: tErrors } = useTranslation('errors');
-    const { createExercise, isCreating, updateExercise, isUpdating, muscleGroups } = useExercises();
-    const categories = useCategoryConfig();
-    const isEditMode = !!exercise;
-
-    const form = useForm({
-        defaultValues: {
-            name: exercise?.name ?? '',
-            category: (exercise?.category ?? 'strength') as 'strength' | 'cardio' | 'flexibility',
-            muscleGroups: exercise?.muscleGroups.map((m) => m.id) ?? [],
-            description: exercise?.description ?? ''
-        },
-        resolver: zodResolver(createExerciseSchema)
-    });
-
-    const handleSubmit = async (data: z.infer<typeof createExerciseSchema>) => {
-        try {
-            if (isEditMode) {
-                await updateExercise({ id: exercise.id, ...data });
-            } else {
-                await createExercise(data);
-            }
-            form.reset();
-            onSuccess();
-        } catch (err) {
-            if (err instanceof ApiError) {
-                if (err.code === 'custom_exercise_limit_reached') {
-                    toast.error(tErrors('limits.custom_exercise_limit_reached_title'), {
-                        description: tErrors('limits.custom_exercise_limit_reached_body', { maxCustomExercises: err.payload.maxCustomExercises ?? 0 }),
-                    });
-                    return;
-                }
-                if (err.code === 'custom_exercise_frozen') {
-                    toast.error(tErrors('limits.custom_exercise_frozen_title'), {
-                        description: tErrors('limits.custom_exercise_frozen_body'),
-                    });
-                    return;
-                }
-                if (err.code === 'exercise_name_taken') {
-                    form.setError('name', { message: t('error.name_taken_body') });
-                    return;
-                }
-            }
-            toast.error(t('error.generic_title'), { description: t('error.generic_body') });
-        }
-    };
-
-    const options = muscleGroups.map(m => ({ value: m.id, label: m.name }));
-
-
-    return (
-        <div className="pt-4">
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-
-                {/* Name & Target */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className='flex flex-col gap-4'>
-
-                        <TextField
-                            name="name"
-                            label={t('form.name_label')}
-                            placeholder={t('form.name_placeholder')}
-                            form={form}
-                        />
-                        <TextAreaField
-                            name="description"
-                            label={t('form.description_label')}
-                            placeholder={t('form.description_placeholder')}
-                            form={form}
-                        />
-                    </div>
-
-
-                    {options.length === 0 ? (
-                        <div className="space-y-2">
-                            <p className="text-sm font-medium">{t('form.muscles_label')}</p>
-                            <p className="text-sm text-muted-foreground">{t('form.muscles_empty')}</p>
-                        </div>
-                    ) : (
-                        <ChoiceListField
-                            form={form}
-                            name='muscleGroups'
-                            label={t('form.muscles_label')}
-                            options={options}
-                            mode='multi'
-                            className='flex flex-wrap gap-2'
-                            optionComponent={({ value, label, isSelected, onToggle, disabled, number }) => {
-                                const className = `
-                                                            cursor-pointer px-3 py-2 rounded-md border text-sm font-medium transition-all
-                                                            ${isSelected
-                                        ? 'bg-primary text-primary-foreground border-primary'
-                                        : 'bg-background hover:bg-accent hover:text-accent-foreground border-input'}
-                                                        `
-                                return (
-                                    <div
-                                        key={value}
-                                        onClick={() => onToggle(value)}
-                                        className={className}
-                                    >
-                                        {label}
-                                    </div>
-                                )
-                            }}
-                        />
-                    )}
-
-
-
-                </div>
-
-                <ChoiceListField
-                    form={form}
-                    name='category'
-                    label={t('form.category_label')}
-                    options={categories}
-                    className='grid grid-cols-1 md:grid-cols-2 gap-6'
-                    optionComponent={({ value, label, isSelected, onToggle, disabled, icon: Icon, fields, ...props }: SelectListOptionComponentProps<ExerciseCategoryOption>) => {
-                        return (
-                            <div
-                                onClick={() => onToggle(value)}
-                                className={`
-                                                    cursor-pointer p-4 rounded-xl border-2 transition-all relative overflow-hidden
-                                                    ${isSelected
-                                        ? 'border-primary bg-primary/5'
-                                        : 'border-border hover:border-accent'}
-                                                `}
-                            >
-
-                                <div className="flex items-start justify-between mb-2">
-                                    <div className={`p-2 rounded-lg ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                                        <Icon className="w-5 h-5" />
-                                    </div>
-                                    {isSelected && <Check className="w-5 h-5 text-primary" />}
-                                </div>
-
-                                <h4 className={`font-bold ${isSelected ? 'text-primary' : 'text-foreground'}`}>
-                                    {label}
-                                </h4>
-
-                                <p className="text-xs text-muted-foreground mt-1">{props.description}</p>
-
-                                <div className="mt-4 pt-3 border-t border-border/50">
-                                    <span className="text-[10px] uppercase font-bold text-muted-foreground mb-2 block">{t('form.inputs')}</span>
-                                    <div className="flex flex-wrap gap-2">
-                                        {fields.map((f: any) => (
-                                            <span key={f.label} className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-muted border border-border shadow-sm text-muted-foreground font-medium">
-                                                <f.icon className="w-3 h-3" /> {f.label}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        )
-                    }}
-                />
-
-
-                <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={isCreating || isUpdating}
-                >
-                    {isCreating || isUpdating ? t('form.saving') : isEditMode ? t('form.update') : t('form.create')}
-                </Button>
-            </form>
-        </div>
-    );
-}
 
 export default ExerciseLibrary;

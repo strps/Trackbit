@@ -67,8 +67,8 @@ describe('GET /api/exercise-info/exercises', () => {
         const list = await (await get(u.token, '/api/exercise-info/exercises')).json()
         const byId = new Map(list.map((e: { id: number }) => [e.id, e]))
         expect((byId.get(bench.id) as any).muscleGroups).toEqual([
-            { id: chest.id, name: 'Pecho' },
-            { id: triceps.id, name: 'Triceps' },
+            { id: chest.id, name: 'Pecho', role: 'secondary' },
+            { id: triceps.id, name: 'Triceps', role: 'secondary' },
         ])
         expect((byId.get(bare.id) as any).muscleGroups).toEqual([])
     })

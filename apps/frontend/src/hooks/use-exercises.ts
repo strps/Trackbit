@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Exercise } from '@trackbit/types';
+import type { Exercise, ExerciseDifficulty, ExerciseEquipment } from '@trackbit/types';
 import { parseApiError } from '@/shared/lib/api-error';
 import { EXERCISE_LISTS_QUERY_KEY } from '@/features/exercise-lists/use-exercise-lists';
 import { EXERCISE_SOURCES_QUERY_KEY } from './use-exercise-sources';
@@ -8,8 +8,8 @@ import { EXERCISE_QUEUE_QUERY_KEY } from './use-exercise-queue';
 const API_URL = `${import.meta.env.VITE_API_URL}/exercise-info`;
 
 export interface ExerciseWithLastPerformance extends Exercise {
-    /** Named in the user's locale. */
-    muscleGroups: { id: number; name: string }[];
+    /** Named in the user's locale, primary ones first. */
+    muscleGroups: { id: number; name: string; role: 'primary' | 'secondary' }[];
     lastPerformance?: {
         id: number | null;
         weight: number | null;
@@ -33,8 +33,22 @@ const fetchMuscleGroups = async (): Promise<{ name: string; id: number }[]> => {
     return res.json();
 };
 
-/** The custom exercise form; `description` null or blank clears it. */
-export type ExerciseInput = { name: string; category: string; muscleGroups?: number[]; description?: string | null };
+/**
+ * The custom exercise form; `description` null or blank clears it, and so does an empty (or
+ * all-blank) step list. `variantOfId` null makes it no exercise's variant.
+ */
+export type ExerciseInput = {
+    name: string;
+    category: string;
+    muscleGroups?: number[];
+    description?: string | null;
+    instructions?: string[] | null;
+    tips?: string[] | null;
+    commonMistakes?: string[] | null;
+    equipment?: ExerciseEquipment[];
+    difficulty?: ExerciseDifficulty | null;
+    variantOfId?: number | null;
+};
 
 const createExercise = async (newExercise: ExerciseInput) => {
     const res = await fetch(`${API_URL}/exercises`, {
