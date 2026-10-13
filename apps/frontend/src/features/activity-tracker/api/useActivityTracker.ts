@@ -7,6 +7,8 @@ import {
     OptimisticExercisePerformance,
 } from '@/features/tracker/use-tracker';
 import { useActivityTrackerStore } from '../store/activityTrackerStore';
+import { useRestTimerStore } from '@/features/rest-timer/rest-timer-store';
+import { useSession } from '@/shared/lib/auth-client';
 import { useExercises } from '@/hooks/use-exercises';
 import { useExerciseLists } from '@/features/exercise-lists/use-exercise-lists';
 import { ApiError, parseApiError } from '@/shared/lib/api-error';
@@ -60,6 +62,8 @@ export function useActivityTracker() {
 
     const { selectedLogId: dayLogId, selectedSessionIndex, selectSessionIndex: setSessionIndex } =
         useActivityTrackerStore();
+    const startRest = useRestTimerStore((s) => s.start);
+    const { data: authSession } = useSession();
 
     // -------------------------------------------------------------------------
     // Derived state — find the habit + dayLog that owns this dayLogId
@@ -347,6 +351,13 @@ export function useActivityTracker() {
             // different numbers than the ones being written.
             const { exerciseId, values } = buildNewSetValues(exerciseLogId);
             const number = getCurrentPerformanceCount(exerciseLogId) + 1;
+
+            // Adding a set means it was done: rest, as the list item prescribes, else the
+            // user's default. Like Android; the rest stays on this device.
+            const restSeconds =
+                findPrescription(findLog(exerciseLogId)?.listItemId)?.restSeconds ??
+                authSession?.user.defaultRestSeconds;
+            if (restSeconds != null && dayLogId != null) startRest(restSeconds, dayLogId);
 
             updateCache((next) => {
                 for (const habit of Object.values(next)) {

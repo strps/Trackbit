@@ -1,6 +1,7 @@
 import Header from "@/shared/components/Header";
 import { useSession } from "@/shared/lib/auth-client";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { RestTimerBar } from "@/features/rest-timer/RestTimerBar";
 
 interface AppLayoutProps {
     isPublic?: boolean;
@@ -28,6 +29,8 @@ export default function AppLayout({ isPublic }: AppLayoutProps) {
 
                 <Outlet />
             </main>
+
+            {session && <RestTimerBar />}
 
             {/* <footer className="p-4 text-center border-t mt-auto">
                 <p>&copy; 2025 My Application</p>

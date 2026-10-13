@@ -72,5 +72,12 @@
   "rpe_level_7": "Muy difícil",
   "rpe_level_8": "Muy difícil+",
   "rpe_level_9": "Extremadamente difícil",
-  "rpe_level_10": "Esfuerzo máximo"
+  "rpe_level_10": "Esfuerzo máximo",
+  "rest_title": "Descanso",
+  "rest_over_title": "Descanso terminado",
+  "rest_minus_15s": "−15 s",
+  "rest_plus_15s": "+15 s",
+  "rest_skip": "Saltar",
+  "rest_done": "Listo",
+  "rest_open_session": "Abrir el entrenamiento"
 }

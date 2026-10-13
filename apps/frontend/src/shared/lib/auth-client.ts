@@ -35,9 +35,12 @@ export const authClient = createAuthClient({
                     type: "string" as const,
                     required: false,
                 },
+                // NOT NULL with a default in the database, so always on the
+                // session; never set at signup.
                 defaultRestSeconds: {
                     type: "number" as const,
-                    required: false,
+                    required: true,
+                    input: false,
                 },
             },
 

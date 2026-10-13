@@ -72,5 +72,12 @@
   "rpe_level_7": "Very Hard",
   "rpe_level_8": "Very Hard+",
   "rpe_level_9": "Extremely Hard",
-  "rpe_level_10": "Max Effort"
+  "rpe_level_10": "Max Effort",
+  "rest_title": "Rest",
+  "rest_over_title": "Rest over",
+  "rest_minus_15s": "−15s",
+  "rest_plus_15s": "+15s",
+  "rest_skip": "Skip",
+  "rest_done": "Done",
+  "rest_open_session": "Open the workout"
 }
