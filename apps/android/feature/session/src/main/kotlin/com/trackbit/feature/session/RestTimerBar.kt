@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -29,6 +30,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -48,40 +50,52 @@ import java.time.Instant
 /**
  * The rest countdown at the foot of the session screen while it runs: time left, −15s / +15s,
  * Skip, and, when exact alarms aren't allowed, a link to allow them (the end alert is late
- * without). Hidden once the rest is over: the alarm's alert takes over.
+ * without). Past the end it counts on below zero in red, with only Done, until it expires.
  */
 @Composable
 internal fun RestTimerBar(rest: RestTimer?, onAdjust: (ms: Long) -> Unit, onSkip: () -> Unit) {
     rest ?: return
     val now by rememberCountdownNow(rest)
-    if (rest.isOver(now)) return
+    if (rest.isExpired(now)) return
     val remaining = rest.remainingMs(now)
+    val over = rest.isOver(now)
+    val color = if (over) MaterialTheme.colorScheme.error else Color.Unspecified
 
     Surface(tonalElevation = 3.dp, shadowElevation = 3.dp) {
         Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(painterResource(UiIcons.Timer), contentDescription = null, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.android_rest_title), style = MaterialTheme.typography.titleSmall)
-                Spacer(Modifier.width(12.dp))
-                // Rounded up, so it starts at the full rest and reads 0:01 in the last second.
                 Text(
-                    text = formatDuration((remaining + 999) / 1000 * 1000),
+                    text = stringResource(if (over) R.string.android_rest_over_title else R.string.android_rest_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = color,
+                )
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    text = restText(remaining),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.SemiBold,
+                    color = color,
                 )
                 Spacer(Modifier.weight(1f))
                 Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
-                    TextButton(onClick = { onAdjust(-RestTimer.STEP_MS) }) { Text(stringResource(R.string.android_rest_minus_15s)) }
-                    TextButton(onClick = { onAdjust(RestTimer.STEP_MS) }) { Text(stringResource(R.string.android_rest_plus_15s)) }
-                    TextButton(onClick = onSkip) { Text(stringResource(R.string.android_rest_skip)) }
+                    if (over) {
+                        TextButton(onClick = onSkip) { Text(stringResource(R.string.android_rest_done)) }
+                    } else {
+                        TextButton(onClick = { onAdjust(-RestTimer.STEP_MS) }) { Text(stringResource(R.string.android_rest_minus_15s)) }
+                        TextButton(onClick = { onAdjust(RestTimer.STEP_MS) }) { Text(stringResource(R.string.android_rest_plus_15s)) }
+                        TextButton(onClick = onSkip) { Text(stringResource(R.string.android_rest_skip)) }
+                    }
                 }
             }
+            // Full and red in overtime.
             LinearProgressIndicator(
-                progress = { if (rest.totalMs > 0) remaining.toFloat() / rest.totalMs else 0f },
+                progress = { if (over) 1f else if (rest.totalMs > 0) remaining.toFloat() / rest.totalMs else 0f },
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                color = if (over) MaterialTheme.colorScheme.error else ProgressIndicatorDefaults.linearColor,
             )
-            ExactAlarmHint()
+            if (!over) ExactAlarmHint()
         }
     }
 }
@@ -136,13 +150,21 @@ private fun Context.openExactAlarmSettings() {
     startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, "package:$packageName".toUri()))
 }
 
-/** The current instant, re-read as each second of [rest] runs out, until it is over. */
+/**
+ * The time left, rounded up so it starts at the full rest and reads 0:01 in the last second;
+ * then the overtime, rounded down, so 0:00 comes before −0:01.
+ */
+internal fun restText(remainingMs: Long): String =
+    if (remainingMs > 0) formatDuration((remainingMs + 999) / 1000 * 1000) else (if (remainingMs <= -1000) "−" else "") + formatDuration(-remainingMs)
+
+/** The current instant, re-read as each second of [rest] turns over, until it expires. */
 @Composable
 private fun rememberCountdownNow(rest: RestTimer, clock: Clock = Clock.systemUTC()) =
     produceState<Instant>(clock.instant(), rest) {
         value = clock.instant()
-        while (!rest.isOver(value)) {
-            val untilNextSecond = rest.remainingMs(value) % 1000
+        while (!rest.isExpired(value)) {
+            // Below zero too: −300 ms left is 700 ms before −0:01.
+            val untilNextSecond = Math.floorMod(rest.remainingMs(value), 1000L)
             delay(if (untilNextSecond == 0L) 1000 else untilNextSecond)
             value = clock.instant()
         }

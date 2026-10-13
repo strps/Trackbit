@@ -22,6 +22,7 @@ import com.trackbit.core.designsystem.color.colorAt
 import com.trackbit.core.designsystem.format.formatDuration
 import com.trackbit.core.designsystem.icon.UiIcons
 import com.trackbit.core.designsystem.icon.drawableRes
+import com.trackbit.core.designsystem.theme.TrackbitLightColors
 import com.trackbit.core.i18n.R as I18nR
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -29,8 +30,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.Clock
+import java.time.Duration
+import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -39,7 +43,8 @@ import javax.inject.Singleton
  * timer (a widget, the app, the notification itself, a habit deleted by a sync, sign-out clearing
  * the database), this posts or cancels to match. Call [start] once, from `Application.onCreate`;
  * a new process re-posts the timers that are still running. The rest timer gets one too,
- * counting down; when it ends, [RestAlarm] has [alertRestOver] post a separate alert.
+ * counting down and then, in overtime, below zero; at its end, [RestAlarm] has [showRestOver]
+ * post it again as the alert.
  *
  * No foreground service: a timer is a stored start instant, and the notification's chronometer
  * ticks in the system UI, so nothing has to keep running meanwhile.
@@ -84,26 +89,15 @@ class TimerNotifier @Inject internal constructor(
         scope.launch { show(running) }
     }
 
-    /** The rest timer just ended: sound, vibrate and say so. Its countdown is gone by then. */
-    fun alertRestOver() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) {
-            return
-        }
-        val alert = NotificationCompat.Builder(context, REST_ALERT_CHANNEL)
-            .setSmallIcon(UiIcons.Timer)
-            .setContentTitle(context.getString(I18nR.string.android_rest_over_title))
-            .setContentText(context.getString(I18nR.string.android_rest_over_text))
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setDefaults(NotificationCompat.DEFAULT_ALL)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setAutoCancel(true)
-            .setTimeoutAfter(REST_ALERT_TIMEOUT_MS)
-            .setContentIntent(openApp())
-            .build()
-        manager.notify(REST_ALERT_TAG, REST_ID, alert)
+    /**
+     * The rest timer just ended: its notification turns to overtime, and with [alert], sounds,
+     * vibrates and pops up. Nothing in Room changes at the end, so [show] wouldn't repost it.
+     */
+    suspend fun showRestOver(alert: Boolean) {
+        val now = clock.instant()
+        val rest = restTimers.observe().first()?.takeIf { it.isOver(now) && !it.isExpired(now) } ?: return
+        if (!canNotify()) return
+        manager.notify(REST_TAG, REST_ID, restNotification(rest, now, alert))
     }
 
     private fun show(timers: Running) {
@@ -112,37 +106,59 @@ class TimerNotifier @Inject internal constructor(
         context.getSystemService(NotificationManager::class.java).activeNotifications
             .filter { it.tag.orEmpty().startsWith(TAG_PREFIX) && it.tag !in tags }
             .forEach { manager.cancel(it.tag, it.id) }
-        // A rest that is over (its alarm not yet run) shows nothing; a new one replaces the last alert.
-        val rest = timers.rest?.takeUnless { it.isOver(clock.instant()) }
-        if (rest == null) manager.cancel(REST_TAG, REST_ID) else manager.cancel(REST_ALERT_TAG, REST_ID)
+        // An expired rest (its alarm not yet run) shows nothing. Reposting one in overtime is silent.
+        val now = clock.instant()
+        val rest = timers.rest?.takeUnless { it.isExpired(now) }
+        if (rest == null) manager.cancel(REST_TAG, REST_ID)
         // Without the permission (13+) timers still run; they show in the widgets only.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) {
-            return
-        }
+        if (!canNotify()) return
         timers.habits.forEach { manager.notify(habitTag(it.uuid), HABIT_ID, notification(it)) }
-        rest?.let { manager.notify(REST_TAG, REST_ID, restNotification(it)) }
+        rest?.let { manager.notify(REST_TAG, REST_ID, restNotification(it, now, alert = false)) }
     }
 
-    /** Counts down to the rest's end, and goes away then: the alert takes over. */
-    private fun restNotification(rest: RestTimer): Notification = NotificationCompat.Builder(context, CHANNEL)
-        .setSmallIcon(UiIcons.Timer)
-        .setContentTitle(context.getString(I18nR.string.android_rest_title))
-        .setWhen(rest.endsAt.toEpochMilli())
-        .setShowWhen(true)
-        .setUsesChronometer(true)
-        .setChronometerCountDown(true)
-        .setTimeoutAfter(rest.remainingMs(clock.instant()))
-        .setOngoing(true)
-        .setSilent(true)
-        .setCategory(NotificationCompat.CATEGORY_STOPWATCH)
-        .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-        .setContentIntent(openApp())
-        .addAction(0, context.getString(I18nR.string.android_rest_minus_15s), TimerActionReceiver.adjustRest(context, -RestTimer.STEP_MS))
-        .addAction(0, context.getString(I18nR.string.android_rest_plus_15s), TimerActionReceiver.adjustRest(context, RestTimer.STEP_MS))
-        .addAction(0, context.getString(I18nR.string.android_rest_skip), TimerActionReceiver.skipRest(context))
-        .build()
+    private fun canNotify(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+
+    /**
+     * Counts down to the rest's end and on below zero (the chronometer goes negative), until it
+     * expires. In overtime it says so in red, with Done for the −/+ and Skip; with [alert] it is
+     * on the alert channel, to sound and pop up.
+     */
+    private fun restNotification(rest: RestTimer, now: Instant, alert: Boolean): Notification {
+        val builder = NotificationCompat.Builder(context, if (alert) REST_ALERT_CHANNEL else CHANNEL)
+            .setSmallIcon(UiIcons.Timer)
+            .setWhen(rest.endsAt.toEpochMilli())
+            .setShowWhen(true)
+            .setUsesChronometer(true)
+            .setChronometerCountDown(true)
+            .setTimeoutAfter(Duration.between(now, rest.expiresAt).toMillis())
+            .setOngoing(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setContentIntent(openApp())
+        if (rest.isOver(now)) {
+            builder
+                .setContentTitle(context.getString(I18nR.string.android_rest_over_title))
+                .setContentText(context.getString(I18nR.string.android_rest_over_text))
+                .setColor(TrackbitLightColors.error.toArgb())
+                .addAction(0, context.getString(I18nR.string.android_rest_done), TimerActionReceiver.skipRest(context))
+        } else {
+            builder
+                .setContentTitle(context.getString(I18nR.string.android_rest_title))
+                .addAction(0, context.getString(I18nR.string.android_rest_minus_15s), TimerActionReceiver.adjustRest(context, -RestTimer.STEP_MS))
+                .addAction(0, context.getString(I18nR.string.android_rest_plus_15s), TimerActionReceiver.adjustRest(context, RestTimer.STEP_MS))
+                .addAction(0, context.getString(I18nR.string.android_rest_skip), TimerActionReceiver.skipRest(context))
+        }
+        if (alert) {
+            builder
+                .setCategory(NotificationCompat.CATEGORY_ALARM)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setDefaults(NotificationCompat.DEFAULT_ALL)
+        } else {
+            builder.setCategory(NotificationCompat.CATEGORY_STOPWATCH).setSilent(true)
+        }
+        return builder.build()
+    }
 
     /** Counts up from the moment the day's total was zero, so it shows the day's time. */
     private fun notification(habit: TrackedHabit): Notification = NotificationCompat.Builder(context, CHANNEL)
@@ -179,11 +195,7 @@ class TimerNotifier @Inject internal constructor(
         const val TAG_PREFIX = "habit-timer:"
         const val HABIT_ID = 1
         const val REST_TAG = "rest-timer"
-        const val REST_ALERT_TAG = "rest-alert"
         const val REST_ID = 1
-
-        /** The alert is for the moment the rest ends; later it is only clutter. */
-        const val REST_ALERT_TIMEOUT_MS = 5 * 60_000L
 
         fun habitTag(habitUuid: String) = TAG_PREFIX + habitUuid
     }

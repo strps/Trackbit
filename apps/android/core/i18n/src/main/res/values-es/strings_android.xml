@@ -35,6 +35,7 @@
     <string name="android_rest_minus_15s">−15 s</string>
     <string name="android_rest_plus_15s">+15 s</string>
     <string name="android_rest_skip">Saltar</string>
+    <string name="android_rest_done">Listo</string>
     <string name="android_rest_over_title">Descanso terminado</string>
     <string name="android_rest_over_text">Hora de la siguiente serie.</string>
     <string name="android_rest_alert_channel_name">Avisos de descanso</string>

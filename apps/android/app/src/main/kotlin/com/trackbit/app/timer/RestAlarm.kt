@@ -20,14 +20,16 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.time.Clock
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * The alarm at the rest timer's end, kept in step with Room like [TimerNotifier]: a rest started,
- * moved or ended anywhere sets or cancels it. When it fires, [RestAlarmReceiver] ends the rest and
- * has [TimerNotifier] alert. Call [start] once, from `Application.onCreate`; a new process (after
- * a reboot, which drops alarms) sets it again, and a rest long over then ends without an alert.
+ * The rest timer's alarm, kept in step with Room like [TimerNotifier]: a rest started, moved or
+ * ended anywhere sets or cancels it. It is set for the rest's end, where [RestAlarmReceiver] has
+ * [TimerNotifier] alert, and then for its expiry, where the receiver removes it. Call [start]
+ * once, from `Application.onCreate`; a new process (after a reboot, which drops alarms) sets it
+ * again, and a rest already over then gets no alert.
  *
  * Exact when the user allows exact alarms (`SCHEDULE_EXACT_ALARM`; asked from the session
  * screen), else inexact, which can be about a minute late.
@@ -36,6 +38,7 @@ import javax.inject.Singleton
 class RestAlarm @Inject internal constructor(
     @ApplicationContext private val context: Context,
     private val restTimers: RestTimerRepository,
+    private val clock: Clock,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val alarms = context.getSystemService(AlarmManager::class.java)
@@ -46,7 +49,7 @@ class RestAlarm @Inject internal constructor(
         }
     }
 
-    /** Sets the alarm again for the current rest: exact alarms were just allowed, or it fired early. */
+    /** Sets the alarm again for the current rest: exact alarms were just allowed, or it fired. */
     suspend fun reschedule() = set(restTimers.observe().first())
 
     private fun set(rest: RestTimer?) {
@@ -55,7 +58,8 @@ class RestAlarm @Inject internal constructor(
             alarms.cancel(intent)
             return
         }
-        val at = rest.endsAt.toEpochMilli()
+        // Once it is over, the next thing due is its expiry. A time already past fires at once.
+        val at = (if (rest.isOver(clock.instant())) rest.expiresAt else rest.endsAt).toEpochMilli()
         if (canScheduleExact(alarms)) {
             alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, intent)
         } else {
@@ -84,10 +88,17 @@ class RestAlarmReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.Default).launch {
             try {
                 when (action) {
-                    ACTION_REST_OVER -> when (entryPoint.restTimers().finishIfDue()) {
-                        RestEnd.Ended -> entryPoint.notifier().alertRestOver()
+                    ACTION_REST_OVER -> when (entryPoint.restTimers().onAlarm()) {
+                        RestEnd.Ended -> {
+                            entryPoint.notifier().showRestOver(alert = true)
+                            entryPoint.restAlarm().reschedule()
+                        }
+                        RestEnd.Stale -> {
+                            entryPoint.notifier().showRestOver(alert = false)
+                            entryPoint.restAlarm().reschedule()
+                        }
                         RestEnd.NotDue -> entryPoint.restAlarm().reschedule()
-                        RestEnd.Stale, RestEnd.None -> Unit
+                        RestEnd.Expired, RestEnd.None -> Unit
                     }
                     ACTION_EXACT_ALARMS_ALLOWED -> entryPoint.restAlarm().reschedule()
                 }
